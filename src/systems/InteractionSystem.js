@@ -250,6 +250,10 @@ export class InteractionSystem {
     switch (t.type) {
       case "npc": {
         const npc = t.data.npc;
+        // AI 剧场演员：把"搭戏"按钮并入原有 NPC 交互按钮区
+        const theaterAct = this.theaterDirector?.isActor?.(npc)
+          ? { action: "theater_cue", icon: "🎭", label: "搭戏", key: "Z", hint: `${t.data.name} · 正在街头演一场戏` }
+          : null;
         // 特殊职业 NPC：保留完整交互（招募/勒索等），不加攻击按钮
         if (npc?.brain?.hasRoleInteraction?.()) {
           const npcActions = [
@@ -259,6 +263,7 @@ export class InteractionSystem {
           if (t.data.bumpDist) {
             npcActions.push({ action: "steal", icon: "🫳", label: "偷窃", key: "V", hint: "" });
           }
+          if (theaterAct) npcActions.push(theaterAct);
           return npcActions;
         }
         const actions = [
@@ -268,6 +273,7 @@ export class InteractionSystem {
         if (t.data.bumpDist) {
           actions.push({ action: "steal", icon: "🫳", label: "偷窃", key: "V", hint: "" });
         }
+        if (theaterAct) actions.push(theaterAct);
         return actions;
       }
       case "door":

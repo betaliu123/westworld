@@ -454,8 +454,9 @@ export class NPCManager {
       let best = null;
       let bestD = 14; // 只有 14m 内的会注意到
       for (const npc of this.npcs) {
-        if (!npc.alive) continue;
-        const s = npc.brain.state;
+      if (!npc.alive) continue;
+      if (npc.brain._perform) continue; // 剧场演员：不被玩家挤走/挤怒
+      const s = npc.brain.state;
         if (s !== State.WANDER && s !== State.IDLE) continue;
         if (npc.personality.greed < 0.35) continue; // 不贪的懒得捡
         const d = distance2D(npc.pos.x, npc.pos.z, item.mesh.position.x, item.mesh.position.z);

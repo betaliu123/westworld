@@ -1,0 +1,257 @@
+// TheaterDirector.js — AI 剧场总控
+// 职责：每天 9:00-12:00 之间挑一场戏在镇中心大街开演；从镇上 NPC 里选角；
+//       玩家没来就循环第一幕；天黑或演完就散场、演员回去上班；结算荣誉/现金/通缉。
+
+import { THEATER_TREES, THEATER_CONFIG } from "../config/theaterData.js";
+import { StageMap } from "./StageMap.js";
+import { Casting } from "./Casting.js";
+import { TheaterGlue, GlueBudget } from "./TheaterGlue.js";
+import { TheaterRuntime } from "./TheaterRuntime.js";
+
+export class TheaterDirector {
+  constructor(deps = {}) {
+    this.npcManager = deps.npcManager;
+    this.town = deps.town;
+    this.hud = deps.hud;
+    this.sky = deps.sky;
+    this.worldClock = deps.worldClock;
+    this.reputation = deps.reputation;
+    this.economy = deps.economy;
+    this.newspaper = deps.newspaper;
+    this.eventLog = deps.eventLog;
+    this.ui = deps.ui || null; // TheaterUI
+    this.now = deps.now || (() => performance.now()); // 可注入时钟，便于无头仿真
+
+    this.stage = new StageMap(this.town);
+    this.casting = new Casting({ npcManager: this.npcManager, stage: this.stage });
+    this.glue = new TheaterGlue({ budget: new GlueBudget({ perMinute: 6, cooldownMs: 1200 }) });
+
+    this.scene = null;            // 当前 TheaterRuntime
+    this.log = [];                // 叙事纪实（中文文本）
+    this.lastPlayedDay = 0;       // 上次开演是第几天
+    this.todayTriggerHour = this._rollTriggerHour();
+    this._prevHour = this.sky?.hour ?? 8;
+    this.failedAttempts = 0;
+
+    // 跨日：新的一天重置触发时刻
+    this.worldClock?.on?.("dayStart", () => {
+      this.todayTriggerHour = this._rollTriggerHour();
+      this.failedAttempts = 0;
+    });
+    // 睡觉/天黑：强制散场
+    this.worldClock?.on?.("sleep", () => this.scene?.disband("入夜"));
+  }
+
+  _rollTriggerHour() {
+    const { windowStart, windowEnd } = THEATER_CONFIG;
+    return windowStart + Math.random() * Math.max(0.1, windowEnd - windowStart - 0.2);
+  }
+
+  get active() {
+    return !!(this.scene && this.scene.active);
+  }
+
+  get currentTree() {
+    return this.scene?.tree || null;
+  }
+
+  /** 主循环：注册成独立 engine.onUpdate，避免被室内分支 return 掉 */
+  update(dt, ctx = {}) {
+    const hour = ctx.hour ?? this.sky?.hour ?? 12;
+    const day = ctx.day ?? this.worldClock?.day ?? 1;
+
+    // 到点开演（边沿判定，处理跨 24 点环绕）
+    const crossed = this._prevHour <= this.todayTriggerHour && hour > this.todayTriggerHour;
+    this._prevHour = hour;
+    if (!this.active && crossed && this.lastPlayedDay !== day && hour < THEATER_CONFIG.windowEnd) {
+      this.startShow(day);
+    }
+
+    if (this.scene) {
+      this.scene.update(dt, { playerPos: ctx.playerPos, hour, day });
+      if (!this.scene.active) this.scene = null;
+    }
+  }
+
+  /** 开一场戏（可指定剧本 id，调试用） */
+  startShow(day = this.worldClock?.day ?? 1, treeId = null) {
+    if (this.active) return false;
+    const tree = treeId
+      ? THEATER_TREES.find((t) => t.id === treeId)
+      : THEATER_TREES[Math.floor(Math.random() * THEATER_TREES.length)];
+    if (!tree) return false;
+
+    const cast = this.casting.cast(tree);
+    if (!cast) {
+      this.failedAttempts++;
+      this._addLog(`【${tree.title}】今天凑不齐角色，改天再演`);
+      // 稍后再试（把触发时刻推后 20 分钟游戏时间）
+      if (this.failedAttempts < 4) this.todayTriggerHour = Math.min(THEATER_CONFIG.windowEnd - 0.2, this.todayTriggerHour + 0.33);
+      return false;
+    }
+
+    this.lastPlayedDay = day;
+    this.scene = new TheaterRuntime({
+      tree,
+      cast,
+      stage: this.stage,
+      glue: this.glue,
+      now: this.now,
+      hooks: {
+        toast: (text, opts) => this.hud?.toast?.(text, opts),
+        log: (text) => this._addLog(text),
+        playerPos: () => this._playerPos,
+        onChoices: (choices, hint) => this.ui?.setChoices?.(choices, hint),
+        onPending: (on) => this.ui?.setPending?.(on),
+        onOutcome: (oc, meta) => this._applyOutcome(oc, meta),
+        onEffects: (fx) => this._applyEffects(fx),
+        onEnd: () => {
+          this.ui?.setChoices?.([], "");
+          this.ui?.setEventActive?.(false);
+        },
+      },
+    });
+    this.ui?.setEventActive?.(true, tree.title);
+    this.hud?.toast?.(`🎭 镇中心大街上出事了：${tree.title}`, { duration: 5000, key: "theater-start" });
+    this._addLog(`——— 第 ${day} 天 ${this._fmtHour(this.sky?.hour ?? 9)} 《${tree.title}》 ———`);
+    return true;
+  }
+
+  /** 玩家自由输入（UI 调进来） */
+  submitFreeText(text) {
+    if (!this.active) return false;
+    if (this.scene.zoneLevel !== "interact") {
+      this.hud?.toast?.("你离得太远，他们听不见", { side: true, key: "theater-far" });
+      return false;
+    }
+    this.scene.handleFreeText(text);
+    return true;
+  }
+
+  /** 玩家点事件选项（UI 调进来） */
+  submitChoice(choiceId) {
+    if (!this.active) return false;
+    return !!this.scene.handleChoice(choiceId);
+  }
+
+  /** 玩家打了某个 NPC（main.js 的 onNpcKnocked / 攻击处转进来） */
+  notifyNpcHit(npc, knocked = false) {
+    if (!this.active) return;
+    this.scene.notifyActorHit(npc, knocked);
+  }
+
+  /** 这个 NPC 是当前剧场演员吗（给 InteractionSystem 加按钮用） */
+  isActor(npc) {
+    return !!(this.active && this.scene.isActor(npc));
+  }
+
+  actorRole(npc) {
+    return this.active ? this.scene.roleOf(npc) : null;
+  }
+
+  /** 玩家对演员的"入戏"交互：让该演员对玩家说一句戏内台词 */
+  cueActor(npc) {
+    if (!this.active) return;
+    const role = this.scene.roleOf(npc);
+    if (!role) return;
+    const m = this.scene.memberOf(role);
+    const lines = [
+      "你也来看热闹？站远点，别挨枪子。",
+      "这事跟你没关系，伙计。",
+      "要帮忙就说话，别光站着。",
+      "看什么看？这是我们的私事。",
+    ];
+    const line = lines[Math.floor(Math.random() * lines.length)];
+    m.npc.brain.say(line, 3);
+    m.npc.brain.perform?.({ faceTarget: this._playerPos });
+    this._addLog(`${m.stageName}：${line}`);
+  }
+
+  set playerPos(p) {
+    this._playerPos = p;
+  }
+
+  get playerPos() {
+    return this._playerPos;
+  }
+
+  // ---- 结算 ----
+
+  _applyEffects(fx) {
+    if (!fx) return;
+    if (fx.cash) {
+      this.economy?.addMoney?.(fx.cash);
+      this.hud?.toast?.(`${fx.cash > 0 ? "+" : ""}${fx.cash} 现金`, { side: true, key: "theater-cash" });
+    }
+    if (fx.honor) {
+      this.reputation?.addHonor?.(fx.honor);
+      this.hud?.toast?.(`荣誉 ${fx.honor > 0 ? "+" : ""}${fx.honor}`, { side: true, key: "theater-honor" });
+    }
+    if (fx.wanted) this.reputation?.addCrimeWanted?.(fx.wanted);
+  }
+
+  _applyOutcome(oc, meta = {}) {
+    this._applyEffects({ cash: oc.cash, honor: oc.honor, wanted: oc.wanted });
+    const lines = (oc.lines || []).join("；");
+    this.hud?.toast?.(`🎭 ${oc.title}${lines ? " —— " + lines : ""}`, { duration: 6500, key: "theater-outcome" });
+    this.ui?.showOutcome?.(oc);
+    if (oc.rumor && this.newspaper?.publish) {
+      try {
+        this.newspaper.publish(oc.rumor, { job: meta.tree?.title || "街头事件" });
+      } catch (e) { /* 报纸类型不匹配时忽略 */ }
+    }
+    if (this.eventLog?.record) {
+      try {
+        this.eventLog.record({
+          type: "theater",
+          actors: this.scene?.cast.map((c) => c.stageName) || [],
+          location: "镇中心大街",
+          facts: [oc.title, ...(oc.lines || [])],
+          visibility: "public",
+          tags: ["ai剧场", meta.tree?.id || ""],
+        });
+      } catch (e) { /* eventLog 结构不匹配时忽略 */ }
+    }
+  }
+
+  // ---- 叙事纪实 ----
+
+  _addLog(text) {
+    this.log.push({ at: Date.now(), text });
+    if (this.log.length > 80) this.log.shift();
+    this.ui?.appendLog?.(text);
+  }
+
+  recentLog(n = 25) {
+    return this.log.slice(-n);
+  }
+
+  _fmtHour(h) {
+    const hh = Math.floor(h) % 24;
+    const mm = Math.floor((h - Math.floor(h)) * 60);
+    return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  }
+
+  // ---- 调试 ----
+
+  debugStart(treeId) {
+    this.scene?.disband("调试重开");
+    this.scene = null;
+    return this.startShow(this.worldClock?.day ?? 1, treeId || null);
+  }
+
+  debugStatus() {
+    return {
+      active: this.active,
+      tree: this.currentTree?.title || null,
+      node: this.scene?.currentNodeId || null,
+      phase: this.scene?.phase || null,
+      zone: this.scene?.zoneLevel || null,
+      playerJoined: this.scene?.playerEverJoined || false,
+      cast: this.scene?.cast.map((c) => `${c.roleId}=${c.stageName}`) || [],
+      todayTriggerHour: this.todayTriggerHour.toFixed(2),
+      lastPlayedDay: this.lastPlayedDay,
+      glueVia: this.glue.lastVia,
+    };
+  }
+}

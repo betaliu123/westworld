@@ -10,7 +10,18 @@ export class Input {
     // 边沿触发的一次性动作（本帧按下）
     this.pressed = new Set();
 
+    // 正在输入框里打字时（如 AI 剧场自由输入），键盘归输入框，不驱动角色
+    this._isTyping = (target) => {
+      const el = target && target.tagName ? target : document.activeElement;
+      if (!el) return false;
+      return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable === true;
+    };
+
     this._onKeyDown = (e) => {
+      if (this._isTyping(e.target)) {
+        this.keys.clear(); // 防止切入输入框之前按住的键卡住
+        return;
+      }
       const code = e.code;
       if (!this.keys.has(code)) this.pressed.add(code);
       this.keys.add(code);
@@ -25,6 +36,7 @@ export class Input {
       }
     };
     this._onMouseDown = (e) => {
+      if (this._isTyping(e.target)) return; // 点在输入框/按钮上不算开枪
       if (e.button === 0) this.pressed.add("Mouse0");
       this.keys.add(e.button === 0 ? "Mouse0" : "Mouse2");
     };

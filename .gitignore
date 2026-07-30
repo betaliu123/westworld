@@ -5,3 +5,6 @@ Thumbs.db
 .cc_task/
 .claude/
 dist/
+
+# LLM ÃÜÔ¿£¨ÎğÌá½»£©
+.env

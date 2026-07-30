@@ -54,6 +54,9 @@ import { StockMarket } from "./ui/StockMarket.js";
 import { InteractionSystem } from "./systems/InteractionSystem.js";
 import { getPortrait, getAvatar } from "./config/portraits.js";
 import { NARRATIVE_ITEMS, NPC_POCKET_NARRATIVES, HOME_STASH_NARRATIVES } from "./config/narrativeItems.js";
+// AI 剧场（街头事件）
+import { TheaterDirector } from "./theater/TheaterDirector.js";
+import { TheaterUI } from "./theater/TheaterUI.js";
 
 function boot() {
   const canvas = document.getElementById("scene");
@@ -126,7 +129,12 @@ function boot() {
   const interaction = new InteractionSystem(camera, scene);
   interaction.setRefs({ npcManager, town, loot, vehicles, interiors });
 
+  let theater = null; // AI 剧场总控，稍后装配（Combat 回调里会用到）
+
   const combat = new Combat(npcManager, loot, hud, { audio, reputation, newspaper,
+    onNpcHit: (target, knocked) => {
+      theater?.notifyNpcHit(target, knocked);
+    },
     onNpcKnocked: (target) => {
       // 检查任务完成：击败NPC
       const owner = target.phone?.owner || "镇民";
@@ -153,6 +161,24 @@ function boot() {
 
   // P5 LLM (默认禁用，可通过调试面板启用)
   const narrativeService = new NarrativeService({ worldState, eventLog, enabled: true });
+
+  // ===== AI 剧场：每天上午在镇中心大街演一场街头事件 =====
+  theater = new TheaterDirector({
+    npcManager, town, hud, sky, worldClock, reputation, economy, newspaper, eventLog,
+  });
+  const theaterUI = new TheaterUI({
+    input: engine.input,
+    onSubmitText: (text) => {
+      if (!theater.active) {
+        hud.toast("这会儿街上没什么事，没人搭你的话", { side: true, key: "theater-idle" });
+        return;
+      }
+      theater.submitFreeText(text);
+    },
+    onPickChoice: (id) => theater.submitChoice(id),
+  });
+  theater.ui = theaterUI;
+  interaction.theaterDirector = theater;
 
   // DailySimulation（完整装配）
   const dailySimulation = new DailySimulation({
@@ -2116,6 +2142,10 @@ function boot() {
         openNPCProfile(result.npc);
         document.exitPointerLock();
         break;
+      case "theater_cue":
+        // AI 剧场：跟正在演戏的人搭话
+        theater.cueActor(result.npc);
+        break;
       case "attack":
         // 触发拳击攻击 — 只在冷却就绪时有效
         if (player.attackCooldown <= 0 && !player.attackTimer) {
@@ -2576,6 +2606,16 @@ function boot() {
     }
   });
 
+  // AI 剧场：独立注册，避免被室内/载具/弹窗分支提前 return 掉
+  engine.onUpdate((dt) => {
+    theater.playerPos = player.pos;
+    theater.update(dt, {
+      playerPos: insideRoom ? null : player.pos, // 进屋就算离场
+      hour: sky.hour,
+      day: worldClock.day,
+    });
+  });
+
   engine.onLateUpdate(() => {
     // 室内时投影室内 patron 气泡 + 民居里真实 NPC 的气泡 + 同房间 NPC；室外投影 NPC 气泡
     if (insideRoom) {
@@ -2946,6 +2986,11 @@ function boot() {
     director, deliveryPlanner,
     // P5 LLM
     narrativeService,
+    // AI 剧场
+    theater, theaterUI,
+    theaterStart: (treeId) => theater.debugStart(treeId),
+    theaterStatus: () => theater.debugStatus(),
+    theaterLog: (n) => theater.recentLog(n),
     // Phase 4 新系统
     taskSystem, stockMarket, showTaskDetail, renderTaskBar,
     // 快捷调试

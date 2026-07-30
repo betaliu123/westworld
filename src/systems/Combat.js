@@ -10,6 +10,7 @@ export class Combat {
     this.reputation = deps.reputation || null;
     this.newspaper = deps.newspaper || null;
     this.onNpcKnocked = deps.onNpcKnocked || null;
+    this.onNpcHit = deps.onNpcHit || null; // 每次命中都回调（含未击倒），供 AI 剧场做出戏反应
     this.hitFlash = 0;
   }
 
@@ -29,6 +30,7 @@ export class Combat {
         this.hud.toast(knocked ? "💥 击倒了一个 NPC！" : "👊 命中！");
         // 记录交手历史
         this.npcManager.recordEncounter(target, "hit_by_player", { day: this.currentDay || 0, knocked });
+        if (this.onNpcHit) this.onNpcHit(target, knocked);
         this.npcManager.broadcastPanic(target.pos, 12);
         // 声望：动手就掉荣誉（通缉由目击-报案流程处理）
         if (this.reputation) {

@@ -4,9 +4,9 @@
 
 import { SYSTEM_PROMPT, buildUserPrompt, buildStoryBeatPrompt } from "./LlmPrompts.js";
 
-const API_ENDPOINT = "https://ai.leihuo.netease.com/v1/chat/completions";
-const API_KEY = "sk-TqudEXdZejKQQAtFApIpoYfbFsevdSM4IknLBtgHM6WoLPQk";
-const MODEL = "deepseek-v4-pro";
+// 走本地 serve.py 的 /api/llm/chat 代理：密钥留在服务端，前端不再硬编码
+const API_ENDPOINT = "/api/llm/chat";
+const MODEL = "deepseek-v4-flash";  // 实际模型由服务端 .env 决定，这里仅作占位
 const TIMEOUT_MS = 15000;  // 15 秒超时
 const MAX_RETRIES = 2;
 
@@ -83,7 +83,6 @@ export class NarrativeService {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${API_KEY}`,
           },
           body: JSON.stringify(requestBody),
           signal: controller.signal,

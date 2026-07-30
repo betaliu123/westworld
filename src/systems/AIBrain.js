@@ -220,6 +220,7 @@ export class AIBrain {
   // 目击犯罪：周围NPC看到玩家打人后的反应
   // 胆小者跑去报警，帮派成员叫同伙，勇敢者只是受惊
   witnessCrime(threatPos, crimeType) {
+    if (this._perform && this._perform.immune) return; // 剧场演员不被路过的犯罪打断
     if (this.state === State.DOWN || this.state === State.ANGRY) return;
     if (this.p.bravery < 0.5) {
       // 胆小者报警
@@ -262,6 +263,43 @@ export class AIBrain {
     // 在场所里上班的 NPC 聊完回岗位，别直接下班
     if (this._placeType) this._enter(State.AT_PLACE);
     else this._enter(State.WANDER);
+  }
+
+  // ── AI 剧场接管接口 ──────────────────────────────────────────
+  // 剧场把 NPC 征召为演员：暂停日程，只按 spec 走位/朝向
+  // spec: { moveTo:{x,z}, faceTarget:{x,z}, speedMul, arriveDist, immune }
+  takeOver(spec = {}) {
+    if (this.state === State.DOWN) return false;
+    this._perform = { ...spec, arrived: false };
+    this.state = State.WANDER; // 让 NPC.update 走"普通移动"分支
+    this.target = null;
+    this.stateTimer = 999;
+    return true;
+  }
+
+  // 更新演员的走位/朝向（演出过程中随时调整）
+  perform(spec = {}) {
+    if (!this._perform) return false;
+    this._perform = { ...this._perform, ...spec, arrived: false };
+    return true;
+  }
+
+  get performing() {
+    return !!this._perform;
+  }
+
+  get performArrived() {
+    return !!(this._perform && this._perform.arrived);
+  }
+
+  // 演出结束：清空接管，日程按当前时段自动复位（清 target + _segment 触发重算）
+  release() {
+    if (!this._perform) return;
+    this._perform = null;
+    this.target = null;
+    this._segment = null;
+    this.stateTimer = 0;
+    this._enter(State.WANDER);
   }
 
   /**
@@ -530,6 +568,7 @@ export class AIBrain {
 
   // 收到"有人被攻击"的恐慌广播（distance 越近影响越大）
   onPanicBroadcast(threatRef, distance) {
+    if (this._perform && this._perform.immune) return; // 剧场演员不被恐慌广播冲散
     if (this.state === State.DOWN) return;
     const radius = AI_PANIC.broadcastRadius;
     const intensity = Math.max(0, 1 - distance / radius);
@@ -552,6 +591,11 @@ export class AIBrain {
 
   // 被玩家直接击中
   onHit(threatRef) {
+    // 剧场演员被打 → 直接跳出戏（由剧场检测演员脱戏后做群体反应），之后按普通 NPC 反应
+    if (this._perform) {
+      this._perform = null;
+      this._brokeCharacter = true;
+    }
     this.emotion = 1;
     this.threat = threatRef;
     this._disturbed = true;
@@ -603,6 +647,7 @@ export class AIBrain {
 
   // 短时间内被反复冲撞：惹毛 → 胆大者发怒反击、胆小者逃跑
   onBumpedTooMuch(threatRef) {
+    if (this._perform && this._perform.immune) return; // 演出中被挤两下不至于跑去报案
     this.emotion = 1;
     this.threat = threatRef;
     this._reportCrime = true;  // 逃去警局报案
@@ -677,6 +722,24 @@ export class AIBrain {
     }
 
     const intent = { moveTo: null, speedMul: 1, flee: false, wantAttack: false };
+
+    // ── AI 剧场接管：被征召为演员时，绕过日程/时段逻辑，只听剧场调度 ──
+    if (this._perform) {
+      const p = this._perform;
+      if (p.moveTo) {
+        const d = Math.hypot(ctx.self.x - p.moveTo.x, ctx.self.z - p.moveTo.z);
+        if (d > (p.arriveDist ?? 0.8)) {
+          intent.moveTo = p.moveTo;
+          intent.speedMul = p.speedMul ?? 1;
+        } else {
+          p.arrived = true; // 到位 → 站定演戏
+          if (p.faceTarget) intent.faceTarget = p.faceTarget;
+        }
+      } else if (p.faceTarget) {
+        intent.faceTarget = p.faceTarget;
+      }
+      return intent;
+    }
 
     // 在家里：睡觉；到点该出门了就离开（NPC 实体负责执行传送）
     if (this.state === State.AT_HOME) {
