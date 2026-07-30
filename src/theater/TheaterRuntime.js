@@ -106,6 +106,17 @@ export class TheaterRuntime {
     this.hooks.onEnd?.(this);
   }
 
+  /** 调试用：立刻放人，不走"走开几步再恢复"的 4 秒过渡 */
+  forceRelease() {
+    for (const t of this._timers) clearTimeout(t);
+    this._timers.length = 0;
+    this.phase = Phase.DONE;
+    for (const m of this.cast) {
+      if (m.npc.brain?._perform?.sceneToken === this.token) m.npc.brain.release();
+    }
+    this._clearChoices();
+  }
+
   // ---- 每帧 ----
 
   update(dt, ctx) {
@@ -295,7 +306,10 @@ export class TheaterRuntime {
     if (!choice) return null;
     this.waitingChoice = false;
     this._clearChoices();
-    this.hooks.log?.(`你：${choice.line || choice.label}`);
+    // 玩家自己也要开口，说的是情景台词而不是按钮上的干巴巴标签
+    const spoken = choice.line || choice.label;
+    this.hooks.playerSay?.(spoken);
+    this.hooks.log?.(`你：${spoken}`);
     if (choice.effects) this.hooks.onEffects?.(choice.effects);
     this.gotoNode(choice.next);
     return choice;
@@ -306,6 +320,7 @@ export class TheaterRuntime {
     if (this.phase === Phase.DONE || this.gluePending) return;
     const t = String(text).trim();
     if (!t) return;
+    this.hooks.playerSay?.(t); // 自由输入同样让玩家冒泡，别只有 NPC 在说话
     this.hooks.log?.(`你：${t}`);
     // 记录举动，影响结局
     if (/杀|砍|打死|开枪|揍|打他/.test(t)) this.deeds.add("violent");

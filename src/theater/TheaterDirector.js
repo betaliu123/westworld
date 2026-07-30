@@ -20,6 +20,7 @@ export class TheaterDirector {
     this.newspaper = deps.newspaper;
     this.eventLog = deps.eventLog;
     this.ui = deps.ui || null; // TheaterUI
+    this.playerSay = deps.playerSay || null; // 玩家冒泡（由 main.js 的 showPlayerBubble 提供）
     this.now = deps.now || (() => performance.now()); // 可注入时钟，便于无头仿真
 
     this.stage = new StageMap(this.town);
@@ -103,6 +104,7 @@ export class TheaterDirector {
         playerPos: () => this._playerPos,
         onChoices: (choices, hint) => this.ui?.setChoices?.(choices, hint),
         onPending: (on) => this.ui?.setPending?.(on),
+        playerSay: (text) => this.playerSay?.(text),
         onOutcome: (oc, meta) => this._applyOutcome(oc, meta),
         onEffects: (fx) => this._applyEffects(fx),
         onEnd: () => {
@@ -235,8 +237,11 @@ export class TheaterDirector {
   // ---- 调试 ----
 
   debugStart(treeId) {
-    this.scene?.disband("调试重开");
+    // 立刻放人（不等 4 秒走开过渡），否则选角会因为旧演员还被锁着而凑不齐
+    this.scene?.forceRelease();
     this.scene = null;
+    this.ui?.setEventActive?.(false);
+    this.lastPlayedDay = -1; // 允许同一天反复开演
     return this.startShow(this.worldClock?.day ?? 1, treeId || null);
   }
 

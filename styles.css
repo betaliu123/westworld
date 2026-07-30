@@ -1215,3 +1215,28 @@ body.theater-choices-on #hint { bottom: 176px; }
 #theater-bar.pending #theater-input { color: rgba(246,236,214,.5); }
 #theater-bar.pending #theater-send { filter: grayscale(.7); cursor: default; }
 @keyframes theaterThink { 0%,100% { opacity: .45; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.08); } }
+/* 折叠态：底部只留一个"⏎ 说话"小药丸，按回车展开 */
+#theater-collapsed {
+  display: none; align-self: center; cursor: pointer;
+  padding: 5px 14px; border-radius: 999px;
+  background: linear-gradient(180deg, rgba(46,29,12,.86), rgba(20,12,5,.9));
+  border: 1px solid rgba(200,151,58,.45);
+  color: rgba(243,232,208,.72); font-size: 12px; letter-spacing: .5px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.45);
+  transition: color .15s ease, border-color .15s ease, transform .15s ease;
+}
+#theater-collapsed:hover { color: var(--brass-hi); border-color: var(--brass); transform: translateY(-1px); }
+#theater-bar.collapsed #theater-input-row { display: none; }
+#theater-bar.collapsed #theater-collapsed { display: block; }
+#theater-bar.event-live.collapsed #theater-collapsed {
+  color: var(--brass-hi); border-color: var(--brass);
+}
+
+/* 选项/折叠药丸上的按键角标 */
+#theater-collapsed kbd, .theater-choice .tc-key {
+  display: inline-block; min-width: 15px; padding: 0 4px; margin-right: 5px;
+  background: rgba(255,206,84,.16); border: 1px solid rgba(255,206,84,.5);
+  border-radius: 3px; color: var(--brass-hi);
+  font-family: inherit; font-size: 11px; font-weight: 700; text-align: center;
+}
+.theater-choice .tc-key { margin-right: 3px; }

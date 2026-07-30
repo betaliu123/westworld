@@ -165,12 +165,14 @@ function boot() {
   // ===== AI 剧场：每天上午在镇中心大街演一场街头事件 =====
   theater = new TheaterDirector({
     npcManager, town, hud, sky, worldClock, reputation, economy, newspaper, eventLog,
+    playerSay: (text) => showPlayerBubble(text),
   });
   const theaterUI = new TheaterUI({
     input: engine.input,
+    canOpen: () => !anyModalOpen() && !player.inVehicle,
     onSubmitText: (text) => {
       if (!theater.active) {
-        hud.toast("这会儿街上没什么事，没人搭你的话", { side: true, key: "theater-idle" });
+        hud.toast("这会儿街上没什么事，没人搭你的话（调试面板可手动开演）", { side: true, key: "theater-idle" });
         return;
       }
       theater.submitFreeText(text);
@@ -2988,7 +2990,19 @@ function boot() {
     narrativeService,
     // AI 剧场
     theater, theaterUI,
-    theaterStart: (treeId) => theater.debugStart(treeId),
+    theaterStart: (treeId) => {
+      const ok = theater.debugStart(treeId);
+      if (!ok) hud.toast("开演失败：附近凑不齐合适的演员，换个剧本或走到镇中心再试", { duration: 5000 });
+      return ok;
+    },
+    theaterStop: () => theater.scene?.disband("调试强制散场"),
+    theaterGoStage: () => {
+      // 传送到舞台边上（省去跑过去的时间），落点做一次碰撞修正免得卡进建筑
+      const c = theater.stage.center;
+      const safe = town.resolveCollision(c.x + 3.5, c.z + 3.5, 0.45);
+      player.pos.set(safe.x, player.pos.y, safe.z);
+      hud.toast("已传送到镇中心大街", { side: true, key: "theater-tp" });
+    },
     theaterStatus: () => theater.debugStatus(),
     theaterLog: (n) => theater.recentLog(n),
     // Phase 4 新系统
@@ -3076,6 +3090,27 @@ function boot() {
       h += '<div class="debug-section"><div class="debug-section-title">📋 最近事件</div>';
       (ws.eventHistory || []).slice(-8).forEach(e => { h += '<div class="debug-row">D' + e.day + ': ' + e.type + '</div>'; });
       h += '</div>';
+
+      // Section 7: AI 街头剧场
+      h += '<div class="debug-section"><div class="debug-section-title">🎭 AI 街头剧场</div>';
+      const tst = theater.debugStatus();
+      if (tst.active) {
+        h += '<div class="debug-row">正在上演：' + tst.tree + '</div>';
+        h += '<div class="debug-row">节点 ' + tst.node + ' / 阶段 ' + tst.phase + ' / 玩家区域 ' + tst.zone + '</div>';
+        h += '<div class="debug-row">演员：' + tst.cast.join('、') + '</div>';
+        h += '<div class="debug-row">衔接来源：' + tst.glueVia + '（llm=真实大模型，rule=关键词兜底）</div>';
+      } else {
+        h += '<div class="debug-row">当前没有演出。今日开演时刻 ' + tst.todayTriggerHour + ' 点，已演过第 ' + tst.lastPlayedDay + ' 天</div>';
+      }
+      h += '<div class="debug-row" style="opacity:.7">走到镇中心大街（16 米内）才会出现事件选项和可对话状态</div>';
+      h += '<div class="debug-actions" style="margin-top:6px">';
+      h += '<button class="debug-btn" onclick="__ww.theaterStart();__ww.debugPanel()">🎲 随机开演</button> ';
+      h += '<button class="debug-btn" onclick="__ww.theaterStart(\'high_noon_duel\');__ww.debugPanel()">🔫 正午决斗</button> ';
+      h += '<button class="debug-btn" onclick="__ww.theaterStart(\'saloon_triangle\');__ww.debugPanel()">🥃 酒馆争风</button> ';
+      h += '<button class="debug-btn" onclick="__ww.theaterStart(\'street_pickpocket\');__ww.debugPanel()">🫳 街角扒手</button> ';
+      h += '<button class="debug-btn" onclick="__ww.theaterGoStage();__ww.debugPanel()">🏃 传送到舞台</button> ';
+      if (tst.active) h += '<button class="debug-btn" onclick="__ww.theaterStop();__ww.debugPanel()">⏹ 立刻散场</button>';
+      h += '</div></div>';
 
       h += '<div class="debug-actions">';
       h += '<button class="debug-btn" onclick="__ww.debugAdvanceDay()">⏩ 强制过一天</button> ';

@@ -251,8 +251,9 @@ export class InteractionSystem {
       case "npc": {
         const npc = t.data.npc;
         // AI 剧场演员：把"搭戏"按钮并入原有 NPC 交互按钮区
+        // 键位用 J（Z 已全局绑定睡觉，且 keyMap 里没有 KeyZ）
         const theaterAct = this.theaterDirector?.isActor?.(npc)
-          ? { action: "theater_cue", icon: "🎭", label: "搭戏", key: "Z", hint: `${t.data.name} · 正在街头演一场戏` }
+          ? { action: "theater_cue", icon: "🎭", label: "搭戏", key: "J", hint: `${t.data.name} · 正在街头演一场戏` }
           : null;
         // 特殊职业 NPC：保留完整交互（招募/勒索等），不加攻击按钮
         if (npc?.brain?.hasRoleInteraction?.()) {
