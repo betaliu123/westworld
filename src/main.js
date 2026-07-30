@@ -57,6 +57,9 @@ import { NARRATIVE_ITEMS, NPC_POCKET_NARRATIVES, HOME_STASH_NARRATIVES } from ".
 // AI 剧场（街头事件）
 import { TheaterDirector } from "./theater/TheaterDirector.js";
 import { TheaterUI } from "./theater/TheaterUI.js";
+// NPC 自由对话 + LLM 行为决策
+import { NpcChatService, ChatBudget } from "./npc/NpcChatService.js";
+import { NpcActionExecutor } from "./npc/NpcActionExecutor.js";
 
 function boot() {
   const canvas = document.getElementById("scene");
@@ -167,19 +170,27 @@ function boot() {
     npcManager, town, hud, sky, worldClock, reputation, economy, newspaper, eventLog,
     playerSay: (text) => showPlayerBubble(text),
   });
+
+  // ===== 单个 NPC 的自由对话（准心对着谁就是在跟谁说话）=====
+  const npcChat = new NpcChatService({ budget: new ChatBudget({ perMinute: 10, cooldownMs: 900 }) });
+  const npcActions = new NpcActionExecutor({
+    player, economy, reputation, hud, npcManager, audio, baccarat, eventLog,
+    addAffinity: (npc, trust, affection) => _addNpcAffinity(npc, trust, affection),
+    getAffection: (npc) => _affectionOf(npc),
+    getDay: () => worldClock.day,
+  });
+  let chatTarget = null; // 当前正在对话的 NPC
+
   const theaterUI = new TheaterUI({
     input: engine.input,
     canOpen: () => !anyModalOpen() && !player.inVehicle,
-    onSubmitText: (text) => {
-      if (!theater.active) {
-        hud.toast("这会儿街上没什么事，没人搭你的话（调试面板可手动开演）", { side: true, key: "theater-idle" });
-        return;
-      }
-      theater.submitFreeText(text);
-    },
+    onExpand: () => beginNpcChat(),
+    onCollapse: () => endNpcChat(),
+    onSubmitText: (text) => routeFreeText(text),
     onPickChoice: (id) => theater.submitChoice(id),
   });
   theater.ui = theaterUI;
+  theater.npcAction = (npc, action, candidates) => npcActions.execute(npc, action, { candidates });
   interaction.theaterDirector = theater;
 
   // DailySimulation（完整装配）
@@ -925,9 +936,163 @@ function boot() {
     hud.toast(`❤️ ${name} 信任${tSign}${trustDelta} 好感${aSign}${affectionDelta}`, { side: true, key: "aff_" + relId });
   }
 
+  // ===== 自由输入：对准心锁定的 NPC 说话 =====
+
+  function _affectionOf(npc) {
+    const owner = npc.phone?.owner || "镇民";
+    return _buildRelCtx(npc, npcRegistry.findByDisplayName(owner)).affection;
+  }
+
+  /** 当前准心/近身锁定的 NPC（对话中优先保持原对象） */
+  function _aimedNpc() {
+    const t = interaction.currentTarget;
+    if (!t) return null;
+    if (t.type === "npc" || t.type === "dialogue") return t.data?.npc || null;
+    return null;
+  }
+
+  /**
+   * 打开输入框时：如果面前有 NPC，就理解为在对他说话。
+   * 非逃跑/战斗状态的人会停下、转向你、并先说一句开场白（等同搭话）。
+   */
+  function beginNpcChat() {
+    // 剧场事件进行中且玩家在圈内时，输入优先给剧场
+    if (theater.active && theater.scene?.zoneLevel === "interact") {
+      theaterUI.setTalkTarget("");
+      return;
+    }
+    const npc = _aimedNpc();
+    if (!npc || !npc.alive) {
+      chatTarget = null;
+      theaterUI.setTalkTarget("");
+      return;
+    }
+    chatTarget = npc;
+    const name = npc.phone?.owner || "镇民";
+    theaterUI.setTalkTarget(name);
+
+    // startTalk 在倒地/逃跑时返回 false —— 那就不强行让他停下，但仍然能听见你说话
+    const attended = npc.brain.startTalk(player.pos);
+    // 已经在跟这个人对话了（比如刚按 F 搭过话），别再蹦一句招呼覆盖当前内容
+    const alreadyTalking = floatDlgNpc === npc && !floatDialogue.classList.contains("hidden");
+    if (attended && !alreadyTalking) {
+      const reg = npcRegistry.findByDisplayName(name);
+      const relCtx = _buildRelCtx(npc, reg);
+      let opener = null;
+      let mood = "neutral";
+      if (npc.brain.hasRoleInteraction?.()) {
+        opener = npc.brain.getRoleApproach?.();
+        mood = "friendly";
+      }
+      if (!opener) {
+        const r = npc.brain.respondTo("greet", reputation.honor, relCtx);
+        opener = r?.reply || r?.text;
+        mood = r?.mood || "neutral";
+      }
+      showFloatDialogue(npc, opener || "（他看着你，等你开口）", mood);
+      interaction.setDialogueTarget(npc);
+      audio.npcVoice("greet");
+    } else if (attended) {
+      // 已经在对话中，保持当前内容，只确保锁定对象正确
+      interaction.setDialogueTarget(npc);
+    } else {
+      // 在逃/倒地：不打断他的行为，只提示玩家他现在顾不上
+      const busy = npc.brain.state === "FLEE" ? "正忙着跑" : "起不来";
+      hud.toast(`${name}${busy}，但还听得见你说话`, { side: true, key: "npc-chat-busy" });
+    }
+  }
+
+  function endNpcChat() {
+    theaterUI.setTalkTarget("");
+    if (!chatTarget) return; // 没有对话对象就别碰对话框 DOM（防启动早期被调到）
+    npcChat.clearHistory(chatTarget);
+    if (chatTarget.brain?.state === "TALK") chatTarget.brain.endTalk();
+    chatTarget = null;
+    hideFloatDialogue();
+  }
+
+  /** 自由输入分流：剧场事件 > 单个 NPC > 无人应答 */
+  function routeFreeText(text) {
+    if (theater.active && theater.scene?.zoneLevel === "interact") {
+      theater.submitFreeText(text);
+      return;
+    }
+    if (!chatTarget || !chatTarget.alive) {
+      // 输入框开着时玩家可能走开了，再抓一次准心
+      chatTarget = _aimedNpc();
+    }
+    if (!chatTarget || !chatTarget.alive) {
+      hud.toast("这儿没人听你说话（对着某人打开输入框，或在调试面板开一场街头事件）", {
+        side: true, key: "chat-noone",
+      });
+      return;
+    }
+    talkToNpc(chatTarget, text);
+  }
+
+  async function talkToNpc(npc, text) {
+    const name = npc.phone?.owner || "镇民";
+    showPlayerBubble(text.slice(0, 24));
+    theaterUI.setPending(true);
+
+    // 远离了就别再回话（避免隔着半个镇子对喊）
+    if (Math.hypot(player.pos.x - npc.pos.x, player.pos.z - npc.pos.z) > 9) {
+      theaterUI.setPending(false);
+      hud.toast(`${name}离得太远，听不见`, { side: true, key: "chat-far" });
+      return;
+    }
+
+    const nearbyNames = npcManager.all
+      .filter((n) => n !== npc && n.alive && Math.hypot(n.pos.x - npc.pos.x, n.pos.z - npc.pos.z) < 14)
+      .slice(0, 6)
+      .map((n) => n.phone?.owner)
+      .filter(Boolean);
+
+    let res;
+    try {
+      res = await npcChat.respond({
+        npc,
+        text,
+        ctx: {
+          affection: _affectionOf(npc),
+          honor: reputation.honor,
+          playerMoney: economy.money,
+          dailyUse: npcActions.dailyUse(npc),
+          nearbyNames,
+        },
+      });
+    } catch (e) {
+      res = { say: "……", action: { action: "none" }, mood: "neutral", via: "error" };
+    }
+    theaterUI.setPending(false);
+    if (!npc.alive) return;
+
+    // 先说话，再做事——否则会出现"人已经跑了台词才冒出来"
+    showFloatDialogue(npc, res.say, res.mood);
+    npc.brain.say(res.say, 3);
+    audio.npcVoice(res.mood === "hostile" ? "angry" : res.mood === "scared" ? "scared" : "greet");
+
+    const candidates = npcManager.all.filter(
+      (n) => n.alive && Math.hypot(n.pos.x - npc.pos.x, n.pos.z - npc.pos.z) < 14
+    );
+    const done = npcActions.execute(npc, res.action, { candidates });
+    if (done.ok && done.detail) {
+      console.log(`[NpcChat] ${name} → ${done.actionId} (${done.detail}) via=${res.via}`);
+    }
+    // 动手/跑掉/被抢之后对话就没法继续了
+    if (["attack_player", "flee", "rob_player", "attack_npc"].includes(done.actionId) && done.ok) {
+      setTimeout(() => {
+        if (chatTarget === npc) {
+          chatTarget = null;
+          theaterUI.setTalkTarget("");
+          hideFloatDialogue();
+        }
+      }, 1800);
+    }
+  }
+
   // 对话后检查 NPC 是否厌烦/想离开，是则结束对话
-  function _checkNpcPatience(npc, kind) {
-    if (!npc.brain?.checkDialoguePatience) return false;
+  function _checkNpcPatience(npc, kind) {    if (!npc.brain?.checkDialoguePatience) return false;
     const result = npc.brain.checkDialoguePatience(kind);
     if (result && result.endConversation) {
       floatDlgText.textContent = result.text;

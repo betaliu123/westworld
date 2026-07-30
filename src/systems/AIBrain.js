@@ -68,7 +68,10 @@ export class AIBrain {
     this.state = State.WANDER;
     this.stateTimer = randRange(0, 3);
     this.target = null;        // { x, z }
-    this.threat = null;        // 威胁来源（通常是玩家）位置引用
+    this.threat = null;        // 威胁来源（通常是玩家，也可能是另一个 NPC）位置引用
+    this.attackTargetNpc = null; // 非空时表示要打的是这个 NPC，而不是玩家
+    this._follow = null;       // LLM 决策的跟随目标 { ref, stopDist }
+    this._followUntil = 0;
     this.emotion = 0;          // 0 平静 → 1 极度激动
     this.bubble = null;        // 当前想说的话
     this.bubbleTimer = 0;
@@ -263,6 +266,55 @@ export class AIBrain {
     // 在场所里上班的 NPC 聊完回岗位，别直接下班
     if (this._placeType) this._enter(State.AT_PLACE);
     else this._enter(State.WANDER);
+  }
+
+  // ── LLM 行为决策接口 ────────────────────────────────────────
+  // NPC 听完玩家的话后，除了回话还能决定做点什么。这些是"确定性"入口，
+  // 与 witnessCrime/onHit 那类"按性格掷骰分流"的方法不同，调了就一定进对应状态。
+
+  /** 确定性逃跑（吓到了/心虚跑了）。threatRef 是要躲开的东西 */
+  fleeFrom(threatRef) {
+    if (this.state === State.DOWN) return false;
+    this.threat = threatRef || this.threat;
+    this.emotion = Math.max(this.emotion, 0.7);
+    this._reportCrime = false; // 单纯跑开，不是去报案
+    this._enter(State.FLEE);
+    return true;
+  }
+
+  /**
+   * 确定性攻击指定目标。target 可以是玩家坐标引用，也可以是另一个 NPC。
+   * 传 npc 时会记在 attackTargetNpc 上，由 NPCManager 把伤害打给它而不是玩家。
+   */
+  attackTarget(targetRef, { npc = null, seconds = 10 } = {}) {
+    if (this.state === State.DOWN) return false;
+    this.threat = targetRef;
+    this.attackTargetNpc = npc;      // null = 打玩家
+    this.emotion = 1;
+    this._enter(State.ANGRY);
+    this.stateTimer = seconds;
+    return true;
+  }
+
+  /** 跟着某个目标走（targetRef 是活引用，会持续更新位置） */
+  follow(targetRef, { seconds = 20, stopDist = 2.4 } = {}) {
+    if (this.state === State.DOWN) return false;
+    this._follow = { ref: targetRef, stopDist };
+    this.threat = targetRef;         // 顺便让他朝着你
+    this._enter(State.WANDER);
+    this.stateTimer = seconds;
+    this._followUntil = seconds;
+    return true;
+  }
+
+  /** 停止跟随 */
+  stopFollow() {
+    this._follow = null;
+    this._followUntil = 0;
+  }
+
+  get following() {
+    return !!this._follow;
   }
 
   // ── AI 剧场接管接口 ──────────────────────────────────────────
@@ -741,6 +793,25 @@ export class AIBrain {
       return intent;
     }
 
+    // ── LLM 决策的"跟随"：优先于日程，但不抢战斗/逃跑/倒地 ──
+    if (this._follow) {
+      const busy = this.state === State.DOWN || this.state === State.FLEE || this.state === State.ANGRY;
+      this._followUntil -= dt;
+      const ref = this._follow.ref;
+      if (busy || this._followUntil <= 0 || !ref) {
+        this.stopFollow();
+      } else {
+        const d = Math.hypot(ctx.self.x - ref.x, ctx.self.z - ref.z);
+        if (d > this._follow.stopDist) {
+          intent.moveTo = { x: ref.x, z: ref.z };
+          intent.speedMul = 1.15;
+        } else {
+          intent.faceTarget = ref; // 跟到了就站着看你
+        }
+        return intent;
+      }
+    }
+
     // 在家里：睡觉；到点该出门了就离开（NPC 实体负责执行传送）
     if (this.state === State.AT_HOME) {
       const placeType = this.p.schedule ? this.p.schedule[this._segment || "night"] : null;
@@ -870,8 +941,14 @@ export class AIBrain {
         intent.damageMult = 1 + this.p.aggression * 2.0 + (this.p.gang ? 1.0 : 0);
         if (this.threat) {
           intent.moveTo = { x: this.threat.x, z: this.threat.z };
-          if (ctx.playerDist < 2.2 && this.attackCd <= 0) {
+          // 打玩家时用 playerDist；打另一个 NPC 时按 threat 的实际距离算，
+          // 否则 NPC 之间永远打不起来（旧逻辑硬绑 playerDist）
+          const reach = this.attackTargetNpc
+            ? Math.hypot(ctx.self.x - this.threat.x, ctx.self.z - this.threat.z)
+            : ctx.playerDist;
+          if (reach < 2.2 && this.attackCd <= 0) {
             intent.wantAttack = true;
+            intent.attackTargetNpc = this.attackTargetNpc || null;
             this.attackCd = randRange(0.9, 1.4); // 更快的攻击节奏
             if (chance(0.4)) this.say(pick(ANGRY_TALK), 1.5);
           }
@@ -879,6 +956,7 @@ export class AIBrain {
         // 情绪耗尽或追太久 → 放弃（但只要有threat就一直追踪）
         if (this.stateTimer <= 0) {
           this.threat = null;
+          this.attackTargetNpc = null;
           this._enter(State.WANDER);
         }
         break;

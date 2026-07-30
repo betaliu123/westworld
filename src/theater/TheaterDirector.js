@@ -21,6 +21,7 @@ export class TheaterDirector {
     this.eventLog = deps.eventLog;
     this.ui = deps.ui || null; // TheaterUI
     this.playerSay = deps.playerSay || null; // 玩家冒泡（由 main.js 的 showPlayerBubble 提供）
+    this.npcAction = deps.npcAction || null; // 执行 LLM 给演员配的行为（NpcActionExecutor）
     this.now = deps.now || (() => performance.now()); // 可注入时钟，便于无头仿真
 
     this.stage = new StageMap(this.town);
@@ -105,6 +106,7 @@ export class TheaterDirector {
         onChoices: (choices, hint) => this.ui?.setChoices?.(choices, hint),
         onPending: (on) => this.ui?.setPending?.(on),
         playerSay: (text) => this.playerSay?.(text),
+        npcAction: (npc, action, candidates) => this.npcAction?.(npc, action, candidates),
         onOutcome: (oc, meta) => this._applyOutcome(oc, meta),
         onEffects: (fx) => this._applyEffects(fx),
         onEnd: () => {

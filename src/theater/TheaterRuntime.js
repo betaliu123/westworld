@@ -348,16 +348,22 @@ export class TheaterRuntime {
     this.hooks.onPending?.(false);
     if (this.phase === Phase.DONE) return; // 等待期间散场了就别再演了
 
-    // 播衔接台词（陆续开口）
+    // 播衔接台词（陆续开口），并执行 LLM 给这句话配的行为
     let delay = 350;
     for (const b of result.bridge) {
       const m = this.memberOf(b.roleId);
       if (!m) continue;
       const text2 = b.text;
+      const act = b.action;
       setTimeout(() => {
         if (this.phase === Phase.DONE) return;
         m.npc.brain.say(text2.slice(0, THEATER_CONFIG.maxBubbleChars), 3);
         this.hooks.log?.(`${m.stageName}：${text2}`);
+        if (act && act.action && act.action !== "none") {
+          // 演员真的动起来（打人/逃跑/给钱…）；行为会让他脱离演出，剧场随后自然收场
+          const done = this.hooks.npcAction?.(m.npc, act, this.cast.map((c) => c.npc));
+          if (done?.ok) this.hooks.log?.(`（${m.stageName} ${done.detail}）`);
+        }
       }, delay);
       delay += 1100 + Math.random() * 900;
     }

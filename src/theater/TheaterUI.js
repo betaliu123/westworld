@@ -8,16 +8,24 @@ export class TheaterUI {
     this.onSubmitText = deps.onSubmitText || (() => {});
     this.onPickChoice = deps.onPickChoice || (() => {});
     this.canOpen = deps.canOpen || (() => true); // 有弹窗/在载具里时不抢按键
+    this.onExpand = deps.onExpand || null;       // 展开输入框时通知外部（锁定说话对象）
+    this.onCollapse = deps.onCollapse || null;
     this.input = deps.input || null;
 
     this._choices = [];
     this._build();
     this._bind();
     this.setEventActive(false);
-    this.collapse();
+    // 初始就是折叠态，但不能走 collapse() —— 那会触发 onCollapse 回调，
+    // 而此时 main.js 里的对话相关变量还没初始化（会撞 TDZ 直接崩在启动阶段）
+    this.bar.classList.add("collapsed");
   }
 
   _build() {
+    // 幂等：重复构造（热重载/二次实例化）时先清掉旧的，
+    // 否则文档里出现重复 id，querySelector("#id") 会解析到旧实例的元素并返回 null
+    document.getElementById("theater-bar")?.remove();
+
     const bar = document.createElement("div");
     bar.id = "theater-bar";
     bar.innerHTML = `
@@ -103,15 +111,27 @@ export class TheaterUI {
 
   /** 展开输入框并进入输入态（会释放指针锁，否则没法打字） */
   expand() {
+    const was = this.expanded;
     this.bar.classList.remove("collapsed");
     if (document.pointerLockElement) document.exitPointerLock();
     this.inputEl.focus();
+    if (!was) this.onExpand?.();
   }
 
   /** 收起输入框，把键盘还给游戏 */
   collapse() {
+    const was = this.expanded;
     this.bar.classList.add("collapsed");
     this.inputEl.blur();
+    if (was) this.onCollapse?.();
+  }
+
+  /** 顶部提示当前在对谁说话 */
+  setTalkTarget(label) {
+    this._talkTarget = label || "";
+    this.inputEl.placeholder = label
+      ? `对${label}说…（回车说出口，Esc 结束）`
+      : "对他们说点什么…（回车说出口，Esc 回到操作）";
   }
 
   get expanded() {

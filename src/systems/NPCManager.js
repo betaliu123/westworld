@@ -297,11 +297,32 @@ export class NPCManager {
         intent = npc.update(dt, { playerPos, hour });
       }
       if (intent && intent.wantAttack) {
-        attacksOnPlayer++;
-        totalDamage += Math.round(6 * (intent.damageMult || 1));
-        // 记录交手历史（NPC 攻击了玩家）
-        if (!npc._encounters) npc._encounters = [];
-        npc._encounters.push({ day: currentDay, type: "attack_player", dmg: Math.round(6 * (intent.damageMult || 1)) });
+        const dmg = Math.round(6 * (intent.damageMult || 1));
+        if (intent.attackTargetNpc) {
+          // NPC 打 NPC：伤害打给目标，不计到玩家头上
+          const victim = intent.attackTargetNpc;
+          if (victim.alive && victim.brain?.state !== "DOWN") {
+            const knocked = victim.hit(npc.pos, true); // byNpc=true：别记到玩家账上
+            this.broadcastPanic(victim.pos, 10);
+            if (knocked) {
+              npc.brain.attackTargetNpc = null;
+              npc.brain.threat = null;
+              this._npcFightWins = (this._npcFightWins || 0) + 1;
+            }
+            if (!npc._encounters) npc._encounters = [];
+            npc._encounters.push({ day: currentDay, type: "attack_npc", dmg, knocked });
+          } else {
+            // 目标已经倒了，收手
+            npc.brain.attackTargetNpc = null;
+            npc.brain.threat = null;
+          }
+        } else {
+          attacksOnPlayer++;
+          totalDamage += dmg;
+          // 记录交手历史（NPC 攻击了玩家）
+          if (!npc._encounters) npc._encounters = [];
+          npc._encounters.push({ day: currentDay, type: "attack_player", dmg });
+        }
       }
       if (intent && intent.reportCrime) crimeReports++;
       // 到达家门口 / 到点出门 / 进出工作场所

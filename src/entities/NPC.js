@@ -67,18 +67,25 @@ export class NPC {
   }
 
   // 被玩家击中：返回是否被击倒
-  hit(playerRef) {
+  /**
+   * 被打。attackerRef 是攻击者位置引用。
+   * byNpc 为真表示是别的 NPC 打的 —— 这时不能记仇到玩家头上，
+   * 否则 NPC 互殴会让玩家莫名被亲友报复。
+   */
+  hit(attackerRef, byNpc = false) {
     if (!this.alive || this.brain.state === State.DOWN) return false;
     this.hp -= 1;
-    this.brain.onHit(playerRef);
-    // 记录仇恨（供亲友报复系统使用）
-    if (!this._grudgeAgainstPlayer) {
-      this._grudgeAgainstPlayer = { day: 1, severity: 0 };
+    this.brain.onHit(attackerRef);
+    // 记录仇恨（供亲友报复系统使用）— 只记玩家的账
+    if (!byNpc) {
+      if (!this._grudgeAgainstPlayer) {
+        this._grudgeAgainstPlayer = { day: 1, severity: 0 };
+      }
+      this._grudgeAgainstPlayer.day = this._currentDay || 1;
+      this._grudgeAgainstPlayer.severity += 1;
     }
-    this._grudgeAgainstPlayer.day = this._currentDay || 1;
-    this._grudgeAgainstPlayer.severity += 1;
     // 击退
-    const away = new THREE.Vector3(this.pos.x - playerRef.x, 0, this.pos.z - playerRef.z);
+    const away = new THREE.Vector3(this.pos.x - attackerRef.x, 0, this.pos.z - attackerRef.z);
     if (away.lengthSq() > 0) {
       away.normalize().multiplyScalar(1.2);
       this.pos.x += away.x;

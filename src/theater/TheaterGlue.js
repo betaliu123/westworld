@@ -2,6 +2,8 @@
 // 玩家在事件里随便说一句话 → LLM 生成"角色对这句话的即时反应"+ 选一个剧本节点跳转，
 // 让玩家的自由发挥被编进预生成的剧情里。LLM 不可用时退回关键词规则。
 
+import { allowedActionsFor, describeAllowedActions, sanitizeAction } from "../npc/NpcActionSchema.js";
+
 const ENDPOINT = "/api/llm/chat";
 const TIMEOUT_MS = 25000;
 
@@ -35,6 +37,20 @@ export class TheaterGlue {
 
   async _llm({ tree, node, cast, text }) {
     const roleList = cast.map((c) => `${c.roleId}(${c.stageName})`).join(" ");
+    // 演员在台上能做的行为：取所有演员允许行为的并集，交给模型挑
+    const allowedUnion = new Set(["none"]);
+    for (const c of cast) {
+      for (const a of allowedActionsFor({
+        personality: c.npc?.personality,
+        state: c.npc?.brain?.state,
+        affection: 0,
+        cashReserve: c.npc?.cashReserve || 0,
+        dailyUse: {},
+        job: c.npc?.personality?.job,
+      })) allowedUnion.add(a);
+    }
+    this._allowed = [...allowedUnion];
+    const actionList = describeAllowedActions(this._allowed);
     const nodeList = tree.nodes
       .map((n) => {
         const tag = n.terminal ? "[终局]" : n.choices ? n.choices.map((c) => c.label).join("/") : "[自动]";
@@ -43,13 +59,17 @@ export class TheaterGlue {
       .join("\n");
 
     const sys = `你是一部西部小镇露天短剧的导演助手。剧名：${tree.title}。
-玩家（一个路过的枪手）刚刚自由发言或动手，你要做两件事：
+玩家（一个路过的枪手）刚刚自由发言或动手，你要做三件事：
 1. 写 1-3 条衔接台词：剧中角色对玩家这句话的即时反应，每条不超过 28 字，必须是美国西部片的口吻（伙计/先生/子弹/威士忌/绞索/警长），不要中式武侠味。
 2. 从节点列表里挑一个最合适的跳转节点，让剧情自然接上。
+3. 可选：给其中某条台词的角色配一个行为，让他不只是嘴上说说。
 规则：
 - 台词的 roleId 只能用：${roleList}
 - 玩家动手/杀人 → 选带血案或混乱的终局节点；玩家喊警长 → 选 grd 类节点
 - 玩家讲笑话/搭讪/示好 → 选和人物关系相关的节点
+- 行为 action 只能从这些里挑，不需要就填 none：
+${actionList}
+- 行为要和台词一致：说要打你就配 attack_player，说要跑就配 flee
 - 只输出 JSON，不要解释、不要 markdown。`;
 
     const user = `当前节点：${node.id}（${node.title || ""}）
@@ -58,7 +78,7 @@ export class TheaterGlue {
 可跳转节点：
 ${nodeList}
 输出 JSON：
-{"bridge":[{"roleId":"<上面的roleId>","text":"<台词>"}],"targetNodeId":"<节点id>","reason":"<一句话理由>"}`;
+{"bridge":[{"roleId":"<上面的roleId>","text":"<台词>","action":"<行为id或none>","targetName":"<attack_npc 时填在场角色的名字，否则空>"}],"targetNodeId":"<节点id>","reason":"<一句话理由>"}`;
 
     if (this.budget && !this.budget.tryConsume()) throw new Error("超出本地调用配额");
 
@@ -107,17 +127,24 @@ ${nodeList}
   _sanitize(parsed, { tree, cast, text }) {
     const validRoles = new Set(cast.map((c) => c.roleId));
     const ids = new Set(tree.nodes.map((n) => n.id));
+    const stageNames = cast.map((c) => c.stageName).filter(Boolean);
+    const allowed = this._allowed || ["none"];
     const bridge = (Array.isArray(parsed?.bridge) ? parsed.bridge : [])
       .filter((b) => b && validRoles.has(b.roleId) && typeof b.text === "string" && b.text.trim())
       .slice(0, 3)
-      .map((b) => ({ roleId: b.roleId, text: b.text.slice(0, 40) }));
+      .map((b) => ({
+        roleId: b.roleId,
+        text: b.text.slice(0, 40),
+        // 越权行为在这里就被降级为 none，不会到执行器
+        action: sanitizeAction(b, allowed, stageNames),
+      }));
 
     let target = ids.has(parsed?.targetNodeId) ? parsed.targetNodeId : "";
     if (!target) target = this._pickNode(tree, text);
 
     if (!bridge.length) {
       const first = cast[0];
-      if (first) bridge.push({ roleId: first.roleId, text: "……你说什么，伙计？" });
+      if (first) bridge.push({ roleId: first.roleId, text: "……你说什么，伙计？", action: { action: "none" } });
     }
     return { bridge, targetNodeId: target, via: "llm", reason: parsed?.reason || "" };
   }
@@ -127,15 +154,16 @@ ${nodeList}
   ruleGlue({ tree, cast, text }) {
     const target = this._pickNode(tree, text);
     const speaker = cast[0]?.roleId || "crowd";
+    const none = { action: "none", targetName: null, rejected: null };
     let bridge;
     if (/杀|砍|打死|开枪|揍/.test(text)) {
-      bridge = [{ roleId: speaker, text: "别！别掏枪！" }];
+      bridge = [{ roleId: speaker, text: "别！别掏枪！", action: none }];
     } else if (/警长|报官/.test(text)) {
-      bridge = [{ roleId: speaker, text: "谁去把警长叫来！" }];
+      bridge = [{ roleId: speaker, text: "谁去把警长叫来！", action: none }];
     } else if (/笑话|哈哈|逗/.test(text)) {
-      bridge = [{ roleId: speaker, text: "哈！这话说得倒有趣。" }];
+      bridge = [{ roleId: speaker, text: "哈！这话说得倒有趣。", action: none }];
     } else {
-      bridge = [{ roleId: speaker, text: "（朝你看了一眼）" }];
+      bridge = [{ roleId: speaker, text: "（朝你看了一眼）", action: none }];
     }
     return { bridge, targetNodeId: target, via: "rule", reason: "关键词兜底" };
   }
