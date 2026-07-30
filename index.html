@@ -1,0 +1,334 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>西部世界 · Westworld Demo</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script>
+    // 全局错误浮层：任何未捕获异常/Promise 拒绝都以红条显示，避免"静帧卡死"无感知
+    (function () {
+      function showError(msg) {
+        let bar = document.getElementById("err-bar");
+        if (!bar) {
+          bar = document.createElement("div");
+          bar.id = "err-bar";
+          bar.style.cssText =
+            "position:fixed;left:0;right:0;bottom:0;z-index:9999;max-height:40%;overflow:auto;" +
+            "background:rgba(160,20,20,.95);color:#fff;font:12px/1.5 monospace;padding:8px 12px;white-space:pre-wrap;";
+          (document.body || document.documentElement).appendChild(bar);
+        }
+        bar.textContent += msg + "\n";
+      }
+      window.addEventListener("error", (e) => {
+        showError("[错误] " + (e.message || e.type) + (e.filename ? " @ " + e.filename + ":" + e.lineno : ""));
+      });
+      window.addEventListener("unhandledrejection", (e) => {
+        showError("[Promise拒绝] " + (e.reason && (e.reason.stack || e.reason.message) || e.reason));
+      });
+    })();
+  </script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <!-- 加载遮罩 -->
+  <div id="loader">
+      <div class="loader-inner">
+      <div class="loader-title">WESTWORLD</div>
+      <div class="loader-rule">★ 西部世界 ★</div>
+      <div class="loader-sub">正在唤醒这座小镇……</div>
+      <div class="loader-bar"><span></span></div>
+      <button id="loader-enter" class="hidden">进入小镇</button>
+    </div>
+  </div>
+
+  <!-- 倒地重伤遮罩 -->
+  <div id="knockdown-overlay" class="hidden">
+    <div id="knockdown-text">💀 你倒下了...</div>
+    <div id="knockdown-sub"></div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="hud-top">
+      <div class="hud-badge" id="hud-day">📅 第1天</div>
+      <div class="hud-badge" id="hud-money">💵 $0</div>
+      <div class="hud-badge" id="hud-clock">🕗 08:00</div>
+      <div class="hud-badge" id="hud-energy">⚡ 100</div>
+      <div class="hud-badge" id="hud-assets">🏠 0 · 🚗 0</div>
+      <div class="hud-badge" id="hud-honor">⚖️ 中立 (0)</div>
+      <div class="hud-badge" id="hud-wanted">🎯 ☆☆☆☆☆</div>
+    </div>
+
+    <!-- 右上角小地图 -->
+    <div id="minimap-wrap">
+      <canvas id="minimap" width="180" height="180"></canvas>
+    </div>
+
+    <!-- 右侧图标按钮栏 -->
+    <div id="iconbar">
+      <div class="icon-btn-wrap"><button class="icon-btn" data-panel="shop" title="集市 (M)">🛒</button><span class="icon-label">集市 (M)</span></div>
+      <div class="icon-btn-wrap"><button class="icon-btn" data-panel="phone" title="手机 (Tab)">📱</button><span class="icon-label">手机 (Tab)</span></div>
+      <div class="icon-btn-wrap"><button class="icon-btn" data-panel="newspaper" title="报纸 (N)">📰</button><span class="icon-label">报纸 (N)</span></div>
+      <div class="icon-btn-wrap"><button class="icon-btn" data-panel="gangs" title="帮派 (G)">🏴</button><span class="icon-label">帮派 (G)</span></div>
+      <div class="icon-btn-wrap"><button class="icon-btn" data-panel="debug" title="调试面板">🐛</button><span class="icon-label">调试</span></div>
+      <div class="icon-btn-wrap"><button class="icon-btn" data-panel="mute" title="静音 (P)">🔊</button><span class="icon-label">静音 (P)</span></div>
+    </div>
+
+    <!-- 侧边任务条 -->
+    <div id="task-bar">
+      <div id="task-bar-toggle">📋 任务</div>
+      <div id="task-bar-tracked">暂无追踪任务</div>
+      <div id="task-bar-list"></div>
+    </div>
+
+    <div id="hud-health"><div id="hud-health-fill"></div></div>
+    <div id="crosshair"></div>
+    <!-- 主屏幕睡觉按钮 -->
+    <button id="btn-sleep" class="hud-sleep-btn" title="点击或按Z睡觉">
+      <span id="btn-sleep-text">🌙 睡觉 (Z)</span>
+    </button>
+    <div id="paper-badge" class="hidden"></div>
+    <div id="hint" class="hidden"></div>
+    <div id="toast-wrap"></div>
+    <div id="toast-side"></div>
+    <div id="help">
+      WASD 移动 · 鼠标转视角 · Shift 疾跑 · Space 跳 · 左键/J 攻击 · E 交互/进出 · F 对话 · 右侧按钮打开面板
+    </div>
+    <!-- 睡觉提示 -->
+    <div id="sleep-prompt" class="hidden">按 <b>E</b> 睡觉结束今天</div>
+    <!-- 调试面板 -->
+    <div id="debug-panel" class="hidden">
+      <div id="debug-panel-header">
+        <span>🔧 调试面板</span>
+        <button id="debug-panel-close">✕</button>
+      </div>
+      <div id="debug-panel-body"></div>
+    </div>
+  </div>
+
+  <!-- 对话气泡层（屏幕投影） -->
+  <div id="bubble-layer"></div>
+
+  <!-- 任务目标头顶标记层（屏幕投影） -->
+  <div id="quest-marker-layer"></div>
+
+  <!-- NPC 头顶名字层（屏幕投影） -->
+  <div id="npc-name-layer"></div>
+
+  <!-- 玩家冒泡（屏幕投影到玩家头顶） -->
+  <div id="player-bubble" class="hidden"></div>
+
+  <!-- RDR2 式准心交互提示 -->
+  <div id="interact-hint" class="hidden"></div>
+  <div id="interact-menu" class="hidden"></div>
+
+  <!-- RDR2 式浮动对话面板（小对话，不占全屏） -->
+  <div id="float-dialogue" class="hidden">
+    <div id="float-dialogue-name">
+      <img id="float-dialogue-avatar" class="hidden" src="" alt="" />
+      <span id="float-dialogue-name-text"></span>
+    </div>
+    <div id="float-dialogue-text"></div>
+    <div id="float-dialogue-actions"></div>
+  </div>
+
+  <!-- 偷窃面板：搜打撤式背包格子 -->
+  <div id="steal-panel" class="hidden">
+    <div id="steal-panel-header">
+      <div><span>🫳 搜刮中...</span><small id="steal-target-name"></small></div>
+      <div id="steal-timer">⏱ 5.0s</div>
+    </div>
+    <div id="steal-grid"></div>
+    <div id="steal-risk">⚠️ 被发现风险：<span id="steal-risk-val">0%</span></div>
+    <div id="steal-hint">🖱 点击格子翻牌 · Esc 取消</div>
+  </div>
+
+  <!-- NPC 对话面板 -->
+  <div id="conversation" class="modal hidden">
+    <div class="conv-frame panel-western">
+      <div class="conv-header"><span id="conv-name">镇民</span><button id="conv-close">✕</button></div>
+      <div class="conv-patience"><div id="conv-patience-fill"></div></div>
+      <div class="conv-reply" id="conv-reply"></div>
+      <div class="conv-options" id="conv-options"></div>
+    </div>
+  </div>
+
+  <!-- 帮派界面 -->
+  <div id="gangs" class="modal hidden">
+    <div class="gangs-frame panel-western">
+      <div class="gangs-header">🏴 帮派势力<button id="gangs-close">✕</button></div>
+      <div class="gangs-list" id="gangs-list"></div>
+    </div>
+  </div>
+
+  <!-- 报纸 -->
+  <div id="newspaper" class="modal hidden">
+    <div class="paper-frame">
+      <div class="paper-masthead">
+        <span id="paper-date">小镇纪事报</span>
+        <button id="paper-close">✕</button>
+      </div>
+      <div class="paper-body" id="paper-body"></div>
+      <div class="paper-gossip" id="paper-gossip"></div>
+    </div>
+  </div>
+
+  <!-- 手机 -->
+  <div id="phone" class="modal hidden">
+    <div class="phone-frame">
+      <div class="phone-notch"></div>
+      <div class="phone-header">
+        <span id="phone-title">📱 手机</span>
+        <button id="phone-close">✕</button>
+      </div>
+      <!-- 联系人视图 -->
+      <div id="phone-contacts-view">
+        <div id="phone-contacts"></div>
+        <div class="phone-search">
+          <input type="text" id="phone-search-input" placeholder="搜索联系人..." disabled />
+        </div>
+      </div>
+      <!-- 聊天视图 -->
+      <div id="phone-chat-view" class="hidden">
+        <div class="phone-chat-header">
+          <button id="phone-back">◀</button>
+          <span id="phone-chat-name"></span>
+        </div>
+        <div class="phone-chat" id="phone-chat"></div>
+        <div class="phone-quick-replies" id="phone-quick-replies"></div>
+      </div>
+      <!-- 标签栏 -->
+      <div class="phone-tabs">
+        <button id="phone-tab-contacts" class="phone-tab active">👥 联系人</button>
+        <button id="phone-tab-tasks" class="phone-tab">📋 任务</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 商店 -->
+  <div id="shop" class="modal hidden">
+    <div class="shop-frame panel-western">
+      <div class="shop-header">🤠 小镇集市<button id="shop-close">✕</button></div>
+      <div class="shop-money">你的现金：<b id="shop-money-val">$0</b></div>
+      <div class="shop-items" id="shop-items"></div>
+    </div>
+  </div>
+
+  <!-- 老虎机 -->
+  <div id="slots" class="modal hidden">
+    <div class="slot-frame panel-western">
+      <div class="slot-header">🎰 幸运老虎机<button id="slots-close">✕</button></div>
+      <div class="slot-money">你的现金：<b id="slot-money">$0</b></div>
+      <div class="slot-reels">
+        <div class="slot-reel" id="slot-reel-0">❔</div>
+        <div class="slot-reel" id="slot-reel-1">❔</div>
+        <div class="slot-reel" id="slot-reel-2">❔</div>
+      </div>
+      <div class="slot-result" id="slot-result">选注拉杆，祝你好运！</div>
+      <div class="slot-controls">
+        <div class="slot-bets" id="slot-bets">
+          <button data-bet="5">$5</button>
+          <button data-bet="10">$10</button>
+          <button data-bet="25">$25</button>
+        </div>
+        <button id="slot-spin">拉杆 SPIN</button>
+      </div>
+      <div class="slot-paytable">三连 10~200x · 777 头奖 · 双樱桃 2x</div>
+    </div>
+  </div>
+
+  <!-- 百家乐 -->
+  <div id="baccarat" class="modal hidden">
+    <div class="bac-frame panel-western">
+      <div class="bac-header">🃏 百家乐<button id="bac-close">✕</button></div>
+      <div class="bac-money">你的现金：<b id="bac-money">$0</b></div>
+      <div class="bac-table">
+        <div class="bac-hand">
+          <div class="bac-hand-title">庄 <span id="bac-banker-pts"></span></div>
+          <div class="bac-cards" id="bac-banker-cards"></div>
+        </div>
+        <div class="bac-hand">
+          <div class="bac-hand-title">闲 <span id="bac-player-pts"></span></div>
+          <div class="bac-cards" id="bac-player-cards"></div>
+        </div>
+      </div>
+      <div class="bac-result" id="bac-result">选边与筹码，开牌！</div>
+      <div class="bac-controls">
+        <div class="bac-sides" id="bac-sides">
+          <button data-side="player">闲 1:1</button>
+          <button data-side="banker">庄 1:0.95</button>
+          <button data-side="tie">和 1:8</button>
+        </div>
+        <div class="bac-chips" id="bac-chips">
+          <button data-chip="10">$10</button>
+          <button data-chip="25">$25</button>
+          <button data-chip="50">$50</button>
+          <button data-chip="100">$100</button>
+        </div>
+        <button id="bac-deal">开牌 DEAL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NPC 档案面板 -->
+  <div id="npc-profile" class="hidden">
+    <div class="npc-profile-frame panel-western">
+      <div class="npc-profile-header"><span id="npc-profile-name">NPC 档案</span><button id="npc-profile-close">✕</button></div>
+      <div class="npc-profile-hero"><img id="npc-profile-portrait" src="" alt="" /></div>
+      <div id="npc-profile-body"></div>
+    </div>
+  </div>
+
+  <!-- 叙事物品阅读弹窗 -->
+  <div id="note-popup" class="modal hidden">
+    <div class="note-popup-frame panel-western">
+      <div class="note-popup-header">
+        <span id="note-popup-name">📜 信件</span>
+        <button id="note-popup-close">✕</button>
+      </div>
+      <div class="note-popup-content" id="note-popup-content"></div>
+      <div class="note-popup-actions">
+        <button id="note-popup-keep" class="btn-western">📖 收藏</button>
+        <button id="note-popup-sell" class="btn-western-sell">💰 卖掉 (<span id="note-popup-price">0</span>)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 任务详情弹窗 -->
+  <div id="task-detail" class="modal hidden">
+    <div class="task-detail-frame panel-western">
+      <div class="task-detail-header">
+        <span id="task-detail-title">任务详情</span>
+        <button id="task-detail-close">✕</button>
+      </div>
+      <div id="task-detail-body"></div>
+    </div>
+  </div>
+
+  <!-- 股票交易面板 -->
+  <div id="stock-market" class="modal hidden">
+    <div class="stock-frame panel-western">
+      <div class="stock-header">
+        🏦 股票交易所
+        <button id="stock-close">✕</button>
+      </div>
+      <div id="stock-body"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
