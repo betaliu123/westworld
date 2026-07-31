@@ -246,7 +246,11 @@ export class TheaterDirector {
     this._addLog(`【结局】${oc.title}${lines ? " —— " + lines : ""}`);
     // 让这次选择在散场后仍然留下痕迹：报纸 / 来信 / 可摸到的遗留物
     if (this.aftermath) {
-      const done = this.aftermath.apply(oc, { tree: meta.tree || this.currentTree, cast: this.scene?.cast });
+      const done = this.aftermath.apply(oc, {
+        tree: meta.tree || this.currentTree,
+        cast: this.scene?.cast,
+        playerChoices: this.scene?.playerChoices || [],
+      });
       if (done.news || done.message || done.item) {
         this._addLog(`（留下后续：${[done.news && "报纸", done.message && "来信", done.item && "遗留物"].filter(Boolean).join("、")}）`);
       }

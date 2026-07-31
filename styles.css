@@ -1268,8 +1268,8 @@ body.theater-choices-on #hint { bottom: 176px; }
 #emoji-layer { position: fixed; inset: 0; pointer-events: none; z-index: 92; }
 .npc-emoji {
   position: absolute; transform: translate(-50%, -50%);
-  font-size: 22px; line-height: 1;
-  text-shadow: 0 2px 4px rgba(0,0,0,.6);
+  font-size: 17px; line-height: 1;
+  text-shadow: 0 2px 4px rgba(0,0,0,.7);
   animation: emojiPop .32s cubic-bezier(.2,1.6,.4,1);
 }
 @keyframes emojiPop {

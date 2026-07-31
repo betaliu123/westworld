@@ -28,9 +28,25 @@ export class TheaterAftermath {
     const day = this.getDay();
 
     // 1) 报纸报道
+    // 不直接用生成的 news.body：那是按"结局类型"写的，不知道玩家干了什么，
+    // 会出现"我勒索了寡妇，报纸却在写弟弟贪婪"这种对不上的情况。
+    // 改为用结构化数据自己拼：玩家的举动 + 这个结局的实际后果，保证永远对得上。
     if (af.news?.title && this.newspaper?.publishCustom) {
       try {
-        this.newspaper.publishCustom(af.news.title, af.news.body || "", { time: `第 ${day} 天` });
+        const choices = (ctx.playerChoices || []).map((c) => c.line).filter(Boolean);
+        const facts = (oc.lines || []).map((l) => String(l).replace(/^[^—]*——\s*/, "")).filter(Boolean);
+        const parts = [];
+        if (choices.length) {
+          parts.push(`据在场者说，有个外乡人当场开口：「${choices[choices.length - 1]}」`);
+          if (choices.length > 1) parts.push(`此前他还说过「${choices[0]}」`);
+        } else {
+          parts.push("事发时无人出面理事");
+        }
+        if (facts.length) parts.push(facts.join("；"));
+        const body = parts.join("。") + "。";
+        // 标题也用结局标题打头：生成的 news.title 是按结局类型写的，可能只提 NPC
+        const title = `${ctx.tree?.title || "街头事件"}：${oc.title || af.news.title}`;
+        this.newspaper.publishCustom(title, body, { time: `第 ${day} 天` });
         done.news = true;
       } catch (e) { void e; }
     }

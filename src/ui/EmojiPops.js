@@ -39,7 +39,7 @@ export class EmojiPops {
         const dz = npc.pos.z - playerPos.z;
         if (dx * dx + dz * dz > SHOW_DIST * SHOW_DIST) continue;
       }
-      this._v.set(npc.pos.x, 3.0, npc.pos.z); // 冒泡 2.7 的上方一点，仍贴着头顶
+      this._v.set(npc.pos.x, 2.48, npc.pos.z); // 贴 NPC 头顶（帽顶 ~2.07），在冒泡下方，两者不重叠
       this._v.project(this.camera);
       if (this._v.z > 1) continue;
 
@@ -54,7 +54,8 @@ export class EmojiPops {
       }
       item._npc = npc;
       item.el.style.display = "block";
-      item.el.style.left = `${(this._v.x * 0.5 + 0.5) * w}px`;
+      // 水平右偏 20px：垂直上它和名字牌很近，横向错开才不会挤在一起
+      item.el.style.left = `${(this._v.x * 0.5 + 0.5) * w + 20}px`;
       item.el.style.top = `${(-this._v.y * 0.5 + 0.5) * h}px`;
     }
 

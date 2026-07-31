@@ -38,6 +38,7 @@ export class TheaterRuntime {
     this._choicesShown = false;
     this._timers = [];                                  // 延迟放人的定时器，重复散场时清掉
     this.token = `sc${Math.random().toString(36).slice(2, 8)}${Date.now() % 100000}`;
+    this.playerChoices = []; // 玩家在事件中点过的选项（用于结局的碎片化叙事）
 
     this._takeStage();
   }
@@ -315,6 +316,9 @@ export class TheaterRuntime {
     const spoken = choice.line || choice.label;
     this.hooks.playerSay?.(spoken);
     this.hooks.log?.(`你：${spoken}`);
+    // 记下玩家在关键节点的选择，供结局的报纸/来信写出"你做了什么"
+    this.playerChoices.push({ nodeId: this.node.id, line: spoken });
+    if (this.playerChoices.length > 6) this.playerChoices.shift();
     if (choice.effects) this.hooks.onEffects?.(choice.effects);
     this.gotoNode(choice.next);
     return choice;

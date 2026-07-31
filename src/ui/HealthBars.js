@@ -68,7 +68,7 @@ export class HealthBars {
       const useBar = bars < MAX_BARS;
       if (!useBar && dots >= MAX_DOTS) break;
 
-      this._v.set(npc.pos.x, useBar ? 2.4 : 2.5, npc.pos.z);
+      this._v.set(npc.pos.x, useBar ? 2.30 : 2.38, npc.pos.z);
       this._v.project(this.camera);
       if (this._v.z > 1) continue;
       const x = (this._v.x * 0.5 + 0.5) * w;
