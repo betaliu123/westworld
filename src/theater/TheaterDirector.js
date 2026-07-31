@@ -71,16 +71,50 @@ export class TheaterDirector {
 
     if (this.scene) {
       this.scene.update(dt, { playerPos: ctx.playerPos, hour, day });
+      this._muteAmbient(dt);
       if (!this.scene.active) this.scene = null;
     }
+  }
+
+  /**
+   * 事件进行中，舞台附近的围观群众静音：不再各自跟玩家寒暄。
+   * 否则"日安，先生"这类冒泡会盖掉正在演的戏。
+   */
+  _muteAmbient(dt) {
+    this._muteTimer = (this._muteTimer || 0) - dt;
+    if (this._muteTimer > 0) return;
+    this._muteTimer = 0.5;
+    const r = THEATER_CONFIG.senseRadius;
+    const c = this.stage.center;
+    const muted = this._mutedNpcs || (this._mutedNpcs = new Set());
+    // 先放开已经走远的
+    for (const npc of muted) {
+      if (Math.hypot(npc.pos.x - c.x, npc.pos.z - c.z) > r + 4) {
+        npc.brain._ambientMuted = false;
+        muted.delete(npc);
+      }
+    }
+    for (const npc of this.npcManager?.all || []) {
+      if (Math.hypot(npc.pos.x - c.x, npc.pos.z - c.z) <= r) {
+        npc.brain._ambientMuted = true;
+        muted.add(npc);
+      }
+    }
+  }
+
+  _unmuteAll() {
+    for (const npc of this._mutedNpcs || []) npc.brain._ambientMuted = false;
+    this._mutedNpcs?.clear();
   }
 
   /** 开一场戏（可指定剧本 id，调试用） */
   startShow(day = this.worldClock?.day ?? 1, treeId = null) {
     if (this.active) return false;
-    const tree = treeId
-      ? THEATER_TREES.find((t) => t.id === treeId)
-      : THEATER_TREES[Math.floor(Math.random() * THEATER_TREES.length)];
+    // 第一天固定演三角恋——这出戏冲击感最强，适合当玩家的第一场
+    let tree;
+    if (treeId) tree = THEATER_TREES.find((t) => t.id === treeId);
+    else if (day === 1) tree = THEATER_TREES.find((t) => t.id === "saloon_triangle");
+    if (!tree) tree = THEATER_TREES[Math.floor(Math.random() * THEATER_TREES.length)];
     if (!tree) return false;
 
     const cast = this.casting.cast(tree);
@@ -112,6 +146,7 @@ export class TheaterDirector {
         onEnd: () => {
           this.ui?.setChoices?.([], "");
           this.ui?.setEventActive?.(false);
+          this._unmuteAll(); // 散场后恢复围观群众的日常寒暄
         },
       },
     });
@@ -196,9 +231,10 @@ export class TheaterDirector {
 
   _applyOutcome(oc, meta = {}) {
     this._applyEffects({ cash: oc.cash, honor: oc.honor, wanted: oc.wanted });
-    const lines = (oc.lines || []).join("；");
-    this.hud?.toast?.(`🎭 ${oc.title}${lines ? " —— " + lines : ""}`, { duration: 6500, key: "theater-outcome" });
+    // 只用中间的结局横幅，不再额外发 toast（否则同一句话屏幕上出现两遍）
     this.ui?.showOutcome?.(oc);
+    const lines = (oc.lines || []).join("；");
+    this._addLog(`【结局】${oc.title}${lines ? " —— " + lines : ""}`);
     if (oc.rumor && this.newspaper?.publish) {
       try {
         this.newspaper.publish(oc.rumor, { job: meta.tree?.title || "街头事件" });

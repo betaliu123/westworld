@@ -837,8 +837,11 @@ export class AIBrain {
     }
 
     // 主动注意玩家：平静状态、玩家靠近、冷却好了 → 转头看你并有概率打招呼
+    // _ambientMuted：剧场事件进行中，舞台附近的围观群众不要再各自跟玩家寒暄，
+    // 否则"日安，先生"会盖掉正在演的戏
     if (this._noticeCd > 0) this._noticeCd -= dt;
     if (
+      !this._ambientMuted &&
       (this.state === State.WANDER || this.state === State.IDLE) &&
       this.emotion < 0.2 &&
       ctx.playerDist < AI_PANIC.noticeDist &&
@@ -964,7 +967,7 @@ export class AIBrain {
 
       case State.IDLE:
         if (this.stateTimer <= 0) this._enter(State.WANDER);
-        if (chance(dt * 0.15) && this.p.sociability > 0.4) this.say(this._smallTalk());
+        if (!this._ambientMuted && chance(dt * 0.15) && this.p.sociability > 0.4) this.say(this._smallTalk());
         break;
 
       case State.WANDER:
@@ -989,7 +992,7 @@ export class AIBrain {
           intent.enterPlace = true; // 到达室内场所门口 → 传送进室内（上班/消费）
         } else if (d < 2) {
           this._enter(State.IDLE);
-          if (chance(0.5) && this.p.sociability > 0.35) this.say(this._smallTalk());
+          if (!this._ambientMuted && chance(0.5) && this.p.sociability > 0.35) this.say(this._smallTalk());
         }
         break;
       }

@@ -189,7 +189,8 @@ export class TheaterRuntime {
 
   _onZoneChange(from, to) {
     if (to === "interact") {
-      this.hooks.toast?.(`🎭 ${this.tree.hintOnEnter || this.tree.title}`, { duration: 4200, key: "theater-enter" });
+      // 进区域只提示"你已经在场"，剧情描述 hintOnEnter 在开演时已经说过一次了
+      this.hooks.toast?.(`🎭 ${this.tree.title}`, { duration: 2600, key: "theater-enter" });
       if (this.waitingChoice) this._renderChoices();
     } else {
       this._clearChoices();
@@ -293,7 +294,9 @@ export class TheaterRuntime {
         icon: c.icon || "▶",
         risk: c.risk || "medium",
       })),
-      this.node.hint || this.tree.hintOnEnter || ""
+      // 只用当前节点自己的提示；开场那句 hintOnEnter 已经在开演时提示过了，
+      // 进了事件区域还一直挂在输入框上方很占地方
+      this.node.hint || ""
     );
   }
 

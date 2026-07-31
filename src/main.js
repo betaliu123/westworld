@@ -2047,14 +2047,7 @@ function boot() {
       }
     }
 
-    if (!hintShown) {
-      // 广场提示
-      if (Math.hypot(player.pos.x, player.pos.z) < 6) {
-        hud.showHint("点击右侧 🛒 打开集市");
-        hintShown = true;
-      }
-    }
-
+    // 广场提示已移除：镇中心 (0,0) 是 AI 剧场舞台，每次进事件区域都会弹这条，很干扰
     if (!hintShown) hud.hideHint();
   }
 
@@ -3196,6 +3189,27 @@ function boot() {
       const bh = ws.factions?.black_hoof || {};
       const debugLog = ws.debugLog || [];
       let h = '';
+      // Section 7: AI 街头剧场
+      h += '<div class="debug-section"><div class="debug-section-title">🎭 AI 街头剧场 <span style="font-weight:400;opacity:.7">（F9 开演 · F10 传送 · F8 开演并传送）</span></div>';
+      const tst = theater.debugStatus();
+      if (tst.active) {
+        h += '<div class="debug-row">正在上演：' + tst.tree + '</div>';
+        h += '<div class="debug-row">节点 ' + tst.node + ' / 阶段 ' + tst.phase + ' / 玩家区域 ' + tst.zone + '</div>';
+        h += '<div class="debug-row">演员：' + tst.cast.join('、') + '</div>';
+        h += '<div class="debug-row">衔接来源：' + tst.glueVia + '（llm=真实大模型，rule=关键词兜底）</div>';
+      } else {
+        h += '<div class="debug-row">当前没有演出。今日开演时刻 ' + tst.todayTriggerHour + ' 点，已演过第 ' + tst.lastPlayedDay + ' 天</div>';
+      }
+      h += '<div class="debug-row" style="opacity:.7">走到镇中心大街（16 米内）才会出现事件选项和可对话状态</div>';
+      h += '<div class="debug-actions" style="margin-top:6px">';
+      h += '<button class="debug-btn" onclick="__ww.theaterStart();__ww.debugPanel()">🎲 随机开演</button> ';
+      h += '<button class="debug-btn" onclick="__ww.theaterStart(\'high_noon_duel\');__ww.debugPanel()">🔫 正午决斗</button> ';
+      h += '<button class="debug-btn" onclick="__ww.theaterStart(\'saloon_triangle\');__ww.debugPanel()">🥃 酒馆争风</button> ';
+      h += '<button class="debug-btn" onclick="__ww.theaterStart(\'street_pickpocket\');__ww.debugPanel()">🫳 街角扒手</button> ';
+      h += '<button class="debug-btn" onclick="__ww.theaterGoStage();__ww.debugPanel()">🏃 传送到舞台</button> ';
+      if (tst.active) h += '<button class="debug-btn" onclick="__ww.theaterStop();__ww.debugPanel()">⏹ 立刻散场</button>';
+      h += '</div></div>';
+
       h += '<div class="debug-summary">';
       h += '<span>📅 第' + worldClock.day + '天</span>';
       h += '<span>🕐 ' + worldClock.timeString() + '</span>';
@@ -3256,26 +3270,7 @@ function boot() {
       (ws.eventHistory || []).slice(-8).forEach(e => { h += '<div class="debug-row">D' + e.day + ': ' + e.type + '</div>'; });
       h += '</div>';
 
-      // Section 7: AI 街头剧场
-      h += '<div class="debug-section"><div class="debug-section-title">🎭 AI 街头剧场</div>';
-      const tst = theater.debugStatus();
-      if (tst.active) {
-        h += '<div class="debug-row">正在上演：' + tst.tree + '</div>';
-        h += '<div class="debug-row">节点 ' + tst.node + ' / 阶段 ' + tst.phase + ' / 玩家区域 ' + tst.zone + '</div>';
-        h += '<div class="debug-row">演员：' + tst.cast.join('、') + '</div>';
-        h += '<div class="debug-row">衔接来源：' + tst.glueVia + '（llm=真实大模型，rule=关键词兜底）</div>';
-      } else {
-        h += '<div class="debug-row">当前没有演出。今日开演时刻 ' + tst.todayTriggerHour + ' 点，已演过第 ' + tst.lastPlayedDay + ' 天</div>';
-      }
-      h += '<div class="debug-row" style="opacity:.7">走到镇中心大街（16 米内）才会出现事件选项和可对话状态</div>';
-      h += '<div class="debug-actions" style="margin-top:6px">';
-      h += '<button class="debug-btn" onclick="__ww.theaterStart();__ww.debugPanel()">🎲 随机开演</button> ';
-      h += '<button class="debug-btn" onclick="__ww.theaterStart(\'high_noon_duel\');__ww.debugPanel()">🔫 正午决斗</button> ';
-      h += '<button class="debug-btn" onclick="__ww.theaterStart(\'saloon_triangle\');__ww.debugPanel()">🥃 酒馆争风</button> ';
-      h += '<button class="debug-btn" onclick="__ww.theaterStart(\'street_pickpocket\');__ww.debugPanel()">🫳 街角扒手</button> ';
-      h += '<button class="debug-btn" onclick="__ww.theaterGoStage();__ww.debugPanel()">🏃 传送到舞台</button> ';
-      if (tst.active) h += '<button class="debug-btn" onclick="__ww.theaterStop();__ww.debugPanel()">⏹ 立刻散场</button>';
-      h += '</div></div>';
+
 
       h += '<div class="debug-actions">';
       h += '<button class="debug-btn" onclick="__ww.debugAdvanceDay()">⏩ 强制过一天</button> ';
@@ -3293,6 +3288,20 @@ function boot() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "D" && e.shiftKey && e.ctrlKey) {
       window.__ww.debugPanel();
+    }
+    // AI 剧场快捷键（不用开面板点按钮）
+    if (document.activeElement && (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA")) return;
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.key === "F9") {
+      e.preventDefault();
+      window.__ww.theaterStart();          // 随机开演一场
+    } else if (e.key === "F10") {
+      e.preventDefault();
+      window.__ww.theaterGoStage();        // 传送到舞台
+    } else if (e.key === "F8") {
+      e.preventDefault();
+      window.__ww.theaterStart();
+      window.__ww.theaterGoStage();        // 开演并直接过去
     }
     if ((e.key === "z" || e.key === "Z") && !e.ctrlKey && !e.altKey && !e.metaKey) {
       // 输入框内不触发睡觉
