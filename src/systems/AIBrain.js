@@ -7,6 +7,7 @@ import {
   JOBS, GANGS, JOB_SCHEDULE, PERSONALITY, AI_PANIC,
   NPC_THREAT_DEFIANT, NPC_THREAT_SCARED, NPC_PRAISE, JOB_DIALOGUE,
 } from "../config/gameData.js";
+import { AIMED_LINES, AIMED_DEFAULT } from "../config/aimedLines.js";
 
 // 根据好感度值返回阶段标签：hostile / low / neutral / high
 function _getAffinityStage(affection) {
@@ -267,17 +268,20 @@ export class AIBrain {
     const b = this.p.bravery;
     const a = this.p.aggression;
     const aff = opts.affection ?? 0;
+    // 按职业取喊话；没有该职业的语料就用通用的
+    const pool = AIMED_LINES[this.p.job] || AIMED_DEFAULT;
+    const lineOf = (kind) => pick(pool[kind] || AIMED_DEFAULT[kind]);
 
     // 高好感：讲道理而不是怕
     if (aff >= 40) {
-      this.say(pick(["哎，枪放下，有话好说。", "你这是做什么？我们没那么生分。", "放下，我是你朋友啊。"]), 2.6);
+      this.say(lineOf("plead"), 2.6);
       this.emote?.("😟", 2);
       this._enter(State.STARTLED);
       return "plead";
     }
     // 凶悍且有攻击性：先警告，可能反过来瞪你
     if (b > 0.65 && a > 0.5) {
-      this.say(pick(["你想清楚再动手，伙计。", "枪指错人了吧？", "我数三下，你把那玩意收起来。"]), 2.6);
+      this.say(lineOf("defy"), 2.6);
       this.emote?.("😠", 2);
       this.emotion = Math.min(1, this.emotion + 0.6);
       if (chance(0.4)) this._enter(State.ANGRY); // 有概率直接翻脸
@@ -286,13 +290,13 @@ export class AIBrain {
     }
     // 胆小：立刻跑
     if (b < 0.4) {
-      this.say(pick(["别、别开枪！", "救命！他有枪！", "我什么都没做！"]), 2.4);
+      this.say(lineOf("flee"), 2.4);
       this.emote?.("😨", 2);
       this._enter(State.FLEE);
       return "flee";
     }
     // 普通人：僵住，转头看你
-    this.say(pick(["你、你要干什么？", "有话好说……", "把枪放下，先生。"]), 2.4);
+    this.say(lineOf("startled"), 2.4);
     this.emote?.("😟", 2);
     this._enter(State.STARTLED);
     return "startled";

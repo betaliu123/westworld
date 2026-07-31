@@ -1288,3 +1288,38 @@ body.theater-choices-on #hint { bottom: 176px; }
   filter: none; animation: none;
   white-space: nowrap;
 }
+/* ========== 瞄准态：准心变十字 + 右上角子弹计数 ========== */
+/* 瞄准时准心放大成十字准星，比平时的小圆点醒目得多 */
+body.aiming #crosshair {
+  width: 26px; height: 26px;
+  border-color: rgba(226,86,74,.95);
+  box-shadow: 0 0 10px rgba(226,86,74,.5), inset 0 0 6px rgba(0,0,0,.6);
+  transition: width .12s ease, height .12s ease;
+}
+body.aiming #crosshair::before,
+body.aiming #crosshair::after {
+  content: ""; position: absolute; background: rgba(255,233,168,.95);
+  box-shadow: 0 0 4px rgba(0,0,0,.8);
+}
+/* 横线 */
+body.aiming #crosshair::before {
+  top: 50%; left: -10px; width: 8px; height: 1.5px; transform: translateY(-50%);
+}
+/* 竖线（复用 ::after，覆盖原来的小圆点） */
+body.aiming #crosshair::after {
+  top: -10px; left: 50%; width: 1.5px; height: 8px;
+  transform: translateX(-50%); border-radius: 0; background: rgba(255,233,168,.95);
+}
+
+/* 右上角子弹计数：小字，不抢视线 */
+#ammo-corner {
+  position: absolute; top: 14px; right: 16px;
+  font-size: 12px; letter-spacing: .5px;
+  color: rgba(255,240,210,.72);
+  text-shadow: 0 1px 3px rgba(0,0,0,.85);
+  pointer-events: none; z-index: 30;
+}
+#ammo-corner b { font-size: 15px; color: var(--brass-hi); font-weight: 700; }
+#ammo-corner.ammo-low b { color: var(--danger); }
+#ammo-corner.ammo-empty b { color: var(--danger); animation: ammoBlink .8s ease-in-out infinite; }
+@keyframes ammoBlink { 0%,100% { opacity: 1; } 50% { opacity: .35; } }

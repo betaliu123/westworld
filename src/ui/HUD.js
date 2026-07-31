@@ -7,7 +7,7 @@ export class HUD {
     this.economy = economy;
     this.reputation = reputation;
     this.moneyEl = document.getElementById("hud-money");
-    this.ammoEl = document.getElementById("hud-ammo");
+    this.ammoEl = document.getElementById("ammo-corner");
     this.clockEl = document.getElementById("hud-clock");
     this.dayEl = document.getElementById("hud-day");
     this.energyEl = document.getElementById("hud-energy");
@@ -50,12 +50,12 @@ export class HUD {
     if (this.shopEl && !this.shopEl.classList.contains("hidden")) this.renderShop();
   }
 
-  /** 子弹数变化时刷新显示（AmmoSystem 调） */
+  /** 子弹数变化时刷新右上角显示（AmmoSystem 调） */
   setAmmo(n) {
-    if (this.ammoEl) {
-      this.ammoEl.textContent = `🔫 ${n}`;
-      this.ammoEl.classList.toggle("ammo-low", n <= 3);
-    }
+    if (!this.ammoEl) return;
+    this.ammoEl.innerHTML = `🔫 <b>${n}</b> 发`;
+    this.ammoEl.classList.toggle("ammo-low", n > 0 && n <= 3);
+    this.ammoEl.classList.toggle("ammo-empty", n <= 0);
   }
 
   refreshReputation() {

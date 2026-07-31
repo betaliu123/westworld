@@ -140,6 +140,11 @@ export class Player {
     // 瞄准：右键按住进瞄准（保持视角缩放交给 main 处理）
     const aiming = input.isDown("Mouse2") && !this.inVehicle;
     if (aiming !== this.aiming) this.aiming = aiming;
+    // 瞄准过渡系数（0→1），相机拉近/越肩/持枪姿态都用它做平滑
+    const aimTarget = this.aiming ? 1 : 0;
+    this._aimBlend = (this._aimBlend ?? 0) + (aimTarget - (this._aimBlend ?? 0)) * Math.min(1, dt * 9);
+    // 瞄准时身体朝镜头方向（否则枪口和准心不一致）
+    if (this.aiming) this.facing = this.camYaw + Math.PI;
 
     // 攻击输入：瞄准时左键是开枪（走射击系统），否则是拳击
     if (input.wasPressed("Mouse0")) {
@@ -167,18 +172,22 @@ export class Player {
       const t = 1 - this.attackTimer / 0.35;
       armRaise = -Math.sin(t * Math.PI) * 1.8;
     }
-    animateCharacter(this.mesh, this.walkAmount, this.time, { baseY: this.pos.y, armRaise });
+    animateCharacter(this.mesh, this.walkAmount, this.time, { baseY: this.pos.y, armRaise, aimPose: this._aimBlend ?? 0 });
 
     this._updateCamera(dt, camera);
   }
 
   _updateCamera(dt, camera, isKnockdown = false) {
+    // 瞄准：镜头拉近 + 越肩偏移，让主角的头别挡住屏幕中央的准心
+    const aimT = this._aimBlend ?? 0;
+    const dist = this.camDist * (1 - aimT) + this.camDist * 0.42 * aimT;
+
     const cosP = Math.cos(this.camPitch);
     const offset = new THREE.Vector3(
       Math.sin(this.camYaw) * cosP,
       Math.sin(this.camPitch),
       Math.cos(this.camYaw) * cosP
-    ).multiplyScalar(this.camDist);
+    ).multiplyScalar(dist);
 
     // 倒地动画：相机缓慢降低到地面高度
     let camY = this.pos.y + 1.7;
@@ -189,6 +198,15 @@ export class Player {
     }
 
     const target = new THREE.Vector3(this.pos.x, camY, this.pos.z);
+    // 越肩：把相机与注视点一起往右平移，主角就偏到画面左侧，中央让给准心
+    if (aimT > 0.001) {
+      const rightX = Math.cos(this.camYaw);
+      const rightZ = -Math.sin(this.camYaw);
+      const shoulder = 1.05 * aimT;
+      target.x += rightX * shoulder;
+      target.z += rightZ * shoulder;
+      target.y += 0.25 * aimT; // 视线略抬，和枪口一致
+    }
     const desired = target.clone().add(offset);
 
     // 相机避墙
@@ -197,9 +215,11 @@ export class Player {
     desired.z = res.z;
     if (desired.y < 0.6) desired.y = 0.6;
 
-    camera.position.x = damp(camera.position.x, desired.x, 0.001, dt);
-    camera.position.y = damp(camera.position.y, desired.y, 0.001, dt);
-    camera.position.z = damp(camera.position.z, desired.z, 0.001, dt);
+    // 瞄准时相机跟得更紧，松开右键回到原本的柔和跟随
+    const lambda = aimT > 0.5 ? 0.0002 : 0.001;
+    camera.position.x = damp(camera.position.x, desired.x, lambda, dt);
+    camera.position.y = damp(camera.position.y, desired.y, lambda, dt);
+    camera.position.z = damp(camera.position.z, desired.z, lambda, dt);
     camera.lookAt(target);
   }
 

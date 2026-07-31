@@ -3,6 +3,7 @@
 //       玩家一直不来就循环第一幕 → 超时/散场结算并放人回去上班。
 
 import { THEATER_CONFIG } from "../config/theaterData.js";
+import { IDLE_BY_NODE, WITNESS_ON } from "../config/theaterIdle.js";
 
 const Phase = {
   GATHERING: "gathering", // 演员正在赶来
@@ -217,9 +218,13 @@ export class TheaterRuntime {
     }
   }
 
-  /** 第一幕循环：玩家没来时反复播补充节拍 */
+  /**
+   * 僵持碎语：优先播"这一幕专属"的循环气泡（IDLE_BY_NODE），
+   * 没有就退回全剧通用的 tree.idleLoop。
+   */
   _playIdleLoop(now) {
-    const loop = this.tree.idleLoop || [];
+    const perNode = IDLE_BY_NODE[`${this.tree.id}/${this.node?.id}`];
+    const loop = (perNode && perNode.length ? perNode : this.tree.idleLoop) || [];
     if (!loop.length) {
       this.nextIdleAt = now + 12000;
       return;
@@ -416,17 +421,27 @@ export class TheaterRuntime {
       this._forceResolve("出了人命");
       return;
     }
-    // 其他演员的分人反应：一人劝阻、一人吓退
+    // 其他演员的分人反应：优先用"针对被打的是谁"定制的台词
+    // （打女人、打牧师、打伤员，旁人喊的话应该明显不同）
     const others = this.cast.filter((c) => c.roleId !== role && c.npc.alive);
     others.slice(0, 2).forEach((m, i) => {
       setTimeout(() => {
         if (this.phase === Phase.DONE) return;
-        const line = this._reactionLine("witness", m.roleId) || (i === 0 ? "住手！你想上绞架吗？" : "疯子！快躲开！");
+        const line = this._witnessOnLine(role, m.roleId)
+          || this._reactionLine("witness", m.roleId)
+          || (i === 0 ? "住手！你想上绞架吗？" : "疯子！快躲开！");
         m.npc.brain.say(line, 3);
         this.hooks.moodFx?.(m.npc, i === 0 ? "angry" : "scared");
         this.hooks.log?.(`${m.stageName}：${line}`);
       }, 500 + i * 1200);
     });
+  }
+
+  /** 取"看见玩家打了 victimRole 时，speakerRole 会喊什么" */
+  _witnessOnLine(victimRole, speakerRole) {
+    const pool = WITNESS_ON[this.tree.id]?.[victimRole]?.[speakerRole];
+    if (!pool || !pool.length) return null;
+    return pool[Math.floor(Math.random() * pool.length)];
   }
 
   /** 玩家撞到了演员 */

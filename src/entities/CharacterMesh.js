@@ -187,6 +187,16 @@ export function animateCharacter(charGroup, walkAmount, time, extra = {}) {
   const armBase = extra.armRaise ?? 0;
   j.armL.rotation.x = -swing + armBase;
   j.armR.rotation.x = swing + armBase;
+  // 持枪姿态（aimPose 0→1）：右臂平举向前，左臂收在身侧，腿摆减弱
+  const aim = extra.aimPose ?? 0;
+  if (aim > 0.001) {
+    const armForward = -Math.PI / 2; // 平举
+    j.armR.rotation.x = j.armR.rotation.x * (1 - aim) + armForward * aim;
+    j.armL.rotation.x = j.armL.rotation.x * (1 - aim) + (-0.25) * aim;
+    // 端枪时双腿别大幅摆动
+    j.legL.rotation.x *= 1 - aim * 0.55;
+    j.legR.rotation.x *= 1 - aim * 0.55;
+  }
   // 轻微上下起伏
   charGroup.position.y = (extra.baseY ?? 0) + Math.abs(Math.sin(phase)) * 0.05 * walkAmount;
   // 头部朝向偏移（张望）

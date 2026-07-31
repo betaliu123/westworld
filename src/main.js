@@ -1139,6 +1139,7 @@ function boot() {
       ammoSystem.rollPickup(0.7, [3, 6], "搜身");
     }
   };
+  hud.setAmmo(ammoSystem.ammo); // 初始同步一次，别让 HUD 显示写死的数字
 
   // 瞄准时：找出正对你枪口的人，让他对枪做出反应
   const _aimScanCd = { t: 0 };
@@ -2616,6 +2617,7 @@ function boot() {
     factions.update(dt, player.pos);
 
     // 瞄准检测：你举着枪对着谁，谁就该有反应（看/惊/跑/警告）
+    document.body.classList.toggle("aiming", !!player.aiming);
     if (player.aiming && !insideRoom) {
       _updateAimingReactions();
     }
