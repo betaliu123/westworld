@@ -61,6 +61,7 @@ import { TheaterAftermath } from "./theater/TheaterAftermath.js";
 // NPC 自由对话 + LLM 行为决策
 import { NpcChatService, ChatBudget } from "./npc/NpcChatService.js";
 import { NpcActionExecutor } from "./npc/NpcActionExecutor.js";
+import { AmmoSystem } from "./systems/AmmoSystem.js";
 // 战斗阵营（敌/友）与血条
 import { CombatFactions } from "./systems/CombatFactions.js";
 import { HealthBars } from "./ui/HealthBars.js";
@@ -660,6 +661,11 @@ function boot() {
     const bought = economy.buy(itemId);
     if (!bought) return;
     audio.cash();
+    // 子弹是消耗品：买到的是子弹而不是"已拥有"
+    if (bought.kind === "ammo") {
+      ammoSystem.addRounds(6, "商店");
+      return;
+    }
     hud.toast(`🎉 购买了「${bought.name}」`);
     reputation.addHonor(1);
     newspaper.publish("purchase", { asset: bought.name });
@@ -1114,6 +1120,43 @@ function boot() {
           hideFloatDialogue();
         }
       }, 1800);
+    }
+  }
+
+    // ===== 瞄准：右键按住进瞄准，左键开枪；NPC 会对准他的枪做出反应 =====
+  const ammoSystem = new AmmoSystem({
+    economy, hud, audio,
+    onChange: (n) => hud.setAmmo(n),
+  });
+  player._fireHandler = () => {
+    if (insideRoom) return;
+    combat.fireShot(player.pos, player.facing, ammoSystem);
+  };
+  combat._shotDropAmmo = (npc) => {
+    // 击倒带枪的家伙可能掉子弹
+    const gunJobs = ["神枪手", "赏金猎人", "警长", "牛仔"];
+    if (gunJobs.includes(npc.personality?.job) || npc.personality?.gang) {
+      ammoSystem.rollPickup(0.7, [3, 6], "搜身");
+    }
+  };
+
+  // 瞄准时：找出正对你枪口的人，让他对枪做出反应
+  const _aimScanCd = { t: 0 };
+  function _updateAimingReactions() {
+    _aimScanCd.t -= 1;
+    if (_aimScanCd.t > 0) return;
+    _aimScanCd.t = 6; // 每 6 帧扫一次，别每帧都找
+    const target = npcManager.findAttackTarget(player.pos, player.facing, 22, 22);
+    if (!target) return;
+    const owner = target.phone?.owner || "镇民";
+    const affection = _affectionOf(target);
+    const kind = target.brain.onAimed(player.pos, {
+      now: performance.now() / 1000,
+      affection,
+    });
+    if (kind) {
+      const label = { plead: "求你放下", defy: "警告你", flee: "吓跑了", startled: "僵住了" }[kind] || kind;
+      hud.toast(`🔫 ${owner}${label}`, { side: true, key: "aimed_" + owner });
     }
   }
 
@@ -1838,6 +1881,12 @@ function boot() {
       const total = [...stealState.stolen].reduce((s, i) => s + stealState.slots[i].value, 0);
       const numItems = stealState.stolen.size;
       hud.toast(`✨ 搜刮完毕，共偷到 ${numItems} 件物品，$ ${total}`, { key: "stealdone" });
+      // 偷到东西时有机会摸到子弹（身上带枪的人概率更高）
+      if (numItems > 0) {
+        const gunJobs = ["神枪手", "赏金猎人", "警长", "牛仔"];
+        const armed = gunJobs.includes(stealState.npc?.personality?.job) || stealState.npc?.personality?.gang;
+        ammoSystem.rollPickup(armed ? 0.55 : 0.25, [2, 4], "摸到的子弹");
+      }
       stealPanel.classList.add("hidden");
       stealState = null;
       return;
@@ -2535,7 +2584,9 @@ function boot() {
 
     // 走路撞 NPC：推开 + 连撞触发反应
     if (!player.inVehicle) {
-      const bumps = npcManager.checkPlayerBump(player.pos, player.facing, dt, stealState?.npc || null);
+      // 玩家静止时不算"玩家撞人"：挂机时 NPC 自己走过来贴住不该把人弄怒
+      const playerMoving = player.walkAmount > 0.15;
+      const bumps = npcManager.checkPlayerBump(player.pos, player.facing, dt, stealState?.npc || null, playerMoving);
       for (const b of bumps) {
         if (b.actorBump) {
           // 撞到正在演戏的人：走剧本写的"被撞反应"
@@ -2563,6 +2614,11 @@ function boot() {
       factions.notifyPlayerAttacked(npcResult.attackers, player.pos);
     }
     factions.update(dt, player.pos);
+
+    // 瞄准检测：你举着枪对着谁，谁就该有反应（看/惊/跑/警告）
+    if (player.aiming && !insideRoom) {
+      _updateAimingReactions();
+    }
 
     if (npcResult.attacks > 0) {
       // 计算高攻击性NPC的实际伤害
@@ -3062,6 +3118,8 @@ function boot() {
 
     for (const npc of npcManager.all) {
       if (!npc.alive || npc.brain.state === "DOWN") continue;
+      // 正在演戏的人由剧场层显示舞台名（更贴剧情），这里跳过，避免头上叠两个名字
+      if (npc.brain._perform) continue;
       const nid = npc.brain._npcId;
       if (!nid || !NAME_TAG_NPCS.has(nid)) continue;
 

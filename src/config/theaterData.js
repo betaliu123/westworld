@@ -957,18 +957,23 @@ for (const [treeId, extra] of Object.entries(THEATER_EXTRAS)) {
 }
 
 export const THEATER_CONFIG = {
-  // 时间尺度备忘：游戏一天 = 400 真实秒 ⇒ 1 游戏小时 ≈ 16.7 真实秒。
-  // 9-12 点的开演窗口只有约 50 真实秒，所以下面凡是"真实秒/毫秒"的量都要按这个尺度掐，
-  // 否则会全部被 disbandHour 的强制散场吃掉（unattendedMs 曾设 210s ≈ 12.6 游戏小时，等于永不触发）。
-  // 每天在这个游戏时段内开演一次（游戏内小时，0-24）
+  // 时间尺度：游戏一天 = 400 真实秒 ⇒ 1 游戏小时 ≈ 16.7 真实秒。
+  realSecondsPerDay: 400,
+  // 每天在这个游戏时段内自动开演一次（游戏内小时，0-24）。
+  // 注意：这只决定"什么时候开演"，不决定"什么时候结束"——
+  // 结束一律以开演时刻起算（见 maxDurationHours），所以任何钟点手动开演都能完整演完。
   windowStart: 9,
   windowEnd: 12,
+  // 一场戏的总时长上限（游戏小时）。超了就收场，不看绝对钟点。
+  // 24 游戏小时 ≈ 400 真实秒，够走完 5-6 幕还有余量。
+  maxDurationHours: 24,
+  // 玩家围观但一直不选时，一幕最多演这么久就自己往下走（走末位"旁观"选项）
+  actMaxGameHours: 4,
   // 舞台：镇中心大街（主街 x∈[-8,8] 是保证无杂物的走廊）
   stage: { x: 0, z: 0 },
   stageRadius: 4.6,        // 演员围成的圈半径
   senseRadius: 26,         // 感知区：显示"那边起了热闹"
   interactRadius: 16,      // 交互区：显示事件选项
-  disbandHour: 18,         // 到点无论如何散场回家（约开演后 8 游戏小时的兜底闸）
   actorArriveTimeout: 20,  // 演员就位超时（真实秒）：走到舞台通常几秒，20s 足够
   beatJitterMs: 900,       // 节拍随机抖动，避免所有人同时开口
   maxBubbleChars: 30,

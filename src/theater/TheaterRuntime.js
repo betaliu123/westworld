@@ -39,6 +39,8 @@ export class TheaterRuntime {
     this._timers = [];                                  // 延迟放人的定时器，重复散场时清掉
     this.token = `sc${Math.random().toString(36).slice(2, 8)}${Date.now() % 100000}`;
     this.playerChoices = []; // 玩家在事件中点过的选项（用于结局的碎片化叙事）
+    this.elapsedGameHours = 0; // 开演至今经过的游戏小时（总时长上限用它，不看绝对钟点）
+    this.actGameHours = 0;     // 当前这一幕已经演了多少游戏小时（围观自动推进用）
 
     this._takeStage();
   }
@@ -146,9 +148,14 @@ export class TheaterRuntime {
       return;
     }
 
-    // 到点强制散场（游戏时间）
-    if (ctx.hour != null && ctx.hour >= THEATER_CONFIG.disbandHour && !this.resolving) {
-      this._forceResolve("天色晚了");
+    // 事件总时长以"开演那一刻"起算，用累计游戏小时衡量（不看绝对钟点，
+    // 也不受午夜回绕影响）。以前写死"到 18 点就散场"，导致傍晚手动开演的
+    // 第一帧就满足条件，直接跳最后一幕。
+    if (ctx.hour != null) {
+      this.elapsedGameHours += dt * (24 / THEATER_CONFIG.realSecondsPerDay);
+    }
+    if (this.elapsedGameHours > THEATER_CONFIG.maxDurationHours && !this.resolving) {
+      this._forceResolve("这场戏演够久了");
     }
 
     // 玩家一直不来 → 到时限自行收场
@@ -177,9 +184,18 @@ export class TheaterRuntime {
           // 兜底：玩家中途走进来时补一次渲染，避免按钮永久隐身
           this._renderChoices();
         }
-        // 玩家没来：循环第一幕，让戏一直在演
-        if (!this.playerEverJoined && now >= this.nextIdleAt) {
+        // 僵持中的碎语：不管玩家在不在场都继续演，别站着一声不吭
+        if (now >= this.nextIdleAt) {
           this._playIdleLoop(now);
+        }
+        // 玩家围观但一直不选 → 演够一幕的时长就自己往下走（走"旁观"那条）
+        this.actGameHours += dt * (24 / THEATER_CONFIG.realSecondsPerDay);
+        if (this.actGameHours >= THEATER_CONFIG.actMaxGameHours) {
+          const fallback = n.choices[n.choices.length - 1]; // 末位通常是旁观/不介入
+          this.hooks.log?.(`（你没表态，事情自己往下走了）`);
+          this.waitingChoice = false;
+          this._clearChoices();
+          this.gotoNode(fallback.next);
         }
       }
     }
@@ -233,6 +249,7 @@ export class TheaterRuntime {
       if (override) node = override;
     }
     this.node = node;
+    this.actGameHours = 0; // 新的一幕，重新计时（围观自动推进用）
     this.waitingChoice = false;
     this._clearChoices();
     this._scheduleBeats(node);

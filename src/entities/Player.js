@@ -36,6 +36,10 @@ export class Player {
 
     this.walkAmount = 0;
 
+    // 瞄准/射击（右键按住瞄准，瞄准时左键才是开枪；不瞄准时左键仍是拳击）
+    this.aiming = false;
+    this._fireHandler = null;  // main 注入：瞄准时左键 → 射击（消耗子弹）
+
     // 死亡/复活
     this.clinicPos = new THREE.Vector3(14, 0, -10); // 医馆复活点
     this.weakTimer = 0;        // 复活后短暂虚弱（降速）
@@ -103,6 +107,7 @@ export class Player {
 
     const running = input.isDown("ShiftLeft") || input.isDown("ShiftRight");
     let speed = running ? 9.5 : 5.2;
+    if (this.aiming) speed *= 0.45; // 瞄准时挪步慢
     if (this.isWeak) speed *= 0.55; // 复活虚弱期降速
 
     let moving = move.lengthSq() > 0.001;
@@ -132,8 +137,21 @@ export class Player {
     this.pos.x = resolved.x;
     this.pos.z = resolved.z;
 
-    // 攻击输入
-    if ((input.wasPressed("Mouse0") || input.wasPressed("KeyJ")) && this.attackCooldown <= 0) {
+    // 瞄准：右键按住进瞄准（保持视角缩放交给 main 处理）
+    const aiming = input.isDown("Mouse2") && !this.inVehicle;
+    if (aiming !== this.aiming) this.aiming = aiming;
+
+    // 攻击输入：瞄准时左键是开枪（走射击系统），否则是拳击
+    if (input.wasPressed("Mouse0")) {
+      if (this.aiming) {
+        if (this._fireHandler) this._fireHandler();
+      } else if (this.attackCooldown <= 0) {
+        this.attackTimer = 0.35;
+        this.attackCooldown = 0.55;
+        this._pendingAttack = true;
+      }
+    }
+    if (input.wasPressed("KeyJ") && this.attackCooldown <= 0 && !this.aiming) {
       this.attackTimer = 0.35;
       this.attackCooldown = 0.55;
       this._pendingAttack = true;

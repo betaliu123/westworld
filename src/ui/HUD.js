@@ -7,6 +7,7 @@ export class HUD {
     this.economy = economy;
     this.reputation = reputation;
     this.moneyEl = document.getElementById("hud-money");
+    this.ammoEl = document.getElementById("hud-ammo");
     this.clockEl = document.getElementById("hud-clock");
     this.dayEl = document.getElementById("hud-day");
     this.energyEl = document.getElementById("hud-energy");
@@ -47,6 +48,14 @@ export class HUD {
     }
     this.assetsEl.textContent = assetsStr;
     if (this.shopEl && !this.shopEl.classList.contains("hidden")) this.renderShop();
+  }
+
+  /** 子弹数变化时刷新显示（AmmoSystem 调） */
+  setAmmo(n) {
+    if (this.ammoEl) {
+      this.ammoEl.textContent = `🔫 ${n}`;
+      this.ammoEl.classList.toggle("ammo-low", n <= 3);
+    }
   }
 
   refreshReputation() {
@@ -164,7 +173,8 @@ export class HUD {
     this.shopMoneyEl.textContent = `$${this.economy.money}`;
     this.shopItemsEl.innerHTML = "";
     for (const item of SHOP_ITEMS) {
-      const owned = this.economy.owned.has(item.id);
+      const isAmmo = item.kind === "ammo";
+      const owned = !isAmmo && this.economy.owned.has(item.id); // 消耗品不标"已拥有"
       const affordable = this.economy.canAfford(item);
       const row = document.createElement("div");
       row.className = "shop-item" + (owned ? " owned" : "");
@@ -177,7 +187,7 @@ export class HUD {
         <div class="price">$${item.price}</div>
       `;
       const btn = document.createElement("button");
-      btn.textContent = owned ? "已拥有" : "购买";
+      btn.textContent = owned ? "已拥有" : isAmmo ? "购买（6 发）" : "购买";
       btn.disabled = owned || !affordable;
       btn.addEventListener("click", () => {
         if (this._buyHandler) this._buyHandler(item.id);

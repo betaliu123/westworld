@@ -242,14 +242,61 @@ export class AIBrain {
       this._callGangBackup = true;
       this.emotion = 0.7;
     } else {
-      // 普通勇敢NPC受惊围观
+      // 普通NPC受惊
       this.emotion = 0.5;
       this.threat = threatPos;
       this._enter(State.STARTLED);
-      this.say(pick(["发生什么了？！", "怎么回事？！", "谁在打架？！"]), 2);
+      this.say(pick(["怎么回事？", "别打我！", "要出人命了！"]), 2);
     }
   }
 
+  /**
+   * 被玩家用枪瞄准时的反应（由瞄准系统每帧检测调用，内部有冷却）。
+   * 反应分四档，按性格分流：
+   *   凶悍且不爽 → 警告（maybe反打）；普通人 → 看你/惊；胆小 → 跑；有交情 → 别这样
+   * @returns {string|null} 这次有没有真的做出反应（没有返回 null，避免重复轰炸）
+   */
+  onAimed(playerRef, opts = {}) {
+    if (this.state === State.DOWN || this._perform) return null;
+    const now = opts.now ?? performance.now() / 1000;
+    this._aimedCd = this._aimedCd || 0;
+    if (now < this._aimedCd) return null;
+    this._aimedCd = now + 4; // 4 秒内只反应一次
+    this.threat = playerRef;
+
+    const b = this.p.bravery;
+    const a = this.p.aggression;
+    const aff = opts.affection ?? 0;
+
+    // 高好感：讲道理而不是怕
+    if (aff >= 40) {
+      this.say(pick(["哎，枪放下，有话好说。", "你这是做什么？我们没那么生分。", "放下，我是你朋友啊。"]), 2.6);
+      this.emote?.("😟", 2);
+      this._enter(State.STARTLED);
+      return "plead";
+    }
+    // 凶悍且有攻击性：先警告，可能反过来瞪你
+    if (b > 0.65 && a > 0.5) {
+      this.say(pick(["你想清楚再动手，伙计。", "枪指错人了吧？", "我数三下，你把那玩意收起来。"]), 2.6);
+      this.emote?.("😠", 2);
+      this.emotion = Math.min(1, this.emotion + 0.6);
+      if (chance(0.4)) this._enter(State.ANGRY); // 有概率直接翻脸
+      else this._enter(State.STARTLED);
+      return "defy";
+    }
+    // 胆小：立刻跑
+    if (b < 0.4) {
+      this.say(pick(["别、别开枪！", "救命！他有枪！", "我什么都没做！"]), 2.4);
+      this.emote?.("😨", 2);
+      this._enter(State.FLEE);
+      return "flee";
+    }
+    // 普通人：僵住，转头看你
+    this.say(pick(["你、你要干什么？", "有话好说……", "把枪放下，先生。"]), 2.4);
+    this.emote?.("😟", 2);
+    this._enter(State.STARTLED);
+    return "startled";
+  }
   // 玩家发起对话：进入 TALK 状态，面向玩家、停下脚步
   startTalk(threatRef) {
     if (this.state === State.DOWN || this.state === State.FLEE) return false;
@@ -677,7 +724,8 @@ export class AIBrain {
     if (wasActor) {
       if (this.state !== State.ANGRY) {
         this._enter(State.STARTLED);
-        this.say(pick(SCARED_TALK), 2.2);
+        // 这里不说通用台词：剧场随后会用 tree.reactions.hit 里为这个角色写的
+        // 专属反应说话，通用 SCARED_TALK 会把它盖掉
       }
       return;
     }

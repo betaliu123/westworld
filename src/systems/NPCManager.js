@@ -570,7 +570,12 @@ export class NPCManager {
   // - 2 次及以上：依 NPC 性格概率发怒（勇猛+攻击高→概率高），胆小则逃跑
   // - 偷窃中撞到目标 NPC：大幅增加被发现风险，可能直接触发战斗
   // 返回本帧触发的反应信息数组，供上层播音效/提示。
-  checkPlayerBump(playerPos, playerFacing, dt, stealTarget = null) {
+  /**
+   * 玩家与 NPC 的贴身碰撞。
+   * playerMoving：玩家这一帧是否在移动。挂机时 NPC 会自己走过来贴住玩家，
+   * 如果不看这个标志，就会被判成"玩家撞了他"，累积几次把 NPC 弄怒 → 玩家挂机被打死。
+   */
+  checkPlayerBump(playerPos, playerFacing, dt, stealTarget = null, playerMoving = true) {
     const triggered = [];
     for (const npc of this.npcs) {
       if (!npc.alive) continue;
@@ -613,6 +618,9 @@ export class NPCManager {
       }
 
       // 撞击计数（带冷却，避免一帧多次/持续贴着狂加）
+      // 玩家没动时不计数：那是 NPC 自己走过来贴住的，不该算玩家撞人。
+      // 否则挂机时 NPC 来回走会反复触发，累积到把人弄怒 → 玩家莫名被打死。
+      if (!playerMoving) continue;
       if (npc._bumpCd === undefined) npc._bumpCd = 0;
       if (npc._bumpCd <= 0) {
         npc._bumpCd = BUMP.cooldown;

@@ -36,12 +36,21 @@ export class Economy {
   }
 
   canAfford(item) {
+    // 消耗品（子弹）可重复买，不看"已拥有"
+    if (item.kind === "ammo") return this.money >= item.price;
     return this.money >= item.price && !this.owned.has(item.id);
   }
 
   buy(itemId) {
     const item = SHOP_ITEMS.find((s) => s.id === itemId);
-    if (!item || this.owned.has(itemId) || this.money < item.price) return null;
+    if (!item || this.money < item.price) return null;
+    // 消耗品（子弹）可重复购买，不进"已拥有"
+    if (item.kind === "ammo") {
+      this.money -= item.price;
+      this._emit();
+      return item;
+    }
+    if (this.owned.has(itemId)) return null;
     this.money -= item.price;
     this.owned.add(itemId);
     this._emit();

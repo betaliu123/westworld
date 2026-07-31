@@ -1,4 +1,4 @@
-﻿// gameData.js — 集中式内容配置层（策划表）。
+// gameData.js — 集中式内容配置层（策划表）。
 // 所有"可调内容"（职业/帮派/语料/商店/房产/建筑/室内/声望数值等）都集中在此，
 // 各系统源文件从这里 import。可通过 tools/config-xlsx.js 导出成 Excel 查看/编辑，再导回。
 //
@@ -1117,6 +1117,14 @@ export const JOB_SCHEDULE = {
 // ============================================================
 export const SHOP_ITEMS = [
   {
+    id: "ammo",
+    ico: "🔫",
+    name: "子弹（6 发）",
+    desc: "左轮手枪的子弹，打光了就来这儿补。",
+    price: 6,
+    kind: "ammo",
+  },
+  {
     id: "horse_car",
     ico: "🐎",
     name: "二手篷车",
@@ -1922,8 +1930,8 @@ export const AI_PANIC = {
 export const BUMP = {
   radius: 0.95,        // 玩家与 NPC 判定为"撞上"的距离
   pushForce: 0.6,      // 每次撞把 NPC 推开的力度
-  triggerCount: 2,     // 时间窗内撞同一 NPC 达到此次数 → 可能惹毛（第1次永远不战斗）
-  windowSec: 5,        // 撞击计数的时间窗（秒）；超时清零
+  triggerCount: 4,     // 时间窗内撞同一 NPC 达到此次数 → 可能惹毛（第1次永远不战斗）
+  windowSec: 4,        // 撞击计数的时间窗（秒）；超时清零
   cooldown: 0.7,       // 两次有效撞击的最小间隔（秒），避免一帧多次计数
 };
 

@@ -81,10 +81,11 @@ export class NPC {
    * 被打。attackerRef 是攻击者位置引用。
    * byNpc 为真表示是别的 NPC 打的 —— 这时不能记仇到玩家头上，
    * 否则 NPC 互殴会让玩家莫名被亲友报复。
+   * damage 默认 1（拳击），枪击传 2（重伤但留给对方反击机会）。
    */
-  hit(attackerRef, byNpc = false) {
+  hit(attackerRef, byNpc = false, damage = 1) {
     if (!this.alive || this.brain.state === State.DOWN) return false;
-    this.hp -= 1;
+    this.hp -= Math.max(1, Math.round(damage));
     this.brain.onHit(attackerRef);
     // 记录仇恨（供亲友报复系统使用）— 只记玩家的账
     if (!byNpc) {
@@ -92,12 +93,12 @@ export class NPC {
         this._grudgeAgainstPlayer = { day: 1, severity: 0 };
       }
       this._grudgeAgainstPlayer.day = this._currentDay || 1;
-      this._grudgeAgainstPlayer.severity += 1;
+      this._grudgeAgainstPlayer.severity += damage >= 2 ? 2 : 1;
     }
-    // 击退
+    // 击退（枪击退得更远）
     const away = new THREE.Vector3(this.pos.x - attackerRef.x, 0, this.pos.z - attackerRef.z);
     if (away.lengthSq() > 0) {
-      away.normalize().multiplyScalar(1.2);
+      away.normalize().multiplyScalar(damage >= 2 ? 2.2 : 1.2);
       this.pos.x += away.x;
       this.pos.z += away.z;
     }
