@@ -141,6 +141,7 @@ export class TheaterDirector {
         onPending: (on) => this.ui?.setPending?.(on),
         playerSay: (text) => this.playerSay?.(text),
         npcAction: (npc, action, candidates) => this.npcAction?.(npc, action, candidates),
+        moodFx: (npc, mood, emoji, shake) => this.moodFx?.(npc, mood, emoji, shake),
         onOutcome: (oc, meta) => this._applyOutcome(oc, meta),
         onEffects: (fx) => this._applyEffects(fx),
         onEnd: () => {

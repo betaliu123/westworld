@@ -31,7 +31,17 @@ export class NPC {
     this.time = randRange(0, 10);
     this.walkAmount = 0;
     this.alive = true;
-    this.hp = 2 + Math.round(this.personality.bravery * 2); // 1-2 击倒
+    // 耐打程度：软弱的镇民 3-4 下倒，硬汉/枪手/警长要 8-10 下。
+    // 由胆量+攻击性+帮派+职业共同决定，最后夹到 [3,10]。
+    const _p = this.personality;
+    const JOB_TOUGH = {
+      警长: 3, 神枪手: 2, 赏金猎人: 2, 铁匠: 2, 牛仔: 1, 马夫: 1,
+      医生: 0, 牧师: 0, 歌女: 0, 记者: 0, 商人: 0, 赌徒: 0, 淘金客: 1, 旅人: 0, 酒保: 1,
+    };
+    this.maxHp = Math.max(3, Math.min(10,
+      3 + Math.round(_p.bravery * 3 + _p.aggression * 2) + (_p.gang ? 1 : 0) + (JOB_TOUGH[_p.job] || 0)
+    ));
+    this.hp = this.maxHp;
 
     // 被撞飞的弹道速度（非零时进入 ragdoll 抛飞）
     this.launchVel = new THREE.Vector3(0, 0, 0);
@@ -300,11 +310,27 @@ export class NPC {
     const targetWalk = moving ? intent.speedMul : 0;
     this.walkAmount += (targetWalk - this.walkAmount) * Math.min(1, dt * 10);
 
-    this.mesh.position.set(this.pos.x, 0, this.pos.z);
+    // 震惊/受惊时抖一下身子（表现层，不影响逻辑坐标）
+    let sx = 0;
+    let sz = 0;
+    if (this.shakeTimer > 0) {
+      this.shakeTimer -= dt;
+      const amp = this.shakeAmp * Math.max(0, this.shakeTimer / this.shakeDur);
+      sx = (Math.random() - 0.5) * amp;
+      sz = (Math.random() - 0.5) * amp;
+    }
+    this.mesh.position.set(this.pos.x + sx, 0, this.pos.z + sz);
     this.mesh.rotation.y = this.heading;
     animateCharacter(this.mesh, this.walkAmount, this.time, { baseY: 0, armRaise });
 
     return intent;
+  }
+
+  /** 抖一下（震惊、被吓到、听到枪响） */
+  shakeFor(seconds = 0.5, amp = 0.16) {
+    this.shakeTimer = seconds;
+    this.shakeDur = seconds;
+    this.shakeAmp = amp;
   }
 
   dispose(scene) {

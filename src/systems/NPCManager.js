@@ -279,6 +279,7 @@ export class NPCManager {
     let voiceCue = null;
     let npcPickedLoot = null;
     let crimeReports = 0;
+    const playerAttackers = []; // 本帧打了玩家的 NPC，交给阵营系统判敌
     let gangAlerts = [];
     let friendsAlerts = [];
 
@@ -319,6 +320,7 @@ export class NPCManager {
         } else {
           attacksOnPlayer++;
           totalDamage += dmg;
+          playerAttackers.push(npc); // 供阵营系统标记敌方 + 触发援护
           // 记录交手历史（NPC 攻击了玩家）
           if (!npc._encounters) npc._encounters = [];
           npc._encounters.push({ day: currentDay, type: "attack_player", dmg });
@@ -406,7 +408,7 @@ export class NPCManager {
       });
     }
 
-    return { attacks: attacksOnPlayer, totalDmg: totalDamage, voice: voiceCue, npcPickedLoot, reports: crimeReports };
+    return { attacks: attacksOnPlayer, totalDmg: totalDamage, voice: voiceCue, npcPickedLoot, reports: crimeReports, attackers: playerAttackers };
   }
 
   // 目击者检测：返回犯罪现场周围能目击到犯罪的NPC列表

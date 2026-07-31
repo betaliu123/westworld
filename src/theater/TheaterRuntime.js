@@ -275,6 +275,8 @@ export class TheaterRuntime {
       const dur = beat.mood === "angry" || beat.mood === "scared" ? 3.2 : 2.8;
       npc.brain.say(beat.text.slice(0, THEATER_CONFIG.maxBubbleChars), dur);
       if (beat.mood === "angry" || beat.mood === "scared") npc.brain.emotion = 0.8;
+      // 情绪表现：emoji + 抖一下身子。beat 可以显式写 emoji/shake 覆盖默认映射
+      this.hooks.moodFx?.(npc, beat.mood, beat.emoji, beat.shake);
       this.hooks.log?.(`${m.stageName}：${beat.text}`);
     }
   }

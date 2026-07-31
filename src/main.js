@@ -60,6 +60,11 @@ import { TheaterUI } from "./theater/TheaterUI.js";
 // NPC 自由对话 + LLM 行为决策
 import { NpcChatService, ChatBudget } from "./npc/NpcChatService.js";
 import { NpcActionExecutor } from "./npc/NpcActionExecutor.js";
+// 战斗阵营（敌/友）与血条
+import { CombatFactions } from "./systems/CombatFactions.js";
+import { HealthBars } from "./ui/HealthBars.js";
+import { EmojiPops } from "./ui/EmojiPops.js";
+import { playMoodFx } from "./npc/MoodFx.js";
 
 function boot() {
   const canvas = document.getElementById("scene");
@@ -134,9 +139,20 @@ function boot() {
 
   let theater = null; // AI 剧场总控，稍后装配（Combat 回调里会用到）
 
+  // 战斗阵营：敌方红血条、友方绿血条，友方会帮玩家打敌方
+  const factions = new CombatFactions({
+    npcManager, hud, audio,
+    getAffection: (npc) => _affectionOf(npc),
+  });
+  const healthBars = new HealthBars(camera, factions);
+  const emojiPops = new EmojiPops(camera);
+
   const combat = new Combat(npcManager, loot, hud, { audio, reputation, newspaper,
     onNpcHit: (target, knocked) => {
       theater?.notifyNpcHit(target, knocked);
+      // 玩家打了人 → 立刻标敌（血条马上出来），倒地则移出战斗
+      if (knocked) factions.clear(target);
+      else factions.markEnemy(target);
     },
     onNpcKnocked: (target) => {
       // 检查任务完成：击败NPC
@@ -191,6 +207,11 @@ function boot() {
   });
   theater.ui = theaterUI;
   theater.npcAction = (npc, action, candidates) => npcActions.execute(npc, action, { candidates });
+  theater.moodFx = (npc, mood, emoji, shake) => {
+    if (emoji) npc.brain.emote(emoji, 1.9);
+    if (shake) npc.shakeFor?.(shake, 0.16);
+    if (!emoji && !shake) playMoodFx(npc, mood);
+  };
   interaction.theaterDirector = theater;
 
   // DailySimulation（完整装配）
@@ -1070,6 +1091,7 @@ function boot() {
     // 先说话，再做事——否则会出现"人已经跑了台词才冒出来"
     showFloatDialogue(npc, res.say, res.mood);
     npc.brain.say(res.say, 3);
+    playMoodFx(npc, res.mood); // emoji + 抖一下，情绪比文字更快传达
     audio.npcVoice(res.mood === "hostile" ? "angry" : res.mood === "scared" ? "scared" : "greet");
 
     const candidates = npcManager.all.filter(
@@ -2528,6 +2550,11 @@ function boot() {
     // NPC + 战斗（传入 loot 使贪婪 NPC 会去捡东西；传入 hour 驱动日程）
     const npcResult = npcManager.update(dt, player.pos, loot, hour, worldClock.day);
     combat.update(dt, player);
+    // 阵营与血条：谁在打我 → 敌方；关系好的熟人看到会赶来当友方
+    if (npcResult.attackers?.length) {
+      factions.notifyPlayerAttacked(npcResult.attackers, player.pos);
+    }
+    factions.update(dt, player.pos);
 
     if (npcResult.attacks > 0) {
       // 计算高攻击性NPC的实际伤害
@@ -2812,6 +2839,8 @@ function boot() {
 
     // NPC 名字标签（有立绘的重要NPC）
     updateNPCNameTags();
+    healthBars.update(npcManager.all, player.pos);
+    emojiPops.update(npcManager.all, player.pos);
   });
 
 	  // ---- 任务侧栏 ----

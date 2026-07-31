@@ -1240,3 +1240,40 @@ body.theater-choices-on #hint { bottom: 176px; }
   font-family: inherit; font-size: 11px; font-weight: 700; text-align: center;
 }
 .theater-choice .tc-key { margin-right: 3px; }
+/* ========== 战斗中 NPC 血条（简约：细条 + 溢出用圆点） ========== */
+#healthbar-layer {
+  position: fixed; inset: 0; pointer-events: none; z-index: 90;
+}
+.npc-hpbar {
+  position: absolute; transform: translate(-50%, -50%);
+  width: 34px; height: 3px; border-radius: 2px;
+  background: rgba(0,0,0,.55);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.35);
+  overflow: hidden;
+}
+.npc-hpbar > i {
+  display: block; height: 100%; width: 100%;
+  background: #e2564a;
+  transition: width .18s linear;
+}
+.npc-hpbar.ally > i { background: #78dc78; }
+.npc-hpdot {
+  position: absolute; transform: translate(-50%, -50%);
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #e2564a;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.5);
+}
+.npc-hpdot.ally { background: #78dc78; }
+/* NPC 头顶 emoji 表情 */
+#emoji-layer { position: fixed; inset: 0; pointer-events: none; z-index: 92; }
+.npc-emoji {
+  position: absolute; transform: translate(-50%, -50%);
+  font-size: 22px; line-height: 1;
+  text-shadow: 0 2px 4px rgba(0,0,0,.6);
+  animation: emojiPop .32s cubic-bezier(.2,1.6,.4,1);
+}
+@keyframes emojiPop {
+  0%   { opacity: 0; transform: translate(-50%, -20%) scale(.4); }
+  60%  { opacity: 1; transform: translate(-50%, -60%) scale(1.15); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}

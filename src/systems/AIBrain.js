@@ -122,6 +122,12 @@ export class AIBrain {
     this.bubbleTimer = duration;
   }
 
+  /** 冒一个 emoji 表情（震惊/害怕/得意等），比台词更快传达情绪 */
+  emote(symbol, duration = 1.8) {
+    this.emoji = symbol;
+    this.emojiTimer = duration;
+  }
+
   /**
    * 对话专用 pick：从数组中随机选一条本轮对话中还没说过的。
    * 如果所有台词都已说过，返回 null（表示没话说了，该走了）。
@@ -311,6 +317,18 @@ export class AIBrain {
   stopFollow() {
     this._follow = null;
     this._followUntil = 0;
+  }
+
+  /** 平息下来：退出战斗/愤怒，清掉目标（援护结束、被劝住等场景用） */
+  calmDown() {
+    if (this.state === State.DOWN) return false;
+    this.threat = null;
+    this.attackTargetNpc = null;
+    this.emotion = Math.min(this.emotion, 0.2);
+    if (this.state === State.ANGRY || this.state === State.FLEE || this.state === State.STARTLED) {
+      this._enter(this._placeType ? State.AT_PLACE : State.WANDER);
+    }
+    return true;
   }
 
   get following() {
@@ -758,6 +776,8 @@ export class AIBrain {
     this.stateTimer -= dt;
     if (this.bubbleTimer > 0) this.bubbleTimer -= dt;
     else this.bubble = null;
+    if (this.emojiTimer > 0) this.emojiTimer -= dt;
+    else this.emoji = null;
     if (this.attackCd > 0) this.attackCd -= dt;
     // 情绪自然衰减（速率来自配置，越大平复越快）
     this.emotion = Math.max(0, this.emotion - dt * AI_PANIC.emotionDecay);
