@@ -1,6 +1,7 @@
 // EmojiPops.js — NPC 头顶的 emoji 表情
 // 比台词更快传达情绪（震惊/害怕/得意），放在气泡上方一点，短暂出现后消失。
 import * as THREE from "three";
+import { noteEmojiGone } from "../npc/EmojiRateLimit.js";
 
 const SHOW_DIST = 40;
 
@@ -38,7 +39,7 @@ export class EmojiPops {
         const dz = npc.pos.z - playerPos.z;
         if (dx * dx + dz * dz > SHOW_DIST * SHOW_DIST) continue;
       }
-      this._v.set(npc.pos.x, 4.15, npc.pos.z);
+      this._v.set(npc.pos.x, 3.0, npc.pos.z); // 冒泡 2.7 的上方一点，仍贴着头顶
       this._v.project(this.camera);
       if (this._v.z > 1) continue;
 
@@ -51,9 +52,18 @@ export class EmojiPops {
         void item.el.offsetWidth;
         item.el.style.animation = "";
       }
+      item._npc = npc;
       item.el.style.display = "block";
       item.el.style.left = `${(this._v.x * 0.5 + 0.5) * w}px`;
       item.el.style.top = `${(-this._v.y * 0.5 + 0.5) * h}px`;
+    }
+
+    // 这一帧没再出现的 emoji → 限流器减额，腾位置给别人
+    for (const item of this.pool) {
+      if (!item.inUse && item._npc) {
+        noteEmojiGone();
+        item._npc = null;
+      }
     }
   }
 }

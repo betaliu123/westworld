@@ -661,7 +661,9 @@ export class AIBrain {
 
   // 被玩家直接击中
   onHit(threatRef) {
-    // 剧场演员被打 → 直接跳出戏（由剧场检测演员脱戏后做群体反应），之后按普通 NPC 反应
+    // 剧场演员被打：只跳出戏（由剧场检测脱戏后按剧本做群体反应），
+    // 不走下面那套"报警/叫帮派/自己反击"——否则一个被打，全场连锁跑光
+    const wasActor = !!this._perform;
     if (this._perform) {
       this._perform = null;
       this._brokeCharacter = true;
@@ -670,6 +672,15 @@ export class AIBrain {
     this.threat = threatRef;
     this._disturbed = true;
     if (this.state === State.DOWN) return;
+
+    // 演员被打只停留在原地受惊，由剧场的剧本反应接管，别各自跑
+    if (wasActor) {
+      if (this.state !== State.ANGRY) {
+        this._enter(State.STARTLED);
+        this.say(pick(SCARED_TALK), 2.2);
+      }
+      return;
+    }
 
     // 多样化报复：不是所有人都去报警
     // 帮派成员 → 叫同伙来教训玩家（不报警）

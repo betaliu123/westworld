@@ -45,7 +45,7 @@ export class Dialogue {
       const dz = npc.pos.z - camPos.z;
       if (dx * dx + dz * dz > 45 * 45) continue;
 
-      this._v.set(npc.pos.x, 3.5, npc.pos.z);
+      this._v.set(npc.pos.x, 2.7, npc.pos.z); // 帽顶 ~2.07，冒泡贴近头顶而不是飘太高
       this._v.project(this.camera);
       if (this._v.z > 1) continue; // 在相机背后
 

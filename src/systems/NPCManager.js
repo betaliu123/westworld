@@ -255,12 +255,16 @@ export class NPCManager {
         const maxAffected = Math.min(affected.length, 5);
         for (let i = 0; i < maxAffected; i++) {
           const { npc, dist } = affected[i];
+          // 剧场演员不被恐慌广播冲散（事件进行中舞台不能被一声枪响打散）
+          if (npc.brain?._perform) continue;
           // 随机延迟 0~1 秒，避免所有 NPC 同时逃跑
           const delay = Math.random() * 1.0;
           if (delay < 0.02) {
             npc.panic(playerPos, dist);
           } else {
             setTimeout(() => {
+              // 延迟触发时再查一次：可能这 0~1 秒里他被征召成了演员
+              if (npc.brain?._perform) return;
               if (npc.alive && npc.brain && npc.brain.state !== "DOWN") {
                 npc.panic(playerPos, dist);
               }

@@ -41,16 +41,21 @@ export class HealthBars {
     }
     if (!this.factions?.inCombat && !this.factions?.allies.size) return;
 
-    // 收集需要显示的目标，按距离排序：近的给血条，远的给圆点
+    // 收集需要显示的目标：只要掉了血、且在战斗或逃跑中，就给反馈（不只限阵营）
+    // 即：你打了谁，谁就该顶着血条，哪怕他在逃跑
     const list = [];
     for (const npc of npcs) {
       if (!npc.alive || npc.brain?.state === "DOWN") continue;
-      const side = this.factions.sideOf(npc);
-      if (!side) continue;
+      const b = npc.brain;
+      const damaged = (npc.hp ?? npc.maxHp) < (npc.maxHp || 1);
+      const inFight = b?.state === "ANGRY" || b?.state === "FLEE";
+      if (!damaged || !inFight) continue;
+      const side = this.factions.sideOf(npc); // enemy/ally 决定红绿，未标阵营按 enemy
       const d = Math.hypot(npc.pos.x - playerPos.x, npc.pos.z - playerPos.z);
       if (d > SHOW_DIST) continue;
-      list.push({ npc, side, d });
+      list.push({ npc, side: side || "enemy", d });
     }
+    if (!list.length) return;
     list.sort((a, b) => a.d - b.d);
 
     const w = window.innerWidth;
@@ -63,7 +68,7 @@ export class HealthBars {
       const useBar = bars < MAX_BARS;
       if (!useBar && dots >= MAX_DOTS) break;
 
-      this._v.set(npc.pos.x, useBar ? 3.05 : 3.2, npc.pos.z);
+      this._v.set(npc.pos.x, useBar ? 2.4 : 2.5, npc.pos.z);
       this._v.project(this.camera);
       if (this._v.z > 1) continue;
       const x = (this._v.x * 0.5 + 0.5) * w;

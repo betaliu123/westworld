@@ -3005,6 +3005,38 @@ function boot() {
       b.el.title = trackedTask.title;
       break; // 一个NPC只标记一次
     }
+
+    // AI 剧场：事件进行中，台上主角头顶显示名字，散场即消失
+    if (theater?.active && theater.scene) {
+      for (const m of theater.scene.cast) {
+        const npc = m.npc;
+        if (!npc.alive || npc.brain?.state === "DOWN") continue;
+        const dx = npc.pos.x - camPos.x;
+        const dz = npc.pos.z - camPos.z;
+        if (dx * dx + dz * dz > 45 * 45) continue;
+        _qmV.set(npc.pos.x, 3.0, npc.pos.z);
+        _qmV.project(camera);
+        if (_qmV.z > 1) continue;
+        const x = (_qmV.x * 0.5 + 0.5) * w;
+        const y = (-_qmV.y * 0.5 + 0.5) * h;
+        let b2 = questMarkerPool.find(p => !p.inUse);
+        if (!b2) {
+          const el = document.createElement("div");
+          el.className = "quest-head-marker";
+          layer.appendChild(el);
+          b2 = { el, inUse: true };
+          questMarkerPool.push(b2);
+        } else {
+          b2.inUse = true;
+        }
+        b2.el.textContent = m.stageName || npc.phone?.owner || "";
+        b2.el.className = "quest-head-marker theater-name";
+        b2.el.style.display = "block";
+        b2.el.style.left = `${x}px`;
+        b2.el.style.top = `${y}px`;
+        b2.el.title = "";
+      }
+    }
   }
 
   // NPC 头顶名字标签：有立绘的重要 NPC 显示名字
@@ -3036,7 +3068,7 @@ function boot() {
       const dz = npc.pos.z - camera.position.z;
       if (dx * dx + dz * dz > 35 * 35) continue;
 
-      _ntV.set(npc.pos.x, 2.9, npc.pos.z);
+      _ntV.set(npc.pos.x, 2.52, npc.pos.z);
       _ntV.project(camera);
       if (_ntV.z > 1) continue;
 

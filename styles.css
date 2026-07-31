@@ -1277,3 +1277,14 @@ body.theater-choices-on #hint { bottom: 176px; }
   60%  { opacity: 1; transform: translate(-50%, -60%) scale(1.15); }
   100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 }
+/* AI 剧场：事件中台上主角头顶的名字（散场即消失） */
+.quest-head-marker.theater-name {
+  width: auto; height: auto; padding: 1px 8px;
+  font-size: 11px; font-weight: 700; letter-spacing: .5px;
+  color: var(--brass-hi);
+  background: rgba(24,15,6,.72);
+  border: 1px solid rgba(200,151,58,.55);
+  border-radius: 999px;
+  filter: none; animation: none;
+  white-space: nowrap;
+}

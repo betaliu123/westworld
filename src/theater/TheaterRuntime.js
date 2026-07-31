@@ -447,13 +447,17 @@ export class TheaterRuntime {
     this.hooks.moodFx?.(npc, mood);
   }
 
-  /** 全场群众反应（震惊时集体抖一下 + 冒表情，比单人反应更有冲击） */
+  /** 全场群众反应（震惊时集体反应；emoji 只挑前两个冒，避免一堆表情同时糊屏） */
   _reactCrowd(mood, exceptRole) {
+    let emoGiven = 0;
     this.cast.forEach((m, i) => {
       if (m.roleId === exceptRole || !m.npc.alive) return;
+      const giveEmoji = emoGiven < 2; // 限流器还会再卡一道
+      emoGiven++;
       setTimeout(() => {
         if (this.phase === Phase.DONE) return;
-        this.hooks.moodFx?.(m.npc, mood);
+        if (giveEmoji) this.hooks.moodFx?.(m.npc, mood);
+        else m.npc.shakeFor?.(0.5, 0.16); // 没轮到表情的只抖一下
       }, i * 140);
     });
   }
