@@ -330,11 +330,16 @@ export class AIBrain {
   // 与 witnessCrime/onHit 那类"按性格掷骰分流"的方法不同，调了就一定进对应状态。
 
   /** 确定性逃跑（吓到了/心虚跑了）。threatRef 是要躲开的东西 */
-  fleeFrom(threatRef) {
+  /**
+   * 确定性逃跑（吓到了/心虚跑了）。threatRef 是要躲开的东西。
+   * report=true 表示"边跑边去报案"（看见尸体的胆小者会这样）；
+   * 默认 false 是单纯跑开，会清掉之前的报案意图。
+   */
+  fleeFrom(threatRef, { report = false } = {}) {
     if (this.state === State.DOWN) return false;
     this.threat = threatRef || this.threat;
     this.emotion = Math.max(this.emotion, 0.7);
-    this._reportCrime = false; // 单纯跑开，不是去报案
+    this._reportCrime = !!report;
     this._enter(State.FLEE);
     return true;
   }

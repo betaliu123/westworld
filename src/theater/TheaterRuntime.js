@@ -499,11 +499,48 @@ export class TheaterRuntime {
   }
 
   /** 演员脱戏/倒地检测 */
+  /** 演员脱戏/倒地检测 */
   _checkActorsLost() {
     if (this.resolving) return;
-    const lost = this.cast.filter((m) => !m.npc.alive || m.npc.brain?._brokeCharacter || !m.npc.brain?.performing);
-    // 核心角色掉了两个以上就演不下去
-    if (lost.length >= 2) this._forceResolve("演员散了");
+    // 倒地的人也算"演不下去"：以前只看 alive 和 performing，被击倒的人 alive 仍是 true、
+    // _perform 也还挂着，于是"人倒在地上，旁边的人照着剧本继续念台词"，很滑稽。
+    const isDown = (m) => !m.npc.alive || m.npc.brain?.state === "DOWN";
+    const downCount = this.cast.filter(isDown).length;
+    const lost = this.cast.filter(
+      (m) => isDown(m) || m.npc.brain?._brokeCharacter || !m.npc.brain?.performing
+    );
+
+    // 只要有主要角色（非群众）倒地，这场戏就没法按剧本走了 —— 立刻收场
+    const mainDown = this.cast.some((m) => m.roleId !== "crowd" && isDown(m));
+    if (mainDown) {
+      this._reactToCorpseOnStage();
+      this._forceResolve("台上出了人命");
+      return;
+    }
+    if (downCount >= 1 || lost.length >= 2) {
+      this._forceResolve("演员散了");
+    }
+  }
+
+  /** 台上有人倒下：还站着的人围过来惊呼，而不是继续念原来的台词 */
+  _reactToCorpseOnStage() {
+    const victim = this.cast.find((m) => !m.npc.alive || m.npc.brain?.state === "DOWN");
+    const standing = this.cast.filter(
+      (m) => m !== victim && m.npc.alive && m.npc.brain?.state !== "DOWN"
+    );
+    standing.slice(0, 3).forEach((m, i) => {
+      setTimeout(() => {
+        if (this.phase === Phase.DONE) return;
+        // 优先用剧本为"这个人被打"写的见证台词，取不到用通用惊呼
+        const line =
+          (victim && this._witnessOnLine(victim.roleId, m.roleId)) ||
+          this._reactionLine("witness", m.roleId) ||
+          ["天啊，他倒下了！", "有人死了！叫警长！", "别过来，别碰他！"][i % 3];
+        m.npc.brain.say(line, 3.2);
+        this.hooks.moodFx?.(m.npc, i === 0 ? "shocked" : "scared");
+        this.hooks.log?.(`${m.stageName}：${line}`);
+      }, 300 + i * 900);
+    });
   }
 
   _forceResolve(reason) {

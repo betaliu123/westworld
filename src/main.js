@@ -62,6 +62,7 @@ import { TheaterAftermath } from "./theater/TheaterAftermath.js";
 import { NpcChatService, ChatBudget } from "./npc/NpcChatService.js";
 import { NpcActionExecutor } from "./npc/NpcActionExecutor.js";
 import { AmmoSystem } from "./systems/AmmoSystem.js";
+import { CorpseReactions } from "./systems/CorpseReactions.js";
 // 战斗阵营（敌/友）与血条
 import { CombatFactions } from "./systems/CombatFactions.js";
 import { HealthBars } from "./ui/HealthBars.js";
@@ -147,6 +148,11 @@ function boot() {
     getAffection: (npc) => _affectionOf(npc),
   });
   const healthBars = new HealthBars(camera, factions);
+  // 路人对街上倒地者的反应：吓一跳 / 绕路 / 跑去报警
+  const corpseReactions = new CorpseReactions({
+    npcManager, hud, audio,
+    moodFx: (npc, mood) => playMoodFx(npc, mood),
+  });
   const emojiPops = new EmojiPops(camera);
 
   const combat = new Combat(npcManager, loot, hud, { audio, reputation, newspaper,
@@ -2615,6 +2621,7 @@ function boot() {
       factions.notifyPlayerAttacked(npcResult.attackers, player.pos);
     }
     factions.update(dt, player.pos);
+    corpseReactions.update(dt);
 
     // 瞄准检测：你举着枪对着谁，谁就该有反应（看/惊/跑/警告）
     document.body.classList.toggle("aiming", !!player.aiming);
