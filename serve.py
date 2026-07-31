@@ -141,7 +141,11 @@ class NoCacheHandler(SimpleHTTPRequestHandler):
             },
         )
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:
+            # 超时按请求的 max_tokens 放大：游戏内对话 400 tokens 几秒就回，
+            # 批量生成剧本树要 5000+ tokens，可能跑一两分钟
+            _mt = payload.get("max_tokens") or 512
+            _timeout = 30 if _mt <= 800 else min(240, 30 + _mt // 20)
+            with urllib.request.urlopen(req, timeout=_timeout) as r:
                 data, code = r.read(), r.status
         except urllib.error.HTTPError as e:
             data, code = e.read(), e.code

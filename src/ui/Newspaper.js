@@ -54,6 +54,27 @@ export class Newspaper {
     return article;
   }
 
+  /**
+   * 发布一条自定义文章（AI 剧场的事件后续用）。
+   * 与 publish() 的区别：标题正文直接给定，不走 HEADLINE 模板库。
+   */
+  publishCustom(title, body, opts = {}) {
+    const article = {
+      title: String(title || "无题"),
+      body: String(body || ""),
+      time: opts.time || "",
+      category: opts.category || "gossip",
+    };
+    this.articles.unshift(article);
+    if (this.articles.length > 12) this.articles.pop();
+    if (!opts.silent) {
+      this.unread = true;
+      this._showBadge();
+      if (this.audio) this.audio.newspaper();
+    }
+    if (this.isOpen) this.render();
+    return article;
+  }
   _showBadge() {
     if (!this.badge) return;
     this.badge.classList.remove("hidden");

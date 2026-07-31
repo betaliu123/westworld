@@ -937,7 +937,24 @@ export const THIEF_TREE = {
 // ============================================================
 // 全部剧本 + 调度配置
 // ============================================================
-export const THEATER_TREES = [DUEL_TREE, TRIANGLE_TREE, THIEF_TREE];
+// 追加事件（由 deepseek-v4-pro 生成后经结构校验入库，见 theaterEvents.js）
+// 第一天固定演三角恋（冲击感最强），之后从全部剧本里随机。
+import { GENERATED_TREES } from "./theaterEvents.js";
+import { THEATER_EXTRAS } from "./theaterExtras.js";
+
+export const THEATER_TREES = [DUEL_TREE, TRIANGLE_TREE, THIEF_TREE, ...GENERATED_TREES];
+
+// 把补充内容合并进手写的那 3 棵树：reactions 挂到树上，aftermath 挂到对应终局的 outcome 上。
+// 生成的树本身自带这两样，所以只有在 THEATER_EXTRAS 里出现的才需要合并。
+for (const [treeId, extra] of Object.entries(THEATER_EXTRAS)) {
+  const tree = THEATER_TREES.find((t) => t.id === treeId);
+  if (!tree) continue;
+  if (extra.reactions && !tree.reactions) tree.reactions = extra.reactions;
+  for (const [nodeId, af] of Object.entries(extra.aftermath || {})) {
+    const node = tree.nodes.find((n) => n.id === nodeId);
+    if (node?.outcome && !node.outcome.aftermath) node.outcome.aftermath = af;
+  }
+}
 
 export const THEATER_CONFIG = {
   // 时间尺度备忘：游戏一天 = 400 真实秒 ⇒ 1 游戏小时 ≈ 16.7 真实秒。

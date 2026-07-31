@@ -7,6 +7,7 @@ import { StageMap } from "./StageMap.js";
 import { Casting } from "./Casting.js";
 import { TheaterGlue, GlueBudget } from "./TheaterGlue.js";
 import { TheaterRuntime } from "./TheaterRuntime.js";
+import { TheaterAftermath } from "./TheaterAftermath.js";
 
 export class TheaterDirector {
   constructor(deps = {}) {
@@ -25,6 +26,7 @@ export class TheaterDirector {
     this.now = deps.now || (() => performance.now()); // 可注入时钟，便于无头仿真
 
     this.stage = new StageMap(this.town);
+    this.aftermath = deps.aftermath || null; // 事件后续影响（报纸/来信/遗留物）
     this.casting = new Casting({ npcManager: this.npcManager, stage: this.stage });
     this.glue = new TheaterGlue({ budget: new GlueBudget({ perMinute: 6, cooldownMs: 1200 }) });
 
@@ -174,6 +176,12 @@ export class TheaterDirector {
     return !!this.scene.handleChoice(choiceId);
   }
 
+  /** 玩家撞到了演员 */
+  notifyNpcBumped(npc) { if (this.active) this.scene.notifyActorBumped(npc); }
+
+  /** 玩家偷了演员 */
+  notifyNpcStolen(npc) { if (this.active) this.scene.notifyActorStolen(npc); }
+
   /** 玩家打了某个 NPC（main.js 的 onNpcKnocked / 攻击处转进来） */
   notifyNpcHit(npc, knocked = false) {
     if (!this.active) return;
@@ -236,6 +244,13 @@ export class TheaterDirector {
     this.ui?.showOutcome?.(oc);
     const lines = (oc.lines || []).join("；");
     this._addLog(`【结局】${oc.title}${lines ? " —— " + lines : ""}`);
+    // 让这次选择在散场后仍然留下痕迹：报纸 / 来信 / 可摸到的遗留物
+    if (this.aftermath) {
+      const done = this.aftermath.apply(oc, { tree: meta.tree || this.currentTree, cast: this.scene?.cast });
+      if (done.news || done.message || done.item) {
+        this._addLog(`（留下后续：${[done.news && "报纸", done.message && "来信", done.item && "遗留物"].filter(Boolean).join("、")}）`);
+      }
+    }
     if (oc.rumor && this.newspaper?.publish) {
       try {
         this.newspaper.publish(oc.rumor, { job: meta.tree?.title || "街头事件" });

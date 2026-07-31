@@ -596,6 +596,18 @@ export class NPCManager {
       npc.pos.x = resolved.x;
       npc.pos.z = resolved.z;
 
+      // 剧场演员：只上报"被撞了"，由剧场按剧本给反应，不走挤怒/报案那套
+      if (npc.brain._perform) {
+        if (npc._bumpCd === undefined) npc._bumpCd = 0;
+        if (npc._bumpCd <= 0) {
+          npc._bumpCd = BUMP.cooldown;
+          triggered.push({ npc, angry: false, actorBump: true });
+        } else {
+          npc._bumpCd -= dt;
+        }
+        continue;
+      }
+
       // 撞击计数（带冷却，避免一帧多次/持续贴着狂加）
       if (npc._bumpCd === undefined) npc._bumpCd = 0;
       if (npc._bumpCd <= 0) {

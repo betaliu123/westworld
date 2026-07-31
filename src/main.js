@@ -57,6 +57,7 @@ import { NARRATIVE_ITEMS, NPC_POCKET_NARRATIVES, HOME_STASH_NARRATIVES } from ".
 // AI 剧场（街头事件）
 import { TheaterDirector } from "./theater/TheaterDirector.js";
 import { TheaterUI } from "./theater/TheaterUI.js";
+import { TheaterAftermath } from "./theater/TheaterAftermath.js";
 // NPC 自由对话 + LLM 行为决策
 import { NpcChatService, ChatBudget } from "./npc/NpcChatService.js";
 import { NpcActionExecutor } from "./npc/NpcActionExecutor.js";
@@ -185,6 +186,9 @@ function boot() {
   theater = new TheaterDirector({
     npcManager, town, hud, sky, worldClock, reputation, economy, newspaper, eventLog,
     playerSay: (text) => showPlayerBubble(text),
+    aftermath: new TheaterAftermath({
+      newspaper, phone, hud, npcRegistry, getDay: () => worldClock.day,
+    }),
   });
 
   // ===== 单个 NPC 的自由对话（准心对着谁就是在跟谁说话）=====
@@ -2357,6 +2361,7 @@ function boot() {
         // 偷窃贴身NPC — 打开偷窃面板
         if (!stealState) {
           hideFloatDialogue();
+          theater.notifyNpcStolen(result.npc); // 偷演员会被记一笔，影响事件结局
           startSteal(result.npc);
         }
         break;
@@ -2532,7 +2537,10 @@ function boot() {
     if (!player.inVehicle) {
       const bumps = npcManager.checkPlayerBump(player.pos, player.facing, dt, stealState?.npc || null);
       for (const b of bumps) {
-        if (b.stealDetect) {
+        if (b.actorBump) {
+          // 撞到正在演戏的人：走剧本写的"被撞反应"
+          theater.notifyNpcBumped(b.npc);
+        } else if (b.stealDetect) {
           audio.npcVoice("angry");
           hud.toast("😠 偷窃中撞到目标，被察觉了！", { key: "bumpsteal" });
           // 结束偷窃

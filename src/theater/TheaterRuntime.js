@@ -385,9 +385,13 @@ export class TheaterRuntime {
     const role = this.roleOf(npc);
     if (!role) return;
     this.deeds.add("violent");
-    this.hooks.log?.(`你对${this.memberOf(role).stageName}动了手`);
+    const me = this.memberOf(role);
+    this.hooks.log?.(`你对${me.stageName}动了手`);
+    // 按剧本给这个角色配的"被打反应"说话（每个事件每个角色的反应都不一样）
+    this._playReaction("hit", role, npc);
     if (knocked) {
-      this.hooks.log?.(`${this.memberOf(role).stageName}倒下了，全场哗然`);
+      this.hooks.log?.(`${me.stageName}倒下了，全场哗然`);
+      this._reactCrowd("shocked", role);
       this._forceResolve("出了人命");
       return;
     }
@@ -396,10 +400,61 @@ export class TheaterRuntime {
     others.slice(0, 2).forEach((m, i) => {
       setTimeout(() => {
         if (this.phase === Phase.DONE) return;
-        const line = i === 0 ? "住手！你想上绞架吗？" : "疯子！快躲开！";
+        const line = this._reactionLine("witness", m.roleId) || (i === 0 ? "住手！你想上绞架吗？" : "疯子！快躲开！");
         m.npc.brain.say(line, 3);
+        this.hooks.moodFx?.(m.npc, i === 0 ? "angry" : "scared");
         this.hooks.log?.(`${m.stageName}：${line}`);
       }, 500 + i * 1200);
+    });
+  }
+
+  /** 玩家撞到了演员 */
+  notifyActorBumped(npc) {
+    const role = this.roleOf(npc);
+    if (!role) return;
+    const now = this.now();
+    if (now - (this._lastBumpAt || 0) < 2500) return; // 别一直撞一直说
+    this._lastBumpAt = now;
+    this._playReaction("bump", role, npc);
+  }
+
+  /** 玩家偷了演员 */
+  notifyActorStolen(npc) {
+    const role = this.roleOf(npc);
+    if (!role) return;
+    this.deeds.add("robbed");
+    this._playReaction("steal", role, npc);
+  }
+
+  /** 取剧本里为"某角色 + 某种玩家行为"写的反应台词 */
+  _reactionLine(kind, roleId) {
+    const table = this.tree.reactions?.[kind];
+    if (!table) return null;
+    const pool = table[roleId] || table.any;
+    if (!pool || !pool.length) return null;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  _playReaction(kind, roleId, npc) {
+    const m = this.memberOf(roleId);
+    if (!m || !npc.alive) return;
+    const line = this._reactionLine(kind, roleId);
+    const mood = kind === "hit" ? "pain" : kind === "steal" ? "angry" : "shocked";
+    if (line) {
+      npc.brain.say(line.slice(0, THEATER_CONFIG.maxBubbleChars), 3);
+      this.hooks.log?.(`${m.stageName}：${line}`);
+    }
+    this.hooks.moodFx?.(npc, mood);
+  }
+
+  /** 全场群众反应（震惊时集体抖一下 + 冒表情，比单人反应更有冲击） */
+  _reactCrowd(mood, exceptRole) {
+    this.cast.forEach((m, i) => {
+      if (m.roleId === exceptRole || !m.npc.alive) return;
+      setTimeout(() => {
+        if (this.phase === Phase.DONE) return;
+        this.hooks.moodFx?.(m.npc, mood);
+      }, i * 140);
     });
   }
 
