@@ -2,6 +2,13 @@
 // 并联动音效、声望、报纸新闻。
 
 export class Combat {
+  /**
+   * 拳击的判定范围。必须贴身 —— 1.7m 大约是伸直手臂能碰到对方的距离，
+   * 70° 锥角保证只打正对着的人，而不是斜前方路过的。
+   */
+  static PUNCH_RANGE = 1.7;
+  static PUNCH_CONE = 70;
+
   constructor(npcManager, loot, hud, deps = {}) {
     this.npcManager = npcManager;
     this.loot = loot;
@@ -45,13 +52,25 @@ export class Combat {
     const dist = Math.hypot(target.pos.x - playerPos.x, target.pos.z - playerPos.z);
     const muzzleY = 1.45;
     const hitY = muzzleY - Math.tan(camPitch) * dist;
+    // 头部中心高度与"头骨核心"半径：打进核心 = 正中眉心，一枪毙命；
+    // 只擦到头皮/下颌算重伤不致死。
+    const HEAD_Y = 1.72;
+    const HEAD_CORE = 0.13;
     let part = "body";
     let damage = 2;
+    let lethal = false;
     if (hitY >= 1.55) {
-      // 爆头：按最大血量算，保证一枪打掉一半以上。
-      // 固定伤害对硬汉（10 格血）不够狠，硬汉挨一枪只掉 1/5，没有反馈感。
       part = "head";
-      damage = Math.max(3, Math.ceil((target.maxHp || 4) * 0.6));
+      if (Math.abs(hitY - HEAD_Y) <= HEAD_CORE) {
+        // 正中眉心：直接打死。伤害给到 maxHp+2，让 hp 掉到 -2 以下 ——
+        // tryReviveFromDown 判定"打穿 2 格以上"为重伤昏迷，不会再爬起来。
+        lethal = true;
+        damage = (target.maxHp || 4) + 2;
+      } else {
+        // 擦到头：按最大血量算，保证一枪打掉一半以上。
+        // 固定伤害对硬汉（10 格血）不够狠，硬汉挨一枪只掉 1/5，没有反馈感。
+        damage = Math.max(3, Math.ceil((target.maxHp || 4) * 0.6));
+      }
     } else if (hitY <= 0.75) {
       part = "leg";
       damage = 1; // 打腿伤害低，但会让人跑不动
@@ -59,10 +78,15 @@ export class Combat {
     const knocked = target.hit(playerPos, false, damage);
 
     if (part === "head") {
-      this.hud.toast(knocked ? "🎯 爆头！" : "🎯 命中头部！", { key: "shot-head", duration: 2200 });
-      this.hitFlash = 0.9;
+      if (lethal) {
+        this.hud.toast("💀 一枪爆头！", { key: "shot-head", duration: 2600 });
+        this.hitFlash = 1.0;
+      } else {
+        this.hud.toast(knocked ? "🎯 爆头！" : "🎯 命中头部！", { key: "shot-head", duration: 2200 });
+        this.hitFlash = 0.9;
+      }
       if (this.audio) { this.audio.hit?.(); this.audio.npcVoice?.("hurt"); }
-      this.onHeadshot?.(target, knocked);
+      this.onHeadshot?.(target, knocked, { lethal });
     } else if (part === "leg") {
       this.hud.toast("🦵 打中腿了", { side: true, key: "shot-leg" });
       this.hitFlash = 0.35;
@@ -96,7 +120,9 @@ export class Combat {
 
     if (player.consumeAttack()) {
       if (this.audio) this.audio.punch();
-      const target = this.npcManager.findAttackTarget(player.pos, player.facing);
+      // 拳头够得着的距离。以前用默认的 2.6m / 90° 锥角，等于"隔一个身位挥空气"
+      // 也能判定命中，玩家会莫名其妙打到不相干的路人。拳击必须是贴身的。
+      const target = this.npcManager.findAttackTarget(player.pos, player.facing, Combat.PUNCH_RANGE, Combat.PUNCH_CONE);
       // 空挥动静小，只惊动近处 NPC
       this.npcManager.broadcastPanic(player.pos, target ? 8 : 5);
       if (target) {
@@ -106,16 +132,18 @@ export class Combat {
         // 记录交手历史
         this.npcManager.recordEncounter(target, "hit_by_player", { day: this.currentDay || 0, knocked });
         if (this.onNpcHit) this.onNpcHit(target, knocked);
-        this.npcManager.broadcastPanic(target.pos, 12);
+        this.npcManager.broadcastPanic(target.pos, knocked ? 12 : 7);
         // 声望：动手就掉荣誉（通缉由目击-报案流程处理）
         if (this.reputation) {
           if (knocked) this.reputation.onKnockNPC(target.personality.gang);
           else this.reputation.onAttackNPC(target.personality.gang);
         }
-        // 目击检测：周围NPC目击犯罪 → 胆小的跑去报警
-        const witnesses = this.npcManager.findWitnesses(target.pos, 12);
+        // 目击检测：范围与严重程度都按"打倒没打倒"分级。
+        // 空手一拳没打倒 = 街头推搡，只有身边几步内的人会侧目，没人为这个跑去报官；
+        // 打倒了才算行凶，范围放大且允许报案。开枪另算（见 fireShot，14m）。
+        const witnesses = this.npcManager.findWitnesses(target.pos, knocked ? 8 : 5);
         for (const w of witnesses) {
-          w.brain.witnessCrime(target.pos, "assault");
+          w.brain.witnessCrime(target.pos, "assault", { severity: knocked ? "assault" : "scuffle" });
         }
         if (knocked) {
           this.loot.dropFromNPC(target);

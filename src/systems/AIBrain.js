@@ -229,9 +229,20 @@ export class AIBrain {
 
   // 目击犯罪：周围NPC看到玩家打人后的反应
   // 胆小者跑去报警，帮派成员叫同伙，勇敢者只是受惊
-  witnessCrime(threatPos, crimeType) {
+  // severity: "assault" 行凶（打倒/枪击）| "scuffle" 推搡（空手一拳没打倒）
+  witnessCrime(threatPos, crimeType, { severity = "assault" } = {}) {
     if (this._perform && this._perform.immune) return; // 剧场演员不被路过的犯罪打断
     if (this.state === State.DOWN || this.state === State.ANGRY) return;
+    // 推搡级别：街头拌嘴动了手但没出事，路人只会侧目、嘀咕两句，
+    // 不会为这个专门跑去警局。报官是"看到有人被打倒/被枪击"才做的事。
+    if (severity === "scuffle") {
+      this.emotion = Math.max(this.emotion, 0.45);
+      if (this.state !== State.STARTLED) this._enter(State.STARTLED);
+      if (chance(0.5)) {
+        this.say(pick(["喂！住手！", "光天化日的……", "又打起来了。", "别在这儿闹事！"]), 2);
+      }
+      return;
+    }
     if (this.p.bravery < 0.5) {
       // 胆小者报警
       this._reportCrime = this._tryTakeReportSlot(); // 名额满了就只是跑，不去报案

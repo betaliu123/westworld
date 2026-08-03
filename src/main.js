@@ -1148,15 +1148,15 @@ function boot() {
     combat.fireShot(player.pos, player.facing, ammoSystem, { camPitch: player.camPitch });
   };
   // 爆头额外反馈：屏幕红闪 + 目标飞得更远
-  combat.onHeadshot = (npc, knocked) => {
+  combat.onHeadshot = (npc, knocked, { lethal = false } = {}) => {
     document.body.classList.add("headshot-flash");
-    setTimeout(() => document.body.classList.remove("headshot-flash"), 220);
+    setTimeout(() => document.body.classList.remove("headshot-flash"), lethal ? 340 : 220);
     if (knocked && npc.launchBy) {
       const dx = npc.pos.x - player.pos.x;
       const dz = npc.pos.z - player.pos.z;
       const len = Math.hypot(dx, dz) || 1;
-      // launchBy(dir, power, sourceRef)：爆头把人打飞出去
-      try { npc.launchBy({ x: dx / len, z: dz / len }, 7, player.pos); } catch (e) { void e; }
+      // launchBy(dir, power, sourceRef)：爆头把人打飞出去（正中眉心打得更远）
+      try { npc.launchBy({ x: dx / len, z: dz / len }, lethal ? 9 : 7, player.pos); } catch (e) { void e; }
     }
   };
   combat._shotDropAmmo = (npc) => {
