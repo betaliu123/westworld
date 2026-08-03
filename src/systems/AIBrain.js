@@ -351,6 +351,15 @@ export class AIBrain {
    */
   static reportQuota = { limit: 2, active: new Set() };
 
+  /**
+   * 报案有效期（秒，真实时间）。
+   * 以前只在 FLEE 分支里用 `stateTimer <= -12` 兜底，但 stateTimer 每次重进 FLEE 都会重置，
+   * 玩家一直在旁边就会让 NPC 无限期"正在报案"；而一旦 NPC 脱离 FLEE（被搭话/被拉去演戏/转成 ANGRY），
+   * 那句兜底根本不执行，_reportCrime 就永久卡住，名额也一直被占。
+   * 改成占名额时记一个绝对截止时间，每帧无条件检查。
+   */
+  static REPORT_TTL = 45;
+
   /** 尝试占一个报案名额；占不到就别去报案（改为单纯逃跑） */
   _tryTakeReportSlot() {
     const q = AIBrain.reportQuota;
@@ -361,13 +370,42 @@ export class AIBrain {
     if (q.active.has(this)) return true;
     if (q.active.size >= q.limit) return false;
     q.active.add(this);
+    this._reportDeadline = AIBrain._now() + AIBrain.REPORT_TTL;
     return true;
+  }
+
+  /** 当前秒数（可被测试替换） */
+  static _now() {
+    return (typeof performance !== "undefined" ? performance.now() : Date.now()) / 1000;
+  }
+
+  /**
+   * 报案超时检查：跑太久没到警局就自认倒霉放弃，把名额让出来。
+   * 每帧调用（与状态无关），返回是否刚刚超时。
+   */
+  _tickReportTimeout() {
+    if (!this._reportCrime) return false;
+    if (!this._reportDeadline) return false;
+    if (AIBrain._now() < this._reportDeadline) return false;
+    this.cancelReport("……算了，找不着警长。");
+    return true;
+  }
+
+  /** 清掉全镇所有人的报案状态（玩家死亡后重置：没人要告一个死人） */
+  static clearAllReports() {
+    const q = AIBrain.reportQuota;
+    for (const b of [...q.active]) {
+      b._reportCrime = false;
+      b._reportDeadline = 0;
+    }
+    q.active.clear();
   }
 
   /** 放弃报案（被玩家安抚、或跑太久没到） */
   cancelReport(line = "") {
     if (!this._reportCrime) return false;
     this._reportCrime = false;
+    this._reportDeadline = 0;
     AIBrain.reportQuota.active.delete(this);
     if (line) this.say(line, 2.6);
     return true;
@@ -964,6 +1002,8 @@ export class AIBrain {
    */
   think(dt, ctx) {
     this.stateTimer -= dt;
+    // 报案超时：无条件每帧检查，不依赖当前状态（否则脱离 FLEE 后会永久卡住占名额）
+    this._tickReportTimeout();
     if (this.bubbleTimer > 0) this.bubbleTimer -= dt;
     else this.bubble = null;
     if (this.emojiTimer > 0) this.emojiTimer -= dt;
@@ -1130,11 +1170,12 @@ export class AIBrain {
           const dSd = Math.hypot(ctx.self.x - sd.x, ctx.self.z - sd.z);
           if (dSd < 2.2) {
             this._reportCrime = false;
+            this._reportDeadline = 0;
             AIBrain.reportQuota.active.delete(this); // 报完了，把名额让给别人
             intent.reportCrime = true;
             this.say("警长！有人行凶！", 2.6);
           } else if (this.stateTimer <= -12) {
-            this.cancelReport(); // 太久跑不到，放弃报案
+            this.cancelReport(); // 太久跑不到，放弃报案（快速兜底，绝对截止见 _tickReportTimeout）
           }
           break;
         }

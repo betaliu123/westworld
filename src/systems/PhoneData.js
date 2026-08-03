@@ -2,7 +2,8 @@
 
 import { pick, randInt, chance, randRange } from "../core/MathUtils.js";
 import {
-  PHONE_FIRST as FIRST,
+  PHONE_FIRST_MALE as FIRST_M,
+  PHONE_FIRST_FEMALE as FIRST_F,
   PHONE_LAST as LAST,
   PHONE_CONTACTS as CONTACTS,
   PHONE_SCRIPTS as SCRIPTS,
@@ -23,6 +24,7 @@ function timeStamp(base) {
 
 /**
  * @param {object} personality
+ * @param {boolean} female 外观性别 —— 决定从男名池还是女名池取名，避免"老约翰"配女性模型
  * @returns {object} { owner, job, threads:[{contact, messages:[{who, text, time}]}] }
  */
 // 本局已用过的显示名：路人重名会让玩家分不清谁是谁
@@ -30,21 +32,22 @@ function timeStamp(base) {
 const usedOwners = new Set();
 
 /** 取一个本局唯一的路人名（名·姓 组合，实在抽不出唯一名才允许重复） */
-function uniqueOwner() {
+function uniqueOwner(female) {
+  const first = female ? FIRST_F : FIRST_M;
   for (let i = 0; i < 40; i++) {
-    const name = `${pick(FIRST)}·${pick(LAST)}`;
+    const name = `${pick(first)}·${pick(LAST)}`;
     if (!usedOwners.has(name)) {
       usedOwners.add(name);
       return name;
     }
   }
-  const fallback = `${pick(FIRST)}·${pick(LAST)}`;
+  const fallback = `${pick(first)}·${pick(LAST)}`;
   usedOwners.add(fallback);
   return fallback;
 }
 
-export function generatePhone(personality) {
-  const owner = uniqueOwner();
+export function generatePhone(personality, female = false) {
+  const owner = uniqueOwner(female);
   const job = personality.job;
   const pool = SCRIPTS[job] || GENERIC;
   const threadCount = Math.min(pool.length, randInt(1, 2)) || 1;

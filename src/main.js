@@ -25,7 +25,7 @@ import { Gangs } from "./ui/Gangs.js";
 import { SlotMachine } from "./ui/SlotMachine.js";
 import { Baccarat } from "./ui/Baccarat.js";
 import { WORLD, SHERIFF, DIALOGUE_REPLY, SHOP_ITEMS } from "./config/gameData.js";
-import { State } from "./systems/AIBrain.js";
+import { State, AIBrain } from "./systems/AIBrain.js";
 
 // P0+ 新系统
 import { WorldClock } from "./simulation/WorldClock.js";
@@ -373,6 +373,9 @@ function boot() {
     const fee = Math.min(economy.money, Math.round(40 + economy.money * 0.15));
     economy.addMoney(-fee);
     audio.bell();
+    // 玩家已经倒下，这场冲突结束了：没人还需要跑去警局告一个躺平的人。
+    // 不清的话那些人会一直占着报案名额往警局跑，玩家醒来就被莫名通缉。
+    AIBrain.clearAllReports();
     if (insideRoom) {
       interiors.leave();
       town.group.visible = true;

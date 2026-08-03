@@ -15,12 +15,15 @@ export class NPC {
     this.insideHome = null;    // 非空表示 NPC 正在自己民居里
     this.personality = makePersonality();
     this.brain = new AIBrain(this.personality);
-    this.phone = generatePhone(this.personality);
+
+    // 女性外观：歌女必为女性，其余 35% 概率
+    // 【顺序要紧】必须先定性别，再生成名字 —— generatePhone 要按性别选名池，
+    // 否则会出现"老约翰·费尔柴"配女性模型这种名实不符。
+    this.female = this.personality.job === "歌女" || Math.random() < 0.35;
+    this.phone = generatePhone(this.personality, this.female);
     // 给 NPC 一个唯一 ID（用于手机联系人区分同名NPC）
     this.phone.id = this.phone.owner + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-    // 女性外观：歌女必为女性，其余 35% 概率
-    this.female = this.personality.job === "歌女" || Math.random() < 0.35;
     this.mesh = createCharacter({ female: this.female });
     this.mesh.position.set(spawn.x, 0, spawn.z);
     scene.add(this.mesh);
@@ -58,6 +61,8 @@ export class NPC {
   }
 
   // 重新生成角色模型（供 NPCManager 在分配重要 NPC 身份后纠正性别外观）
+  // 注意：不在这里改名字。调用方（NPCManager）会用 def.displayName 覆盖 phone.owner，
+  // 名字与性别的一致性由那份重要 NPC 名录保证。
   rebuildMesh(female) {
     if (this.female === female) return; // 无变化则跳过
     this.female = female;
