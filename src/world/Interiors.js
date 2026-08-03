@@ -170,20 +170,32 @@ class Interior {
       personality: { job: opts.female ? "歌女" : "镇民", gang: null },
       phone: { owner: (opts.female ? "女士" : "镇民"), id: "patron_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) },
       brain: {
-        state: "IDLE",
+        state: "TALK", // 桩：室内客一直"可对话"，否则 InteractionSystem 的 TALK 检查会立刻掉线
         hasRoleInteraction: () => false,
         getRoleActions: () => null,
         getJobFollowUp: () => null,
         respondToRole: () => "（这位顾客似乎不想多聊……）",
         // 防崩溃：提供必要的 brain 方法存根
         startTalk: () => true,
+        say: () => {},
         respondTo: (kind) => {
           const replies = { greet: "嗯，你好。", praise: "哦，谢谢。", insult: "哼！" };
           return { reply: replies[kind] || "（对方看了看你，没说话）", mood: "neutral" };
         },
         respondToExtort: () => ({ comply: false, amount: 0, reply: "你疯了吗？！在室内还敢打劫！", mood: "angry" }),
         respondToRecruit: () => ({ accepted: false, reply: "我在这就挺好，不想惹事。", mood: "neutral" }),
-        checkDialoguePatience: () => null,
+        // 室内客也要会烦：以前这里恒返回 null，于是 dlg_praise(+8信任/+6好感)
+        // 对室内客可以无限刷，比室外那条更狠。
+        _turns: 0,
+        checkDialoguePatience() {
+          this._turns++;
+          if (this._turns < 4) return null;
+          this._turns = 0;
+          return {
+            endConversation: true, reason: "no_more_words",
+            text: ["我想安静喝会儿酒。", "没别的事了吧？", "让我自己待着吧。"][Math.floor(Math.random() * 3)],
+          };
+        },
         endTalk: () => {},
       },
       // 防崩溃：hit() 存根（室内 patrons 不能真正被击倒）

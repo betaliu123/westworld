@@ -91,12 +91,15 @@ export class TheaterGlue {
       .join("\n");
 
     const sys = `你是一部西部小镇露天短剧的导演助手。剧名：${tree.title}。
-玩家（一个路过的枪手）刚刚自由发言或动手，你要做三件事：
+玩家（一个路过的枪手）刚刚自由发言或动手，你要做四件事：
 1. 写 1-3 条衔接台词：剧中角色对玩家这句话的即时反应，每条不超过 28 字，必须是美国西部片的口吻（伙计/先生/子弹/威士忌/绞索/警长），不要中式武侠味。
-2. 从节点列表里挑一个最合适的跳转节点，让剧情自然接上。
-3. 可选：给其中某条台词的角色配一个行为，让他不只是嘴上说说。
+2. 标出每条台词是"对谁说的"（to 字段），演员会转头看着这个人说话。
+3. 从节点列表里挑一个最合适的跳转节点，让剧情自然接上。
+4. 可选：给其中某条台词的角色配一个行为，让他不只是嘴上说说。
 规则：
 - 台词的 roleId 只能用：${roleList}
+- to 只能填：player（冲玩家说）、上面任一 roleId（对那个角色说）、all（对全场喊）
+- to 要和台词内容一致：台词里点了某人名字或在回应玩家，就必须指到那个人，不要一律填 player
 - 玩家动手/杀人 → 选带血案或混乱的终局节点；玩家喊警长 → 选 grd 类节点
 - 玩家讲笑话/搭讪/示好 → 选和人物关系相关的节点
 - 行为 action 只能从这些里挑，不需要就填 none：
@@ -110,7 +113,7 @@ ${actionList}
 可跳转节点：
 ${nodeList}
 输出 JSON：
-{"bridge":[{"roleId":"<上面的roleId>","text":"<台词>","action":"<行为id或none>","targetName":"<attack_npc 时填在场角色的名字，否则空>"}],"targetNodeId":"<节点id>","reason":"<一句话理由>"}`;
+{"bridge":[{"roleId":"<上面的roleId>","text":"<台词>","to":"<player|roleId|all>","action":"<行为id或none>","targetName":"<attack_npc 时填在场角色的名字，否则空>"}],"targetNodeId":"<节点id>","reason":"<一句话理由>"}`;
 
     if (this.budget && !this.budget.tryConsume()) throw new Error("超出本地调用配额");
 
@@ -169,6 +172,8 @@ ${nodeList}
       .map((b) => ({
         roleId: b.roleId,
         text: b.text.slice(0, 40),
+        // 对谁说：只接受 player / 在场 roleId / all，其它一律降级成 all（朝舞台中心）
+        to: sanitizeAddressee(b.to, validRoles, b.roleId),
         // 越权行为在这里就被降级为 none，不会到执行器
         action: sanitizeAction(b, allowed, stageNames),
       }));
@@ -178,7 +183,7 @@ ${nodeList}
 
     if (!bridge.length) {
       const first = cast[0];
-      if (first) bridge.push({ roleId: first.roleId, text: "……你说什么，伙计？", action: { action: "none" } });
+      if (first) bridge.push({ roleId: first.roleId, text: "……你说什么，伙计？", to: "player", action: { action: "none" } });
     }
     return { bridge, targetNodeId: target, via: "llm", reason: parsed?.reason || "" };
   }
@@ -189,15 +194,16 @@ ${nodeList}
     const target = this._pickNode(tree, text);
     const speaker = cast[0]?.roleId || "crowd";
     const none = { action: "none", targetName: null, rejected: null };
+    // 兜底台词全都是在回应玩家刚说的话，所以一律对着玩家说
     let bridge;
     if (/杀|砍|打死|开枪|揍/.test(text)) {
-      bridge = [{ roleId: speaker, text: "别！别掏枪！", action: none }];
+      bridge = [{ roleId: speaker, text: "别！别掏枪！", to: "player", action: none }];
     } else if (/警长|报官/.test(text)) {
-      bridge = [{ roleId: speaker, text: "谁去把警长叫来！", action: none }];
+      bridge = [{ roleId: speaker, text: "谁去把警长叫来！", to: "all", action: none }];
     } else if (/笑话|哈哈|逗/.test(text)) {
-      bridge = [{ roleId: speaker, text: "哈！这话说得倒有趣。", action: none }];
+      bridge = [{ roleId: speaker, text: "哈！这话说得倒有趣。", to: "player", action: none }];
     } else {
-      bridge = [{ roleId: speaker, text: "（朝你看了一眼）", action: none }];
+      bridge = [{ roleId: speaker, text: "（朝你看了一眼）", to: "player", action: none }];
     }
     return { bridge, targetNodeId: target, via: "rule", reason: "关键词兜底" };
   }
@@ -209,6 +215,16 @@ ${nodeList}
     }
     return tree.glueFallbackNode && ids.has(tree.glueFallbackNode) ? tree.glueFallbackNode : tree.entryNode;
   }
+}
+
+/**
+ * 校验"这句话对谁说"。模型可能填不在场的角色、填自己、或者干脆瞎编一个名字。
+ * 只接受 player / 在场的 roleId / all；对着自己说话降级成 all（朝舞台中心）。
+ */
+export function sanitizeAddressee(to, validRoles, speakerRole) {
+  if (to === "player" || to === "all") return to;
+  if (typeof to === "string" && validRoles.has(to) && to !== speakerRole) return to;
+  return "all";
 }
 
 /**

@@ -141,6 +141,11 @@ function boot() {
   // RDR2 式准心交互系统
   const interaction = new InteractionSystem(camera, scene);
   interaction.setRefs({ npcManager, town, loot, vehicles, interiors });
+  // NPC 自己退出对话（耐心耗尽走开）时，把浮动对话面板一起收掉，
+  // 否则面板会留在屏幕上，看着像还能继续聊
+  interaction.onDialogueDropped = (npc) => {
+    if (floatDlgNpc === npc) hideFloatDialogue();
+  };
 
   let theater = null; // AI 剧场总控，稍后装配（Combat 回调里会用到）
 
@@ -1200,18 +1205,42 @@ function boot() {
     }
   }
 
-  // 对话后检查 NPC 是否厌烦/想离开，是则结束对话
-  function _checkNpcPatience(npc, kind) {    if (!npc.brain?.checkDialoguePatience) return false;
+  // 对话后检查 NPC 是否厌烦/想离开，是则结束对话。
+  // 注意：这是唯一实现了"判定 → 台词 → 拆 UI → 状态回滚"全链路的收口层，
+  // 任何会给好感或播台词的对话分支都必须调它，漏一个就能无限刷。
+  function _checkNpcPatience(npc, kind) {
+    if (!npc.brain?.checkDialoguePatience) return false;
     const result = npc.brain.checkDialoguePatience(kind);
     if (result && result.endConversation) {
+      // 先让 NPC 把"我要走了"这句说出来（头顶冒泡，玩家能看见是谁在结束对话）
+      npc.brain.say?.(result.text, 2.6);
       floatDlgText.textContent = result.text;
       floatDlgText.className = "neutral";
-      hideFloatDialogue();
+      hud.toast(`🚶 ${npc.phone?.owner || "镇民"}${result.reason === "no_more_words" ? "没话说了，转身走开" : "不想聊了，走开了"}`,
+        { side: true, key: "npc-leave" });
+      hideFloatDialogue();          // 内部会调 endTalk()
       interaction.clearDialogueTarget();
       showPlayerBubble("");
+      // 真的走开：endTalk 只是把状态切回 WANDER/AT_PLACE，这里再给个远离玩家的目标点，
+      // 否则他会站在原地"离开"，玩家一按 F 又能立刻聊起来
+      _walkAwayFrom(npc, player.pos);
       return true;
     }
     return false;
+  }
+
+  // 让 NPC 从某个位置走开（结束对话后真的迈步离开，而不是原地站着）
+  function _walkAwayFrom(npc, fromPos) {
+    const b = npc.brain;
+    if (!b || b.state === "DOWN") return;
+    const dx = npc.pos.x - fromPos.x;
+    const dz = npc.pos.z - fromPos.z;
+    const len = Math.hypot(dx, dz) || 1;
+    const away = { x: npc.pos.x + (dx / len) * 9, z: npc.pos.z + (dz / len) * 9 };
+    // 走岗位的回岗位，其余往远离玩家的方向挪一段
+    if (b._placeType) return;
+    b.target = away;
+    b.stateTimer = Math.max(b.stateTimer || 0, 4);
   }
 
   // 友善交谈有概率解锁 NPC 隐藏特征/秘密
@@ -2204,6 +2233,9 @@ function boot() {
               }, 2000);
             }
           }
+          // 打招呼也算一个回合：以前 greet 完全没接耐心检查，
+          // 玩家可以 F→走开→F 无限循环刷 +5/+3
+          _checkNpcPatience(npc, result.kind === "greet" ? "greet" : "praise");
         } else {
           tryStartDialogue(npc);
         }
@@ -2316,6 +2348,8 @@ function boot() {
         } else if (kind === "role_yes") {
           // 玩家回"是"→ NPC 跟随跟进提问给出回应
           const followUp = npc.brain.getJobFollowUp();
+          // 这个提问答过就不再出现（选项会自然消失），否则可以无限点着刷好感
+          npc.brain.markFollowUpAnswered?.();
           // 赌徒 NPC：直接拉起百家乐界面
           if (npc.personality.job === "赌徒") {
             floatDlgText.textContent = "哈哈，有胆色！来，下注吧！";
@@ -2333,14 +2367,17 @@ function boot() {
           }
           _addNpcAffinity(npc, 5, 3);
           audio.npcVoice("happy");
+          _checkNpcPatience(npc, "role_yes");
         } else if (kind === "role_no") {
           // 玩家回"否"→ NPC 冷淡
           const followUp = npc.brain.getJobFollowUp();
+          npc.brain.markFollowUpAnswered?.();
           if (followUp) {
             floatDlgText.textContent = followUp.reject || "哦，那算了。";
             floatDlgText.className = "neutral";
           }
           audio.npcVoice("greet");
+          _checkNpcPatience(npc, "role_no");
         } else if (kind === "dlg_close") {
           hideFloatDialogue();
           interaction.clearDialogueTarget();
@@ -2410,6 +2447,9 @@ function boot() {
               hud.toast(`💊 医治 -$${cost}，恢复30生命！`, { side: true, key: "heal" });
             }
           }
+          // 所有职业特殊交互都要计回合。以前 role_flirt(+8好感) / role_tip(+10好感)
+          // 完全没接耐心检查，是比截图那条更狠的刷法。
+          _checkNpcPatience(npc, kind);
         }
         break;
       }

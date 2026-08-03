@@ -5,6 +5,7 @@
 import { THEATER_CONFIG } from "../config/theaterData.js";
 import { IDLE_BY_NODE, WITNESS_ON } from "../config/theaterIdle.js";
 import { REACT_BY_NODE } from "../config/theaterReactByNode.js";
+import { BEAT_TO } from "../config/theaterBeatTo.js";
 
 /** 从数组里随机取一条 */
 function pickOne(arr) {
@@ -310,8 +311,13 @@ export class TheaterRuntime {
   _scheduleBeats(node) {
     const now = this.now();
     const jitter = THEATER_CONFIG.beatJitterMs;
+    // 注入「这句对谁说」：DS 离线标注的覆盖层，beat 自带的 to/facePlayer 优先
+    const toList = BEAT_TO[`${this.tree.id}/${node.id}`];
     this.beatQueue = (node.beats || [])
-      .map((b) => ({ beat: b, at: now + (b.delayMs ?? 900) + Math.random() * jitter }))
+      .map((b, i) => {
+        const beat = (b.to || b.facePlayer || !toList) ? b : { ...b, to: toList[i] };
+        return { beat, at: now + (b.delayMs ?? 900) + Math.random() * jitter };
+      })
       .sort((a, b) => a.at - b.at);
     const last = this.beatQueue.length ? this.beatQueue[this.beatQueue.length - 1].at : now;
     this.nodeEndAt = last + 1200;
@@ -323,14 +329,7 @@ export class TheaterRuntime {
     const npc = m.npc;
     if (!npc.alive || npc.brain?.state === "DOWN") return;
     if (beat.moveTo) npc.brain.perform?.({ moveTo: beat.moveTo });
-    // 开口说话时朝向：玩家就在场（交互区内）就转过来对着你说，
-    // 而不是背对着你原地冒泡。玩家不在场才按剧本朝舞台中心。
-    const playerHere = this.zoneLevel === "interact" && this.hooks.playerPos;
-    if (beat.facePlayer && this.hooks.playerPos) {
-      npc.brain.perform?.({ faceTarget: this.hooks.playerPos() });
-    } else if (playerHere && beat.text) {
-      npc.brain.perform?.({ faceTarget: this.hooks.playerPos() });
-    }
+    this._faceAddressee(npc, beat);
     if (beat.text) {
       const dur = beat.mood === "angry" || beat.mood === "scared" ? 3.2 : 2.8;
       npc.brain.say(beat.text.slice(0, THEATER_CONFIG.maxBubbleChars), dur);
@@ -339,6 +338,38 @@ export class TheaterRuntime {
       this.hooks.moodFx?.(npc, beat.mood, beat.emoji, beat.shake);
       this.hooks.log?.(`${m.stageName}：${beat.text}`);
     }
+  }
+
+  /**
+   * 说这句话时该看着谁。
+   *
+   * 以前这里是「玩家在交互区内 && 这句有台词」就无条件转向玩家，结果一台戏的人
+   * 全程齐刷刷盯着玩家、跟着玩家转，像一圈人围着你开会 —— 明明大部分台词是
+   * 角色之间在互相说话（"疤脸乔，你在牌桌上抽了我的底牌"是对疤脸乔说的）。
+   *
+   * 现在按 beat.to 判定朝向：
+   *   "player"        → 看玩家（这句是冲玩家说的）
+   *   <roleId>        → 看那个演员（角色之间对话，最常见）
+   *   "all" / 不填    → 看舞台中心（对全场喊话／自言自语）
+   * beat.facePlayer 是旧字段，等价于 to:"player"，保留兼容。
+   */
+  _faceAddressee(npc, beat) {
+    const to = beat.facePlayer ? "player" : beat.to;
+    // 冲玩家说的：玩家真在场才转（不在场就别对着空气转身）
+    if (to === "player") {
+      if (this.hooks.playerPos) npc.brain.perform?.({ faceTarget: this.hooks.playerPos() });
+      return;
+    }
+    // 对某个演员说的：转向那个演员
+    if (to && to !== "all") {
+      const target = this.memberOf(to);
+      if (target && target.npc !== npc && target.npc.alive) {
+        npc.brain.perform?.({ faceTarget: { x: target.npc.pos.x, z: target.npc.pos.z } });
+        return;
+      }
+    }
+    // 没指定对象（对全场喊）：朝舞台中心，别去追玩家
+    if (this.stage?.center) npc.brain.perform?.({ faceTarget: this.stage.center });
   }
 
   _clearChoices() {
@@ -423,9 +454,11 @@ export class TheaterRuntime {
       if (!m) continue;
       const text2 = b.text;
       const act = b.action;
+      const to = b.to || "player"; // 衔接台词默认是在回应玩家
       setTimeout(() => {
         if (this.phase === Phase.DONE) return;
-        this._faceMe(m.npc); // 回应你说的话，当然要看着你
+        // 按模型标的"对谁说"转向，而不是所有人一律盯着玩家
+        this._faceAddressee(m.npc, { to });
         m.npc.brain.say(text2.slice(0, THEATER_CONFIG.maxBubbleChars), 3);
         this.hooks.log?.(`${m.stageName}：${text2}`);
         if (act && act.action && act.action !== "none") {
@@ -457,8 +490,12 @@ export class TheaterRuntime {
       this.hooks.log?.(`${me.stageName}倒下了，全场哗然`);
       this._reactCrowd("shocked", role);
       this._forceResolve("出了人命");
+      // 倒地的人不用再决策行为，但旁人得散
+      this._scatterWitnesses(role, npc, { deadly: true });
       return;
     }
+    // 被打的人自己要动起来：不能一边流血一边站在原地背台词
+    this._actOnHit(npc, role);
     // 其他演员的分人反应：优先用"针对被打的是谁"定制的台词
     // （打女人、打牧师、打伤员，旁人喊的话应该明显不同）
     const others = this.cast.filter((c) => c.roleId !== role && c.npc.alive);
@@ -473,6 +510,72 @@ export class TheaterRuntime {
         this.hooks.moodFx?.(m.npc, i === 0 ? "angry" : "scared");
         this.hooks.log?.(`${m.stageName}：${line}`);
       }, 500 + i * 1200);
+    });
+    // 旁人也要有行为：该跑的跑、该上的上，不是站着看
+    this._scatterWitnesses(role, npc, { deadly: false });
+  }
+
+  /**
+   * 被打的演员当场决策行为：反击 / 逃跑 / 硬挺着。
+   *
+   * 以前这里只播一句台词就完了 —— 玩家开枪打人，演员站在原地继续念剧本，
+   * 荒谬得很。现在按性格分流，并且让他脱戏（`_brokeCharacter`），
+   * 由 `_checkActorsLost` 收场，剧本不再往下走。
+   */
+  _actOnHit(npc, role) {
+    const b = npc.brain;
+    if (!b || npc.brain.state === "DOWN") return;
+    const p = b.p || npc.personality || {};
+    const brave = p.bravery ?? 0.5;
+    const aggro = p.aggression ?? 0.4;
+    const playerPos = this.hooks.playerPos?.();
+    // 脱戏：被打了还听导演调度是不合理的
+    b._brokeCharacter = true;
+    b._perform = null;
+    // 打得动手的：胆子够且够横 → 反击；否则逃，逃的人里胆最小的顺便去报官
+    const fights = brave + aggro > 0.95 && aggro > 0.35;
+    if (fights && playerPos) {
+      b.attackTarget?.(playerPos, { npc: null });
+      this.hooks.log?.(`（${this.memberOf(role)?.stageName} 反手扑了上来）`);
+      return { act: "fight" };
+    }
+    if (playerPos) {
+      const report = brave < 0.35;
+      b.fleeFrom?.(playerPos, { report });
+      this.hooks.log?.(`（${this.memberOf(role)?.stageName} ${report ? "夺路去报官" : "捂着伤口逃开"}）`);
+      return { act: report ? "report" : "flee" };
+    }
+    return { act: "freeze" };
+  }
+
+  /**
+   * 目击的演员也要决策行为，而不是原地站着议论。
+   * deadly=true（有人被打死）时所有人都散，且更多人去报官。
+   */
+  _scatterWitnesses(victimRole, victimNpc, { deadly = false } = {}) {
+    const playerPos = this.hooks.playerPos?.();
+    if (!playerPos) return;
+    const others = this.cast.filter((c) => c.roleId !== victimRole && c.npc.alive && c.npc.brain?.state !== "DOWN");
+    others.forEach((m, i) => {
+      setTimeout(() => {
+        if (this.phase === Phase.DONE) return;
+        const b = m.npc.brain;
+        if (!b || b.state === "DOWN") return;
+        const p = b.p || m.npc.personality || {};
+        const brave = p.bravery ?? 0.5;
+        const aggro = p.aggression ?? 0.4;
+        b._brokeCharacter = true;
+        b._perform = null;
+        // 见了血，敢上的门槛更高；群众永远不上
+        const threshold = deadly ? 1.25 : 1.05;
+        const canFight = m.roleId !== "crowd" && brave + aggro > threshold && aggro > 0.45;
+        if (canFight) {
+          b.attackTarget?.(playerPos, { npc: null });
+        } else {
+          // 死了人 → 胆子中等的也会去报官；只是被打 → 只有胆小的去
+          b.fleeFrom?.(playerPos, { report: brave < (deadly ? 0.6 : 0.35) });
+        }
+      }, 300 + i * 260);
     });
   }
 

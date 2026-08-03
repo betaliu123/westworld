@@ -49,8 +49,10 @@ export class InteractionSystem {
     // 对话模式中，保持对话NPC为目标（不让其他NPC抢走）
     if (this.dialogueNpc) {
       const dlgNpc = this.dialogueNpc;
-      // 检查对话NPC是否还活着且在范围内
-      if (dlgNpc.alive && dlgNpc.brain.state !== "DOWN") {
+      // 必须仍在 TALK 状态：以前只查活着 + 距离 < 8，于是 NPC 已经因为耐心耗尽
+      // 走回 WANDER/AT_PLACE 了，对话菜单还挂着、G 键还能继续加好感。
+      const stillTalking = dlgNpc.brain?.state === "TALK";
+      if (dlgNpc.alive && dlgNpc.brain.state !== "DOWN" && stillTalking) {
         const d = Math.hypot(dlgNpc.pos.x - ppos.x, dlgNpc.pos.z - ppos.z);
         if (d < 8.0) {
           const name = dlgNpc.phone?.owner || "镇民";
@@ -62,8 +64,9 @@ export class InteractionSystem {
           return;
         }
       }
-      // 对话NPC消失或太远，退出对话模式
+      // 对话NPC消失/太远/已经不聊了，退出对话模式
       this.dialogueNpc = null;
+      this.onDialogueDropped?.(dlgNpc);
     }
 
     const pfacing = player.facing;

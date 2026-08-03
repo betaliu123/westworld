@@ -161,8 +161,15 @@ export class AIBrain {
     return cfg.actions;
   }
 
-  /** 获取职业的跟进提问和选项（搭话后 NPC 说的第二句话） */
+  /**
+   * 获取职业的跟进提问和选项（搭话后 NPC 说的第二句话）。
+   *
+   * 一轮对话里只问一次：以前这是个纯查表的无状态函数，而左侧菜单每帧都重新
+   * 调它来重建选项，于是"我有胆"可以无限点、每点一次 +5 信任 +3 好感。
+   * 答过之后返回 null，选项自然消失。
+   */
   getJobFollowUp() {
+    if (this._followUpAnswered) return null;
     const cfg = JOB_DIALOGUE[this.p.job];
     if (cfg) return cfg;
     // 帮派成员的默认跟进
@@ -170,6 +177,11 @@ export class AIBrain {
       return { prompt: "在这条街上，有胆子的人才能活下去。你够胆吗？", yes: "我有胆", no: "我不想惹事" };
     }
     return null;
+  }
+
+  /** 标记职业跟进提问已答过（答"是"或"否"都算），本轮不再出现 */
+  markFollowUpAnswered() {
+    this._followUpAnswered = true;
   }
 
   /** 处理职业特有的交互动作。affection 为好感度值，用于获取阶段对话。 */
@@ -333,10 +345,15 @@ export class AIBrain {
     this.threat = threatRef;
     const wasTalking = this.state === State.TALK;
     this._enter(State.TALK);
-    this._talkPatience = randRange(8 + this.p.sociability * 14, 14 + this.p.sociability * 12);
+    // 耐心只在"新开一轮对话"时给满。以前无条件重置，而 dlg_praise / dlg_threat 等
+    // 每次点击都会调 startTalk，于是墙钟耐心被反复刷满、永远走不到超时，
+    // NPC 再烦也不会自己走开。
     if (!wasTalking) {
+      this._talkPatience = randRange(8 + this.p.sociability * 14, 14 + this.p.sociability * 12);
       this._repeatCounts = {};
       this._saidInTalk = new Set();
+      this._followUpAnswered = false;
+      this._talkTurns = 0;
     }
     return true;
   }
@@ -346,6 +363,8 @@ export class AIBrain {
     this._talkPatience = 0;
     this._repeatCounts = {};
     this._saidInTalk = new Set();
+    this._followUpAnswered = false;
+    this._talkTurns = 0;
     // 在场所里上班的 NPC 聊完回岗位，别直接下班
     if (this._placeType) this._enter(State.AT_PLACE);
     else this._enter(State.WANDER);
@@ -607,12 +626,24 @@ export class AIBrain {
     // 累计相同行为次数
     this._repeatCounts[kind] = (this._repeatCounts[kind] || 0) + 1;
     const repeats = this._repeatCounts[kind];
+    // 本轮对话总回合数：不管换不换花样，聊太久 NPC 也该走了
+    this._talkTurns = (this._talkTurns || 0) + 1;
 
     // 相同行为 >= 3 次 → 厌烦
     if (repeats >= 3) {
       return { endConversation: true, reason: "repeat", text: pick([
         "够了，我不想再聊这个了。", "你说来说去就这几句？走了。",
         "我没空陪你玩这个。", "你闲得慌吗？不聊了。", "行了行了，我还有事。"
+      ]) };
+    }
+
+    // 总回合上限：社交型的人能多聊几句，闷的人几句就烦
+    // （否则玩家轮换 praise→flirt→tip→praise 就能绕开"相同行为 3 次"无限刷）
+    const turnCap = AIBrain.talkTurnCap(this.p);
+    if (this._talkTurns >= turnCap) {
+      return { endConversation: true, reason: "no_more_words", text: pick([
+        "该说的都说了，我得走了。", "就聊到这儿吧，伙计。",
+        "行了，我还有活儿要干。", "话说完了，各走各的。", "今天聊够了，回头见。"
       ]) };
     }
 
@@ -638,6 +669,11 @@ export class AIBrain {
     }
 
     return null;
+  }
+
+  /** 一轮对话最多能聊几个回合（社交性越高越能聊）。夹在 4~9 之间。 */
+  static talkTurnCap(p = {}) {
+    return Math.max(4, Math.min(9, Math.round(4 + (p.sociability ?? 0.5) * 5)));
   }
 
   // 发现地上的掉落物，前往拾取（仅在平静状态下、由贪婪驱动）
