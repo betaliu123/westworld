@@ -86,7 +86,8 @@ export class NpcChatService {
       this.lastVia = "rule";
       this.lastError = e?.message || String(e); // 记下原因，否则退化成兜底时无从排查
       this.lastMs = Date.now() - _t0;
-      this._report("bad", "rule", `兜底(关键词) · ${this.lastError}`);
+      // via 已经渲染成"兜底(关键词)"，detail 里别重复
+      this._report("bad", "rule", this.lastError);
       return { ...this.ruleRespond({ npc, text, allowed, castNames }), via: "rule" };
     }
   }

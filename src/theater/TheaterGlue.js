@@ -56,7 +56,8 @@ export class TheaterGlue {
       this.lastVia = throttled ? "budget" : "rule";
       this.lastReason = msg;
       this.lastMs = Date.now() - t0;
-      this._report(throttled ? "warn" : "bad", this.lastVia, throttled ? "说太快了，本次用关键词兜底" : `兜底(关键词) · ${msg}`);
+      // via 已经会被渲染成"兜底(关键词)/兜底(节流)"，detail 里别再重复一遍
+      this._report(throttled ? "warn" : "bad", this.lastVia, throttled ? "说太快了，用关键词接上" : msg);
       return r;
     }
   }
@@ -107,7 +108,7 @@ ${actionList}
 - 行为要和台词一致：说要打你就配 attack_player，说要跑就配 flee
 - 只输出 JSON，不要解释、不要 markdown。`;
 
-    const user = `当前节点：${node.id}（${node.title || ""}）
+    const user = `当前节点：${node?.id || "(开场前)"}（${node?.title || ""}）
 在场角色：${roleList}
 玩家说/做：「${text}」
 可跳转节点：

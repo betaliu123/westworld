@@ -419,6 +419,11 @@ export class TheaterRuntime {
     if (this.phase === Phase.DONE || this.gluePending) return;
     const t = String(text).trim();
     if (!t) return;
+    // 演员还在往站位走（GATHERING）时 this.node 还是 null，
+    // 直接把 null 传给 glue 会在拼 prompt 时炸 "Cannot read properties of null (reading 'id')"。
+    // 这时用开场节点当上下文——玩家看到的就是开场，戏一就位也会跳到这里。
+    const node = this.node || this.tree.nodes.find((n) => n.id === this.tree.entryNode) || this.tree.nodes[0];
+    if (!node) return;
     this.hooks.playerSay?.(t); // 自由输入同样让玩家冒泡，别只有 NPC 在说话
     this.hooks.log?.(`你：${t}`);
     // 记录举动，影响结局
@@ -440,9 +445,9 @@ export class TheaterRuntime {
 
     let result;
     try {
-      result = await this.glue.glue({ tree: this.tree, node: this.node, cast: this.cast, text: t });
+      result = await this.glue.glue({ tree: this.tree, node, cast: this.cast, text: t });
     } catch (e) {
-      result = this.glue.ruleGlue({ tree: this.tree, node: this.node, cast: this.cast, text: t });
+      result = this.glue.ruleGlue({ tree: this.tree, node, cast: this.cast, text: t });
     }
     this.hooks.onPending?.(false);
     if (this.phase === Phase.DONE) return; // 等待期间散场了就别再演了

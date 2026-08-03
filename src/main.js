@@ -229,10 +229,13 @@ function boot() {
     onCollapse: () => { theater.setPlayerTyping(false); endNpcChat(); },
     onSubmitText: (text) => routeFreeText(text),
     onPickChoice: (id) => theater.submitChoice(id),
-    // 正在跟人对话（或在剧场圈内）时，输入框不因失焦自动收 —— 只有 Esc 能收
+    // 正在跟人对话（或在剧场圈内）时，输入框不因失焦自动收 —— 只有 Esc / 空格能收
     shouldStayOpen: () => !!chatTarget || (theater?.active && theater.scene?.zoneLevel === "interact"),
   });
   theater.ui = theaterUI;
+  // 聊天条展开时一律算"正在打字"，即便焦点被指针锁抢走了。
+  // 否则会出现"框还在、玩家打的字全变成游戏热键"（按到 H 弹档案、V 去偷窃）。
+  engine.input.addTypingGuard?.(() => theaterUI.expanded);
   theater.npcAction = (npc, action, candidates) => npcActions.execute(npc, action, { candidates });
   theater.moodFx = (npc, mood, emoji, shake) => {
     if (emoji) npc.brain.emote(emoji, 1.9);
@@ -3642,6 +3645,12 @@ function boot() {
 
   // 快捷键：Ctrl+Shift+D 打开调试面板
   document.addEventListener("keydown", (e) => {
+    // 安全阀：聊天条展开时全部游戏输入都让给输入框（见 addTypingGuard）。
+    // 万一它丢了焦点又没被收起来，键盘就整个是死的 —— Esc 必须能强制收掉。
+    if (e.key === "Escape" && theaterUI.expanded) {
+      theaterUI.collapse();
+      return;
+    }
     if (e.key === "D" && e.shiftKey && e.ctrlKey) {
       window.__ww.debugPanel();
     }

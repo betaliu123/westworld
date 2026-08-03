@@ -36,7 +36,7 @@ export class TheaterUI {
       <div id="theater-input-row">
         <span id="theater-tag">🎭</span>
         <input id="theater-input" type="text" maxlength="60" autocomplete="off" spellcheck="false"
-               placeholder="对他们说点什么…（回车发送，可接着聊；Esc 回到操作）" />
+               placeholder="对他们说点什么…（回车发送，可接着聊；Esc/空格 回到操作）" />
         <button id="theater-send" type="button">说</button>
       </div>
     `;
@@ -77,6 +77,11 @@ export class TheaterUI {
       } else if (e.key === "Escape") {
         e.preventDefault();
         this.collapse();
+      } else if (e.key === " " && !this.inputEl.value) {
+        // 空框按空格 = 退出输入并结束对话。
+        // 只在框是空的时候拦，否则就没法在句子里打空格了（中文输入法还要用空格选词）。
+        e.preventDefault();
+        this.collapse();
       }
       e.stopPropagation(); // 其余按键留给输入框
     });
@@ -84,9 +89,17 @@ export class TheaterUI {
     this.inputEl.addEventListener("focus", () => this.bar.classList.add("focused"));
     this.inputEl.addEventListener("blur", () => {
       this.bar.classList.remove("focused");
-      // 正在跟某人对话时不因失焦收界面 —— 鼠标一动就重新抓指针锁会让输入框失焦，
-      // 于是"发一句话对话框就没了、NPC 也走了"。有对话对象时只有 Esc 能收。
-      if (this.shouldStayOpen?.()) return;
+      // 正在跟某人对话时不收界面 —— 鼠标一动就重新抓指针锁会让输入框失焦，
+      // 于是"发一句话对话框就没了、NPC 也走了"。有对话对象时只有 Esc / 空格能收。
+      //
+      // 但光"不收"会留下更坑的状态：框还在、却没焦点，玩家打的字全变成游戏热键。
+      // 所以这里要把焦点抢回来（延后一拍，别和正在进行的焦点切换打架）。
+      if (this.shouldStayOpen?.()) {
+        setTimeout(() => {
+          if (this.expanded && this.shouldStayOpen?.()) this.inputEl.focus();
+        }, 0);
+        return;
+      }
       if (!this.inputEl.value.trim()) this.collapse();
     });
     this.collapsedEl.addEventListener("click", () => this.expand());
@@ -138,10 +151,10 @@ export class TheaterUI {
   /** 顶部提示当前在对谁说话 */
   setTalkTarget(label) {
     this._talkTarget = label || "";
-    // 明确写出"能接着聊"，因为发完不再自动收界面
+    // 明确写出"能接着聊"和两个退出键，因为发完不再自动收界面
     this.inputEl.placeholder = label
-      ? `对${label}说…（回车发送，可接着聊；Esc 结束对话）`
-      : "对他们说点什么…（回车发送，可接着聊；Esc 回到操作）";
+      ? `对${label}说…（回车发送，可接着聊；Esc/空格 结束对话）`
+      : "对他们说点什么…（回车发送，可接着聊；Esc/空格 回到操作）";
   }
 
   get expanded() {

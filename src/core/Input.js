@@ -11,7 +11,16 @@ export class Input {
     this.pressed = new Set();
 
     // 正在输入框里打字时（如 AI 剧场自由输入），键盘归输入框，不驱动角色
+    //
+    // 除了看焦点，还要看外部注册的"输入态"判据（_typingGuards）：
+    // 聊天条可以是"展开但暂时没焦点"的状态（鼠标一动会去抓指针锁，把焦点抢走），
+    // 这时只看 document.activeElement 会误判成没在打字，于是玩家打的每个字
+    // 都变成游戏热键（按到 H 弹档案、按到 V 去偷窃）。
+    this._typingGuards = [];
     this._isTyping = (target) => {
+      for (const g of this._typingGuards) {
+        try { if (g()) return true; } catch { /* 判据自己出错不该影响输入 */ }
+      }
       const el = target && target.tagName ? target : document.activeElement;
       if (!el) return false;
       return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable === true;
@@ -92,6 +101,15 @@ export class Input {
   /** 是否正在输入框里打字（唯一真相源，各处别再自己判断 activeElement） */
   get typing() {
     return this._isTyping(null);
+  }
+
+  /**
+   * 注册一个额外的"正在输入"判据。
+   * 用于那种"UI 展开着但焦点被抢走"的情况（聊天条），只看焦点会漏判。
+   * @param {() => boolean} fn
+   */
+  addTypingGuard(fn) {
+    if (typeof fn === "function") this._typingGuards.push(fn);
   }
 
   isDown(code) {
