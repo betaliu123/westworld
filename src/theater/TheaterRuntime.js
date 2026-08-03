@@ -4,6 +4,12 @@
 
 import { THEATER_CONFIG } from "../config/theaterData.js";
 import { IDLE_BY_NODE, WITNESS_ON } from "../config/theaterIdle.js";
+import { REACT_BY_NODE } from "../config/theaterReactByNode.js";
+
+/** 从数组里随机取一条 */
+function pickOne(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
 const Phase = {
   GATHERING: "gathering", // 演员正在赶来
@@ -437,11 +443,23 @@ export class TheaterRuntime {
     });
   }
 
-  /** 取"看见玩家打了 victimRole 时，speakerRole 会喊什么" */
+  /**
+   * 取"看见玩家打了 victimRole 时，speakerRole 会喊什么"。
+   * 优先级：本幕专属（演到哪一幕说的话不一样）→ 按被打对象 → null（上层再退回通用）
+   */
   _witnessOnLine(victimRole, speakerRole) {
+    const byNode = REACT_BY_NODE[`${this.tree.id}/${this.node?.id}`]?.[victimRole]?.witness?.[speakerRole];
+    if (byNode && byNode.length) return pickOne(byNode);
     const pool = WITNESS_ON[this.tree.id]?.[victimRole]?.[speakerRole];
     if (!pool || !pool.length) return null;
-    return pool[Math.floor(Math.random() * pool.length)];
+    return pickOne(pool);
+  }
+
+  /** 取被打者自己喊的话：本幕专属优先，再退回全剧通用的 reactions.hit */
+  _hitLineOf(victimRole) {
+    const byNode = REACT_BY_NODE[`${this.tree.id}/${this.node?.id}`]?.[victimRole]?.hit;
+    if (byNode && byNode.length) return pickOne(byNode);
+    return this._reactionLine("hit", victimRole);
   }
 
   /** 玩家撞到了演员 */
@@ -474,7 +492,8 @@ export class TheaterRuntime {
   _playReaction(kind, roleId, npc) {
     const m = this.memberOf(roleId);
     if (!m || !npc.alive) return;
-    const line = this._reactionLine(kind, roleId);
+    // 被打的话走"本幕专属优先"，其它（撞/偷）走全剧通用
+    const line = kind === "hit" ? this._hitLineOf(roleId) : this._reactionLine(kind, roleId);
     const mood = kind === "hit" ? "pain" : kind === "steal" ? "angry" : "shocked";
     if (line) {
       npc.brain.say(line.slice(0, THEATER_CONFIG.maxBubbleChars), 3);
