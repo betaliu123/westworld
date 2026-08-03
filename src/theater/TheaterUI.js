@@ -10,6 +10,7 @@ export class TheaterUI {
     this.canOpen = deps.canOpen || (() => true); // 有弹窗/在载具里时不抢按键
     this.onExpand = deps.onExpand || null;       // 展开输入框时通知外部（锁定说话对象）
     this.onCollapse = deps.onCollapse || null;
+    this.shouldStayOpen = deps.shouldStayOpen || null; // 有对话对象时别因失焦自动收
     this.input = deps.input || null;
 
     this._choices = [];
@@ -35,7 +36,7 @@ export class TheaterUI {
       <div id="theater-input-row">
         <span id="theater-tag">🎭</span>
         <input id="theater-input" type="text" maxlength="60" autocomplete="off" spellcheck="false"
-               placeholder="对他们说点什么…（回车说出口，Esc 回到操作）" />
+               placeholder="对他们说点什么…（回车发送，可接着聊；Esc 回到操作）" />
         <button id="theater-send" type="button">说</button>
       </div>
     `;
@@ -54,7 +55,11 @@ export class TheaterUI {
       const text = this.inputEl.value.trim();
       if (!text) { this.collapse(); return; }
       this.inputEl.value = "";
+      // 发完不收界面：玩家通常想接着聊下一句。以前发完就关，
+      // 一关就触发 onCollapse → endNpcChat → endTalk，NPC 当场走人。
+      // 想结束对话按 Esc（输入框下方有提示）。
       this.onSubmitText(text);
+      this.inputEl.focus();
     };
 
     this.sendBtn.addEventListener("click", (e) => {
@@ -79,6 +84,9 @@ export class TheaterUI {
     this.inputEl.addEventListener("focus", () => this.bar.classList.add("focused"));
     this.inputEl.addEventListener("blur", () => {
       this.bar.classList.remove("focused");
+      // 正在跟某人对话时不因失焦收界面 —— 鼠标一动就重新抓指针锁会让输入框失焦，
+      // 于是"发一句话对话框就没了、NPC 也走了"。有对话对象时只有 Esc 能收。
+      if (this.shouldStayOpen?.()) return;
       if (!this.inputEl.value.trim()) this.collapse();
     });
     this.collapsedEl.addEventListener("click", () => this.expand());
@@ -130,9 +138,10 @@ export class TheaterUI {
   /** 顶部提示当前在对谁说话 */
   setTalkTarget(label) {
     this._talkTarget = label || "";
+    // 明确写出"能接着聊"，因为发完不再自动收界面
     this.inputEl.placeholder = label
-      ? `对${label}说…（回车说出口，Esc 结束）`
-      : "对他们说点什么…（回车说出口，Esc 回到操作）";
+      ? `对${label}说…（回车发送，可接着聊；Esc 结束对话）`
+      : "对他们说点什么…（回车发送，可接着聊；Esc 回到操作）";
   }
 
   get expanded() {

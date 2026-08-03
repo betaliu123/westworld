@@ -253,11 +253,6 @@ export class InteractionSystem {
     switch (t.type) {
       case "npc": {
         const npc = t.data.npc;
-        // AI 剧场演员：把"搭戏"按钮并入原有 NPC 交互按钮区
-        // 键位用 J（Z 已全局绑定睡觉，且 keyMap 里没有 KeyZ）
-        const theaterAct = this.theaterDirector?.isActor?.(npc)
-          ? { action: "theater_cue", icon: "🎭", label: "搭戏", key: "J", hint: `${t.data.name} · 正在街头演一场戏` }
-          : null;
         // 正在打我、且没在逃 → 可以求饶
         const canBeg = npc?.brain?.state === "ANGRY" && !npc.brain.attackTargetNpc;
         const begAct = canBeg
@@ -278,7 +273,6 @@ export class InteractionSystem {
           }
           if (begAct) npcActions.unshift(begAct);       // 命悬一线时放最前面
           if (placateAct) npcActions.unshift(placateAct);
-          if (theaterAct) npcActions.push(theaterAct);
           return npcActions;
         }
         const actions = [
@@ -290,7 +284,6 @@ export class InteractionSystem {
         }
         if (begAct) actions.unshift(begAct);
         if (placateAct) actions.unshift(placateAct);
-        if (theaterAct) actions.push(theaterAct);
         return actions;
       }
       case "door":

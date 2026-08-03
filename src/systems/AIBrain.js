@@ -278,15 +278,24 @@ export class AIBrain {
    * 被玩家用枪瞄准时的反应（由瞄准系统每帧检测调用，内部有冷却）。
    * 反应分四档，按性格分流：
    *   凶悍且不爽 → 警告（maybe反打）；普通人 → 看你/惊；胆小 → 跑；有交情 → 别这样
+   *
+   * opts.inShow：正在剧场演出中。以前只要 `this._perform` 非空就直接 return，
+   * 结果"举枪对着台上的人，全场毫无反应"。现在演员照样反应，只是温和档
+   * （plead/defy/startled）不强行切状态 —— 一举枪就把整台戏冲散并不合理，
+   * 台词和表情该给，戏继续；只有真的被吓跑（flee）才脱戏。
    * @returns {string|null} 这次有没有真的做出反应（没有返回 null，避免重复轰炸）
    */
   onAimed(playerRef, opts = {}) {
-    if (this.state === State.DOWN || this._perform) return null;
+    if (this.state === State.DOWN) return null;
+    const inShow = !!opts.inShow;
+    if (this._perform && !inShow) return null;
     const now = opts.now ?? performance.now() / 1000;
     this._aimedCd = this._aimedCd || 0;
     if (now < this._aimedCd) return null;
     this._aimedCd = now + 4; // 4 秒内只反应一次
     this.threat = playerRef;
+    // 演出中的温和反应不切状态，避免一举枪就散场
+    const soft = (state) => { if (!inShow) this._enter(state); };
 
     const b = this.p.bravery;
     const a = this.p.aggression;
@@ -305,7 +314,7 @@ export class AIBrain {
           "别开枪，我这就回家！",
         ]));
         this.emote?.("😨", 2);
-        this._enter(State.FLEE);
+        this._enter(State.FLEE); // 放弃报官必然脱戏，这个不软化
         return "scared_off_report";
       }
     }
@@ -314,7 +323,7 @@ export class AIBrain {
     if (aff >= 40) {
       this.say(lineOf("plead"), 2.6);
       this.emote?.("😟", 2);
-      this._enter(State.STARTLED);
+      soft(State.STARTLED);
       return "plead";
     }
     // 凶悍且有攻击性：先警告，可能反过来瞪你
@@ -322,21 +331,23 @@ export class AIBrain {
       this.say(lineOf("defy"), 2.6);
       this.emote?.("😠", 2);
       this.emotion = Math.min(1, this.emotion + 0.6);
-      if (chance(0.4)) this._enter(State.ANGRY); // 有概率直接翻脸
-      else this._enter(State.STARTLED);
+      // 演出中不翻脸（否则一举枪就变成群殴）；台下才可能直接动手
+      if (!inShow && chance(0.4)) this._enter(State.ANGRY);
+      else soft(State.STARTLED);
       return "defy";
     }
-    // 胆小：立刻跑
+    // 胆小：立刻跑。这一档就算在演出中也真跑 —— 人被枪指着还站着念台词才怪
     if (b < 0.4) {
       this.say(lineOf("flee"), 2.4);
       this.emote?.("😨", 2);
+      if (inShow) { this._brokeCharacter = true; this._perform = null; }
       this._enter(State.FLEE);
       return "flee";
     }
     // 普通人：僵住，转头看你
     this.say(lineOf("startled"), 2.4);
     this.emote?.("😟", 2);
-    this._enter(State.STARTLED);
+    soft(State.STARTLED);
     return "startled";
   }
   // 玩家发起对话：进入 TALK 状态，面向玩家、停下脚步
@@ -355,6 +366,23 @@ export class AIBrain {
       this._followUpAnswered = false;
       this._talkTurns = 0;
     }
+    return true;
+  }
+
+  /**
+   * 玩家又说了一句 —— 把墙钟耐心续上，但不清回合计数。
+   *
+   * 必要性：`_talkPatience` 只有 8~26 秒，而开了推理的自由对话一次要 10 秒上下，
+   * 玩家打字 + 等生成很容易就把耐心耗光，于是"话还没说完人就走了"。
+   * 续的是"等待时间"，不是"聊天次数" —— 回合上限仍由 checkDialoguePatience 管，
+   * 所以聊够了照样会走，只是不会因为等 AI 而走。
+   */
+  refreshTalkPatience() {
+    if (this.state !== State.TALK) return false;
+    this._talkPatience = Math.max(
+      this._talkPatience,
+      randRange(8 + this.p.sociability * 14, 14 + this.p.sociability * 12)
+    );
     return true;
   }
 
@@ -629,22 +657,18 @@ export class AIBrain {
     // 本轮对话总回合数：不管换不换花样，聊太久 NPC 也该走了
     this._talkTurns = (this._talkTurns || 0) + 1;
 
-    // 相同行为 >= 3 次 → 厌烦
-    if (repeats >= 3) {
-      return { endConversation: true, reason: "repeat", text: pick([
-        "够了，我不想再聊这个了。", "你说来说去就这几句？走了。",
-        "我没空陪你玩这个。", "你闲得慌吗？不聊了。", "行了行了，我还有事。"
-      ]) };
+    // 相同行为 >= 3 次 → 厌烦。
+    // 但自由输入例外：它每次内容都不同，kind 恒为 free_chat 只是实现细节，
+    // 按"重复 3 次"掐掉会让玩家打三句话就被赶走。自由对话只受下面的总回合上限管。
+    if (repeats >= 3 && kind !== "free_chat") {
+      return { endConversation: true, reason: "repeat", text: this._farewellLine("repeat") };
     }
 
     // 总回合上限：社交型的人能多聊几句，闷的人几句就烦
     // （否则玩家轮换 praise→flirt→tip→praise 就能绕开"相同行为 3 次"无限刷）
     const turnCap = AIBrain.talkTurnCap(this.p);
     if (this._talkTurns >= turnCap) {
-      return { endConversation: true, reason: "no_more_words", text: pick([
-        "该说的都说了，我得走了。", "就聊到这儿吧，伙计。",
-        "行了，我还有活儿要干。", "话说完了，各走各的。", "今天聊够了，回头见。"
-      ]) };
+      return { endConversation: true, reason: "no_more_words", text: this._farewellLine("done") };
     }
 
     // 威胁/勒索后 NPC 主动不爽走人（胆小的逃，胆大的走）
@@ -669,6 +693,57 @@ export class AIBrain {
     }
 
     return null;
+  }
+
+  /**
+   * 结束对话的告别台词，按人设分流。
+   *
+   * 以前不分人设一律是"够了，我不想再聊这个了"这种不耐烦口气 —— 一个和善的
+   * 牧师、一个热络的酒保聊完也这么甩脸子，很出戏。现在按 社交性 / 攻击性 /
+   * 对玩家好感 分成善意、公事公办、不耐烦三档，另外给几个职业专属的收尾。
+   *
+   * @param kind "repeat"（同一件事说太多遍）| "done"（该说的说完了）
+   */
+  _farewellLine(kind) {
+    const p = this.p;
+    const warm = p.sociability ?? 0.5;
+    const aggro = p.aggression ?? 0.4;
+
+    // 职业专属收尾（有活儿要干的人，走得有理由）
+    const byJob = {
+      牧师: ["愿主保佑你，孩子。有话随时来教堂。", "我该去准备晚祷了，去吧。"],
+      医生: ["我还有病人等着，回头再聊。", "照顾好自己，别让我给你缝伤口。"],
+      酒保: ["杯子还没擦完呢，回头请你喝一杯。", "常来啊，伙计。"],
+      商人: ["我这儿还得看店，想买什么再来。", "生意要紧，回头聊。"],
+      铁匠: ["炉子还烧着呢，我得回去了。", "要打铁再来找我。"],
+      警长: ["我得去巡街了。别惹事。", "镇上不太平，我先走一步。"],
+      歌女: ["我该上台了，回头听我唱一曲。", "别走远，晚点来听歌。"],
+      记者: ["我得去赶稿了，有料再找我。", "报纸不等人，先走了。"],
+      马夫: ["马还没喂，我得去马厩了。", "回头见，伙计。"],
+    };
+
+    // 不耐烦档：凶且不爱说话的人
+    if (aggro > 0.55 && warm < 0.45) {
+      return pick(kind === "repeat"
+        ? ["够了，我不想再聊这个了。", "你说来说去就这几句？走了。", "我没空陪你玩这个。"]
+        : ["说完了，散了吧。", "行了，别耽误我。", "没事我走了。"]);
+    }
+
+    // 善意档：社交型、或者跟玩家有交情
+    if (warm > 0.55) {
+      const jobLines = byJob[p.job];
+      if (jobLines && chance(0.6)) return pick(jobLines);
+      return pick(kind === "repeat"
+        ? ["这事咱们改天再说吧，好吗？", "我明白你的意思了，先这样。", "哈，你还挺执着。不过我真得走了。"]
+        : ["聊得挺高兴，回头再唠。", "那我先去忙了，路上小心。", "有空再来找我说话，伙计。", "今天就到这儿吧，保重。"]);
+    }
+
+    // 公事公办档：不冷不热
+    const jobLines = byJob[p.job];
+    if (jobLines && chance(0.4)) return pick(jobLines);
+    return pick(kind === "repeat"
+      ? ["这个话头就到这儿吧。", "我知道了，别再说了。", "行了行了，我还有事。"]
+      : ["该说的都说了，我得走了。", "就聊到这儿吧，伙计。", "话说完了，各走各的。", "我还有活儿要干，回头见。"]);
   }
 
   /** 一轮对话最多能聊几个回合（社交性越高越能聊）。夹在 4~9 之间。 */

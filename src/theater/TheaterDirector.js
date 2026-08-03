@@ -201,6 +201,12 @@ export class TheaterDirector {
     this.scene.notifyActorHit(npc, knocked);
   }
 
+  /** 玩家举枪瞄着某个 NPC（main.js 的瞄准扫描转进来） */
+  notifyNpcAimed(npc, kind) {
+    if (!this.active) return;
+    this.scene.notifyActorAimed(npc, kind);
+  }
+
   /** 这个 NPC 是当前剧场演员吗（给 InteractionSystem 加按钮用） */
   isActor(npc) {
     return !!(this.active && this.scene.isActor(npc));
@@ -210,23 +216,6 @@ export class TheaterDirector {
     return this.active ? this.scene.roleOf(npc) : null;
   }
 
-  /** 玩家对演员的"入戏"交互：让该演员对玩家说一句戏内台词 */
-  cueActor(npc) {
-    if (!this.active) return;
-    const role = this.scene.roleOf(npc);
-    if (!role) return;
-    const m = this.scene.memberOf(role);
-    const lines = [
-      "你也来看热闹？站远点，别挨枪子。",
-      "这事跟你没关系，伙计。",
-      "要帮忙就说话，别光站着。",
-      "看什么看？这是我们的私事。",
-    ];
-    const line = lines[Math.floor(Math.random() * lines.length)];
-    m.npc.brain.say(line, 3);
-    m.npc.brain.perform?.({ faceTarget: this._playerPos });
-    this._addLog(`${m.stageName}：${line}`);
-  }
 
   set playerPos(p) {
     this._playerPos = p;

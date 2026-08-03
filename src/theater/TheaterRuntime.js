@@ -580,6 +580,43 @@ export class TheaterRuntime {
   }
 
   /**
+   * 玩家举枪瞄着某个演员（由 main 的瞄准扫描转进来）。
+   * 被瞄的人自己的台词由 AIBrain.onAimed 出（按职业分档），这里负责剧场侧：
+   * 让他转过来面对枪口，并让旁人注意到"这家伙掏枪了"。
+   * @param kind onAimed 的返回值：plead/defy/flee/startled/scared_off_report
+   */
+  notifyActorAimed(npc, kind) {
+    const role = this.roleOf(npc);
+    if (!role || this.phase === Phase.DONE) return;
+    const me = this.memberOf(role);
+    if (!me) return;
+    // 被枪指着当然是看着枪口
+    this._faceMe(npc);
+    this.hooks.moodFx?.(npc, kind === "defy" ? "angry" : "scared");
+    this.hooks.log?.(`你把枪指向${me.stageName}`);
+    // 一举枪就散场太糙，但全场装看不见更糙 —— 挑一个旁人喊一句
+    if (this._aimedCommentAt && this.now() - this._aimedCommentAt < 6000) return;
+    this._aimedCommentAt = this.now();
+    const others = this.cast.filter((c) => c.roleId !== role && c.npc.alive && c.npc.brain?.state !== "DOWN");
+    if (!others.length) return;
+    const other = others[Math.floor(Math.random() * others.length)];
+    setTimeout(() => {
+      if (this.phase === Phase.DONE) return;
+      const line = pickOne([
+        "他掏枪了！都让开！",
+        "喂！把枪放下！",
+        "疯了吗？这儿有女人和孩子！",
+        "别开枪，先生，事情还没到那步。",
+        "谁去叫警长——他动枪了！",
+      ]);
+      this._faceMe(other.npc);
+      other.npc.brain.say(line, 3);
+      this.hooks.moodFx?.(other.npc, "scared");
+      this.hooks.log?.(`${other.stageName}：${line}`);
+    }, 420);
+  }
+
+  /**
    * 取"看见玩家打了 victimRole 时，speakerRole 会喊什么"。
    * 优先级：本幕专属（演到哪一幕说的话不一样）→ 按被打对象 → null（上层再退回通用）
    */

@@ -229,6 +229,8 @@ function boot() {
     onCollapse: () => { theater.setPlayerTyping(false); endNpcChat(); },
     onSubmitText: (text) => routeFreeText(text),
     onPickChoice: (id) => theater.submitChoice(id),
+    // 正在跟人对话（或在剧场圈内）时，输入框不因失焦自动收 —— 只有 Esc 能收
+    shouldStayOpen: () => !!chatTarget || (theater?.active && theater.scene?.zoneLevel === "interact"),
   });
   theater.ui = theaterUI;
   theater.npcAction = (npc, action, candidates) => npcActions.execute(npc, action, { candidates });
@@ -1101,6 +1103,10 @@ function boot() {
       return;
     }
 
+    // 玩家主动搭话就是在维持对话：把墙钟耐心续上，别让"等 AI 生成的 10 秒"
+    // 把 NPC 的耐心耗光导致他中途走掉（回合上限仍然管着，聊够了照样走）
+    npc.brain.refreshTalkPatience?.();
+
     const nearbyNames = npcManager.all
       .filter((n) => n !== npc && n.alive && Math.hypot(n.pos.x - npc.pos.x, n.pos.z - npc.pos.z) < 14)
       .slice(0, 6)
@@ -1146,8 +1152,16 @@ function boot() {
           chatTarget = null;
           theaterUI.setTalkTarget("");
           hideFloatDialogue();
+          theaterUI.collapse();
         }
       }, 1800);
+      return;
+    }
+    // 自由对话也算回合：聊够了 NPC 自己会说"该走了"并走开（收界面 + 清对话对象）
+    if (_checkNpcPatience(npc, "free_chat")) {
+      chatTarget = null;
+      theaterUI.setTalkTarget("");
+      theaterUI.collapse();
     }
   }
 
@@ -1192,11 +1206,15 @@ function boot() {
     if (!target) return;
     const owner = target.phone?.owner || "镇民";
     const affection = _affectionOf(target);
+    const isActor = !!theater?.isActor?.(target);
     const kind = target.brain.onAimed(player.pos, {
       now: performance.now() / 1000,
       affection,
+      // 演员也要对枪口有反应；温和档不切状态，戏能继续
+      inShow: isActor,
     });
     if (kind) {
+      if (isActor) theater.notifyNpcAimed(target, kind);
       const label = {
         plead: "求你放下", defy: "警告你", flee: "吓跑了", startled: "僵住了",
         scared_off_report: "不敢去报官了",
@@ -1216,8 +1234,11 @@ function boot() {
       npc.brain.say?.(result.text, 2.6);
       floatDlgText.textContent = result.text;
       floatDlgText.className = "neutral";
-      hud.toast(`🚶 ${npc.phone?.owner || "镇民"}${result.reason === "no_more_words" ? "没话说了，转身走开" : "不想聊了，走开了"}`,
-        { side: true, key: "npc-leave" });
+      // 提示语跟着人设走：善意的人别说成"不耐烦地走开了"
+      const warm = (npc.personality?.sociability ?? 0.5) > 0.55;
+      const leaveWord = { scared: "被你吓走了", angry_walk: "翻脸走开了", recruit_annoyed: "不想再听你劝" }[result.reason]
+        || (warm ? "说完话，客气地告辞了" : "话说完了，转身走开");
+      hud.toast(`🚶 ${npc.phone?.owner || "镇民"}${leaveWord}`, { side: true, key: "npc-leave" });
       hideFloatDialogue();          // 内部会调 endTalk()
       interaction.clearDialogueTarget();
       showPlayerBubble("");
@@ -2216,7 +2237,16 @@ function boot() {
           interaction.setDialogueTarget(npc);
           audio.npcVoice("greet");
           reputation.onKindDialogue(npc.personality.gang);
-          _addNpcAffinity(npc, 5, 3);
+          // 每人每天只有第一次打招呼给好感。
+          // 否则"NPC 聊够了走开 → 追上去再按 F"就是个 +5/+3 的循环 ——
+          // 回合上限只管单轮对话，管不住反复重新搭话。
+          const _day = worldClock.day;
+          if (npc.brain._greetedDay !== _day) {
+            npc.brain._greetedDay = _day;
+            _addNpcAffinity(npc, 5, 3);
+          } else if (result.kind === "greet") {
+            hud.toast(`今天已经和${owner}打过招呼了`, { side: true, key: "greet-dup" });
+          }
           if (reg) {
             phone.addContact(reg.id, reg.displayName, reg.job || "镇民");
           }
@@ -2456,10 +2486,6 @@ function boot() {
       case "profile":
         openNPCProfile(result.npc);
         document.exitPointerLock();
-        break;
-      case "theater_cue":
-        // AI 剧场：跟正在演戏的人搭话
-        theater.cueActor(result.npc);
         break;
       case "beg": {
         // 求饶：说好话让正在打你的人收手
