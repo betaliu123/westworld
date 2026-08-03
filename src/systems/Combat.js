@@ -47,8 +47,15 @@ export class Combat {
     const hitY = muzzleY - Math.tan(camPitch) * dist;
     let part = "body";
     let damage = 2;
-    if (hitY >= 1.55) { part = "head"; damage = 6; }        // 爆头：一枪放倒最硬的人
-    else if (hitY <= 0.75) { part = "leg"; damage = 1; }     // 打腿：伤害低但会让人跑不动
+    if (hitY >= 1.55) {
+      // 爆头：按最大血量算，保证一枪打掉一半以上。
+      // 固定伤害对硬汉（10 格血）不够狠，硬汉挨一枪只掉 1/5，没有反馈感。
+      part = "head";
+      damage = Math.max(3, Math.ceil((target.maxHp || 4) * 0.6));
+    } else if (hitY <= 0.75) {
+      part = "leg";
+      damage = 1; // 打腿伤害低，但会让人跑不动
+    }
     const knocked = target.hit(playerPos, false, damage);
 
     if (part === "head") {

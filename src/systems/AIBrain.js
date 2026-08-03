@@ -234,7 +234,7 @@ export class AIBrain {
     if (this.state === State.DOWN || this.state === State.ANGRY) return;
     if (this.p.bravery < 0.5) {
       // 胆小者报警
-      this._reportCrime = true;
+      this._reportCrime = this._tryTakeReportSlot(); // 名额满了就只是跑，不去报案
       this.threat = threatPos;
       this._enter(State.FLEE);
       this.say(pick(["出事了！得去报官！", "有罪犯！叫警长！", "快跑，去报警！"]), 2);
@@ -329,7 +329,113 @@ export class AIBrain {
   // NPC 听完玩家的话后，除了回话还能决定做点什么。这些是"确定性"入口，
   // 与 witnessCrime/onHit 那类"按性格掷骰分流"的方法不同，调了就一定进对应状态。
 
-  /** 确定性逃跑（吓到了/心虚跑了）。threatRef 是要躲开的东西 */
+  /**
+   * 全镇同时去报案的人数上限。
+   * 不限的话一次冲突能让七八个人一起冲警局，玩家根本拦不住，通缉度也会瞬间叠满。
+   * 限 1-2 个人，玩家才有"优先击杀 / 安抚"的操作空间。
+   */
+  static reportQuota = { limit: 2, active: new Set() };
+
+  /** 尝试占一个报案名额；占不到就别去报案（改为单纯逃跑） */
+  _tryTakeReportSlot() {
+    const q = AIBrain.reportQuota;
+    // 清掉已经不在报案途中的（倒地 / 放弃 / 已报完）
+    for (const b of [...q.active]) {
+      if (!b._reportCrime || b.state === State.DOWN) q.active.delete(b);
+    }
+    if (q.active.has(this)) return true;
+    if (q.active.size >= q.limit) return false;
+    q.active.add(this);
+    return true;
+  }
+
+  /** 放弃报案（被玩家安抚、或跑太久没到） */
+  cancelReport(line = "") {
+    if (!this._reportCrime) return false;
+    this._reportCrime = false;
+    AIBrain.reportQuota.active.delete(this);
+    if (line) this.say(line, 2.6);
+    return true;
+  }
+
+  /** 是否正在去警局报案（供头顶图标与玩家判断优先级） */
+  get isReporting() {
+    return !!this._reportCrime;
+  }
+
+  /**
+   * 玩家求饶：正在打玩家的人有可能收手。
+   * 成功率看性格（凶悍的不吃这套）、好感、以及玩家荣誉。
+   * @returns {{ok:boolean, reply:string, mood:string}}
+   */
+  respondToBeg({ honor = 0, affection = 0 } = {}) {
+    if (this.state === State.DOWN) return { ok: false, reply: "（他躺在地上没听见）", mood: "neutral" };
+    // 基础成功率：越不凶、好感越高、玩家名声越好，越容易被劝住
+    let chanceOk = 0.35
+      - this.p.aggression * 0.3
+      + (1 - this.p.bravery) * 0.2
+      + Math.max(-0.2, Math.min(0.3, affection / 150))
+      + Math.max(-0.15, Math.min(0.15, honor / 400));
+    if (this.p.gang) chanceOk -= 0.15; // 帮派分子面子上过不去
+    chanceOk = Math.max(0.05, Math.min(0.85, chanceOk));
+
+    if (chance(chanceOk)) {
+      this.calmDown();
+      this.emotion = 0.1;
+      const line = pick([
+        "……算了，滚吧，别让我再看见你。",
+        "起来，别跪着，丢人。",
+        "这次放过你，下次可没这好运。",
+        "行了行了，我的拳头也累了。",
+      ]);
+      this.say(line, 3);
+      return { ok: true, reply: line, mood: "neutral" };
+    }
+    const line = pick([
+      "求饶？太晚了！",
+      "现在装可怜？站起来！",
+      "省点力气，你要用得上。",
+      "别废话，把钱掏出来再说。",
+    ]);
+    this.say(line, 2.6);
+    this.emotion = Math.min(1, this.emotion + 0.2);
+    return { ok: false, reply: line, mood: "hostile" };
+  }
+
+  /**
+   * 玩家安抚正在去报案的人：劝他别去警局。
+   * 成功率看胆量（越怕你越容易被劝住）、好感、玩家荣誉。
+   * @returns {{ok:boolean, reply:string, mood:string}}
+   */
+  respondToPlacate({ honor = 0, affection = 0 } = {}) {
+    if (!this._reportCrime) return { ok: false, reply: "（他没打算去报案）", mood: "neutral" };
+    let chanceOk = 0.4
+      + (1 - this.p.bravery) * 0.25
+      + Math.max(-0.2, Math.min(0.35, affection / 120))
+      + Math.max(-0.2, Math.min(0.2, honor / 300));
+    if (this.p.gang) chanceOk -= 0.1;
+    chanceOk = Math.max(0.05, Math.min(0.9, chanceOk));
+
+    if (chance(chanceOk)) {
+      const line = pick([
+        "……好，我什么也没看见。",
+        "这事我不掺和，你自己当心。",
+        "别让我后悔，先生。",
+        "我只是路过，什么都不知道。",
+      ]);
+      this.cancelReport(line);
+      this.calmDown();
+      return { ok: true, reply: line, mood: "scared" };
+    }
+    const line = pick([
+      "让开！这事必须让警长知道！",
+      "你拦不住我！",
+      "别碰我！救命啊！",
+    ]);
+    this.say(line, 2.6);
+    return { ok: false, reply: line, mood: "scared" };
+  }
+
   /**
    * 确定性逃跑（吓到了/心虚跑了）。threatRef 是要躲开的东西。
    * report=true 表示"边跑边去报案"（看见尸体的胆小者会这样）；
@@ -339,7 +445,8 @@ export class AIBrain {
     if (this.state === State.DOWN) return false;
     this.threat = threatRef || this.threat;
     this.emotion = Math.max(this.emotion, 0.7);
-    this._reportCrime = !!report;
+    // 报案要占名额，占不到就只是跑开
+    this._reportCrime = report ? this._tryTakeReportSlot() : false;
     this._enter(State.FLEE);
     return true;
   }
@@ -753,7 +860,7 @@ export class AIBrain {
       this.say(pick(["兄弟们！有人找事！", "敢动我们的人？！", "你等着，我叫人去！"]), 2.2);
     } else if (this.p.bravery < 0.3) {
       // 胆小：经典报警路线
-      this._reportCrime = true;
+      this._reportCrime = this._tryTakeReportSlot();
       this._enter(State.STARTLED);
       this.say(pick(SCARED_TALK), 2.2);
     } else if (this.p.bravery > 0.6 && this.p.aggression > 0.4 && chance(0.7)) {
@@ -763,7 +870,7 @@ export class AIBrain {
     } else {
       // 其余：50%报警，50%叫亲朋好友
       if (chance(0.5)) {
-        this._reportCrime = true;
+        this._reportCrime = this._tryTakeReportSlot();
       } else {
         this._callFriendsBackup = true;
         this._reportCrime = false;
@@ -788,7 +895,7 @@ export class AIBrain {
     if (this._perform && this._perform.immune) return; // 演出中被挤两下不至于跑去报案
     this.emotion = 1;
     this.threat = threatRef;
-    this._reportCrime = true;  // 逃去警局报案
+    this._reportCrime = this._tryTakeReportSlot();  // 逃去警局报案
     this._disturbed = true;
     if (this.state === State.DOWN) return;
     if (this.p.bravery > 0.5 && this.p.aggression > 0.35) {
@@ -1003,10 +1110,11 @@ export class AIBrain {
           const dSd = Math.hypot(ctx.self.x - sd.x, ctx.self.z - sd.z);
           if (dSd < 2.2) {
             this._reportCrime = false;
+            AIBrain.reportQuota.active.delete(this); // 报完了，把名额让给别人
             intent.reportCrime = true;
             this.say("警长！有人行凶！", 2.6);
           } else if (this.stateTimer <= -12) {
-            this._reportCrime = false; // 太久跑不到，放弃报案
+            this.cancelReport(); // 太久跑不到，放弃报案
           }
           break;
         }

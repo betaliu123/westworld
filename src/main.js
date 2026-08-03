@@ -975,6 +975,11 @@ function boot() {
 
   // ===== 自由输入：对准心锁定的 NPC 说话 =====
 
+  /** 从数组里随便挑一句（main.js 没导入 MathUtils 的 pick） */
+  function _pickLine(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
   function _affectionOf(npc) {
     const owner = npc.phone?.owner || "镇民";
     return _buildRelCtx(npc, npcRegistry.findByDisplayName(owner)).affection;
@@ -2401,6 +2406,56 @@ function boot() {
         // AI 剧场：跟正在演戏的人搭话
         theater.cueActor(result.npc);
         break;
+      case "beg": {
+        // 求饶：说好话让正在打你的人收手
+        const npc = result.npc;
+        const name = npc.phone?.owner || "对方";
+        showPlayerBubble(_pickLine([
+          "别打了！我什么都不要了！",
+          "住手，是我不对，行了吧？",
+          "我认输，别再动手了！",
+          "求你了，别打了！",
+        ]));
+        const r = npc.brain.respondToBeg({
+          honor: reputation.honor,
+          affection: _affectionOf(npc),
+        });
+        showFloatDialogue(npc, r.reply, r.ok ? "neutral" : "hostile");
+        playMoodFx(npc, r.ok ? "neutral" : "angry");
+        audio.npcVoice(r.ok ? "greet" : "angry");
+        if (r.ok) {
+          factions.clear(npc);
+          hud.toast(`🙏 ${name}收手了`, { key: "beg-ok" });
+          reputation.addHonor(-1); // 当街跪地求饶，名声上不太好看
+        } else {
+          hud.toast(`😠 ${name}不吃这套`, { key: "beg-fail" });
+        }
+        break;
+      }
+      case "placate": {
+        // 安抚：劝住正要去警局报案的人
+        const npc = result.npc;
+        const name = npc.phone?.owner || "对方";
+        showPlayerBubble(_pickLine([
+          "这事别报官，行吗？",
+          "先生，当作没看见，好处少不了你。",
+          "别去警局，我们私下解决。",
+          "冷静点，报官对谁都没好处。",
+        ]));
+        const r = npc.brain.respondToPlacate({
+          honor: reputation.honor,
+          affection: _affectionOf(npc),
+        });
+        showFloatDialogue(npc, r.reply, r.ok ? "friendly" : "scared");
+        playMoodFx(npc, r.ok ? "neutral" : "scared");
+        if (r.ok) {
+          hud.toast(`🤫 劝住了${name}，他不去报案了`, { key: "placate-ok" });
+          _addNpcAffinity(npc, 2, 2);
+        } else {
+          hud.toast(`🚨 ${name}还是要去报案`, { key: "placate-fail" });
+        }
+        break;
+      }
       case "attack":
         // 触发拳击攻击 — 只在冷却就绪时有效
         if (player.attackCooldown <= 0 && !player.attackTimer) {
@@ -3071,6 +3126,34 @@ function boot() {
         b2.el.style.top = `${y}px`;
         b2.el.title = "";
       }
+    }
+
+    // 正在去警局报案的人：头顶挂个醒目图标，让玩家知道该优先拦谁
+    for (const npc of npcManager.all) {
+      if (!npc.alive || npc.brain?.state === "DOWN") continue;
+      if (!npc.brain?.isReporting) continue;
+      const rdx = npc.pos.x - camPos.x;
+      const rdz = npc.pos.z - camPos.z;
+      if (rdx * rdx + rdz * rdz > 60 * 60) continue;
+      _qmV.set(npc.pos.x, 3.05, npc.pos.z); // 比名字牌高一点，不遮名字
+      _qmV.project(camera);
+      if (_qmV.z > 1) continue;
+      let b3 = questMarkerPool.find(p => !p.inUse);
+      if (!b3) {
+        const el = document.createElement("div");
+        el.className = "quest-head-marker";
+        layer.appendChild(el);
+        b3 = { el, inUse: true };
+        questMarkerPool.push(b3);
+      } else {
+        b3.inUse = true;
+      }
+      b3.el.textContent = "🚨";
+      b3.el.className = "quest-head-marker reporting";
+      b3.el.style.display = "block";
+      b3.el.style.left = `${(_qmV.x * 0.5 + 0.5) * w}px`;
+      b3.el.style.top = `${(-_qmV.y * 0.5 + 0.5) * h}px`;
+      b3.el.title = "正在去警局报案";
     }
 
     const trackedTask = taskSystem.getTrackedTask();

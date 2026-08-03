@@ -255,6 +255,15 @@ export class InteractionSystem {
         const theaterAct = this.theaterDirector?.isActor?.(npc)
           ? { action: "theater_cue", icon: "🎭", label: "搭戏", key: "J", hint: `${t.data.name} · 正在街头演一场戏` }
           : null;
+        // 正在打我、且没在逃 → 可以求饶
+        const canBeg = npc?.brain?.state === "ANGRY" && !npc.brain.attackTargetNpc;
+        const begAct = canBeg
+          ? { action: "beg", icon: "🙏", label: "求饶", key: "R", hint: `${t.data.name} 正在攻击你 · 按 R 求饶` }
+          : null;
+        // 正在去报案 → 可以安抚
+        const placateAct = npc?.brain?.isReporting
+          ? { action: "placate", icon: "🤫", label: "安抚", key: "Y", hint: `${t.data.name} 要去报案 · 按 Y 劝住他` }
+          : null;
         // 特殊职业 NPC：保留完整交互（招募/勒索等），不加攻击按钮
         if (npc?.brain?.hasRoleInteraction?.()) {
           const npcActions = [
@@ -264,6 +273,8 @@ export class InteractionSystem {
           if (t.data.bumpDist) {
             npcActions.push({ action: "steal", icon: "🫳", label: "偷窃", key: "V", hint: "" });
           }
+          if (begAct) npcActions.unshift(begAct);       // 命悬一线时放最前面
+          if (placateAct) npcActions.unshift(placateAct);
           if (theaterAct) npcActions.push(theaterAct);
           return npcActions;
         }
@@ -274,6 +285,8 @@ export class InteractionSystem {
         if (t.data.bumpDist) {
           actions.push({ action: "steal", icon: "🫳", label: "偷窃", key: "V", hint: "" });
         }
+        if (begAct) actions.unshift(begAct);
+        if (placateAct) actions.unshift(placateAct);
         if (theaterAct) actions.push(theaterAct);
         return actions;
       }
@@ -321,6 +334,8 @@ export class InteractionSystem {
 
     switch (action) {
       case "greet":    return { type: "dialogue", npc: t.npc, kind: "greet" };
+      case "beg":      return { type: "beg", npc: t.npc };
+      case "placate":  return { type: "placate", npc: t.npc };
       case "profile":  return { type: "profile", npc: t.npc };
       case "attack":   return { type: "attack", npc: t.npc };
       case "steal":    return { type: "steal", npc: t.npc };

@@ -1330,3 +1330,13 @@ body.headshot-flash::after {
   animation: headshotFlash .22s ease-out;
 }
 @keyframes headshotFlash { from { opacity: 1; } to { opacity: 0; } }
+/* 正在去警局报案的人：头顶闪烁的警报图标，提示玩家优先拦他 */
+.quest-head-marker.reporting {
+  width: auto; height: auto; font-size: 17px;
+  filter: drop-shadow(0 0 6px rgba(226,86,74,.9)) drop-shadow(0 2px 4px rgba(0,0,0,.7));
+  animation: reportPulse .7s ease-in-out infinite;
+}
+@keyframes reportPulse {
+  0%, 100% { transform: translate(-50%, -100%) scale(1); opacity: 1; }
+  50%      { transform: translate(-50%, -100%) scale(1.25); opacity: .75; }
+}
