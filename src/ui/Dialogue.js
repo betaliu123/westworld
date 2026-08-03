@@ -2,12 +2,23 @@
 
 import * as THREE from "three";
 
+/**
+ * 同屏最多显示几个冒泡。
+ *
+ * 举枪对着人群 / 打了人之后，恐慌广播 + 目击反应会让一大片 NPC 同时开口，
+ * 屏幕上糊六七个气泡根本读不出谁在说什么（还会出现两个人蹦同一句台词）。
+ * 这里在**显示层**收口：逻辑照跑（该报官的照样去报官），只是画面上按
+ * "离玩家近的优先"挑几个显示。收在显示层是因为改逻辑层容易把玩法改坏。
+ */
+const MAX_BUBBLES = 4;
+
 export class Dialogue {
-  constructor(camera) {
+  constructor(camera, opts = {}) {
     this.camera = camera;
     this.layer = document.getElementById("bubble-layer");
     this.pool = []; // { el, inUse }
     this._v = new THREE.Vector3();
+    this.maxBubbles = opts.maxBubbles ?? MAX_BUBBLES;
   }
 
   _acquire() {
@@ -44,26 +55,41 @@ export class Dialogue {
     const BUBBLE_W = 190;  // 大致宽度，用于判断横向是否重叠
     const LIFT = 34;       // 每次上移的像素
 
-    // 近的先放（更重要），远的往上让
+    // 先投影 + 筛掉画面外的，再排序取前几个 ——
+    // 顺序很重要：屏幕外/相机背后的人不该白占名额
     const list = [];
     for (const npc of npcs) {
-      if (!npc.brain.bubble) continue;
+      const text = npc.brain.bubble;
+      if (!text) continue;
       const dx = npc.pos.x - camPos.x;
       const dz = npc.pos.z - camPos.z;
       const d2 = dx * dx + dz * dz;
       if (d2 > 45 * 45) continue;
-      list.push({ npc, d2 });
-    }
-    list.sort((a, b) => a.d2 - b.d2);
-
-    for (const { npc } of list) {
-      const text = npc.brain.bubble;
       this._v.set(npc.pos.x, 3.0, npc.pos.z); // 最上层：让下面依次留给名字牌、emoji、血条
       this._v.project(this.camera);
       if (this._v.z > 1) continue; // 在相机背后
-
       const x = (this._v.x * 0.5 + 0.5) * w;
-      let y = (-this._v.y * 0.5 + 0.5) * h;
+      const y = (-this._v.y * 0.5 + 0.5) * h;
+      if (x < -BUBBLE_W || x > w + BUBBLE_W || y < -80 || y > h + 80) continue; // 画面外
+      list.push({ npc, d2, x, y, text });
+    }
+    // 近的先放（更重要），远的往上让
+    list.sort((a, b) => a.d2 - b.d2);
+
+    // 去重 + 限量：同一句台词只让最近的那个人说（一群人蹦同一句很假），
+    // 总数也卡住上限
+    const seenText = new Set();
+    const shown = [];
+    for (const it of list) {
+      if (shown.length >= this.maxBubbles) break;
+      if (seenText.has(it.text)) continue;
+      seenText.add(it.text);
+      shown.push(it);
+    }
+
+    for (const it of shown) {
+      const { npc, text, x } = it;
+      let y = it.y;
 
       // 与已放好的冒泡重叠就往上挪，最多挪 4 次
       for (let tries = 0; tries < 4; tries++) {

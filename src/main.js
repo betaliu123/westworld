@@ -1200,11 +1200,16 @@ function boot() {
   hud.setAmmo(ammoSystem.ammo); // 初始同步一次，别让 HUD 显示写死的数字
 
   // 瞄准时：找出正对你枪口的人，让他对枪做出反应
-  const _aimScanCd = { t: 0 };
+  const _aimScanCd = { t: 0, lastReactAt: 0 };
   function _updateAimingReactions() {
     _aimScanCd.t -= 1;
     if (_aimScanCd.t > 0) return;
     _aimScanCd.t = 6; // 每 6 帧扫一次，别每帧都找
+    // 全局节流：findAttackTarget 只返回最近的一个，但玩家把准心从人群上扫过去时，
+    // 每次扫描命中的是不同的人（每人各有 4 秒冷却），于是一片人同时开口，
+    // 屏幕糊满气泡。限制"全镇每 1.5 秒最多冒出一个被瞄反应"。
+    const _now = performance.now() / 1000;
+    if (_now - _aimScanCd.lastReactAt < 1.5) return;
     const target = npcManager.findAttackTarget(player.pos, player.facing, 22, 22);
     if (!target) return;
     const owner = target.phone?.owner || "镇民";
@@ -1217,6 +1222,7 @@ function boot() {
       inShow: isActor,
     });
     if (kind) {
+      _aimScanCd.lastReactAt = _now; // 只有真的做出反应才计入节流
       if (isActor) theater.notifyNpcAimed(target, kind);
       const label = {
         plead: "求你放下", defy: "警告你", flee: "吓跑了", startled: "僵住了",
@@ -3662,9 +3668,13 @@ function boot() {
       return;
     }
     // 调试面板放在打字拦截之前：它是排查问题的入口，
-    // 万一输入框卡住了焦点，至少还能靠这个键打开面板看状态
-    if ((e.code === "Backquote" || e.key === "`" || e.key === "~") && !e.ctrlKey && !e.altKey && !e.metaKey) {
-      if (input.typing) return; // 打字时输入反引号是正常输入，不抢
+    // 万一输入框卡住了焦点，至少还能靠这个键打开面板看状态。
+    // 键位：反引号（\` / ~）原有，另加 + / =（反引号在部分键盘布局上不好按，
+    // 而 + 要按 Shift 才出来，所以把同一个物理键的 = 也一起收下）
+    const _isDebugKey = e.code === "Backquote" || e.key === "`" || e.key === "~"
+      || e.key === "+" || e.key === "=" || e.code === "Equal" || e.code === "NumpadAdd";
+    if (_isDebugKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if (input.typing) return; // 打字时这些都是正常输入，不抢
       e.preventDefault();
       window.__ww.debugPanel();
       return;
