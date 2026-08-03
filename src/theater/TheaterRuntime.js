@@ -147,8 +147,24 @@ export class TheaterRuntime {
 
     // 演员就位
     if (this.phase === Phase.GATHERING) {
-      const ready = this.cast.filter((m) => m.npc.brain?.performArrived).length;
-      if (ready >= Math.min(2, this.cast.length) || now > this.gatherDeadline) {
+      // 主要角色（非群众）必须全部到位才开演。以前只要 2 个人到位就开始，
+      // 结果戏演到一半主角还在街对面走路，看起来像各说各话。
+      const mains = this.cast.filter((m) => m.roleId !== "crowd");
+      const mainsReady = mains.filter((m) => m.npc.brain?.performArrived).length;
+      const allReady = mainsReady >= mains.length;
+      const timeout = now > this.gatherDeadline;
+      if (allReady || timeout) {
+        // 超时还没到位的：直接放到站位上，别让戏在人没到的情况下开演
+        if (timeout && !allReady) {
+          for (const m of this.cast) {
+            if (m.npc.brain?.performArrived) continue;
+            const safe = this.stage.snapTo ? this.stage.snapTo(m.spot) : m.spot;
+            m.npc.pos.x = safe.x;
+            m.npc.pos.z = safe.z;
+            if (m.npc.brain?._perform) m.npc.brain._perform.arrived = true;
+          }
+          this.hooks.log?.("（有人来得慢，先各自站位）");
+        }
         this.phase = Phase.PLAYING;
         this.gotoNode(this.tree.entryNode);
       }

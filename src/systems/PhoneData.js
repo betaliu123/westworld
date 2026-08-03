@@ -3,6 +3,7 @@
 import { pick, randInt, chance, randRange } from "../core/MathUtils.js";
 import {
   PHONE_FIRST as FIRST,
+  PHONE_LAST as LAST,
   PHONE_CONTACTS as CONTACTS,
   PHONE_SCRIPTS as SCRIPTS,
   PHONE_GENERIC as GENERIC,
@@ -24,8 +25,26 @@ function timeStamp(base) {
  * @param {object} personality
  * @returns {object} { owner, job, threads:[{contact, messages:[{who, text, time}]}] }
  */
+// 本局已用过的显示名：路人重名会让玩家分不清谁是谁
+// （以前 12 个单名给 28 个 NPC 用，必然重名）
+const usedOwners = new Set();
+
+/** 取一个本局唯一的路人名（名·姓 组合，实在抽不出唯一名才允许重复） */
+function uniqueOwner() {
+  for (let i = 0; i < 40; i++) {
+    const name = `${pick(FIRST)}·${pick(LAST)}`;
+    if (!usedOwners.has(name)) {
+      usedOwners.add(name);
+      return name;
+    }
+  }
+  const fallback = `${pick(FIRST)}·${pick(LAST)}`;
+  usedOwners.add(fallback);
+  return fallback;
+}
+
 export function generatePhone(personality) {
-  const owner = pick(FIRST);
+  const owner = uniqueOwner();
   const job = personality.job;
   const pool = SCRIPTS[job] || GENERIC;
   const threadCount = Math.min(pool.length, randInt(1, 2)) || 1;

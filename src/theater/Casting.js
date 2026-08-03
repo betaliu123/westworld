@@ -52,14 +52,16 @@ export class Casting {
     return npc.phone?.owner || npc.personality?.job || "镇民";
   }
 
-  /** 可征召池：活着、不忙、在室外、离舞台 60 米内 */
+  /** 可征召池：活着、不忙、在室外、离舞台够近 */
   _pool() {
     const all = this.npcManager?.all || [];
     return all.filter((npc) => {
       if (!npc.alive) return false;
       if (npc.brain?._perform) return false;
       if (BUSY_STATES.has(npc.brain?.state)) return false;
-      if (this.stage.distanceToCenter(npc.pos) > 60) return false;
+      // 30 米内才征召：以前放到 60 米，演员要跑很久才到位，
+      // 戏已经开演了主角还在街对面走路
+      if (this.stage.distanceToCenter(npc.pos) > 30) return false;
       return true;
     });
   }

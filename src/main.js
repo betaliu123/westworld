@@ -3064,7 +3064,7 @@ function boot() {
         } else {
           b2.inUse = true;
         }
-        b2.el.textContent = m.stageName || npc.phone?.owner || "";
+        b2.el.textContent = `🎭 ${m.stageName || npc.phone?.owner || ""}`;
         b2.el.className = "quest-head-marker theater-name";
         b2.el.style.display = "block";
         b2.el.style.left = `${x}px`;
