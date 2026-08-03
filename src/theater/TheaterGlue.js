@@ -5,14 +5,34 @@
 import { allowedActionsFor, describeAllowedActions, sanitizeAction } from "../npc/NpcActionSchema.js";
 
 const ENDPOINT = "/api/llm/chat";
-const TIMEOUT_MS = 25000;
+// 开了推理的模型实测最慢 31s（reasoning 8891 字符），25s 会被自己 abort 掉。
+// 放到 60s：宁可等，也不要静默退化成关键词兜底。
+const TIMEOUT_MS = 60000;
+
+/**
+ * 生成参数。deepseek-v4-flash 是推理模型，这两个值是实测定的：
+ *
+ * max_tokens=700（旧值）时 reasoning 会把预算吃光，content 返回 0 字 →
+ * JSON 解析失败 → 每次都退化成「（朝你看了一眼）」。实测 700/1200 是 0/5 成功。
+ * 拉到 12000 后 reasoning 峰值（约 3000 token）远低于上限，饿死 content 的
+ * 失败模式彻底消失。
+ *
+ * reasoning_effort 是质量/延迟旋钮，实测（各 6 样本）：
+ *   none → 1.8s，但节点选择会偏（暴力输入选不到终局），行为退化成清一色 face_player
+ *   low  → 10.5s，节点准、行为能和台词语义对上（"钱你拿去" 配 give_money）
+ *   高   → 16.3s，质量与 low 相当但更慢
+ * 默认取 low。
+ */
+export const GLUE_GEN = { maxTokens: 12000, reasoningEffort: "low" };
 
 export class TheaterGlue {
   constructor(deps = {}) {
     this.budget = deps.budget || null; // 可选：调用配额
     this.endpoint = deps.endpoint || ENDPOINT; // 可注入，便于脱离浏览器做联调
+    this.onReport = deps.onReport || null;     // 每次调用的结果回执（成功/失败/兜底都报）
     this.lastVia = "-";
     this.lastReason = "";
+    this.lastMs = 0;
   }
 
   /**
@@ -20,17 +40,29 @@ export class TheaterGlue {
    * @returns {Promise<{bridge:Array<{roleId,text}>, targetNodeId:string, via:string}>}
    */
   async glue(args) {
+    const t0 = Date.now();
     try {
       const r = await this._llm(args);
       this.lastVia = "llm";
       this.lastReason = r.reason || "";
+      this.lastMs = Date.now() - t0;
+      this._report("ok", "llm", `${r.bridge.length}句台词 → 节点 ${r.targetNodeId}`);
       return r;
     } catch (e) {
+      const msg = e?.message || "llm 不可用";
+      // 节流和真故障必须区分：以前两者都静默退化，看起来一模一样
+      const throttled = msg.includes("配额");
       const r = this.ruleGlue(args);
-      this.lastVia = "rule";
-      this.lastReason = e?.message || "llm 不可用";
+      this.lastVia = throttled ? "budget" : "rule";
+      this.lastReason = msg;
+      this.lastMs = Date.now() - t0;
+      this._report(throttled ? "warn" : "bad", this.lastVia, throttled ? "说太快了，本次用关键词兜底" : `兜底(关键词) · ${msg}`);
       return r;
     }
+  }
+
+  _report(kind, via, detail) {
+    this.onReport?.({ kind, scene: "剧场衔接", via, ms: this.lastMs, detail });
   }
 
   // ---- LLM 路径 ----
@@ -94,8 +126,10 @@ ${nodeList}
             { role: "user", content: user },
           ],
           temperature: 0.85,
-          max_tokens: 700,
+          max_tokens: GLUE_GEN.maxTokens,
           response_format: { type: "json_object" },
+          // 关键：不带这个参数时推理链会把 max_tokens 吃光，content 返回空字符串
+          reasoning_effort: GLUE_GEN.reasoningEffort,
         }),
         signal: ctrl.signal,
       });
@@ -177,9 +211,15 @@ ${nodeList}
   }
 }
 
-/** 简易本地调用配额（防止玩家刷输入把 token 烧穿；服务端另有全局闸） */
+/**
+ * 简易本地调用配额（防止玩家刷输入把 token 烧穿；服务端另有全局闸）。
+ * 原来 6/分钟 + 1.2s 冷却对单人调试太紧，连说几句就被挡；
+ * 且被挡时和"服务器挂了"长得一模一样，无从排查。现在放宽 + 由 onReport 明确报出。
+ * 注意：剧场衔接和 NPC 对话共用服务端同一个闸（.env 的 LLM_PER_MINUTE），
+ * 两边客户端配额之和不要超过它，否则会开始吃 429。
+ */
 export class GlueBudget {
-  constructor({ perMinute = 6, cooldownMs = 1200 } = {}) {
+  constructor({ perMinute = 20, cooldownMs = 400 } = {}) {
     this.perMinute = perMinute;
     this.cooldownMs = cooldownMs;
     this._windowStart = Date.now();

@@ -56,11 +56,13 @@ import { getPortrait, getAvatar } from "./config/portraits.js";
 import { NARRATIVE_ITEMS, NPC_POCKET_NARRATIVES, HOME_STASH_NARRATIVES } from "./config/narrativeItems.js";
 // AI 剧场（街头事件）
 import { TheaterDirector } from "./theater/TheaterDirector.js";
+import { GLUE_GEN } from "./theater/TheaterGlue.js";
 import { TheaterUI } from "./theater/TheaterUI.js";
 import { TheaterAftermath } from "./theater/TheaterAftermath.js";
 // NPC 自由对话 + LLM 行为决策
-import { NpcChatService, ChatBudget } from "./npc/NpcChatService.js";
+import { NpcChatService, ChatBudget, CHAT_GEN } from "./npc/NpcChatService.js";
 import { NpcActionExecutor } from "./npc/NpcActionExecutor.js";
+import { AiLog } from "./systems/AiLog.js";
 import { AmmoSystem } from "./systems/AmmoSystem.js";
 import { CorpseReactions } from "./systems/CorpseReactions.js";
 // 战斗阵营（敌/友）与血条
@@ -189,17 +191,24 @@ function boot() {
   // P5 LLM (默认禁用，可通过调试面板启用)
   const narrativeService = new NarrativeService({ worldState, eventLog, enabled: true });
 
+  // ===== 实时生成回执浮层（屏幕最上方，最近 3 条；默认开）=====
+  // 剧场衔接和 NPC 对话都是静默降级的，不报出来就分不清"模型这么答的"和"根本没调到模型"
+  const aiLog = new AiLog({ el: document.getElementById("ai-log"), max: 3, ttlMs: 12000, enabled: true });
+  const onAiReport = (r) => aiLog.report(r);
+
   // ===== AI 剧场：每天上午在镇中心大街演一场街头事件 =====
   theater = new TheaterDirector({
     npcManager, town, hud, sky, worldClock, reputation, economy, newspaper, eventLog,
     playerSay: (text) => showPlayerBubble(text),
+    onAiReport,
     aftermath: new TheaterAftermath({
       newspaper, phone, hud, npcRegistry, getDay: () => worldClock.day,
     }),
   });
 
   // ===== 单个 NPC 的自由对话（准心对着谁就是在跟谁说话）=====
-  const npcChat = new NpcChatService({ budget: new ChatBudget({ perMinute: 10, cooldownMs: 900 }) });
+  // 配额用 ChatBudget 默认值（20/分钟 + 400ms），别在这里写死覆盖
+  const npcChat = new NpcChatService({ budget: new ChatBudget(), onReport: onAiReport });
   const npcActions = new NpcActionExecutor({
     player, economy, reputation, hud, npcManager, audio, baccarat, eventLog,
     addAffinity: (npc, trust, affection) => _addNpcAffinity(npc, trust, affection),
@@ -2988,6 +2997,7 @@ function boot() {
     updateNPCNameTags();
     healthBars.update(npcManager.all, player.pos);
     emojiPops.update(npcManager.all, player.pos);
+    aiLog.tick(); // 让过期的生成回执自己淡出
   });
 
 	  // ---- 任务侧栏 ----
@@ -3403,6 +3413,23 @@ function boot() {
     },
     theaterStatus: () => theater.debugStatus(),
     theaterLog: (n) => theater.recentLog(n),
+    // 实时生成：顶部浮层开关 + 推理档位实时切换（不用重启就能 A/B 质量与延迟）
+    aiLogToggle: () => aiLog.toggle(),
+    aiLog: () => aiLog.recent(10),
+    aiReasoning: (level) => {
+      const ok = ["none", "low", "medium", "high"].includes(level);
+      if (!ok) { hud.toast("推理档位只能是 none/low/medium/high", { side: true }); return null; }
+      GLUE_GEN.reasoningEffort = level;
+      CHAT_GEN.reasoningEffort = level;
+      hud.toast(`🤖 推理档位 → ${level}`, { side: true, key: "ai-reasoning" });
+      return level;
+    },
+    aiMaxTokens: (glue, chat) => {
+      if (Number(glue) > 0) GLUE_GEN.maxTokens = Number(glue);
+      if (Number(chat) > 0) CHAT_GEN.maxTokens = Number(chat);
+      hud.toast(`🤖 max_tokens 剧场=${GLUE_GEN.maxTokens} 对话=${CHAT_GEN.maxTokens}`, { side: true });
+      return { glue: GLUE_GEN.maxTokens, chat: CHAT_GEN.maxTokens };
+    },
     // Phase 4 新系统
     taskSystem, stockMarket, showTaskDetail, renderTaskBar,
     // 快捷调试
@@ -3436,7 +3463,11 @@ function boot() {
         h += '<div class="debug-row">正在上演：' + tst.tree + '</div>';
         h += '<div class="debug-row">节点 ' + tst.node + ' / 阶段 ' + tst.phase + ' / 玩家区域 ' + tst.zone + '</div>';
         h += '<div class="debug-row">演员：' + tst.cast.join('、') + '</div>';
-        h += '<div class="debug-row">衔接来源：' + tst.glueVia + '（llm=真实大模型，rule=关键词兜底）</div>';
+        h += '<div class="debug-row">衔接来源：' + tst.glueVia + '（llm=真实大模型，rule=关键词兜底，budget=被节流）</div>';
+        if (tst.glueReason) {
+          h += '<div class="debug-row"><span class="label">上次原因</span><span class="' + (tst.glueVia === 'llm' ? 'value' : 'bad') + '">' + tst.glueReason + '</span></div>';
+        }
+        if (tst.glueMs) h += '<div class="debug-row"><span class="label">上次耗时</span><span class="value">' + (tst.glueMs / 1000).toFixed(1) + 's</span></div>';
       } else {
         h += '<div class="debug-row">当前没有演出。今日开演时刻 ' + tst.todayTriggerHour + ' 点，已演过第 ' + tst.lastPlayedDay + ' 天</div>';
       }
@@ -3448,6 +3479,25 @@ function boot() {
       h += '<button class="debug-btn" onclick="__ww.theaterStart(\'street_pickpocket\');__ww.debugPanel()">🫳 街角扒手</button> ';
       h += '<button class="debug-btn" onclick="__ww.theaterGoStage();__ww.debugPanel()">🏃 传送到舞台</button> ';
       if (tst.active) h += '<button class="debug-btn" onclick="__ww.theaterStop();__ww.debugPanel()">⏹ 立刻散场</button>';
+      h += '</div></div>';
+
+      // Section 7b: 实时生成（大模型调用回执）
+      h += '<div class="debug-section"><div class="debug-section-title">🤖 实时生成 <span style="font-weight:400;opacity:.7">（Ctrl+L 开关顶部浮层）</span></div>';
+      h += '<div class="debug-row"><span class="label">顶部浮层</span><span class="' + (aiLog.enabled ? 'value' : 'warn') + '">' + (aiLog.enabled ? '开' : '关') + '</span></div>';
+      h += '<div class="debug-row"><span class="label">剧场衔接</span><span class="value">max_tokens=' + GLUE_GEN.maxTokens + ' · reasoning=' + GLUE_GEN.reasoningEffort + '</span></div>';
+      h += '<div class="debug-row"><span class="label">NPC对话</span><span class="value">max_tokens=' + CHAT_GEN.maxTokens + ' · reasoning=' + CHAT_GEN.reasoningEffort + '</span></div>';
+      h += '<div class="debug-row"><span class="label">对话来源</span><span class="' + (npcChat.lastVia === 'llm' ? 'value' : 'bad') + '">' + npcChat.lastVia + (npcChat.lastError ? ' · ' + npcChat.lastError : '') + '</span></div>';
+      const _recent = aiLog.recent(3);
+      if (_recent.length) {
+        for (const line of _recent) h += '<div class="debug-row" style="opacity:.85">' + line.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</div>';
+      } else {
+        h += '<div class="debug-empty">还没有调用记录（说句话或开一场事件试试）</div>';
+      }
+      h += '<div class="debug-actions" style="margin-top:6px">';
+      h += '<button class="debug-btn" onclick="__ww.aiReasoning(\'none\');__ww.debugPanel()">推理 关(最快)</button> ';
+      h += '<button class="debug-btn" onclick="__ww.aiReasoning(\'low\');__ww.debugPanel()">推理 低(默认)</button> ';
+      h += '<button class="debug-btn" onclick="__ww.aiReasoning(\'high\');__ww.debugPanel()">推理 高(最慢)</button> ';
+      h += '<button class="debug-btn" onclick="__ww.aiLogToggle();__ww.debugPanel()">切换顶部浮层</button>';
       h += '</div></div>';
 
       h += '<div class="debug-summary">';
@@ -3528,6 +3578,13 @@ function boot() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "D" && e.shiftKey && e.ctrlKey) {
       window.__ww.debugPanel();
+    }
+    // Ctrl+L：开关顶部的实时生成回执浮层（默认开着；嫌挡视野就关掉）
+    if ((e.key === "l" || e.key === "L") && e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      const on = aiLog.toggle();
+      hud.toast(on ? "🤖 顶部生成日志：开" : "🤖 顶部生成日志：关", { side: true, key: "ailog-toggle" });
+      return;
     }
     // 调试面板放在打字拦截之前：它是排查问题的入口，
     // 万一输入框卡住了焦点，至少还能靠这个键打开面板看状态

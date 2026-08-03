@@ -28,7 +28,8 @@ export class TheaterDirector {
     this.stage = new StageMap(this.town);
     this.aftermath = deps.aftermath || null; // 事件后续影响（报纸/来信/遗留物）
     this.casting = new Casting({ npcManager: this.npcManager, stage: this.stage });
-    this.glue = new TheaterGlue({ budget: new GlueBudget({ perMinute: 6, cooldownMs: 1200 }) });
+    // 配额用 GlueBudget 的默认值（20/分钟 + 400ms 冷却），别在这里写死覆盖掉
+    this.glue = new TheaterGlue({ budget: new GlueBudget(), onReport: deps.onAiReport || null });
 
     this.scene = null;            // 当前 TheaterRuntime
     this.log = [];                // 叙事纪实（中文文本）
@@ -327,6 +328,8 @@ export class TheaterDirector {
       todayTriggerHour: this.todayTriggerHour.toFixed(2),
       lastPlayedDay: this.lastPlayedDay,
       glueVia: this.glue.lastVia,
+      glueReason: this.glue.lastReason,
+      glueMs: this.glue.lastMs,
     };
   }
 }

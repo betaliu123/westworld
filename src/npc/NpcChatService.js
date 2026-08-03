@@ -5,7 +5,15 @@
 import { allowedActionsFor, describeAllowedActions, sanitizeAction } from "./NpcActionSchema.js";
 
 const ENDPOINT = "/api/llm/chat";
-const TIMEOUT_MS = 25000;
+// 推理模型慢，实测最慢 30s+；25s 会被自己 abort 成兜底。
+const TIMEOUT_MS = 60000;
+
+/**
+ * 生成参数。与 TheaterGlue 的 GLUE_GEN 同理：
+ * max_tokens 旧值 400 太小，推理链一长就把 JSON 挤掉（content 返回空）；
+ * 拉到 6000 留足空间。reasoning_effort=low 换来行为选择和台词语义一致。
+ */
+export const CHAT_GEN = { maxTokens: 6000, reasoningEffort: "low" };
 
 const SYSTEM = `你在为一款美国西部小镇游戏里的 NPC 生成反应。
 说话风格：19 世纪美国西部，口语、短句、有地方味（伙计/先生/小子/该死的）。
@@ -24,9 +32,15 @@ export class NpcChatService {
   constructor(deps = {}) {
     this.endpoint = deps.endpoint || ENDPOINT;
     this.budget = deps.budget || null;
+    this.onReport = deps.onReport || null; // 每次调用的结果回执（成功/失败/兜底都报）
     this.lastVia = "-";
+    this.lastMs = 0;
     this.lastRejected = null;
     this.history = new Map(); // npc -> [{role, text}]，只留最近几轮
+  }
+
+  _report(kind, via, detail) {
+    this.onReport?.({ kind, scene: "NPC对话", via, ms: this.lastMs, detail });
   }
 
   _hist(npc) {
@@ -54,17 +68,25 @@ export class NpcChatService {
 
     if (this.budget && !this.budget.tryTake()) {
       this.lastVia = "budget";
+      this.lastMs = 0;
+      this.lastError = "超出本地调用配额";
+      this._report("warn", "budget", "说太快了，本次用关键词兜底");
       return { ...this.ruleRespond({ npc, text, allowed, castNames }), via: "budget" };
     }
 
+    const _t0 = Date.now();
     try {
       const parsed = await this._callLLM({ npc, text, ctx, allowed, castNames });
       this.lastVia = "llm";
       this.lastError = null;
+      this.lastMs = Date.now() - _t0;
+      this._report("ok", "llm", `「${parsed.say}」${parsed.action?.action && parsed.action.action !== "none" ? " + " + parsed.action.action : ""}`);
       return { ...parsed, via: "llm" };
     } catch (e) {
       this.lastVia = "rule";
       this.lastError = e?.message || String(e); // 记下原因，否则退化成兜底时无从排查
+      this.lastMs = Date.now() - _t0;
+      this._report("bad", "rule", `兜底(关键词) · ${this.lastError}`);
       return { ...this.ruleRespond({ npc, text, allowed, castNames }), via: "rule" };
     }
   }
@@ -103,9 +125,11 @@ export class NpcChatService {
             { role: "user", content: user },
           ],
           temperature: 0.85,
-          // 220 太小会把 JSON 截断，导致解析失败静默退化成关键词兜底
-          max_tokens: 400,
+          // 推理模型的思维链会先吃 token，给太小会把 JSON 截断（content 直接返回空），
+          // 静默退化成关键词兜底。给足额度让推理跑完还剩空间输出 JSON。
+          max_tokens: CHAT_GEN.maxTokens,
           response_format: { type: "json_object" },
+          reasoning_effort: CHAT_GEN.reasoningEffort,
         }),
         signal: ctrl.signal,
       });
@@ -178,8 +202,13 @@ export class NpcChatService {
 }
 
 /** 调用配额（与剧场共用同一套思路，避免玩家狂刷输入把额度打爆） */
+/**
+ * 本地调用配额。原来 10/分钟 + 900ms 冷却偏紧，且被挡时静默退化。
+ * 现在放宽 + 由 onReport 明确报出"节流"而不是伪装成故障。
+ * 注意：与剧场衔接共用服务端同一个闸（.env 的 LLM_PER_MINUTE）。
+ */
 export class ChatBudget {
-  constructor({ perMinute = 10, cooldownMs = 900 } = {}) {
+  constructor({ perMinute = 20, cooldownMs = 400 } = {}) {
     this.perMinute = perMinute;
     this.cooldownMs = cooldownMs;
     this.stamps = [];
