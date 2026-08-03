@@ -10,6 +10,16 @@ const AVOID_DIST = 4.2;     // 进到这么近就开始绕
 const REACT_CD = 25;        // 同一个 NPC 对同一具尸体的惊呼冷却（秒）
 const MAX_REACT_PER_TICK = 2; // 每次扫描最多让几个人出声，避免全街一起喊
 
+/**
+ * 玩家离尸体多近，才算"能把这事赖到他头上"。
+ *
+ * 路人只是路过发现一具尸体，并没看见谁动的手 —— 这种情况下跑去报官
+ * 说不出被告是谁，而且玩家可能早就在半个镇子外了，凭什么算他的账。
+ * 所以只有玩家还在现场附近（可能被当成凶手）才可能触发报官，
+ * 否则只是惊慌、绕行、喊两声。
+ */
+const CULPRIT_NEAR_DIST = 18;
+
 const SHOCK_LINES = [
   "天啊……那是个死人？",
   "地上那个……别是死了吧。",
@@ -22,10 +32,18 @@ const AVOID_LINES = [
   "绕过去，绕过去。",
   "我什么也没看见。",
 ];
+// 纯惊慌（只是被吓到，不含"去告发"的意思）
 const PANIC_LINES = [
   "杀人啦！有人死了！",
-  "去叫警长！快！",
   "这镇子疯了！",
+  "别过来！别过来！",
+  "我什么都没看见，放我走！",
+];
+// 真要去报官时才喊的（喊了却不去会很怪）
+const REPORT_LINES = [
+  "去叫警长！快！",
+  "我这就去报官！",
+  "警长得知道这事！",
 ];
 
 export class CorpseReactions {
@@ -35,8 +53,16 @@ export class CorpseReactions {
     this.audio = deps.audio || null;
     this.moodFx = deps.moodFx || null;
     this.getNow = deps.getNow || (() => performance.now() / 1000);
+    this.getPlayerPos = deps.getPlayerPos || null; // 用来判断玩家是否还在现场
     this._scanCd = 0;
     this._reacted = new WeakMap(); // npc -> { corpseKey: 上次反应时间 }
+  }
+
+  /** 玩家是否还在这具尸体附近（决定发现尸体能不能引出报官） */
+  _playerNear(corpse) {
+    const p = this.getPlayerPos?.();
+    if (!p) return false; // 拿不到玩家位置就当他不在场，宁可少报官
+    return Math.hypot(p.x - corpse.pos.x, p.z - corpse.pos.z) <= CULPRIT_NEAR_DIST;
   }
 
   /** 街上所有"倒着的人"（被击倒或死亡，且在室外） */
@@ -92,11 +118,14 @@ export class CorpseReactions {
 
       const bravery = npc.personality?.bravery ?? 0.5;
       if (bravery < 0.35) {
-        // 胆小的：喊着跑，有概率跑去报警
-        npc.brain.say(PANIC_LINES[Math.floor(Math.random() * PANIC_LINES.length)], 2.6);
+        // 胆小的：喊着跑。只有玩家还在现场附近时才可能顺便去报官 ——
+        // 单纯路过看见一具尸体，说不出被告是谁，也不该算到早已走远的玩家账上。
+        const willReport = this._playerNear(near) && Math.random() < 0.5;
+        const pool = willReport ? REPORT_LINES : PANIC_LINES;
+        npc.brain.say(pool[Math.floor(Math.random() * pool.length)], 2.6);
         this.moodFx?.(npc, "scared");
         // report 必须交给 fleeFrom：它内部会重置 _reportCrime，先设后调会被抹掉
-        npc.brain.fleeFrom?.(near.pos, { report: Math.random() < 0.5 });
+        npc.brain.fleeFrom?.(near.pos, { report: willReport });
       } else if (nd < AVOID_DIST + 2) {
         // 走近了看清的：低声嫌弃着绕开
         npc.brain.say(AVOID_LINES[Math.floor(Math.random() * AVOID_LINES.length)], 2.4);

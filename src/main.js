@@ -159,6 +159,8 @@ function boot() {
   const corpseReactions = new CorpseReactions({
     npcManager, hud, audio,
     moodFx: (npc, mood) => playMoodFx(npc, mood),
+    // 只有玩家还在尸体附近才可能被当成凶手 → 才可能引出报官
+    getPlayerPos: () => player.pos,
   });
   const emojiPops = new EmojiPops(camera);
 

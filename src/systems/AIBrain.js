@@ -312,7 +312,7 @@ export class AIBrain {
           "好、好！我不去报官了！",
           "枪放下……我什么都没看见。",
           "别开枪，我这就回家！",
-        ]));
+        ]), { byPlayer: true }); // 玩家用枪压下去的，名额不还给别人
         this.emote?.("😨", 2);
         this._enter(State.FLEE); // 放弃报官必然脱戏，这个不软化
         return "scared_off_report";
@@ -406,8 +406,12 @@ export class AIBrain {
    * 全镇同时去报案的人数上限。
    * 不限的话一次冲突能让七八个人一起冲警局，玩家根本拦不住，通缉度也会瞬间叠满。
    * 限 1-2 个人，玩家才有"优先击杀 / 安抚"的操作空间。
+   *
+   * burned：被玩家成功劝退/吓退的名额。这种名额**不还给池子** ——
+   * 否则玩家好不容易安抚下一个，立刻又有人补位去报官，等于白干。
+   * 每条记录带时间戳，过了 REPORT_BURN_TTL 自动失效，免得全镇永久免疫。
    */
-  static reportQuota = { limit: 2, active: new Set() };
+  static reportQuota = { limit: 2, active: new Set(), burned: [] };
 
   /**
    * 报案有效期（秒，真实时间）。
@@ -418,6 +422,17 @@ export class AIBrain {
    */
   static REPORT_TTL = 45;
 
+  /** 被玩家压下去的名额多久后重新可用（秒，真实时间）。约等于"这场风波过去了" */
+  static REPORT_BURN_TTL = 60;
+
+  /** 当前还有效的"已被玩家压下"的名额数 */
+  static _burnedCount() {
+    const q = AIBrain.reportQuota;
+    const cut = AIBrain._now() - AIBrain.REPORT_BURN_TTL;
+    q.burned = q.burned.filter((t) => t >= cut);
+    return q.burned.length;
+  }
+
   /** 尝试占一个报案名额；占不到就别去报案（改为单纯逃跑） */
   _tryTakeReportSlot() {
     const q = AIBrain.reportQuota;
@@ -426,7 +441,9 @@ export class AIBrain {
       if (!b._reportCrime || b.state === State.DOWN) q.active.delete(b);
     }
     if (q.active.has(this)) return true;
-    if (q.active.size >= q.limit) return false;
+    // 有效上限要扣掉被玩家压下去的名额
+    const effectiveLimit = Math.max(0, q.limit - AIBrain._burnedCount());
+    if (q.active.size >= effectiveLimit) return false;
     q.active.add(this);
     this._reportDeadline = AIBrain._now() + AIBrain.REPORT_TTL;
     return true;
@@ -440,6 +457,7 @@ export class AIBrain {
   /**
    * 报案超时检查：跑太久没到警局就自认倒霉放弃，把名额让出来。
    * 每帧调用（与状态无关），返回是否刚刚超时。
+   * 注意：超时是 NPC 自己放弃，名额正常释放（不算玩家的功劳，不烧名额）。
    */
   _tickReportTimeout() {
     if (!this._reportCrime) return false;
@@ -457,14 +475,22 @@ export class AIBrain {
       b._reportDeadline = 0;
     }
     q.active.clear();
+    q.burned.length = 0; // 玩家都倒下了，风波重新算
   }
 
-  /** 放弃报案（被玩家安抚、或跑太久没到） */
-  cancelReport(line = "") {
+  /**
+   * 放弃报案。
+   * @param line 放弃时说的话
+   * @param byPlayer 是否玩家主动压下去的（安抚成功 / 被枪指着吓退）。
+   *   为真时把这个名额"烧掉"，不还给池子 —— 否则玩家刚劝退一个，
+   *   立刻又有人补位去报官，玩家的操作等于白做。
+   */
+  cancelReport(line = "", { byPlayer = false } = {}) {
     if (!this._reportCrime) return false;
     this._reportCrime = false;
     this._reportDeadline = 0;
     AIBrain.reportQuota.active.delete(this);
+    if (byPlayer) AIBrain.reportQuota.burned.push(AIBrain._now());
     if (line) this.say(line, 2.6);
     return true;
   }
@@ -534,7 +560,7 @@ export class AIBrain {
         "别让我后悔，先生。",
         "我只是路过，什么都不知道。",
       ]);
-      this.cancelReport(line);
+      this.cancelReport(line, { byPlayer: true }); // 玩家安抚成功，名额不还给别人
       this.calmDown();
       return { ok: true, reply: line, mood: "scared" };
     }

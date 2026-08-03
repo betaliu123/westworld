@@ -3,6 +3,7 @@
 // 挑中后由 TheaterRuntime 调 brain.takeOver() 让他"先别上班，过来演戏"。
 
 import { State } from "../systems/AIBrain.js";
+import { roleGenderOf } from "../config/theaterRoleGender.js";
 
 // 这些状态的 NPC 不征召
 const BUSY_STATES = new Set([State.DOWN, State.FLEE, State.ANGRY, State.TALK, State.STARTLED, State.SEEK_LOOT]);
@@ -25,15 +26,19 @@ export class Casting {
 
     for (const role of tree.roles) {
       const count = role.count || 1;
+      // 角色要求的性别（树里内联的优先，其次查覆盖层）。
+      // 这是**硬约束**而不是打分项：以前性别只值 -40 分，别的加分项一叠加
+      // 就能盖过去，于是女模型的路人被派去演"得州比利"。
+      const wantFemale = roleGenderOf(tree.id, role);
       const picked = [];
       for (let i = 0; i < count; i++) {
-        const npc = this._bestFor(role, pool, used);
+        const npc = this._bestFor(role, pool, used, wantFemale);
         if (!npc) break;
         used.add(npc);
         picked.push(npc);
       }
       if (role.required && picked.length === 0) {
-        return null; // 关键角色没人演 → 今天这场戏开不了
+        return null; // 关键角色没人演 → 今天这场戏开不了（Director 会稍后重试）
       }
       picked.forEach((npc, i) => {
         result.push({
@@ -66,12 +71,14 @@ export class Casting {
     });
   }
 
-  /** 按人设匹配度打分，取最高（同分随机） */
-  _bestFor(role, pool, used) {
+  /** 按人设匹配度打分，取最高（同分随机）。wantFemale 非 null 时是硬性筛选。 */
+  _bestFor(role, pool, used, wantFemale = null) {
     let best = null;
     let bestScore = -Infinity;
     for (const npc of pool) {
       if (used.has(npc)) continue;
+      // 性别不符直接跳过，不参与打分
+      if (wantFemale != null && !!npc.female !== !!wantFemale) continue;
       const score = this._score(role, npc);
       if (score > bestScore) {
         bestScore = score;
