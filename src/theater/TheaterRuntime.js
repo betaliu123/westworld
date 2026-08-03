@@ -46,6 +46,7 @@ export class TheaterRuntime {
     this._timers = [];                                  // 延迟放人的定时器，重复散场时清掉
     this.token = `sc${Math.random().toString(36).slice(2, 8)}${Date.now() % 100000}`;
     this.playerChoices = []; // 玩家在事件中点过的选项（用于结局的碎片化叙事）
+    this.playerTyping = false; // 玩家正在输入框打字：这期间别自动推进、别播循环气泡
     this.elapsedGameHours = 0; // 开演至今经过的游戏小时（总时长上限用它，不看绝对钟点）
     this.actGameHours = 0;     // 当前这一幕已经演了多少游戏小时（围观自动推进用）
 
@@ -81,6 +82,10 @@ export class TheaterRuntime {
       // 先把人弄到室外，否则 NPC.update 会强制覆写 moveTo 为出口
       if (npc.insideHome && npc.exitHome) npc.exitHome();
       else if (npc.insideRoom && npc.exitPlace) npc.exitPlace();
+      // 被征召上台就别惦记报官了：一边演戏一边往警局跑很荒谬，
+      // 而且会带着 🚨 图标站在舞台上
+      npc.brain.cancelReport?.();
+      npc.brain._reportCrime = false;
       npc.brain.takeOver({
         moveTo: m.spot,
         faceTarget: this.stage.center,
@@ -207,12 +212,17 @@ export class TheaterRuntime {
           // 兜底：玩家中途走进来时补一次渲染，避免按钮永久隐身
           this._renderChoices();
         }
-        // 僵持中的碎语：不管玩家在不在场都继续演，别站着一声不吭
-        if (now >= this.nextIdleAt) {
+        // 僵持中的碎语：不管玩家在不在场都继续演，别站着一声不吭。
+        // 但玩家正在打字/等 LLM 回应时要闭嘴，否则循环气泡会把回应盖掉，
+        // 看起来就像"自由输入没反应，只在原地循环"。
+        if (now >= this.nextIdleAt && !this.gluePending && !this.playerTyping) {
           this._playIdleLoop(now);
         }
         // 玩家围观但一直不选 → 演够一幕的时长就自己往下走（走"旁观"那条）
-        this.actGameHours += dt * (24 / THEATER_CONFIG.realSecondsPerDay);
+        // 打字/等回应期间不计时，否则你还在输入这一幕就自动过去了
+        if (!this.gluePending && !this.playerTyping) {
+          this.actGameHours += dt * (24 / THEATER_CONFIG.realSecondsPerDay);
+        }
         if (this.actGameHours >= THEATER_CONFIG.actMaxGameHours) {
           const fallback = n.choices[n.choices.length - 1]; // 末位通常是旁观/不介入
           this.hooks.log?.(`（你没表态，事情自己往下走了）`);

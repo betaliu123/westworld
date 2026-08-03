@@ -211,8 +211,8 @@ function boot() {
   const theaterUI = new TheaterUI({
     input: engine.input,
     canOpen: () => !anyModalOpen() && !player.inVehicle,
-    onExpand: () => beginNpcChat(),
-    onCollapse: () => endNpcChat(),
+    onExpand: () => { theater.setPlayerTyping(true); beginNpcChat(); },
+    onCollapse: () => { theater.setPlayerTyping(false); endNpcChat(); },
     onSubmitText: (text) => routeFreeText(text),
     onPickChoice: (id) => theater.submitChoice(id),
   });
@@ -1180,7 +1180,10 @@ function boot() {
       affection,
     });
     if (kind) {
-      const label = { plead: "求你放下", defy: "警告你", flee: "吓跑了", startled: "僵住了" }[kind] || kind;
+      const label = {
+        plead: "求你放下", defy: "警告你", flee: "吓跑了", startled: "僵住了",
+        scared_off_report: "不敢去报官了",
+      }[kind] || kind;
       hud.toast(`🔫 ${owner}${label}`, { side: true, key: "aimed_" + owner });
     }
   }

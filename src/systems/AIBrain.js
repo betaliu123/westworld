@@ -272,6 +272,21 @@ export class AIBrain {
     const pool = AIMED_LINES[this.p.job] || AIMED_DEFAULT;
     const lineOf = (kind) => pick(pool[kind] || AIMED_DEFAULT[kind]);
 
+    // 正在去报官的人被枪指着：枪口就是最直白的威胁，胆量越低越容易放弃
+    if (this._reportCrime) {
+      const scareOff = Math.max(0.15, Math.min(0.9, 0.85 - b * 0.6));
+      if (chance(scareOff)) {
+        this.cancelReport(pick([
+          "好、好！我不去报官了！",
+          "枪放下……我什么都没看见。",
+          "别开枪，我这就回家！",
+        ]));
+        this.emote?.("😨", 2);
+        this._enter(State.FLEE);
+        return "scared_off_report";
+      }
+    }
+
     // 高好感：讲道理而不是怕
     if (aff >= 40) {
       this.say(lineOf("plead"), 2.6);
@@ -1055,8 +1070,13 @@ export class AIBrain {
 
     switch (this.state) {
       case State.DOWN:
+        // 倒地后爬起来：以前直接进 FLEE 但 hp 还是 0/负数，
+        // 于是"爆头打倒的人过几秒又站起来跑"，血条还挂着看着像回血了。
+        // 现在爬起来要恢复一点血（伤重的人爬得更慢、起来后血也少），
+        // 由 NPC 实体在 reviveFromDown 里处理。
         if (this.stateTimer <= 0) {
-          this._enter(State.FLEE); // 爬起来先跑
+          this._wantRevive = true;   // 交给 NPC.update 决定能不能起来
+          this._enter(State.FLEE);   // 起得来就先跑
           this.threat = ctx.playerRef;
         }
         break;

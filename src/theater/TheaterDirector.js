@@ -154,6 +154,13 @@ export class TheaterDirector {
       },
     });
     this.ui?.setEventActive?.(true, tree.title);
+    // 开演时把舞台附近的报官意图清掉：一场戏刚起来就有人往警局跑，
+    // 头顶还挂着 🚨 站在台上，很出戏
+    for (const npc of this.npcManager?.all || []) {
+      if (!npc.brain?.isReporting) continue;
+      if (this.stage.distanceToCenter(npc.pos) > THEATER_CONFIG.senseRadius) continue;
+      npc.brain.cancelReport();
+    }
     this.hud?.toast?.(`🎭 镇中心大街上出事了：${tree.title}`, { duration: 5000, key: "theater-start" });
     this._addLog(`——— 第 ${day} 天 ${this._fmtHour(this.sky?.hour ?? 9)} 《${tree.title}》 ———`);
     return true;
@@ -168,6 +175,11 @@ export class TheaterDirector {
     }
     this.scene.handleFreeText(text);
     return true;
+  }
+
+  /** 玩家打开/关闭输入框：打字期间剧场不自动推进、不播循环气泡 */
+  setPlayerTyping(on) {
+    if (this.scene) this.scene.playerTyping = !!on;
   }
 
   /** 玩家点事件选项（UI 调进来） */

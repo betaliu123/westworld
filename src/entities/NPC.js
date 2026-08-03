@@ -109,6 +109,30 @@ export class NPC {
     return false;
   }
 
+  /**
+   * 倒地后尝试爬起来。
+   * 以前倒地计时结束就直接进 FLEE，但 hp 仍是 0 或负数 —— 结果"爆头打倒的人
+   * 过几秒又站起来跑"，血条还挂着看着像回血。
+   * 现在：伤得越重越可能爬不起来；能起来的也只恢复一小截血。
+   * @returns {boolean} 是否真的站起来了
+   */
+  tryReviveFromDown() {
+    if (!this.alive) return false;
+    const deficit = -Math.min(0, this.hp); // 被打穿的程度（爆头会打到很负）
+    // 被打穿 2 格以上就起不来了（重伤昏迷），躺着直到这一天结束
+    if (deficit >= 2) {
+      this.hp = 0;
+      this._outCold = true;
+      return false;
+    }
+    this.hp = Math.max(1, Math.ceil(this.maxHp * 0.25)); // 勉强站起来，只剩一点血
+    return true;
+  }
+
+  get isOutCold() {
+    return !!this._outCold;
+  }
+
   panic(playerRef, distance) {
     this.brain.onPanicBroadcast(playerRef, distance);
   }
@@ -239,6 +263,16 @@ export class NPC {
         if (this.insideHome) this.exitHome();
         else this.exitPlace();
         return intent;
+      }
+    }
+
+    // 倒地计时结束后 brain 会请求爬起来，这里决定他到底起不起得来
+    if (this.brain._wantRevive) {
+      this.brain._wantRevive = false;
+      if (!this.tryReviveFromDown()) {
+        // 伤太重，躺回去（重伤昏迷，本轮不再起来）
+        this.brain.state = State.DOWN;
+        this.brain.stateTimer = 999;
       }
     }
 
