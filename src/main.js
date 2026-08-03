@@ -3427,9 +3427,17 @@ function boot() {
     if (e.key === "D" && e.shiftKey && e.ctrlKey) {
       window.__ww.debugPanel();
     }
-    // AI 剧场快捷键（不用开面板点按钮）
-    if (document.activeElement && (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA")) return;
+    // 打字时把键盘完全让给输入框（除了 Esc），别按到热键弹出面板
+    if (input.typing) return;
     if (e.ctrlKey || e.altKey || e.metaKey) return;
+    // 反引号：调试面板开关（游戏界惯例的控制台键，不占字母键）
+    if (e.key === "`" || e.key === "~") {
+      e.preventDefault();
+      const p = document.getElementById("debug-panel");
+      if (p && !p.classList.contains("hidden")) p.classList.add("hidden");
+      else window.__ww.debugPanel();
+      return;
+    }
     if (e.key === "F9") {
       e.preventDefault();
       window.__ww.theaterStart();          // 随机开演一场
@@ -3442,8 +3450,7 @@ function boot() {
       window.__ww.theaterGoStage();        // 开演并直接过去
     }
     if ((e.key === "z" || e.key === "Z") && !e.ctrlKey && !e.altKey && !e.metaKey) {
-      // 输入框内不触发睡觉
-      if (document.activeElement && (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA")) return;
+      // 打字已在函数开头统一拦掉，这里不用再判
       if (!anyModalOpen()) handleSleep();
     }
   });

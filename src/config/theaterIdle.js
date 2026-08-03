@@ -1982,6 +1982,292 @@ export const IDLE_BY_NODE = {
       "text": "这下真僵住了。",
       "mood": "shocked"
     }
+  ],
+  "funeral_will/st": [
+    {
+      "speaker": "crowd",
+      "text": "这闹剧什么时候才完？",
+      "mood": "angry"
+    },
+    {
+      "speaker": "brother",
+      "text": "快点决定吧，太阳毒得很。",
+      "mood": "angry"
+    },
+    {
+      "speaker": "crowd",
+      "text": "寡妇肯定藏了地契。",
+      "mood": "smug"
+    },
+    {
+      "speaker": "crowd",
+      "text": "我赌半瓶威士忌，弟弟赢。",
+      "mood": "greedy"
+    }
+  ],
+  "funeral_will/invest1": [
+    {
+      "speaker": "brother",
+      "text": "快把地契拿出来，别再磨蹭！",
+      "mood": "angry"
+    },
+    {
+      "speaker": "widow",
+      "text": "那是我的，谁也别想碰！",
+      "mood": "angry"
+    },
+    {
+      "speaker": "priest",
+      "text": "愿主宽恕这贪婪之心。",
+      "mood": "sad"
+    },
+    {
+      "speaker": "crowd",
+      "text": "我猜弟弟能分一半。",
+      "mood": "smug"
+    }
+  ],
+  "funeral_will/invest_coffin": [
+    {
+      "speaker": "widow",
+      "text": "小心点，别碰坏了棺材！",
+      "mood": "angry"
+    },
+    {
+      "speaker": "brother",
+      "text": "快点看，别耍花样！",
+      "mood": "angry"
+    },
+    {
+      "speaker": "crowd",
+      "text": "我瞧见里面有张纸！",
+      "mood": "happy"
+    },
+    {
+      "speaker": "priest",
+      "text": "上帝保佑，别是骗局。",
+      "mood": "shocked"
+    }
+  ],
+  "funeral_will/invest_fake": [
+    {
+      "speaker": "crowd",
+      "text": "假地契？这下有好戏看了。",
+      "mood": "smug"
+    },
+    {
+      "speaker": "widow",
+      "text": "这一定是被人调包了！",
+      "mood": "shocked"
+    },
+    {
+      "speaker": "brother",
+      "text": "早该绞死这骗子！",
+      "mood": "angry"
+    },
+    {
+      "speaker": "priest",
+      "text": "谎言终将招来子弹。",
+      "mood": "shocked"
+    }
+  ],
+  "funeral_will/help_widow": [
+    {
+      "speaker": "brother",
+      "text": "多管闲事的人活不长。",
+      "mood": "angry"
+    },
+    {
+      "speaker": "widow",
+      "text": "好心会有好报的。",
+      "mood": "happy"
+    },
+    {
+      "speaker": "crowd",
+      "text": "这下弟弟要吃苦头了。",
+      "mood": "smug"
+    },
+    {
+      "speaker": "crowd",
+      "text": "这外乡人拔枪真快。",
+      "mood": "happy"
+    }
+  ],
+  "funeral_will/negotiate_widow": [
+    {
+      "speaker": "brother",
+      "text": "歌女也配拿地？简直笑话！",
+      "mood": "angry"
+    },
+    {
+      "speaker": "widow",
+      "text": "我才是他明媒正娶的妻子！",
+      "mood": "sad"
+    },
+    {
+      "speaker": "crowd",
+      "text": "这官司打起来没完没了。",
+      "mood": "neutral"
+    },
+    {
+      "speaker": "priest",
+      "text": "孩子，土地不会跟你上天堂。",
+      "mood": "neutral"
+    }
+  ],
+  "funeral_will/violence_widow": [
+    {
+      "speaker": "brother",
+      "text": "你这疯女人，真敢开枪试试！",
+      "mood": "angry"
+    },
+    {
+      "speaker": "widow",
+      "text": "别逼我，我只要我的那份！",
+      "mood": "scared"
+    },
+    {
+      "speaker": "crowd",
+      "text": "老天，真要见血了！",
+      "mood": "shocked"
+    },
+    {
+      "speaker": "priest",
+      "text": "以主之名，收起武器！",
+      "mood": "scared"
+    }
+  ],
+  "funeral_will/help_brother": [
+    {
+      "speaker": "widow",
+      "text": "你们串通好了！一群恶狼！",
+      "mood": "angry"
+    },
+    {
+      "speaker": "brother",
+      "text": "伙计，干得漂亮，赏钱少不了。",
+      "mood": "smug"
+    },
+    {
+      "speaker": "crowd",
+      "text": "外乡人站对了队，有赏金拿。",
+      "mood": "greedy"
+    },
+    {
+      "speaker": "priest",
+      "text": "唉，公正何在啊。",
+      "mood": "sad"
+    }
+  ],
+  "funeral_will/negotiate_brother": [
+    {
+      "speaker": "widow",
+      "text": "想都别想，我死也不签字！",
+      "mood": "angry"
+    },
+    {
+      "speaker": "brother",
+      "text": "那咱们就耗着，看谁先垮。",
+      "mood": "smug"
+    },
+    {
+      "speaker": "crowd",
+      "text": "各退一步吧，地一人一半？",
+      "mood": "neutral"
+    },
+    {
+      "speaker": "priest",
+      "text": "贪婪是罪，和解才是正道。",
+      "mood": "sad"
+    }
+  ],
+  "funeral_will/violence_brother": [
+    {
+      "speaker": "brother",
+      "text": "快把地契交出来，别自找苦吃！",
+      "mood": "angry"
+    },
+    {
+      "speaker": "widow",
+      "text": "你逃不过绞索的，弟弟！",
+      "mood": "pain"
+    },
+    {
+      "speaker": "crowd",
+      "text": "天啊，真要闹出人命了！",
+      "mood": "scared"
+    },
+    {
+      "speaker": "priest",
+      "text": "主啊，救救这些迷途的灵魂。",
+      "mood": "scared"
+    }
+  ],
+  "funeral_will/violence1": [
+    {
+      "speaker": "priest",
+      "text": "放下枪，别玷污这神圣之地。",
+      "mood": "scared"
+    },
+    {
+      "speaker": "widow",
+      "text": "我的老天爷，不要见血。",
+      "mood": "scared"
+    },
+    {
+      "speaker": "brother",
+      "text": "谁都别动，子弹可不认人。",
+      "mood": "angry"
+    },
+    {
+      "speaker": "crowd",
+      "text": "赌一个金币，有人要趟地。",
+      "mood": "greedy"
+    }
+  ],
+  "funeral_will/violence_open": [
+    {
+      "speaker": "priest",
+      "text": "贪婪是万恶之源，阿门。",
+      "mood": "sad"
+    },
+    {
+      "speaker": "widow",
+      "text": "谁也别想从我手里抢走。",
+      "mood": "angry"
+    },
+    {
+      "speaker": "brother",
+      "text": "我该分一半，该死的！",
+      "mood": "angry"
+    },
+    {
+      "speaker": "crowd",
+      "text": "他们兄弟都不是好东西。",
+      "mood": "neutral"
+    }
+  ],
+  "funeral_will/violence_grab": [
+    {
+      "speaker": "priest",
+      "text": "你们会遭天谴的！",
+      "mood": "angry"
+    },
+    {
+      "speaker": "widow",
+      "text": "放手，你这恶棍！",
+      "mood": "angry"
+    },
+    {
+      "speaker": "brother",
+      "text": "谁抢到归谁，让开！",
+      "mood": "greedy"
+    },
+    {
+      "speaker": "crowd",
+      "text": "赌谁先吃一颗子弹。",
+      "mood": "greedy"
+    }
   ]
 };
 
@@ -2233,6 +2519,38 @@ export const WITNESS_ON = {
       "miner": [
         "别碰她，你这杂种！",
         "你敢再碰她，我拼了这条命！"
+      ]
+    }
+  },
+  "funeral_will": {
+    "priest": {
+      "widow": [
+        "放开牧师！否则子弹不长眼！",
+        "谁敢动上帝的仆人，绞索等着他！"
+      ],
+      "brother": [
+        "打得好！这伪君子早该挨揍！",
+        "哈哈，牧师也该尝尝拳头的滋味！"
+      ]
+    },
+    "widow": {
+      "priest": [
+        "住手！殴打寡妇是魔鬼的行径！",
+        "以上帝之名，立刻停手，畜生！"
+      ],
+      "brother": [
+        "敢碰她一根指头，我的左轮可不客气！",
+        "该死的，那是我的嫂子！把枪放下！"
+      ]
+    },
+    "brother": {
+      "priest": [
+        "放下拳头，孩子，上帝看着呢！",
+        "在教堂前动粗，不怕下地狱吗？"
+      ],
+      "widow": [
+        "别打了，他是我丈夫的亲弟弟！",
+        "看在死者的份上，饶了他吧！"
       ]
     }
   }

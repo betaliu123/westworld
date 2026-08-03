@@ -87,8 +87,9 @@ export class TheaterUI {
     // 全局按键：回车展开输入、数字键选事件选项
     this._onKeyDown = (e) => {
       if (e.ctrlKey || e.altKey || e.metaKey) return;
-      const el = document.activeElement;
-      const typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+      // 打字判断统一走 Input（唯一真相源）；没注入 input 时退回自己判
+      const typing = this.input ? this.input.typing
+        : (() => { const el = document.activeElement; return el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable); })();
       if (typing) return; // 输入框自己的 handler 负责
       if (!this.canOpen()) return;
 

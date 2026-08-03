@@ -137,8 +137,9 @@ export class Player {
     this.pos.x = resolved.x;
     this.pos.z = resolved.z;
 
-    // 瞄准：右键按住进瞄准（保持视角缩放交给 main 处理）
-    const aiming = input.isDown("Mouse2") && !this.inVehicle;
+    // 瞄准：右键按住进瞄准。要求指针已锁定，否则鼠标增量恒为 0，
+    // 会出现"举着枪但视角转不动"（Input 在右键 mousedown 时会自动请求锁定）
+    const aiming = input.isDown("Mouse2") && !this.inVehicle && input.pointerLocked;
     if (aiming !== this.aiming) this.aiming = aiming;
     // 瞄准过渡系数（0→1），相机拉近/越肩/持枪姿态都用它做平滑
     const aimTarget = this.aiming ? 1 : 0;
