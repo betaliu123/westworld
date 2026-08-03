@@ -1136,7 +1136,20 @@ function boot() {
   });
   player._fireHandler = () => {
     if (insideRoom) return;
-    combat.fireShot(player.pos, player.facing, ammoSystem);
+    // 传相机俯仰角：射击系统据此推算命中部位（爆头/躯干/腿）
+    combat.fireShot(player.pos, player.facing, ammoSystem, { camPitch: player.camPitch });
+  };
+  // 爆头额外反馈：屏幕红闪 + 目标飞得更远
+  combat.onHeadshot = (npc, knocked) => {
+    document.body.classList.add("headshot-flash");
+    setTimeout(() => document.body.classList.remove("headshot-flash"), 220);
+    if (knocked && npc.launchBy) {
+      const dx = npc.pos.x - player.pos.x;
+      const dz = npc.pos.z - player.pos.z;
+      const len = Math.hypot(dx, dz) || 1;
+      // launchBy(dir, power, sourceRef)：爆头把人打飞出去
+      try { npc.launchBy({ x: dx / len, z: dz / len }, 7, player.pos); } catch (e) { void e; }
+    }
   };
   combat._shotDropAmmo = (npc) => {
     // 击倒带枪的家伙可能掉子弹
@@ -3427,17 +3440,17 @@ function boot() {
     if (e.key === "D" && e.shiftKey && e.ctrlKey) {
       window.__ww.debugPanel();
     }
+    // 调试面板放在打字拦截之前：它是排查问题的入口，
+    // 万一输入框卡住了焦点，至少还能靠这个键打开面板看状态
+    if ((e.code === "Backquote" || e.key === "`" || e.key === "~") && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if (input.typing) return; // 打字时输入反引号是正常输入，不抢
+      e.preventDefault();
+      window.__ww.debugPanel();
+      return;
+    }
     // 打字时把键盘完全让给输入框（除了 Esc），别按到热键弹出面板
     if (input.typing) return;
     if (e.ctrlKey || e.altKey || e.metaKey) return;
-    // 反引号：调试面板开关（游戏界惯例的控制台键，不占字母键）
-    if (e.key === "`" || e.key === "~") {
-      e.preventDefault();
-      const p = document.getElementById("debug-panel");
-      if (p && !p.classList.contains("hidden")) p.classList.add("hidden");
-      else window.__ww.debugPanel();
-      return;
-    }
     if (e.key === "F9") {
       e.preventDefault();
       window.__ww.theaterStart();          // 随机开演一场

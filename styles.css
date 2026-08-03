@@ -244,7 +244,7 @@ html, body {
   display: flex; flex-direction: column;
   background: rgba(10,8,6,.95); color: #cfcfcf;
   border: 1px solid var(--brass); border-radius: 8px;
-  font: 11px/1.5 monospace; z-index: 50; overflow: hidden;
+  font: 11px/1.5 monospace; z-index: 210; overflow: hidden;
   pointer-events: auto;
 }
 #debug-panel-header {
@@ -1323,3 +1323,10 @@ body.aiming #crosshair::after {
 #ammo-corner.ammo-low b { color: var(--danger); }
 #ammo-corner.ammo-empty b { color: var(--danger); animation: ammoBlink .8s ease-in-out infinite; }
 @keyframes ammoBlink { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+/* 爆头瞬间的红闪反馈 */
+body.headshot-flash::after {
+  content: ""; position: fixed; inset: 0; z-index: 200; pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(226,86,74,0) 40%, rgba(226,86,74,.38) 100%);
+  animation: headshotFlash .22s ease-out;
+}
+@keyframes headshotFlash { from { opacity: 1; } to { opacity: 0; } }

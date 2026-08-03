@@ -19,9 +19,10 @@ export class Combat {
    * @param {Vector3} playerPos 玩家位置
    * @param {number} facing 玩家朝向（弧度）
    * @param {AmmoSystem} ammo 子弹系统
+   * @param {object} opts range/coneDeg/camPitch —— camPitch 用来推算命中部位（爆头）
    * @returns {boolean} 是否真的开出了一枪（没子弹返回 false）
    */
-  fireShot(playerPos, facing, ammo, { range = 22, coneDeg = 24 } = {}) {
+  fireShot(playerPos, facing, ammo, { range = 22, coneDeg = 24, camPitch = 0 } = {}) {
     if (!ammo.tryConsume()) {
       if (this.audio) this.audio.emptyClick?.();
       return false;
@@ -37,9 +38,33 @@ export class Combat {
       this.hitFlash = 0.3;
       return true;
     }
-    // 枪伤比拳击重：一枪扣 2 格血（拳击 1 格），但留给对方反击的机会
-    const knocked = target.hit(playerPos, false, 2);
-    this.hud.toast(knocked ? "🔫 一枪放倒！" : "🔫 打中了！", { key: "shot-hit" });
+
+    // 命中部位：用相机俯仰角把射线投到目标距离上，看落在什么高度。
+    // 枪口约在 1.45 高；镜头往上抬（camPitch 变小）射线就往高处走。
+    // 模型参考高度：头 1.72、躯干 1.12、腿 0.4 以下。
+    const dist = Math.hypot(target.pos.x - playerPos.x, target.pos.z - playerPos.z);
+    const muzzleY = 1.45;
+    const hitY = muzzleY - Math.tan(camPitch) * dist;
+    let part = "body";
+    let damage = 2;
+    if (hitY >= 1.55) { part = "head"; damage = 6; }        // 爆头：一枪放倒最硬的人
+    else if (hitY <= 0.75) { part = "leg"; damage = 1; }     // 打腿：伤害低但会让人跑不动
+    const knocked = target.hit(playerPos, false, damage);
+
+    if (part === "head") {
+      this.hud.toast(knocked ? "🎯 爆头！" : "🎯 命中头部！", { key: "shot-head", duration: 2200 });
+      this.hitFlash = 0.9;
+      if (this.audio) { this.audio.hit?.(); this.audio.npcVoice?.("hurt"); }
+      this.onHeadshot?.(target, knocked);
+    } else if (part === "leg") {
+      this.hud.toast("🦵 打中腿了", { side: true, key: "shot-leg" });
+      this.hitFlash = 0.35;
+      target.brain._legHit = true; // 让 NPC 跑不快（NPC.update 读它降速）
+    } else {
+      this.hud.toast(knocked ? "🔫 一枪放倒！" : "🔫 打中了！", { key: "shot-hit" });
+      this.hitFlash = 0.5;
+    }
+
     if (this.onNpcHit) this.onNpcHit(target, knocked);
     if (knocked) {
       this.loot.dropFromNPC(target);
@@ -49,7 +74,7 @@ export class Combat {
       if (this.reputation) this.reputation.onKnockNPC(target.personality.gang);
       if (this.onNpcKnocked) this.onNpcKnocked(target);
     }
-    this.npcManager.recordEncounter(target, "shot_by_player", { day: this.currentDay || 0, knocked });
+    this.npcManager.recordEncounter(target, "shot_by_player", { day: this.currentDay || 0, knocked, part });
     // 目击-报案（开枪是大罪，目击的人多）
     const witnesses = this.npcManager.findWitnesses(target.pos, 14);
     for (const w of witnesses) w.brain.witnessCrime(target.pos, "assault");

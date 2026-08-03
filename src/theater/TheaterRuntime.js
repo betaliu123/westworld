@@ -297,7 +297,12 @@ export class TheaterRuntime {
     const npc = m.npc;
     if (!npc.alive || npc.brain?.state === "DOWN") return;
     if (beat.moveTo) npc.brain.perform?.({ moveTo: beat.moveTo });
+    // 开口说话时朝向：玩家就在场（交互区内）就转过来对着你说，
+    // 而不是背对着你原地冒泡。玩家不在场才按剧本朝舞台中心。
+    const playerHere = this.zoneLevel === "interact" && this.hooks.playerPos;
     if (beat.facePlayer && this.hooks.playerPos) {
+      npc.brain.perform?.({ faceTarget: this.hooks.playerPos() });
+    } else if (playerHere && beat.text) {
       npc.brain.perform?.({ faceTarget: this.hooks.playerPos() });
     }
     if (beat.text) {
@@ -394,6 +399,7 @@ export class TheaterRuntime {
       const act = b.action;
       setTimeout(() => {
         if (this.phase === Phase.DONE) return;
+        this._faceMe(m.npc); // 回应你说的话，当然要看着你
         m.npc.brain.say(text2.slice(0, THEATER_CONFIG.maxBubbleChars), 3);
         this.hooks.log?.(`${m.stageName}：${text2}`);
         if (act && act.action && act.action !== "none") {
@@ -436,6 +442,7 @@ export class TheaterRuntime {
         const line = this._witnessOnLine(role, m.roleId)
           || this._reactionLine("witness", m.roleId)
           || (i === 0 ? "住手！你想上绞架吗？" : "疯子！快躲开！");
+        this._faceMe(m.npc); // 议论玩家的行为时看着玩家
         m.npc.brain.say(line, 3);
         this.hooks.moodFx?.(m.npc, i === 0 ? "angry" : "scared");
         this.hooks.log?.(`${m.stageName}：${line}`);
@@ -489,9 +496,18 @@ export class TheaterRuntime {
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
+  /** 让某个演员转过来面对玩家（玩家在场才转） */
+  _faceMe(npc) {
+    if (!npc?.brain || !this.hooks.playerPos) return;
+    if (this.zoneLevel === "outside") return;
+    npc.brain.perform?.({ faceTarget: this.hooks.playerPos() });
+  }
+
   _playReaction(kind, roleId, npc) {
     const m = this.memberOf(roleId);
     if (!m || !npc.alive) return;
+    // 对玩家的行为做反应时，一定要转过来看着玩家
+    this._faceMe(npc);
     // 被打的话走"本幕专属优先"，其它（撞/偷）走全剧通用
     const line = kind === "hit" ? this._hitLineOf(roleId) : this._reactionLine(kind, roleId);
     const mood = kind === "hit" ? "pain" : kind === "steal" ? "angry" : "shocked";
@@ -555,6 +571,7 @@ export class TheaterRuntime {
           (victim && this._witnessOnLine(victim.roleId, m.roleId)) ||
           this._reactionLine("witness", m.roleId) ||
           ["天啊，他倒下了！", "有人死了！叫警长！", "别过来，别碰他！"][i % 3];
+        this._faceMe(m.npc); // 围过来看倒地的人时也面向玩家
         m.npc.brain.say(line, 3.2);
         this.hooks.moodFx?.(m.npc, i === 0 ? "shocked" : "scared");
         this.hooks.log?.(`${m.stageName}：${line}`);

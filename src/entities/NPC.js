@@ -283,7 +283,9 @@ export class NPC {
       if (dist > 0.4) {
         const dirX = dx / dist;
         const dirZ = dz / dist;
-        const speed = this.personality.walkSpeed * intent.speedMul;
+        // 腿被打中过就跑不快了（射击系统命中腿部时置 _legHit）
+        const legPenalty = this.brain._legHit ? 0.45 : 1;
+        const speed = this.personality.walkSpeed * intent.speedMul * legPenalty;
         this.pos.x += dirX * speed * dt;
         this.pos.z += dirZ * speed * dt;
         this.heading = lerpAngle(this.heading, Math.atan2(dirX, dirZ), Math.min(1, dt * 8));
