@@ -105,13 +105,24 @@ export class TheaterUI {
     this.collapsedEl.addEventListener("click", () => this.expand());
     this.bar.addEventListener("mousedown", (e) => e.stopPropagation());
 
-    // 全局按键：回车展开输入、数字键选事件选项
+    // 全局按键：回车展开输入、数字键选事件选项、Esc/空格退出对话
     this._onKeyDown = (e) => {
       if (e.ctrlKey || e.altKey || e.metaKey) return;
-      // 打字判断统一走 Input（唯一真相源）；没注入 input 时退回自己判
-      const typing = this.input ? this.input.typing
-        : (() => { const el = document.activeElement; return el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable); })();
-      if (typing) return; // 输入框自己的 handler 负责
+      // 输入框自己就是焦点元素时，一切归它的 keydown handler 管（Enter 发送、
+      // Esc/空格 退出）。不加 addTypingGuard 就不会被"条展开但没焦点"误判。
+      const focusOnInput = document.activeElement === this.inputEl;
+      if (focusOnInput) return;
+
+      // 条已经展开但焦点被偷了 → 这是 blur 的"抢回焦点"还没跑完的极短窗口。
+      // Esc/空格 仍然要能退出，否则输入框丢了焦点、整个键盘就死了。
+      if (this.expanded) {
+        if (e.key === "Escape" || e.key === " ") {
+          e.preventDefault();
+          this.collapse();
+        }
+        return; // 展开状态下其他键不归这里（Enter = 发给输入框，WASD = 游戏）
+      }
+
       if (!this.canOpen()) return;
 
       if (e.key === "Enter") {

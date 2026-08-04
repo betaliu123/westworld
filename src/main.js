@@ -235,9 +235,11 @@ function boot() {
     shouldStayOpen: () => !!chatTarget || (theater?.active && theater.scene?.zoneLevel === "interact"),
   });
   theater.ui = theaterUI;
-  // 聊天条展开时一律算"正在打字"，即便焦点被指针锁抢走了。
-  // 否则会出现"框还在、玩家打的字全变成游戏热键"（按到 H 弹档案、V 去偷窃）。
-  engine.input.addTypingGuard?.(() => theaterUI.expanded);
+  // 聊天条展开时，所有游戏输入都让给输入框。
+  // 注意：不能用 addTypingGuard（它会让 Input.typing 返回 true，而 TheaterUI
+  // 自己的 _onKeyDown 也检查 input.typing → 于是"展开但没人打字"的状态下，
+  // Enter/空格/Esc/数字键全被它自己吞掉，整个面板靠键盘完全用不了）。
+  // 收口在 main.js 的游戏热键处而不用全局 typing 判据，就不会误伤到 TheaterUI。
   theater.npcAction = (npc, action, candidates) => npcActions.execute(npc, action, { candidates });
   theater.moodFx = (npc, mood, emoji, shake) => {
     if (emoji) npc.brain.emote(emoji, 1.9);
@@ -2690,8 +2692,10 @@ function boot() {
           }
         }
       }
-      // Esc / Space 取消偷窃/对话/档案/叙事阅读
-      if (input.wasPressed("Escape") || input.wasPressed("Space")) {
+      // Esc / Space 取消偷窃/对话/档案/叙事阅读。
+      // 聊天条展开时这些留给 TheaterUI 的输入框 handler 处理，
+      // 否则会和"退出输入"打架（两边都消费同一个键）。
+      if (!theaterUI?.expanded && (input.wasPressed("Escape") || input.wasPressed("Space"))) {
         if (!notePopup.classList.contains("hidden")) {
           closeNotePopup();
         } else if (stealState) {
@@ -2842,8 +2846,9 @@ function boot() {
       }
     }
 
-    // Esc 取消偷窃/对话/叙事阅读
-    if (input.wasPressed("Escape") || input.wasPressed("Space")) {
+    // Esc 取消偷窃/对话/叙事阅读。
+    // 聊天条展开时这些留给 TheaterUI 的输入框 handler，否则两边抢同一个键。
+    if (!theaterUI?.expanded && (input.wasPressed("Escape") || input.wasPressed("Space"))) {
       if (!notePopup.classList.contains("hidden")) {
         closeNotePopup();
       } else if (stealState) {
@@ -3653,12 +3658,6 @@ function boot() {
 
   // 快捷键：Ctrl+Shift+D 打开调试面板
   document.addEventListener("keydown", (e) => {
-    // 安全阀：聊天条展开时全部游戏输入都让给输入框（见 addTypingGuard）。
-    // 万一它丢了焦点又没被收起来，键盘就整个是死的 —— Esc 必须能强制收掉。
-    if (e.key === "Escape" && theaterUI.expanded) {
-      theaterUI.collapse();
-      return;
-    }
     if (e.key === "D" && e.shiftKey && e.ctrlKey) {
       window.__ww.debugPanel();
     }
@@ -3681,8 +3680,8 @@ function boot() {
       window.__ww.debugPanel();
       return;
     }
-    // 打字时把键盘完全让给输入框（除了 Esc），别按到热键弹出面板
-    if (input.typing) return;
+    // 打字时 / 聊天条展开时 把键盘让出来，别按到热键弹出面板
+    if (input.typing || theaterUI?.expanded) return;
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     if (e.key === "F9") {
       e.preventDefault();
