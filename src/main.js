@@ -240,6 +240,9 @@ function boot() {
   // 自己的 _onKeyDown 也检查 input.typing → 于是"展开但没人打字"的状态下，
   // Enter/空格/Esc/数字键全被它自己吞掉，整个面板靠键盘完全用不了）。
   // 收口在 main.js 的游戏热键处而不用全局 typing 判据，就不会误伤到 TheaterUI。
+  // 同样：聊天条展开时不准抢指针锁，否则 input 收不到键盘事件（第一次 expand()
+  // 已释放锁，但后续拖动鼠标会通过 Input._onMouseDown 重新 grab，把 input 弄聋）。
+  engine.input._canLock = () => !theaterUI?.expanded;
   theater.npcAction = (npc, action, candidates) => npcActions.execute(npc, action, { candidates });
   theater.moodFx = (npc, mood, emoji, shake) => {
     if (emoji) npc.brain.emote(emoji, 1.9);
@@ -593,7 +596,8 @@ function boot() {
     _entered = true;
   };
   canvas.addEventListener("click", () => {
-    if (!anyModalOpen()) startPlay();
+    // 聊天条展开时别抢指针锁，否则 input 收不到键盘事件
+    if (!anyModalOpen() && !theaterUI?.expanded) startPlay();
   });
 
   function anyModalOpen() {

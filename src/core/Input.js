@@ -91,6 +91,8 @@ export class Input {
 
   requestPointerLock() {
     if (this.pointerLocked) return;
+    // 聊天条展开时不准抢指针锁，否则 input 收不到键盘事件
+    if (this._canLock && !this._canLock()) return;
     // 新版浏览器返回 Promise，失败（如文档不可用于锁定）时兜底，避免未处理拒绝
     try {
       const p = this.dom.requestPointerLock();
