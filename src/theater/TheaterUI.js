@@ -9,8 +9,7 @@ export class TheaterUI {
     this.onPickChoice = deps.onPickChoice || (() => {});
     this.canOpen = deps.canOpen || (() => true); // 有弹窗/在载具里时不抢按键
     this.onExpand = deps.onExpand || null;       // 展开输入框时通知外部（锁定说话对象）
-    this.onCollapse = deps.onCollapse || null;
-    this.shouldStayOpen = deps.shouldStayOpen || null; // 有对话对象时别因失焦自动收
+    this.onCollapse = deps.onCollapse || null;   // 收起时通知，带 { keepChat }
     this.input = deps.input || null;
 
     this._choices = [];
@@ -36,7 +35,7 @@ export class TheaterUI {
       <div id="theater-input-row">
         <span id="theater-tag">🎭</span>
         <input id="theater-input" type="text" maxlength="60" autocomplete="off" spellcheck="false"
-               placeholder="对他们说点什么…（回车发送，可接着聊；Esc/空格 回到操作）" />
+               placeholder="对他们说点什么…（回车发送；Esc 回到操作）" />
         <button id="theater-send" type="button">说</button>
       </div>
     `;
@@ -55,17 +54,22 @@ export class TheaterUI {
       const text = this.inputEl.value.trim();
       if (!text) { this.collapse(); return; }
       this.inputEl.value = "";
-      // 发完不收界面：玩家通常想接着聊下一句。以前发完就关，
-      // 一关就触发 onCollapse → endNpcChat → endTalk，NPC 当场走人。
-      // 想结束对话按 Esc（输入框下方有提示）。
       this.onSubmitText(text);
-      this.inputEl.focus();
+      // 发完就收起输入框，把键盘交还给游戏。
+      //
+      // 为什么不"保持展开好接着聊"：那需要输入框在 pointerLock 反复抢焦点的情况下
+      // 一直持有焦点，实测非常难做对（指针锁一激活，浏览器就不给非锁定元素发键盘
+      // 事件，input 直接变聋，Enter/Esc/空格/数字键全废）。收起来只有一个状态，
+      // 没有"展开但没焦点"这种半死不活的中间态。
+      //
+      // keepChat: true —— 只收界面，不结束对话。NPC 仍留在 TALK 状态、
+      // chatTarget 也还在，玩家再按回车能直接接着跟同一个人说下一句。
+      this.collapse({ keepChat: true });
     };
 
     this.sendBtn.addEventListener("click", (e) => {
       e.preventDefault();
       submit();
-      this.inputEl.focus();
     });
 
     this.inputEl.addEventListener("keydown", (e) => {
@@ -76,7 +80,7 @@ export class TheaterUI {
         submit();
       } else if (e.key === "Escape") {
         e.preventDefault();
-        this.collapse();
+        this.collapse(); // 显式退出 → 结束对话
       } else if (e.key === " " && !this.inputEl.value) {
         // 空框按空格 = 退出输入并结束对话。
         // 只在框是空的时候拦，否则就没法在句子里打空格了（中文输入法还要用空格选词）。
@@ -89,18 +93,9 @@ export class TheaterUI {
     this.inputEl.addEventListener("focus", () => this.bar.classList.add("focused"));
     this.inputEl.addEventListener("blur", () => {
       this.bar.classList.remove("focused");
-      // 正在跟某人对话时不收界面 —— 鼠标一动就重新抓指针锁会让输入框失焦，
-      // 于是"发一句话对话框就没了、NPC 也走了"。有对话对象时只有 Esc / 空格能收。
-      //
-      // 但光"不收"会留下更坑的状态：框还在、却没焦点，玩家打的字全变成游戏热键。
-      // 所以这里要把焦点抢回来（延后一拍，别和正在进行的焦点切换打架）。
-      if (this.shouldStayOpen?.()) {
-        setTimeout(() => {
-          if (this.expanded && this.shouldStayOpen?.()) this.inputEl.focus();
-        }, 0);
-        return;
-      }
-      if (!this.inputEl.value.trim()) this.collapse();
+      // 失焦就收起来。发送后是主动 collapse（keepChat），这里只处理
+      // "点到别处去了"的情况：框里没打字就收掉，别留个没焦点的空框在屏幕上。
+      if (!this.inputEl.value.trim()) this.collapse({ keepChat: true });
     });
     this.collapsedEl.addEventListener("click", () => this.expand());
     this.bar.addEventListener("mousedown", (e) => e.stopPropagation());
@@ -151,21 +146,28 @@ export class TheaterUI {
     if (!was) this.onExpand?.();
   }
 
-  /** 收起输入框，把键盘还给游戏 */
-  collapse() {
-    const was = this.expanded;
+  /**
+   * 收起输入框，把键盘还给游戏。
+   * @param opts.keepChat 只收界面、不结束对话（回车发送后用这个）。
+   *   为 false/省略时通知外部结束对话（Esc / 空格 / 点到别处）。
+   */
+  collapse(opts = {}) {
+    // 防重入：下面的 blur() 会同步触发 blur handler，而它也会调 collapse()。
+    // 不挡住的话就是无限递归（浏览器里因为"已失焦不再派发 blur"侥幸没炸，
+    // 但不能指望这个）。同时也保证 onCollapse 只通知一次、keepChat 不被内层篡改。
+    if (!this.expanded) return;
     this.bar.classList.add("collapsed");
     this.inputEl.blur();
-    if (was) this.onCollapse?.();
+    this.onCollapse?.({ keepChat: !!opts.keepChat });
   }
 
   /** 顶部提示当前在对谁说话 */
   setTalkTarget(label) {
     this._talkTarget = label || "";
-    // 明确写出"能接着聊"和两个退出键，因为发完不再自动收界面
+    // 回车发送后会自动收起输入框（再按回车可接着说下一句）
     this.inputEl.placeholder = label
-      ? `对${label}说…（回车发送，可接着聊；Esc/空格 结束对话）`
-      : "对他们说点什么…（回车发送，可接着聊；Esc/空格 回到操作）";
+      ? `对${label}说…（回车发送；Esc 结束对话）`
+      : "对他们说点什么…（回车发送；Esc 回到操作）";
   }
 
   get expanded() {

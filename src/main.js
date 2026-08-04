@@ -228,11 +228,15 @@ function boot() {
     input: engine.input,
     canOpen: () => !anyModalOpen() && !player.inVehicle,
     onExpand: () => { theater.setPlayerTyping(true); beginNpcChat(); },
-    onCollapse: () => { theater.setPlayerTyping(false); endNpcChat(); },
+    // keepChat=true 是"回车发送后自动收起"，只交还键盘、不结束对话：
+    // NPC 留在 TALK 状态，玩家再按回车能接着跟同一个人说下一句。
+    // keepChat=false 才是真的离开（Esc / 空格 / 点到别处）。
+    onCollapse: ({ keepChat } = {}) => {
+      theater.setPlayerTyping(false);
+      if (!keepChat) endNpcChat();
+    },
     onSubmitText: (text) => routeFreeText(text),
     onPickChoice: (id) => theater.submitChoice(id),
-    // 正在跟人对话（或在剧场圈内）时，输入框不因失焦自动收 —— 只有 Esc / 空格能收
-    shouldStayOpen: () => !!chatTarget || (theater?.active && theater.scene?.zoneLevel === "interact"),
   });
   theater.ui = theaterUI;
   // 聊天条展开时，所有游戏输入都让给输入框。
@@ -1033,7 +1037,15 @@ function boot() {
       theaterUI.setTalkTarget("");
       return;
     }
-    const npc = _aimedNpc();
+    // 优先接着跟上一个人聊：回车发送后输入框会自动收起，玩家再按回车时
+    // 准心可能已经飘开了，这时不该换人或断线，只要对方还活着、还在说话距离内
+    // 就继续这段对话。
+    let npc = _aimedNpc();
+    if (chatTarget && chatTarget.alive
+        && Math.hypot(player.pos.x - chatTarget.pos.x, player.pos.z - chatTarget.pos.z) < 6
+        && (!npc || npc === chatTarget)) {
+      npc = chatTarget;
+    }
     if (!npc || !npc.alive) {
       chatTarget = null;
       theaterUI.setTalkTarget("");
