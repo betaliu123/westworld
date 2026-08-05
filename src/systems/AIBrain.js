@@ -33,12 +33,56 @@ export const State = {
 // 语料 / 职业 / 帮派 / 日程 / 对话回应等内容数据均来自 config/gameData.js
 export { SMALL_TALK, SCARED_TALK, ANGRY_TALK, DIALOGUE_REPLY, JOBS, GANGS };
 
-// 时段划分（小时）→ 语料键
-export function daySegment(hour) {
-  if (hour >= 5 && hour < 11) return "morning";
-  if (hour >= 11 && hour < 17) return "noon";
-  if (hour >= 17 && hour < 21) return "evening";
+/**
+ * 日程时段（7 段）。
+ *
+ * 原来只有 4 段（morning/noon/evening/night），后果是**全镇所有 NPC 在同一瞬间
+ * 切换目的地**（5:00 / 11:00 / 17:00 / 21:00），看起来像"同时从一栋楼里刷出来"。
+ * 细化到 7 段 + 个体抖动（offsetHours）后，人流是错峰的。
+ *
+ * @param offsetHours 该 NPC 的个体偏移（小时，通常 ±0.55 即 ±33 分钟）。
+ *   由 personality.scheduleJitter 提供，同一个 NPC 每天一致。
+ */
+export function daySegment(hour, offsetHours = 0) {
+  const h = (((hour ?? 12) - offsetHours) % 24 + 24) % 24;
+  if (h >= 5 && h < 7) return "dawn";
+  if (h >= 7 && h < 11) return "morning";
+  if (h >= 11 && h < 14) return "noon";
+  if (h >= 14 && h < 17) return "afternoon";
+  if (h >= 17 && h < 20) return "evening";
+  if (h >= 20 && h < 23) return "night";
+  return "latenight";
+}
+
+/**
+ * 语料时段（4 段，**保持原样**）。
+ * SMALL_TALK 之类按时段索引的语料表仍用这 4 个键 —— 细化日程不应迫使
+ * 内容侧补 3 个新语料池，两个概念分开更省事也更不容易出错。
+ */
+export function talkSegment(hour) {
+  const h = hour ?? 12;
+  if (h >= 5 && h < 11) return "morning";
+  if (h >= 11 && h < 17) return "noon";
+  if (h >= 17 && h < 21) return "evening";
   return "night";
+}
+
+/** 新时段 → 旧时段的降级映射，让只写了 4 段的老日程表继续可用 */
+const SEGMENT_FALLBACK = {
+  dawn: "morning",
+  afternoon: "noon",
+  latenight: "night",
+};
+
+/**
+ * 从日程表里取某时段该去的场所类型。
+ * 老表（JOB_SCHEDULE 等）只有 4 个键，新时段自动降级到对应的旧键。
+ */
+export function placeForSegment(schedule, seg) {
+  if (!schedule || !seg) return null;
+  if (schedule[seg]) return schedule[seg];
+  const fb = SEGMENT_FALLBACK[seg];
+  return fb ? (schedule[fb] || null) : null;
 }
 
 export function scheduleFor(job) {
@@ -60,6 +104,9 @@ export function makePersonality() {
     job,
     gang,
     schedule: scheduleFor(job),
+    // 个体作息偏移（小时）。同一个 NPC 整局固定，避免全镇同一秒集体换地方。
+    // ±0.55 小时 ≈ ±33 分钟，足够把人流抹开又不至于让日程失去意义。
+    scheduleJitter: randRange(-0.55, 0.55),
   };
 }
 
@@ -224,7 +271,7 @@ export class AIBrain {
 
   // 依当前小时选一句符合时段的闲聊
   _smallTalk() {
-    const seg = this._segment || "noon";
+    const seg = this._talkSeg || "noon";
     return pick(SMALL_TALK[seg] || SMALL_TALK.noon);
   }
 
@@ -1164,7 +1211,10 @@ export class AIBrain {
     this.emotion = Math.max(0, this.emotion - dt * AI_PANIC.emotionDecay);
 
     // 时段跟踪：切换时段时，若正在日常游走则立即换新目的地；受扰标记也随新时段重置
-    const seg = daySegment(ctx.hour ?? 12);
+    // 带个体抖动，避免全镇同一瞬间切换（那会造成"同时从一栋楼里刷出来"）
+    const seg = daySegment(ctx.hour ?? 12, this.p.scheduleJitter || 0);
+    // 语料时段单独算（4 段，供 SMALL_TALK 等老语料表用）
+    this._talkSeg = talkSegment(ctx.hour ?? 12);
     if (seg !== this._segment) {
       this._segment = seg;
       this._disturbed = false;
@@ -1215,7 +1265,7 @@ export class AIBrain {
 
     // 在家里：睡觉；到点该出门了就离开（NPC 实体负责执行传送）
     if (this.state === State.AT_HOME) {
-      const placeType = this.p.schedule ? this.p.schedule[this._segment || "night"] : null;
+        const placeType = placeForSegment(this.p.schedule, this._segment || "latenight");
       if (placeType !== "home" && !this._disturbed) {
         intent.exitHome = true;
       } else {
@@ -1227,7 +1277,7 @@ export class AIBrain {
 
     // 在室内场所（上班/消费）：待到日程换地点再走
     if (this.state === State.AT_PLACE) {
-      const placeType = this.p.schedule ? this.p.schedule[this._segment || "noon"] : null;
+      const placeType = placeForSegment(this.p.schedule, this._segment || "noon");
       if (placeType !== this._placeType) {
         intent.exitPlace = true;
       } else {
@@ -1382,7 +1432,7 @@ export class AIBrain {
       default: {
         if (!this.target || this.stateTimer <= 0) {
           // 按日程取当前时段应去的地点类型，交由 town 解析为坐标
-          const placeType = this.p.schedule ? this.p.schedule[this._segment || "noon"] : null;
+          const placeType = placeForSegment(this.p.schedule, this._segment || "noon");
           if (placeType && ctx.town.placePoint) {
             this.target = ctx.town.placePoint(placeType, this);
             // 回自己民居时打上标记，到达门口即进屋

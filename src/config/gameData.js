@@ -1027,90 +1027,20 @@ export const NPC_GREETINGS = {
 // 地点类型：home / work / saloon / plaza / shop / church
 // ============================================================
 export const JOB_SCHEDULE = {
-  "赌徒": {
-    morning: "home",
-    noon: "saloon",
-    evening: "saloon",
-    night: "saloon",
-  },
-  "酒保": {
-    morning: "saloon",
-    noon: "saloon",
-    evening: "saloon",
-    night: "home",
-  },
-  "牛仔": {
-    morning: "work",
-    noon: "work",
-    evening: "saloon",
-    night: "home",
-  },
-  "商人": {
-    morning: "shop",
-    noon: "shop",
-    evening: "shop",
-    night: "home",
-  },
-  "旅人": {
-    morning: "plaza",
-    noon: "shop",
-    evening: "saloon",
-    night: "home",
-  },
-  "铁匠": {
-    morning: "work",
-    noon: "work",
-    evening: "home",
-    night: "home",
-  },
-  "牧师": {
-    morning: "church",
-    noon: "church",
-    evening: "church",
-    night: "home",
-  },
-  "神枪手": {
-    morning: "plaza",
-    noon: "saloon",
-    evening: "saloon",
-    night: "home",
-  },
-  "淘金客": {
-    morning: "work",
-    noon: "work",
-    evening: "saloon",
-    night: "home",
-  },
-  "歌女": {
-    morning: "home",
-    noon: "shop",
-    evening: "saloon",
-    night: "saloon",
-  },
-  "赏金猎人": {
-    morning: "plaza",
-    noon: "work",
-    evening: "saloon",
-    night: "plaza",
-  },
-  "马夫": {
-    morning: "work",
-    noon: "work",
-    evening: "work",
-    night: "home",
-  },
-  "医生": {
-    morning: "work",
-    noon: "work",
-    evening: "work",
-    night: "home",
-  },
-  "记者": {
-    morning: "plaza",
-    noon: "shop",
-    evening: "saloon",
-    night: "home",
-  },
+  赌徒: { dawn: "home", morning: "home", noon: "saloon", afternoon: "home", evening: "saloon", night: "saloon", latenight: "saloon" },
+  酒保: { dawn: "home", morning: "shop", noon: "saloon", afternoon: "saloon", evening: "saloon", night: "saloon", latenight: "home" },
+  牛仔: { dawn: "work", morning: "work", noon: "work", afternoon: "work", evening: "home", night: "home", latenight: "home" },
+  商人: { dawn: "home", morning: "shop", noon: "shop", afternoon: "shop", evening: "home", night: "home", latenight: "home" },
+  旅人: { dawn: "home", morning: "plaza", noon: "shop", afternoon: "plaza", evening: "shop", night: "home", latenight: "home" },
+  铁匠: { dawn: "work", morning: "work", noon: "work", afternoon: "work", evening: "home", night: "home", latenight: "home" },
+  牧师: { dawn: "church", morning: "church", noon: "church", afternoon: "church", evening: "home", night: "church", latenight: "home" },
+  神枪手: { dawn: "plaza", morning: "plaza", noon: "saloon", afternoon: "shop", evening: "plaza", night: "home", latenight: "plaza" },
+  淘金客: { dawn: "home", morning: "work", noon: "work", afternoon: "work", evening: "shop", night: "home", latenight: "home" },
+  歌女: { dawn: "home", morning: "home", noon: "shop", afternoon: "home", evening: "saloon", night: "saloon", latenight: "home" },
+  赏金猎人: { dawn: "home", morning: "plaza", noon: "work", afternoon: "work", evening: "plaza", night: "plaza", latenight: "home" },
+  马夫: { dawn: "work", morning: "work", noon: "work", afternoon: "work", evening: "home", night: "home", latenight: "work" },
+  医生: { dawn: "home", morning: "work", noon: "work", afternoon: "work", evening: "home", night: "home", latenight: "home" },
+  记者: { dawn: "home", morning: "work", noon: "plaza", afternoon: "work", evening: "plaza", night: "home", latenight: "home" },
 };
 // ============================================================
 // 7. 商店商品（SHOP_ITEMS）

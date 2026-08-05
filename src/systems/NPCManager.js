@@ -5,6 +5,7 @@ import { State } from "./AIBrain.js";
 import { randRange, distance2D } from "../core/MathUtils.js";
 import { AI_PANIC, BUMP, HOMES, BURGLARY } from "../config/gameData.js";
 import { IMPORTANT_NPCS } from "../config/npcData.js";
+import { NPC_SCHEDULES } from "../config/npcSchedules.js";
 
 export class NPCManager {
   constructor(scene, town, count = 20, interiors = null) {
@@ -64,6 +65,12 @@ export class NPCManager {
       if (npc.personality) {
         npc.personality.job = def.job;
         npc.personality.gang = def.factionId || null;
+        // 人设专属日程。以前这里不拷 schedule，导致 npcData 里手写的 17 份
+        // 人设日程从未被使用 —— 所有人都退回 JOB_SCHEDULE 的按职业通用表，
+        // 于是"日程和人设毫无关系"。优先用覆盖层（DS 生成的细化 7 段日程）。
+        const fine = NPC_SCHEDULES[def.id];
+        if (fine) npc.personality.schedule = fine;
+        else if (def.schedule) npc.personality.schedule = def.schedule;
       }
       // 纠正性别外观（网格已在 NPC 构造函数中用随机性别创建）
       if (typeof def.female === "boolean") {
