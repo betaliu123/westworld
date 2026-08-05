@@ -189,7 +189,85 @@ ${nodeList}
     return { bridge, targetNodeId: target, via: "llm", reason: parsed?.reason || "" };
   }
 
+  /**
+   * 遭遇管线的选角与合理性判定。
+   *
+   * 规则预筛已经给出 top3，这里让模型做两件规则做不到的事：
+   *   1. 结合"这次遭遇想干什么"（intent）挑最合适的人
+   *   2. 判断这些人出现在这个场所是否**说得通**（plausible）
+   *      —— 判 false 时上层不投放，等玩家换个场所再试。
+   *      这是"牧师不会跑进赌场谈信仰"的最后一道闸。
+   *
+   * @returns {{npcId, plausible, opener, reason}|null}
+   */
+  async castFor({ venue, hour, intent, candidates }) {
+    if (!candidates || !candidates.length) return null;
+    const list = candidates.map((c, i) =>
+      `${i + 1}. ${c.npcId} | ${c.name} | 职业:${c.job || "镇民"}${c.gang ? ` | 势力:${c.gang}` : ""} | 场所亲和:${c.affinity?.toFixed?.(0) ?? "?"}`
+    ).join("\n");
+
+    const sys = `你是西部小镇的选角导演。系统要安排一个 NPC 主动去找玩家谈一件事，
+你要从候选人里挑一个，并判断"这个人在这个场所出现"是否说得通。
+
+判断要点：
+- 场所与身份要对得上。牧师不会在赌场谈信仰，逃犯不会主动进警长办公室。
+- 谁最有理由来谈这件事（看 intent），就挑谁。
+- 如果候选人出现在这个场所**都**不合理，就把 plausible 设为 false，系统会改天再试。
+- opener 是这个人走到玩家面前说的第一句话：不超过 26 字，西部片口吻
+  （伙计/先生/子弹/威士忌/警长），要能自然引出 intent 提到的事。
+
+只输出 JSON，不要解释、不要 markdown。`;
+
+    const user = `场所：${venue}
+时间：${Math.floor(hour)} 点
+这次遭遇想谈的事：${intent}
+
+候选人（已按场所亲和度排序）：
+${list}
+
+输出 JSON：
+{"npcId":"<候选人的 npcId>","plausible":true,"opener":"<不超过26字的开场白>","reason":"<一句话理由>"}`;
+
+    if (this.budget && !this.budget.tryConsume()) throw new Error("超出本地调用配额");
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    try {
+      const resp = await fetch(this.endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [{ role: "system", content: sys }, { role: "user", content: user }],
+          temperature: 0.7,
+          max_tokens: GLUE_GEN.maxTokens,
+          response_format: { type: "json_object" },
+          reasoning_effort: GLUE_GEN.reasoningEffort,
+        }),
+        signal: ctrl.signal,
+      });
+      if (!resp.ok) throw new Error(`LLM ${resp.status}`);
+      const data = await resp.json();
+      const msg = data?.choices?.[0]?.message || {};
+      let content = msg.content || "";
+      if (!content.trim() && typeof msg.reasoning_content === "string") content = msg.reasoning_content;
+      const parsed = this._parseJson(content);
+      const valid = candidates.some((c) => c.npcId === parsed?.npcId);
+      this.lastVia = "llm";
+      this.lastReason = parsed?.reason || "";
+      this._report("ok", "llm", `选角 ${parsed?.npcId || "?"}${parsed?.plausible === false ? "（判不合理）" : ""}`);
+      return {
+        npcId: valid ? parsed.npcId : candidates[0].npcId,
+        plausible: parsed?.plausible !== false,
+        opener: typeof parsed?.opener === "string" ? parsed.opener.slice(0, 40) : null,
+        reason: parsed?.reason || "",
+      };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   // ---- 规则兜底 ----
+
 
   ruleGlue({ tree, cast, text }) {
     const target = this._pickNode(tree, text);

@@ -23,12 +23,14 @@ export class InteractionSystem {
     this.interiors = null;
   }
 
-  setRefs({ npcManager, town, loot, vehicles, interiors }) {
+  setRefs({ npcManager, town, loot, vehicles, interiors, encounters }) {
     this.npcManager = npcManager;
     this.town = town;
     this.loot = loot;
     this.vehicles = vehicles;
     this.interiors = interiors;
+    // 遭遇管线（可选）：用来判断某个 NPC 是否正专程等玩家搭话
+    if (encounters) this.encounters = encounters;
   }
 
   /** 进入对话模式：左侧面板切换为对话动作 */
@@ -253,6 +255,13 @@ export class InteractionSystem {
     switch (t.type) {
       case "npc": {
         const npc = t.data.npc;
+        // 遭遇管线：这个人专程走过来等你搭话 → 最高优先级，压过一切其它交互
+        if (this.encounters?.isPending?.(npc)) {
+          return [
+            { action: "encounter", icon: "❗", label: "听他说", key: "F", hint: `${t.data.name} 专程来找你` },
+            { action: "profile", icon: "📋", label: "档案", key: "H", hint: "" },
+          ];
+        }
         // 正在打我、且没在逃 → 可以求饶
         const canBeg = npc?.brain?.state === "ANGRY" && !npc.brain.attackTargetNpc;
         const begAct = canBeg
@@ -330,6 +339,7 @@ export class InteractionSystem {
 
     switch (action) {
       case "greet":    return { type: "dialogue", npc: t.npc, kind: "greet" };
+      case "encounter": return { type: "encounter", npc: t.npc };
       case "beg":      return { type: "beg", npc: t.npc };
       case "placate":  return { type: "placate", npc: t.npc };
       case "profile":  return { type: "profile", npc: t.npc };

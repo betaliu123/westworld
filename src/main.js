@@ -63,6 +63,9 @@ import { TheaterAftermath } from "./theater/TheaterAftermath.js";
 import { NpcChatService, ChatBudget, CHAT_GEN } from "./npc/NpcChatService.js";
 import { NpcActionExecutor } from "./npc/NpcActionExecutor.js";
 import { AiLog } from "./systems/AiLog.js";
+// 统一遭遇管线：NPC 主动来找玩家 → 中央强决策弹窗（世界暂停）
+import { EncounterRuntime } from "./encounter/EncounterRuntime.js";
+import { EncounterUI } from "./ui/EncounterUI.js";
 import { AmmoSystem } from "./systems/AmmoSystem.js";
 import { CorpseReactions } from "./systems/CorpseReactions.js";
 // 战斗阵营（敌/友）与血条
@@ -253,6 +256,31 @@ function boot() {
   // 同样：聊天条展开时不准抢指针锁，否则 input 收不到键盘事件（第一次 expand()
   // 已释放锁，但后续拖动鼠标会通过 Input._onMouseDown 重新 grab，把 input 弄聋）。
   engine.input._canLock = () => !theaterUI?.expanded;
+
+  // ===== 统一遭遇管线 =====
+  // NPC 主动走到玩家身边 → 头顶 ❗ → 按 F → 中央弹窗（世界暂停）→ 抉择 → 真实结算。
+  // 剧场是同一套东西的多演员配置；这里是单/双演员 + 舞台动态设在玩家脚下。
+  const encounterUI = new EncounterUI({
+    getAvatar,
+    onChoice: (choiceId) => encounters.resolve(choiceId),
+  });
+  const encounters = new EncounterRuntime({
+    npcManager, npcRegistry, town, hud,
+    ui: encounterUI,
+    glue: theater.glue,                       // 复用剧场的 LLM 通路（含配额与回执）
+    getPlayerPos: () => player.pos,
+    // 玩家当前所在场所：室内时是中文房间名（与 venueAffinity 表的键一致），室外为 null
+    getVenue: () => insideRoom || null,
+    getHour: () => worldClock.hour,
+    log: (t) => eventLog?.record?.({ type: "ENCOUNTER_LOG", facts: { text: t }, tags: ["encounter"] }),
+    onResolve: (enc, choiceId) => applyEncounterOutcome(enc, choiceId),
+  });
+  // 让交互面板知道谁在等玩家搭话（❗ 那个人的 F 键要压过其它交互）
+  interaction.setRefs({ npcManager, town, loot, vehicles, interiors, encounters });
+  // 遭遇弹窗开着时也不准抢指针锁（弹窗要吃键盘）。
+  // 放在 encounterUI 声明之后赋值，不依赖惰性求值绕过 TDZ。
+  engine.input._canLock = () => !theaterUI?.expanded && !encounterUI.isOpen;
+
   theater.npcAction = (npc, action, candidates) => npcActions.execute(npc, action, { candidates });
   theater.moodFx = (npc, mood, emoji, shake) => {
     if (emoji) npc.brain.emote(emoji, 1.9);
@@ -611,7 +639,7 @@ function boot() {
   });
 
   function anyModalOpen() {
-    return hud.shopOpen || phone.isOpen || newspaper.isOpen || conversation.isOpen || gangs.isOpen || slots.isOpen || baccarat.isOpen || stockMarket.isOpen || !document.getElementById("task-detail").classList.contains("hidden");
+    return hud.shopOpen || phone.isOpen || newspaper.isOpen || conversation.isOpen || gangs.isOpen || slots.isOpen || baccarat.isOpen || stockMarket.isOpen || (encounterUI && encounterUI.isOpen) || !document.getElementById("task-detail").classList.contains("hidden");
   }
 
   // ---- 右侧图标按钮栏 ----
@@ -1023,6 +1051,49 @@ function boot() {
   function _affectionOf(npc) {
     const owner = npc.phone?.owner || "镇民";
     return _buildRelCtx(npc, npcRegistry.findByDisplayName(owner)).affection;
+  }
+
+  /**
+   * 遭遇结算：把选项上的 effects 落到真实系统。
+   *
+   * 所有来源（StoryTree / 主线 / 招募 / 洗脑）都复用这一个出口，
+   * 好处是"钱和声望到底改没改"只有一处需要保证 —— 直接写 economy/reputation，
+   * 不经 worldState 金钱镜像（那是之前"扣钱其实没扣"的根源）。
+   */
+  function applyEncounterOutcome(enc, choiceId) {
+    const choice = (enc.choices || []).find((c) => c.id === choiceId);
+    // 没选（稍后再说）也允许有 onDefer
+    const fx = choice ? (choice.effects || {}) : (enc.deferEffects || {});
+    const npc = enc.npc;
+
+    if (typeof fx.cash === "number" && fx.cash !== 0) {
+      economy.addMoney(fx.cash);
+      hud.toast(`${fx.cash > 0 ? "💵 +" : "💸 "}$${Math.abs(fx.cash)}`, { side: true, key: "enc-cash" });
+    }
+    if (typeof fx.honor === "number" && fx.honor !== 0) reputation.addHonor(fx.honor);
+    if (typeof fx.wanted === "number" && fx.wanted > 0) reputation.addCrimeWanted?.(fx.wanted);
+    if (fx.affinity && npc) _addNpcAffinity(npc, fx.affinity.trust || 0, fx.affinity.affection || 0);
+    if (fx.pillar) {
+      // { faction, pillar, amount }
+      const r = factionSystem.damagePillar(fx.pillar.pillar, fx.pillar.amount || 0, "encounter");
+      if (r) hud.toast(`⚔️ ${fx.pillar.pillar} ${fx.pillar.amount > 0 ? "-" : "+"}${Math.abs(fx.pillar.amount)}`, { side: true, key: "enc-pillar" });
+    }
+    if (fx.recruit && npc) {
+      const reg = npcRegistry.findByDisplayName(npc.phone?.owner || "");
+      const memberId = reg?.id || _getNpcRelId(npc);
+      factionSystem.addPlayerMember(memberId);
+      npc.personality.gang = "player";
+      const regNpc = reg && npcRegistry.get?.(reg.id);
+      if (regNpc) regNpc.factionId = "player";
+      if (reg) phone.addContact(reg.id, reg.displayName, reg.job || "镇民");
+      hud.toast(`🎉 ${npc.phone?.owner || "他"}加入了你的帮派！`, { key: "enc-recruit" });
+      gangs.render?.();
+    }
+    // 让 StoryTree 之类的来源自己接后续（推进节点等）
+    if (typeof enc.onResolved === "function") {
+      try { enc.onResolved(choiceId, choice); } catch (e) { console.error("[Encounter] onResolved 出错", e); }
+    }
+    if (fx.toast) hud.toast(fx.toast, { key: "enc-fx" });
   }
 
   /**
@@ -2574,6 +2645,10 @@ function boot() {
         openNPCProfile(result.npc);
         document.exitPointerLock();
         break;
+      case "encounter":
+        // 专程来找你的人：开中央强决策弹窗（世界会暂停）
+        encounters.engage();
+        break;
       case "beg": {
         // 求饶：说好话让正在打你的人收手
         const npc = result.npc;
@@ -2860,6 +2935,7 @@ function boot() {
     }
     factions.update(dt, player.pos);
     corpseReactions.update(dt);
+    encounters.update();   // 遭遇管线：NPC 走过来 / 到位后等玩家按 F
 
     // 瞄准检测：你举着枪对着谁，谁就该有反应（看/惊/跑/警告）
     document.body.classList.toggle("aiming", !!player.aiming);
@@ -2991,94 +3067,58 @@ function boot() {
     for (const trig of deliveryTriggers) {
       deliveryPlanner.deliverToUI(trig);
       if (trig.data && trig.data.needsPlayerChoice) {
-        const def = storyRuntime.getDefinition(trig.data.storyId);
-        const node = def?.nodes[trig.data.nodeId];
-        if (!node?.playerResponses) continue;
-
-        // 找到该故事的绑定 NPC
-        const inst = worldState.getStoryInstance(trig.data.storyId);
-        const bindings = inst?.actorBindings || {};
-        let storyNpc = null;
-        for (const [slot, npcId] of Object.entries(bindings)) {
-          const regNpc = npcRegistry.get(npcId);
-          if (regNpc) {
-            // 在大街上找到这个 NPC 实体
-            for (const npc of npcManager.all) {
-              if (!npc.alive || npc.brain.state === "DOWN") continue;
-              const owner = npc.phone?.owner || "";
-              if (owner === regNpc.displayName) {
-                storyNpc = npc;
-                break;
-              }
-            }
-            if (storyNpc) break;
-          }
-        }
-
-        if (storyNpc) {
-          // NPC 主动走过来 + 用浮动对话展示内容
-          const dist = Math.hypot(storyNpc.pos.x - player.pos.x, storyNpc.pos.z - player.pos.z);
-          if (dist < 8) {
-            storyNpc.brain.startTalk(player.pos);
-            showFloatDialogue(storyNpc, node.description || node.title, "story");
-            // 左侧交互面板切换为故事选项
-            interaction.setDialogueTarget(storyNpc);
-            // 把故事选择注入为临时 role_ 动作
-            const origRespond = storyNpc.brain.getRoleActions;
-            const origHasRole = storyNpc.brain.hasRoleInteraction;
-            storyNpc.brain.hasRoleInteraction = () => true;
-            storyNpc.brain.getRoleActions = () => {
-              const acts = [];
-              for (const r of node.playerResponses) {
-                acts.push({ action: `story_choice_${r.id}`, icon: "📖", label: r.label, key: "", hint: "" });
-              }
-              acts.push({ action: "dlg_close", icon: "✕", label: "稍后决定", key: "", hint: "" });
-              return acts;
-            };
-            // 覆写 respondToRole 来处理故事选择
-            storyNpc.brain._storyRespond = (kind) => {
-              if (kind.startsWith("story_choice_")) {
-                const chosenId = kind.replace("story_choice_", "");
-                storyRuntime.advance(trig.data.storyId, chosenId);
-                floatDlgText.textContent = "（对方点了点头，转身离去……）";
-                floatDlgText.className = "neutral";
-                interaction.dialogueNpc = null;
-                // 恢复
-                storyNpc.brain.hasRoleInteraction = origHasRole;
-                storyNpc.brain.getRoleActions = origRespond;
-                showPlayerBubble("");
-                // 加好感
-                _addNpcAffinity(storyNpc, 5, 8);
-                if (regNpc) {
-                  phone.addContact(regNpc.id, regNpc.displayName, regNpc.job || "镇民");
-                }
-                setTimeout(() => { hideFloatDialogue(); interaction.clearDialogueTarget(); }, 1800);
-                return "...";
-              }
-              if (kind === "dlg_close") {
-                hideFloatDialogue();
-                interaction.clearDialogueTarget();
-                storyNpc.brain.hasRoleInteraction = origHasRole;
-                storyNpc.brain.getRoleActions = origRespond;
-                showPlayerBubble("晚点再说……");
-                return null;
-              }
-              return "（对方等着你的回答……）";
-            };
-          } else {
-            // NPC 太远，发手机消息
-            const npcName = storyNpc.phone?.owner || "某人";
-            phone.deliverMessage(trig.data.storyId, npcName,
-              `「${node.title}」${node.description || ""}`, { storyId: trig.data.storyId, needsChoice: true });
-          }
-        } else {
-          // 没有绑定的 NPC，用手机推送
-          phone.deliverMessage(trig.data.storyId, "神秘线人",
-            `「${node.title}」${node.description || ""}`, { storyId: trig.data.storyId, needsChoice: true });
-        }
+        requestStoryEncounter(trig.data.storyId, trig.data.nodeId);
       }
     }
   });
+
+  /**
+   * 把一个「需要玩家抉择」的故事节点交给遭遇管线。
+   *
+   * 取代了原来那套猴补丁（临时改写 brain.getRoleActions / hasRoleInteraction
+   * 把选项塞进左侧面板，再手动恢复）—— 那种写法脆弱、难维护，而且当 NPC
+   * 距离 >8 米时直接降级成手机里一段无法响应的死文本。
+   * 现在统一走「NPC 走过来 → ❗ → F → 中央弹窗（暂停）→ 抉择」。
+   */
+  function requestStoryEncounter(storyId, nodeId) {
+    if (encounters.busy) return false;
+    const def = storyRuntime.getDefinition(storyId);
+    const node = def?.nodes?.[nodeId];
+    if (!node?.playerResponses?.length) return false;
+
+    const inst = worldState.getStoryInstance(storyId);
+    const bindings = inst?.actorBindings || {};
+    // 剧情绑定的角色优先出演；取第一个能在场上找到的
+    let preferNpcId = null;
+    for (const npcId of Object.values(bindings)) {
+      const reg = npcRegistry.get(npcId);
+      if (!reg) continue;
+      const onStage = npcManager.all.some((n) => n.alive && (n.phone?.owner === reg.displayName));
+      if (onStage) { preferNpcId = npcId; break; }
+    }
+
+    const beats = [];
+    if (node.title) beats.push(node.title);
+    if (node.description) beats.push(node.description);
+
+    return encounters.request({
+      id: `story:${storyId}:${nodeId}`,
+      title: `📖 ${def.title || storyId}`,
+      intent: `${node.title || ""}：${node.description || ""}`.slice(0, 120),
+      preferNpcId,
+      beats,
+      choices: node.playerResponses.map((r) => ({
+        id: r.id,
+        label: r.label,
+        risk: r.risk || "medium",
+      })),
+      // 抉择完把结果交回 StoryTree 推进节点
+      onResolved: (choiceId) => {
+        if (!choiceId) return;              // 稍后再说 → 节点不推进，之后还会再来
+        storyRuntime.advance(storyId, choiceId);
+      },
+    });
+  }
 
   // 引擎声跟随当前车辆
   let engineHandle = null;
@@ -3300,11 +3340,39 @@ function boot() {
       }
     }
 
+    // 专程来找玩家谈事的人：头顶挂 ❗ 引导玩家过去按 F
+    // （沿用报案 🚨 那套"按 brain 状态挂图标"的做法，只是判据换成遭遇管线）
+    for (const npc of npcManager.all) {
+      if (!npc.alive || npc.brain?.state === "DOWN") continue;
+      if (!encounters.isPending(npc)) continue;
+      const edx = npc.pos.x - camPos.x;
+      const edz = npc.pos.z - camPos.z;
+      if (edx * edx + edz * edz > 60 * 60) continue;
+      _qmV.set(npc.pos.x, 3.05, npc.pos.z);
+      _qmV.project(camera);
+      if (_qmV.z > 1) continue;
+      let be = questMarkerPool.find(p => !p.inUse);
+      if (!be) {
+        const el = document.createElement("div");
+        el.className = "quest-head-marker";
+        layer.appendChild(el);
+        be = { el, inUse: true };
+        questMarkerPool.push(be);
+      } else {
+        be.inUse = true;
+      }
+      be.el.textContent = "❗";
+      be.el.className = "quest-head-marker encounter-pending";
+      be.el.style.display = "block";
+      be.el.style.left = `${(_qmV.x * 0.5 + 0.5) * w}px`;
+      be.el.style.top = `${(-_qmV.y * 0.5 + 0.5) * h}px`;
+      be.el.title = "专程来找你 · 按 F 听他说";
+    }
+
     // 正在去警局报案的人：头顶挂个醒目图标，让玩家知道该优先拦谁
     for (const npc of npcManager.all) {
       if (!npc.alive || npc.brain?.state === "DOWN") continue;
-      if (!npc.brain?.isReporting) continue;
-      const rdx = npc.pos.x - camPos.x;
+      if (!npc.brain?.isReporting) continue;      const rdx = npc.pos.x - camPos.x;
       const rdz = npc.pos.z - camPos.z;
       if (rdx * rdx + rdz * rdz > 60 * 60) continue;
       _qmV.set(npc.pos.x, 3.05, npc.pos.z); // 比名字牌高一点，不遮名字
@@ -3568,6 +3636,22 @@ function boot() {
       hud.toast("已传送到镇中心大街", { side: true, key: "theater-tp" });
     },
     theaterStatus: () => theater.debugStatus(),
+    // 遭遇管线调试：手动发起一次遭遇，或查看当前状态
+    encounterStatus: () => ({ phase: encounters.phase, active: encounters.active?.id || null, npc: encounters.active?.name || null }),
+    encounterTest: (title = "试探") => encounters.request({
+      id: "debug:" + Date.now(),
+      title: `🧪 ${title}`,
+      intent: "一个镇民想试探玩家对帮派扩张的态度",
+      beats: [
+        "我在报纸上看到你干的事了，先生。",
+        "镇上有人说你迟早要跟黑蹄会碰一碰。我想知道——你缺不缺帮手？",
+      ],
+      choices: [
+        { id: "accept", label: "跟我干", risk: "low", hint: "招募他", effects: { recruit: true, honor: 1 } },
+        { id: "pay", label: "先给你点钱打听消息", risk: "medium", hint: "-$50", effects: { cash: -50, affinity: { trust: 8, affection: 5 } } },
+        { id: "refuse", label: "我不需要帮手", risk: "low", effects: { affinity: { trust: -5, affection: -5 } } },
+      ],
+    }),
     theaterLog: (n) => theater.recentLog(n),
     // 实时生成：顶部浮层开关 + 推理档位实时切换（不用重启就能 A/B 质量与延迟）
     aiLogToggle: () => aiLog.toggle(),

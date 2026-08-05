@@ -684,6 +684,44 @@ html, body {
 .conv-opt.neg:hover { background: rgba(226,86,74,.2); }
 .conv-opt.neutral { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.18); color: #ddd; }
 
+/* ---------- 遭遇强决策弹窗（统一遭遇管线的抉择界面） ----------
+   复用 .modal 的全屏遮罩与 .conv-opt 的三档风险配色，
+   额外加：立绘、逐句推进的正文区、选项上的数字键提示。 */
+#encounter { z-index: 60; }   /* 高于其它模态：遭遇是抢断式的 */
+.enc-frame {
+  width: 560px; max-width: 94vw; padding: 20px 22px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.enc-header { display: flex; align-items: center; gap: 14px; }
+.enc-avatar {
+  width: 60px; height: 60px; border-radius: 50%; overflow: hidden; flex-shrink: 0;
+  border: 2px solid var(--brass); background: rgba(0,0,0,.35);
+}
+.enc-avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
+#enc-name {
+  font-family: Georgia, serif; font-size: 20px; font-weight: 800; color: var(--gold);
+}
+#enc-sub { font-size: 12px; color: rgba(212,165,116,.8); margin-top: 2px; }
+.enc-body {
+  cursor: pointer; min-height: 76px;
+  padding: 14px 16px; border-radius: 8px;
+  background: rgba(0,0,0,.28); border: 1px solid rgba(200,151,58,.25);
+}
+#enc-text { font-size: 16px; line-height: 1.7; color: #f3e8d0; }
+#enc-more {
+  margin-top: 8px; font-size: 12px; color: rgba(255,233,168,.55);
+  animation: encBlink 1.4s ease-in-out infinite;
+}
+@keyframes encBlink { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
+.enc-options { display: flex; flex-direction: column; gap: 8px; }
+.enc-opt { display: flex; align-items: center; gap: 10px; }
+.enc-key {
+  display: inline-block; min-width: 20px; text-align: center;
+  padding: 1px 5px; border-radius: 4px; font-size: 12px;
+  background: rgba(0,0,0,.4); border: 1px solid rgba(200,151,58,.5); color: var(--gold);
+}
+.enc-hint { margin-left: auto; font-size: 11px; opacity: .7; }
+
 /* ---------- 报纸 ---------- */
 .paper-frame {
   width: 620px; max-width: 94vw; max-height: 86vh; overflow-y: auto;
@@ -1357,6 +1395,11 @@ body.headshot-flash::after {
 }
 @keyframes headshotFlash { from { opacity: 1; } to { opacity: 0; } }
 /* 正在去警局报案的人：头顶闪烁的警报图标，提示玩家优先拦他 */
+.quest-head-marker.encounter-pending {
+  width: auto; height: auto; font-size: 22px;
+  filter: drop-shadow(0 0 8px rgba(255,206,84,.95)) drop-shadow(0 2px 4px rgba(0,0,0,.8));
+  animation: questMarkerBounce 1.2s ease-in-out infinite;
+}
 .quest-head-marker.reporting {
   width: auto; height: auto; font-size: 17px;
   filter: drop-shadow(0 0 6px rgba(226,86,74,.9)) drop-shadow(0 2px 4px rgba(0,0,0,.7));
