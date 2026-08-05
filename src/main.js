@@ -67,7 +67,9 @@ import { AiLog } from "./systems/AiLog.js";
 import { EncounterRuntime } from "./encounter/EncounterRuntime.js";
 import { SubdueSystem } from "./encounter/SubdueSystem.js";
 import { NemesisSystem } from "./factions/NemesisSystem.js";
+import { LawSystem } from "./factions/LawSystem.js";
 import { OrgChartUI } from "./ui/OrgChartUI.js";
+import { LawUI } from "./ui/LawUI.js";
 import { EncounterUI } from "./ui/EncounterUI.js";
 import { AmmoSystem } from "./systems/AmmoSystem.js";
 import { CorpseReactions } from "./systems/CorpseReactions.js";
@@ -126,6 +128,15 @@ function boot() {
   });
   factionSystem.nemesis = nemesis;
 
+  // P5 警长势力：三角关系的第三方。他不是玩家通缉度的惩罚模块 ——
+  // 有自己的四根支柱（威信/人手/证据/廉洁），一上来廉洁就只有 30
+  // （赫克托挂着 compromised 标签，与塞拉斯签过停战协议）。
+  // 玩家喂证据让他查黑蹄会，黑蹄会塞钱让他睁眼瞎。
+  const law = new LawSystem({
+    worldState, factionSystem, nemesis, npcRegistry, reputation,
+    log: (t) => eventLog?.record?.({ type: "LAW_LOG", facts: { text: t }, tags: ["law"] }),
+  });
+
   // UI
   const hud = new HUD(economy, reputation);
   const dialogue = new Dialogue(camera);
@@ -135,10 +146,27 @@ function boot() {
   const minimap = new Minimap(town);
   const gangs = new Gangs(reputation, { worldState, factionSystem });
   nemesis.hud = hud;                     // Nemesis 要弹 toast（构造时 hud 还没有）
+  law.hud = hud;
   // 人事图面板（O 键）：Nemesis 的全部乐趣在于看清一张图再决定从哪层下手
   const orgChart = new OrgChartUI({
     nemesis,
     getPillars: () => factionSystem.getBlackHoofPillars(),
+  });
+  // 警长面板（K 键）：看清四根支柱 + 下一档突袭还差什么 + 他怎么看你
+  const lawUI = new LawUI({
+    law,
+    onAction: (actId) => {
+      const r = law.playerAction(actId);
+      if (r.ok) {
+        hud.toast?.(`⚖ ${{
+          feed_evidence: "证据已交给警长",
+          turn_in_thug: "你把逃犯交了出去",
+          back_publicly: "你公开站在警长一边",
+          expose_truce: "停战协议见报了",
+          bribe_sheriff: "钱递过去了",
+        }[actId] || "已办"}`, { key: "law-act", duration: 3600 });
+      }
+    },
   });
   const slots = new SlotMachine(economy, audio, hud);
   const baccarat = new Baccarat(economy, audio, hud);
@@ -371,6 +399,7 @@ function boot() {
     newspaper, phone,
     npcManager,
     nemesis,             // P4 ✓ 卧底情报/怀疑度/清洗 + 胜负判定
+    law,                 // P5 ✓ 证据折算/行贿/突袭
   });
 
   // 存档系统：完全禁用。每次刷新 = 重新开始第一天。
@@ -705,7 +734,7 @@ function boot() {
   });
 
   function anyModalOpen() {
-    return hud.shopOpen || phone.isOpen || newspaper.isOpen || conversation.isOpen || gangs.isOpen || slots.isOpen || baccarat.isOpen || stockMarket.isOpen || (encounterUI && encounterUI.isOpen) || (orgChart && orgChart.isOpen) || !document.getElementById("task-detail").classList.contains("hidden");
+    return hud.shopOpen || phone.isOpen || newspaper.isOpen || conversation.isOpen || gangs.isOpen || slots.isOpen || baccarat.isOpen || stockMarket.isOpen || (encounterUI && encounterUI.isOpen) || (orgChart && orgChart.isOpen) || (lawUI && lawUI.isOpen) || !document.getElementById("task-detail").classList.contains("hidden");
   }
 
   // ---- 右侧图标按钮栏 ----
@@ -795,6 +824,11 @@ function boot() {
     if (input.wasPressed("KeyO") && !inSpecialMode) {
       orgChart.toggle();
       if (orgChart.isOpen) document.exitPointerLock();
+    }
+    // K = 警长办公室（第三方势力）。K 之前是空闲键。
+    if (input.wasPressed("KeyK") && !inSpecialMode) {
+      lawUI.toggle();
+      if (lawUI.isOpen) document.exitPointerLock();
     }
     // 对话动作键不要被全局热键消费掉
     // KeyT/KeyR/KeyY 仅在非交互模式下处理

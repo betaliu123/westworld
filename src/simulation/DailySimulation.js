@@ -23,6 +23,7 @@ export class DailySimulation {
     this.stockMarket = deps.stockMarket || null;
     this.taskSystem = deps.taskSystem || null;
     this.nemesis = deps.nemesis || null;       // 组织架构/卧底/晋升
+    this.law = deps.law || null;               // 警长势力（第三方）
 
     this._listeners = {};
   }
@@ -222,6 +223,13 @@ export class DailySimulation {
       if (this.nemesis) nemesisResult = this.nemesis.settleDaily();
     });
 
+    // Step 14.5: 警长势力结算 —— 卧底情报折算证据、黑蹄会行贿、够证据就突袭。
+    // 必须排在 Nemesis 之后：它要读当天新产出的情报。
+    let lawResult = null;
+    safeStep("Step14.5: law.settleDaily", () => {
+      if (this.law) lawResult = this.law.settleDaily();
+    });
+
     // Step 15: 胜负判定。
     // 这一步以前根本没人调 —— checkVictory 写好了却零调用者，
     // 于是玩家无论做什么，游戏都不会结束。现在接上，并把结果写进
@@ -246,7 +254,7 @@ export class DailySimulation {
       console.log(`[DailySimulation] === 第 ${day} 天结算完成 ===`);
     }
     return {
-      day, directorPlan, nemesis: nemesisResult,
+      day, directorPlan, nemesis: nemesisResult, law: lawResult,
       victory: ws.state.victoryState || null,
       errors: errors.length > 0 ? errors : null,
     };
