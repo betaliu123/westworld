@@ -46,6 +46,20 @@ export class NPC {
     ));
     this.hp = this.maxHp;
 
+    // ── 两阶段伤亡 ───────────────────────────────────────────────
+    // 之前 alive 一路 true 到底，被打倒的人跟"死人"用同一套躺平表现，
+    // 玩家没法判断地上这个还能不能救/能不能收服。现在拆成两层：
+    //   ① 伏地重伤（alive=true, wounded=true）：侧卧、有呼吸、偶尔抽动
+    //      → 可洗脑收服 / 搜身 / 补刀 / 放走
+    //   ② 死亡（alive=false, dead=true）：俯卧、完全静止、整体压暗
+    //      → 只能搜尸；会被目击者报官
+    this.wounded = false;      // 伏地重伤（还活着）
+    this.dead = false;         // 真死了
+    this.woundedAt = 0;        // 进入重伤的游戏时刻（用于自行爬起/被救走判定）
+    this._lethalHit = false;   // 这次挨的打是致命伤（爆头等）
+    this._deathApplied = false;// 尸体压暗只做一次
+    this.twitchAt = 0;         // 下次抽动的时间
+
     // 被撞飞的弹道速度（非零时进入 ragdoll 抛飞）
     this.launchVel = new THREE.Vector3(0, 0, 0);
     this.launching = false;
@@ -87,10 +101,20 @@ export class NPC {
    * byNpc 为真表示是别的 NPC 打的 —— 这时不能记仇到玩家头上，
    * 否则 NPC 互殴会让玩家莫名被亲友报复。
    * damage 默认 1（拳击），枪击传 2（重伤但留给对方反击机会）。
+   * opts.lethal 为真表示这一下是致命伤（爆头），直接死，不进重伤阶段。
    */
-  hit(attackerRef, byNpc = false, damage = 1) {
-    if (!this.alive || this.brain.state === State.DOWN) return false;
+  hit(attackerRef, byNpc = false, damage = 1, opts = {}) {
+    if (!this.alive || this.dead) return false;
+    // 已经伏地重伤的人可以被补刀打死，但不再重复"击倒"
+    if (this.brain.state === State.DOWN) {
+      if (opts.lethal || this.wounded) {
+        this.die(byNpc ? "npc" : "player");
+        return true;
+      }
+      return false;
+    }
     this.hp -= Math.max(1, Math.round(damage));
+    if (opts.lethal) this._lethalHit = true;
     this.brain.onHit(attackerRef);
     // 记录仇恨（供亲友报复系统使用）— 只记玩家的账
     if (!byNpc) {
@@ -118,24 +142,98 @@ export class NPC {
    * 倒地后尝试爬起来。
    * 以前倒地计时结束就直接进 FLEE，但 hp 仍是 0 或负数 —— 结果"爆头打倒的人
    * 过几秒又站起来跑"，血条还挂着看着像回血。
-   * 现在：伤得越重越可能爬不起来；能起来的也只恢复一小截血。
+   * 现在三档：轻伤爬起来 / 重伤伏地（可收服） / 致命伤直接死。
    * @returns {boolean} 是否真的站起来了
    */
   tryReviveFromDown() {
-    if (!this.alive) return false;
-    const deficit = -Math.min(0, this.hp); // 被打穿的程度（爆头会打到很负）
-    // 被打穿 2 格以上就起不来了（重伤昏迷），躺着直到这一天结束
+    if (!this.alive || this.dead) return false;
+    // 致命伤（正中眉心）：不进重伤阶段，直接是尸体
+    if (this._lethalHit) {
+      this.die("player");
+      return false;
+    }
+    const deficit = -Math.min(0, this.hp); // 被打穿的程度
+    // 被打穿 2 格以上就起不来了 → 伏地重伤（还活着，可以被收服/补刀/救走）
     if (deficit >= 2) {
       this.hp = 0;
       this._outCold = true;
+      this.enterWounded();
       return false;
     }
     this.hp = Math.max(1, Math.ceil(this.maxHp * 0.25)); // 勉强站起来，只剩一点血
     return true;
   }
 
+  /** 进入伏地重伤阶段（还活着，玩家可介入） */
+  enterWounded() {
+    if (this.wounded || this.dead) return false;
+    this.wounded = true;
+    this.woundedAt = this.time;
+    this.twitchAt = this.time + randRange(1.5, 4);
+    return true;
+  }
+
+  /**
+   * 真死。区别于伏地重伤：完全静止 + 俯卧 + 压暗，一眼就能看出来没救了。
+   * cause: "player" | "npc" | "vehicle"
+   */
+  die(cause = "player") {
+    if (this.dead) return false;
+    this.dead = true;
+    this.alive = false;
+    this.wounded = false;
+    this._outCold = true;
+    this.deathCause = cause;
+    this.hp = Math.min(this.hp, 0);
+    this.brain.state = State.DOWN;
+    this.brain.stateTimer = 9999;
+    this.brain._wantRevive = false;
+    this.brain.release?.();      // 归还可能持有的剧场/遭遇征召
+    return true;
+  }
+
+  /** 伏地重伤的人被同伙拖走 / 自己爬起来后彻底离场 */
+  removeFromScene(reason = "rescued") {
+    this.wounded = false;
+    this.removed = true;
+    this.removedReason = reason;
+    if (this.mesh) this.mesh.visible = false;
+    return true;
+  }
+
+  /** 尸体压暗：把所有材质调暗并去掉高光，只做一次 */
+  _applyDeathTint() {
+    if (this._deathApplied || !this.mesh) return;
+    this._deathApplied = true;
+    this.mesh.traverse?.((o) => {
+      const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : null;
+      if (!mats) return;
+      for (let i = 0; i < mats.length; i++) {
+        const m = mats[i];
+        if (!m || m.__wwDead) continue;
+        // 克隆再改，避免把同一份共享材质里的活人一起弄暗
+        const c = m.clone();
+        c.__wwDead = true;
+        if (c.color) c.color.multiplyScalar(0.42);
+        if ("emissiveIntensity" in c) c.emissiveIntensity = 0;
+        if (c.emissive) c.emissive.setRGB(0, 0, 0);
+        mats[i] = c;
+      }
+      o.material = Array.isArray(o.material) ? mats : mats[0];
+    });
+  }
+
   get isOutCold() {
     return !!this._outCold;
+  }
+
+  /** 地上这个还能不能救/能不能收服 */
+  get isWounded() {
+    return !!this.wounded && !this.dead && !this.removed;
+  }
+
+  get isCorpse() {
+    return !!this.dead;
   }
 
   panic(playerRef, distance) {
@@ -207,6 +305,7 @@ export class NPC {
   }
 
   update(dt, ctx) {
+    if (this.removed) return { moveTo: null, speedMul: 1 };
     this.time += dt;
     const brainCtx = {
       self: { x: this.pos.x, z: this.pos.z },
@@ -304,7 +403,53 @@ export class NPC {
         this.mesh.position.set(this.pos.x, y, this.pos.z);
         return intent;
       }
-      // 倒地：躺平表现，不移动
+      // ── 尸体：俯卧、完全静止、整体压暗 ──────────────────────
+      if (this.dead) {
+        this._applyDeathTint();
+        // 脸朝下扑倒（绕 X 轴），与重伤的侧卧（绕 Z 轴）在剪影上完全不同
+        this.mesh.rotation.z = damp(this.mesh.rotation.z, 0, 0.002, dt);
+        this.mesh.rotation.x = damp(this.mesh.rotation.x, -Math.PI / 2, 0.002, dt);
+        this.walkAmount = 0;
+        const j = this.mesh.userData?.joints;
+        if (j) {
+          // 四肢摊开定住，不再有任何动画
+          j.legL.rotation.x = damp(j.legL.rotation.x, 0.12, 0.002, dt);
+          j.legR.rotation.x = damp(j.legR.rotation.x, -0.18, 0.002, dt);
+          j.armL.rotation.x = damp(j.armL.rotation.x, 0.5, 0.002, dt);
+          j.armR.rotation.x = damp(j.armR.rotation.x, -0.35, 0.002, dt);
+          j.head.rotation.y = damp(j.head.rotation.y, 0.4, 0.002, dt);
+        }
+        this.mesh.position.set(this.pos.x, 0.22, this.pos.z); // 比重伤更贴地
+        return intent;
+      }
+
+      // ── 伏地重伤：侧卧 + 呼吸起伏 + 偶尔抽动 ────────────────
+      if (this.wounded) {
+        this.mesh.rotation.x = damp(this.mesh.rotation.x, 0, 0.001, dt);
+        this.mesh.rotation.z = damp(this.mesh.rotation.z, Math.PI / 2, 0.001, dt);
+        this.walkAmount = 0;
+        // 呼吸：慢速上下起伏（约 4 秒一轮），幅度很小但看得出来还活着
+        const breath = Math.sin(this.time * 1.6) * 0.035;
+        const j = this.mesh.userData?.joints;
+        if (j) {
+          // 抽动：随机间隔抖一下手脚
+          if (this.time >= this.twitchAt) {
+            this._twitch = 1;
+            this.twitchAt = this.time + randRange(2.5, 6.5);
+          }
+          this._twitch = Math.max(0, (this._twitch || 0) - dt * 3.5);
+          const tw = this._twitch * this._twitch; // 收得快一点，像抽了一下
+          j.legL.rotation.x = damp(j.legL.rotation.x, 0.25, 0.01, dt) + tw * 0.5;
+          j.legR.rotation.x = damp(j.legR.rotation.x, -0.15, 0.01, dt);
+          j.armL.rotation.x = damp(j.armL.rotation.x, 0.35, 0.01, dt) - tw * 0.6;
+          j.armR.rotation.x = damp(j.armR.rotation.x, 0.1, 0.01, dt);
+          j.head.rotation.y = Math.sin(this.time * 0.7) * 0.18; // 头微微晃
+        }
+        this.mesh.position.set(this.pos.x, 0.3 + breath, this.pos.z);
+        return intent;
+      }
+
+      // 刚被打倒（还没判定起不起得来）：躺平表现，不移动
       this.mesh.rotation.x = damp(this.mesh.rotation.x, 0, 0.001, dt);
       this.mesh.rotation.z = damp(this.mesh.rotation.z, Math.PI / 2, 0.001, dt);
       this.walkAmount += (0 - this.walkAmount) * Math.min(1, dt * 10);

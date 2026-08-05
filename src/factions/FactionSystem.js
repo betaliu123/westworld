@@ -83,12 +83,48 @@ export class FactionSystem {
     pf.manpower = Math.max(0, pf.manpower + amount);
   }
 
-  addPlayerMember(npcId) {
+  /**
+   * 加入玩家势力。
+   *
+   * members 必须保持"字符串 id 数组"—— OperationSystem / DailySimulation /
+   * StoryEffects / NPCRegistry 五处都按这个形状读它，改成对象数组会一起炸。
+   * 所以额外信息（明面归属、是否卧底、信任度）另存在 memberMeta 里，
+   * 按 id 索引。这也是 Nemesis 那套双向卧底要用的地基。
+   *
+   * @param npcId 注册表 id（不是显示名）
+   * @param meta  { allegiance, undercover, trust, job, recruitedBy, reportsTo }
+   */
+  addPlayerMember(npcId, meta = null) {
+    if (!npcId) return false;
     const pf = this.worldState.state.factions.player;
+    let added = false;
     if (!pf.members.includes(npcId)) {
       pf.members.push(npcId);
       pf.manpower += 1;
+      added = true;
     }
+    if (meta) {
+      if (!pf.memberMeta) pf.memberMeta = {};
+      pf.memberMeta[npcId] = { ...(pf.memberMeta[npcId] || {}), ...meta };
+    }
+    return added;
+  }
+
+  /** 某个成员的附加信息（卧底身份等）；没有就返回空对象 */
+  getMemberMeta(npcId) {
+    return this.worldState.state.factions.player.memberMeta?.[npcId] || {};
+  }
+
+  /** 明面上就是自己人的成员（卧底不算 —— 他们在名单上要另行标注） */
+  getOpenMembers() {
+    const pf = this.worldState.state.factions.player;
+    return (pf.members || []).filter((id) => !this.getMemberMeta(id).undercover);
+  }
+
+  /** 潜伏在别的势力里的自己人 */
+  getUndercoverMembers() {
+    const pf = this.worldState.state.factions.player;
+    return (pf.members || []).filter((id) => this.getMemberMeta(id).undercover);
   }
 
   removePlayerMember(npcId) {

@@ -46,6 +46,28 @@ const REPORT_LINES = [
   "警长得知道这事！",
 ];
 
+// ── 伤者（还活着，在地上喘气）专用台词 ────────────────────────
+// 死人和"还在动的伤者"引发的反应不该是同一套：前者是命案，
+// 后者是"有人受伤了"，语气、报官意愿、是否上前都不一样。
+const WOUNDED_SHOCK_LINES = [
+  "那人还在动……他还活着！",
+  "有人受伤了，快找大夫！",
+  "他还有气，别围着看啊！",
+  "老天，伤得这么重……",
+];
+const WOUNDED_PANIC_LINES = [
+  "有人被打倒了！",
+  "别打了！他起不来了！",
+  "离我远点！我不想挨这一下！",
+];
+const WOUNDED_HELP_LINES = [
+  "别动，我看看伤口。",
+  "撑住，我扶你起来。",
+  "谁去打盆水来？",
+];
+// 会主动上前救人的职业（其余人只惊呼/绕开）
+const HELPER_JOBS = new Set(["医生", "牧师", "酒保"]);
+
 export class CorpseReactions {
   constructor(deps = {}) {
     this.npcManager = deps.npcManager;
@@ -65,10 +87,11 @@ export class CorpseReactions {
     return Math.hypot(p.x - corpse.pos.x, p.z - corpse.pos.z) <= CULPRIT_NEAR_DIST;
   }
 
-  /** 街上所有"倒着的人"（被击倒或死亡，且在室外） */
+  /** 街上所有"倒着的人"（被击倒、重伤或死亡，且在室外） */
   _corpses() {
     const out = [];
     for (const npc of this.npcManager?.all || []) {
+      if (npc.removed) continue;            // 已被同伙拖走的不算
       if (npc.insideHome || npc.insideRoom) continue;
       if (!npc.alive || npc.brain?.state === "DOWN") out.push(npc);
     }
@@ -117,11 +140,34 @@ export class CorpseReactions {
       spoke++;
 
       const bravery = npc.personality?.bravery ?? 0.5;
+      // 地上这个是死人还是还在喘气的伤者 —— 决定用哪套反应
+      const isCorpse = near.isCorpse || !near.alive;
+      const isWounded = !isCorpse && (near.isWounded || near.brain?.state === "DOWN");
+      const job = npc.personality?.job;
+
+      // 医生/牧师/酒保碰上还活着的伤者：上前施救，而不是喊着跑
+      if (isWounded && HELPER_JOBS.has(job) && bravery >= 0.3) {
+        npc.brain.say(WOUNDED_HELP_LINES[Math.floor(Math.random() * WOUNDED_HELP_LINES.length)], 2.8);
+        this.moodFx?.(npc, "shocked");
+        if (!npc.brain._perform) {
+          npc.brain.takeOver?.({
+            moveTo: { x: near.pos.x, z: near.pos.z },
+            speedMul: 1.35, arriveDist: 1.3, immune: false,
+          });
+          setTimeout(() => {
+            if (npc.brain?._perform && !npc.brain._perform.sceneToken) npc.brain.release?.();
+          }, 4000);
+        }
+        continue;
+      }
+
       if (bravery < 0.35) {
         // 胆小的：喊着跑。只有玩家还在现场附近时才可能顺便去报官 ——
         // 单纯路过看见一具尸体，说不出被告是谁，也不该算到早已走远的玩家账上。
-        const willReport = this._playerNear(near) && Math.random() < 0.5;
-        const pool = willReport ? REPORT_LINES : PANIC_LINES;
+        // 伤者比尸体轻，报官意愿减半（"有人受伤"不等于"出人命了"）。
+        const reportChance = isCorpse ? 0.5 : 0.25;
+        const willReport = this._playerNear(near) && Math.random() < reportChance;
+        const pool = willReport ? REPORT_LINES : (isCorpse ? PANIC_LINES : WOUNDED_PANIC_LINES);
         npc.brain.say(pool[Math.floor(Math.random() * pool.length)], 2.6);
         this.moodFx?.(npc, "scared");
         // report 必须交给 fleeFrom：它内部会重置 _reportCrime，先设后调会被抹掉
@@ -132,7 +178,8 @@ export class CorpseReactions {
         this.moodFx?.(npc, "shocked");
       } else {
         // 远远看见的：吓一跳
-        npc.brain.say(SHOCK_LINES[Math.floor(Math.random() * SHOCK_LINES.length)], 2.8);
+        const pool = isCorpse ? SHOCK_LINES : WOUNDED_SHOCK_LINES;
+        npc.brain.say(pool[Math.floor(Math.random() * pool.length)], 2.8);
         this.moodFx?.(npc, "shocked");
         npc.shakeFor?.(0.5, 0.16);
       }

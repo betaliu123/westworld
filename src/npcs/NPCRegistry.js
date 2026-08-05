@@ -33,6 +33,61 @@ export class NPCRegistry {
     this.worldState.setNPC(npcId, npc);
   }
 
+  /**
+   * 把一个场景里的路人提升为有持久档案的 NPC。
+   *
+   * 只有 IMPORTANT_NPCS 里那 17 个人天生有档案；街上随机生成的镇民没有。
+   * 一旦这种人被玩家收服/变成卧底/当上产业管事，他就必须有个能跨天存活的
+   * 身份，否则第二天重新生成场景实体时这层关系就丢了。
+   *
+   * @param displayName 显示名（场景 NPC 的 phone.owner）
+   * @param seed 初始字段（job / factionId / affection / trust 等）
+   * @returns {{id:string, record:object, created:boolean}}
+   */
+  ensureRecord(displayName, seed = {}) {
+    const known = this.findByDisplayName(displayName);
+    if (known) {
+      // 已是重要 NPC：只补空缺字段，不覆盖既有设定
+      const rec = this.get(known.id);
+      if (rec) {
+        for (const [k, v] of Object.entries(seed)) {
+          if (rec[k] === undefined || rec[k] === null) rec[k] = v;
+        }
+        this.worldState.setNPC(known.id, rec);
+      }
+      return { id: known.id, record: rec || known, created: false };
+    }
+    // 生成稳定 id：同名的人只会有一份档案
+    const id = "npc_x_" + this._slug(displayName);
+    const existing = this.get(id);
+    if (existing) return { id, record: existing, created: false };
+    const rec = {
+      id,
+      displayName,
+      job: seed.job || "镇民",
+      factionId: seed.factionId ?? null,
+      factionRank: seed.factionRank ?? 0,
+      alive: true,
+      affection: seed.affection ?? 0,
+      trust: seed.trust ?? 0,
+      tags: seed.tags || ["townsfolk"],
+      memories: [],
+      knowledge: [],
+      minor: true,          // 标记：由场景路人提升而来，不是原生重要 NPC
+      ...seed,
+    };
+    this.worldState.setNPC(id, rec);
+    return { id, record: rec, created: true };
+  }
+
+  /** 中文名也要能产出稳定 id：非 ASCII 转成码点，保证唯一且可复现 */
+  _slug(name) {
+    return String(name || "unknown").split("").map((ch) => {
+      const c = ch.charCodeAt(0);
+      return (c < 128) ? ch.toLowerCase().replace(/[^a-z0-9]/g, "") : c.toString(36);
+    }).join("");
+  }
+
   // 全部 NPC ID
   getAllIds() {
     return IMPORTANT_NPCS.map(n => n.id);

@@ -8,7 +8,7 @@
 //
 // 世界暂停：把 isOpen 挂进 main.js 的 anyModalOpen() 即可，主循环会 early return。
 
-const RISK_CLASS = { low: "pos", medium: "neutral", high: "neg" };
+const RISK_CLASS = { low: "pos", medium: "neutral", mid: "neutral", high: "neg" };
 
 export class EncounterUI {
   constructor(deps = {}) {
@@ -99,9 +99,12 @@ export class EncounterUI {
     this._choices = Array.isArray(spec.choices) ? spec.choices.slice(0, 4) : [];
     this._allowDefer = spec.allowDefer !== false;
     this._choicesShown = false;
+    // 每次打开可以带自己的回调 —— 遭遇管线与"处置伤者"共用这个弹窗，
+    // 各自的结算逻辑不同，不能都挤在构造时那一个 onChoice 里。
+    this._handler = typeof spec.onChoice === "function" ? spec.onChoice : null;
 
     this.nameEl.textContent = spec.name || "镇民";
-    this.subEl.textContent = spec.sub || "";
+    this.subEl.textContent = spec.sub || [spec.title, spec.job].filter(Boolean).join(" · ");
     const av = spec.npcId ? this.getAvatar(spec.npcId) : null;
     if (av) { this.avatarImg.src = av; this.avatarImg.style.display = "block"; }
     else { this.avatarImg.removeAttribute("src"); this.avatarImg.style.display = "none"; }
@@ -139,7 +142,8 @@ export class EncounterUI {
       const btn = document.createElement("button");
       btn.className = "conv-opt enc-opt " + (RISK_CLASS[c.risk] || "neutral");
       btn.innerHTML = `<kbd class="enc-key">${i + 1}</kbd> ${escapeHtml(c.label)}`
-        + (c.hint ? `<span class="enc-hint">${escapeHtml(c.hint)}</span>` : "");
+        + (c.hint ? `<span class="enc-hint">${escapeHtml(c.hint)}</span>` : "")
+        + (c.note ? `<span class="enc-note">${escapeHtml(c.note)}</span>` : "");
       btn.addEventListener("click", (e) => { e.stopPropagation(); this._pick(c); });
       this.optionsEl.appendChild(btn);
     });
@@ -154,13 +158,18 @@ export class EncounterUI {
 
   _pick(choice) {
     const wasOpen = this._open;
+    const handler = this._handler;
     this.close();
-    if (wasOpen) this.onChoice(choice ? choice.id : null, choice);
+    if (!wasOpen) return;
+    const id = choice ? choice.id : null;
+    if (handler) handler(id, choice);
+    else this.onChoice(id, choice);
   }
 
   close() {
     if (!this._open) return;
     this._open = false;
+    this._handler = null;
     this.el.classList.add("hidden");
     this.onClose();
   }

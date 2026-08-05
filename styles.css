@@ -721,6 +721,12 @@ html, body {
   background: rgba(0,0,0,.4); border: 1px solid rgba(200,151,58,.5); color: var(--gold);
 }
 .enc-hint { margin-left: auto; font-size: 11px; opacity: .7; }
+/* 选项的后果说明（"成功后送回原势力当卧底"这类）—— 独占一行，避免和标签抢宽度 */
+.enc-note {
+  flex-basis: 100%; margin-left: 30px; font-size: 11px; opacity: .62;
+  font-style: italic; letter-spacing: .2px;
+}
+.enc-opt { flex-wrap: wrap; }
 
 /* ---------- 报纸 ---------- */
 .paper-frame {
@@ -1404,6 +1410,16 @@ body.headshot-flash::after {
   width: auto; height: auto; font-size: 17px;
   filter: drop-shadow(0 0 6px rgba(226,86,74,.9)) drop-shadow(0 2px 4px rgba(0,0,0,.7));
   animation: reportPulse .7s ease-in-out infinite;
+}
+/* 伏地重伤：可处置。用青白色而非金色，跟"有人找你谈事"(❗)区分开 */
+.quest-head-marker.subdue-pending {
+  width: auto; height: auto; font-size: 18px;
+  filter: drop-shadow(0 0 7px rgba(120,220,255,.9)) drop-shadow(0 2px 4px rgba(0,0,0,.8));
+  animation: subduePulse 1.05s ease-in-out infinite;
+}
+@keyframes subduePulse {
+  0%, 100% { transform: translate(-50%, -100%) scale(.92); opacity: .78; }
+  50%      { transform: translate(-50%, -100%) scale(1.1); opacity: 1; }
 }
 @keyframes reportPulse {
   0%, 100% { transform: translate(-50%, -100%) scale(1); opacity: 1; }

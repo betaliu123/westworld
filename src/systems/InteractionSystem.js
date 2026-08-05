@@ -36,6 +36,21 @@ export class InteractionSystem {
   /** 进入对话模式：左侧面板切换为对话动作 */
   setDialogueTarget(npc) { this.dialogueNpc = npc; }
 
+  /**
+   * 这个 NPC 现在能不能被瞄成交互目标。
+   *
+   * 原来一律排除 state==="DOWN"，于是"把人打倒"之后就再没有任何后续可做 ——
+   * 玩家的暴力没有出口，打服一个人不会变成任何东西。现在放开"伏地重伤"这一档：
+   * 还活着、在地上喘气的人可以被洗脑收服 / 搜身 / 补刀 / 放走。
+   * 尸体（alive=false）仍然排除，尸体归掉落系统管。
+   */
+  _targetable(npc) {
+    if (!npc || !npc.mesh || npc.removed) return false;
+    if (!npc.alive) return false;                       // 尸体交给掉落系统
+    if (npc.brain?.state === "DOWN") return !!npc.isWounded;
+    return true;
+  }
+
   /** 退出对话模式 */
   clearDialogueTarget() { this.dialogueNpc = null; }
 
@@ -91,8 +106,7 @@ export class InteractionSystem {
       }
 
       for (const npc of candidates) {
-        if (!npc.mesh || !npc.alive) continue;
-        if (npc.brain && npc.brain.state === "DOWN") continue;
+        if (!this._targetable(npc)) continue;
         // 室内时只检测同房间NPC
         if (insideRoom) {
           const sameInterior = (npc.insideRoom && npc.insideRoom.name === insideRoom) ||
@@ -101,7 +115,9 @@ export class InteractionSystem {
           if (!sameInterior) continue;
         }
         const d = Math.hypot(npc.pos.x - ppos.x, npc.pos.z - ppos.z);
-        if (d < 6.0 && d < bestNpcDist) {
+        // 伏地重伤的人得走到跟前才能处置（不能隔着 6 米遥控洗脑）
+        const reach = npc.isWounded ? 2.8 : 6.0;
+        if (d < reach && d < bestNpcDist) {
           bestNpcDist = d;
           bestNpc = npc;
         }
@@ -111,8 +127,7 @@ export class InteractionSystem {
       this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
       const meshes = [];
       for (const npc of candidates) {
-        if (!npc.mesh || !npc.alive) continue;
-        if (npc.brain && npc.brain.state === "DOWN") continue;
+        if (!this._targetable(npc)) continue;
         if (insideRoom) {
           const sameInterior = (npc.insideRoom && npc.insideRoom.name === insideRoom) ||
                                (npc.insideHome && npc.insideHome.interiorName === insideRoom) ||
@@ -255,6 +270,13 @@ export class InteractionSystem {
     switch (t.type) {
       case "npc": {
         const npc = t.data.npc;
+        // 伏地重伤：这是玩家暴力的出口 —— 打服的人可以当场变成自己的人
+        if (npc?.isWounded) {
+          return [
+            { action: "subdued", icon: "⚡", label: "处置伤者", key: "F", hint: `${t.data.name} 倒在地上 · 按 F 处置` },
+            { action: "profile", icon: "📋", label: "档案", key: "H", hint: "" },
+          ];
+        }
         // 遭遇管线：这个人专程走过来等你搭话 → 最高优先级，压过一切其它交互
         if (this.encounters?.isPending?.(npc)) {
           return [
@@ -340,6 +362,7 @@ export class InteractionSystem {
     switch (action) {
       case "greet":    return { type: "dialogue", npc: t.npc, kind: "greet" };
       case "encounter": return { type: "encounter", npc: t.npc };
+      case "subdued":  return { type: "subdued", npc: t.npc };
       case "beg":      return { type: "beg", npc: t.npc };
       case "placate":  return { type: "placate", npc: t.npc };
       case "profile":  return { type: "profile", npc: t.npc };

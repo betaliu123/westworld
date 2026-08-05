@@ -65,6 +65,7 @@ import { NpcActionExecutor } from "./npc/NpcActionExecutor.js";
 import { AiLog } from "./systems/AiLog.js";
 // 统一遭遇管线：NPC 主动来找玩家 → 中央强决策弹窗（世界暂停）
 import { EncounterRuntime } from "./encounter/EncounterRuntime.js";
+import { SubdueSystem } from "./encounter/SubdueSystem.js";
 import { EncounterUI } from "./ui/EncounterUI.js";
 import { AmmoSystem } from "./systems/AmmoSystem.js";
 import { CorpseReactions } from "./systems/CorpseReactions.js";
@@ -277,6 +278,29 @@ function boot() {
   });
   // 让交互面板知道谁在等玩家搭话（❗ 那个人的 F 键要压过其它交互）
   interaction.setRefs({ npcManager, town, loot, vehicles, interiors, encounters });
+
+  // 处置伏地重伤者：玩家暴力的出口。共用遭遇弹窗（open 时带自己的 onChoice）。
+  const subdue = new SubdueSystem({
+    ui: encounterUI, hud, factionSystem, economy, reputation,
+    npcRegistry, npcManager,
+    log: (t) => eventLog?.record?.({ type: "SUBDUE_LOG", facts: { text: t }, tags: ["subdue"] }),
+    onKilled: (npc, name) => {
+      // 补刀是当场杀人：附近有人看见就按最高等级目击处理（与枪击同级）
+      for (const w of npcManager.findWitnesses?.(npc.pos, 14) || []) {
+        w.brain?.witnessCrime?.(npc.pos, "assault", { severity: "gunshot" });
+      }
+      reputation?.addCrimeWanted?.(3);
+      reputation?.onKnockNPC?.(npc.personality?.gang || null);
+    },
+    onRecruited: (npc, allegiance) => {
+      // 卧底不该出现在明面成员名单上，UI 侧靠 allegiance.apparent 区分
+      hud.toast?.(
+        allegiance.apparent === "player" ? "📋 名单里多了一个人（按 N 查看）" : "📋 卧底已记入（按 N 查看）",
+        { key: "subdue-hint", duration: 3200 }
+      );
+    },
+  });
+
   // 遭遇弹窗开着时也不准抢指针锁（弹窗要吃键盘）。
   // 放在 encounterUI 声明之后赋值，不依赖惰性求值绕过 TDZ。
   engine.input._canLock = () => !theaterUI?.expanded && !encounterUI.isOpen;
@@ -2649,6 +2673,10 @@ function boot() {
         // 专程来找你的人：开中央强决策弹窗（世界会暂停）
         encounters.engage();
         break;
+      case "subdued":
+        // 伏地重伤者：洗脑收服 / 搜身 / 补刀 / 放走（世界会暂停）
+        subdue.open(result.npc);
+        break;
       case "beg": {
         // 求饶：说好话让正在打你的人收手
         const npc = result.npc;
@@ -3367,6 +3395,34 @@ function boot() {
       be.el.style.left = `${(_qmV.x * 0.5 + 0.5) * w}px`;
       be.el.style.top = `${(-_qmV.y * 0.5 + 0.5) * h}px`;
       be.el.title = "专程来找你 · 按 F 听他说";
+    }
+
+    // 伏地重伤的人：头顶挂 ⚡ 提示"这个还能处置"，与死尸区分开
+    // （尸体不挂标记 —— 尸体没有可介入的余地，只能搜）
+    for (const npc of npcManager.all) {
+      if (!npc.isWounded) continue;
+      const wdx = npc.pos.x - camPos.x;
+      const wdz = npc.pos.z - camPos.z;
+      if (wdx * wdx + wdz * wdz > 40 * 40) continue;
+      _qmV.set(npc.pos.x, 1.25, npc.pos.z);   // 人躺着，标记压低
+      _qmV.project(camera);
+      if (_qmV.z > 1) continue;
+      let bw = questMarkerPool.find(p => !p.inUse);
+      if (!bw) {
+        const el = document.createElement("div");
+        el.className = "quest-head-marker";
+        layer.appendChild(el);
+        bw = { el, inUse: true };
+        questMarkerPool.push(bw);
+      } else {
+        bw.inUse = true;
+      }
+      bw.el.textContent = "⚡";
+      bw.el.className = "quest-head-marker subdue-pending";
+      bw.el.style.display = "block";
+      bw.el.style.left = `${(_qmV.x * 0.5 + 0.5) * w}px`;
+      bw.el.style.top = `${(-_qmV.y * 0.5 + 0.5) * h}px`;
+      bw.el.title = "重伤倒地 · 走近按 F 处置";
     }
 
     // 正在去警局报案的人：头顶挂个醒目图标，让玩家知道该优先拦谁
