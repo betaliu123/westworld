@@ -22,6 +22,7 @@ export class DailySimulation {
     this.deliveryPlanner = deps.deliveryPlanner || null;
     this.stockMarket = deps.stockMarket || null;
     this.taskSystem = deps.taskSystem || null;
+    this.nemesis = deps.nemesis || null;       // 组织架构/卧底/晋升
 
     this._listeners = {};
   }
@@ -215,13 +216,40 @@ export class DailySimulation {
     // 无论如何推进天数（即使部分步骤失败）
     ws.state.day = day;
 
+    // Step 14: Nemesis 结算 —— 卧底送情报、怀疑度累积、暴露的被清洗
+    let nemesisResult = null;
+    safeStep("Step14: nemesis.settleDaily", () => {
+      if (this.nemesis) nemesisResult = this.nemesis.settleDaily();
+    });
+
+    // Step 15: 胜负判定。
+    // 这一步以前根本没人调 —— checkVictory 写好了却零调用者，
+    // 于是玩家无论做什么，游戏都不会结束。现在接上，并把结果写进
+    // ws.state.victoryState（WorldState 早就留了这个字段）。
+    safeStep("Step15: checkVictory", () => {
+      if (!this.factionSystem?.checkVictory) return;
+      if (ws.state.victoryState) return;                 // 已经定局就不再改
+      const v = this.factionSystem.checkVictory(ws);
+      if (!v) return;
+      ws.state.victoryState = v;
+      this.eventLog?.record?.({
+        type: "VICTORY", facts: { outcome: v, day }, tags: ["endgame"],
+      });
+      this._emit("victory", { outcome: v, day });
+      console.log(`[DailySimulation] === 结局判定：${v} ===`);
+    });
+
     if (errors.length > 0) {
       console.warn(`[DailySimulation] === 第 ${day} 天结算完成（${errors.length} 个步骤失败）===`);
       console.warn(`[DailySimulation] 失败步骤:`, errors.map(e => e.step).join(", "));
     } else {
       console.log(`[DailySimulation] === 第 ${day} 天结算完成 ===`);
     }
-    return { day, directorPlan, errors: errors.length > 0 ? errors : null };
+    return {
+      day, directorPlan, nemesis: nemesisResult,
+      victory: ws.state.victoryState || null,
+      errors: errors.length > 0 ? errors : null,
+    };
   }
 
   /**

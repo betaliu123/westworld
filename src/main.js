@@ -66,6 +66,8 @@ import { AiLog } from "./systems/AiLog.js";
 // 统一遭遇管线：NPC 主动来找玩家 → 中央强决策弹窗（世界暂停）
 import { EncounterRuntime } from "./encounter/EncounterRuntime.js";
 import { SubdueSystem } from "./encounter/SubdueSystem.js";
+import { NemesisSystem } from "./factions/NemesisSystem.js";
+import { OrgChartUI } from "./ui/OrgChartUI.js";
 import { EncounterUI } from "./ui/EncounterUI.js";
 import { AmmoSystem } from "./systems/AmmoSystem.js";
 import { CorpseReactions } from "./systems/CorpseReactions.js";
@@ -115,6 +117,15 @@ function boot() {
   const relationshipSystem = new RelationshipSystem(worldState);
   const knowledgeSystem = new KnowledgeSystem(worldState);
 
+  // P4 Nemesis：黑蹄会的人事图（职级 / 直属上级 / 晋升顶替 / 双向卧底 / 怀疑度）。
+  // 必须在 npcRegistry 之后 —— 它要用 ensureRecord 给中下层岗位造人。
+  // 反向挂到 factionSystem 上，让 checkVictory 能读到"渗透路线"的进度。
+  const nemesis = new NemesisSystem({
+    worldState, npcRegistry, factionSystem, eventLog,
+    log: (t) => eventLog?.record?.({ type: "NEMESIS_LOG", facts: { text: t }, tags: ["nemesis"] }),
+  });
+  factionSystem.nemesis = nemesis;
+
   // UI
   const hud = new HUD(economy, reputation);
   const dialogue = new Dialogue(camera);
@@ -123,6 +134,12 @@ function boot() {
   const conversation = new Conversation(audio);
   const minimap = new Minimap(town);
   const gangs = new Gangs(reputation, { worldState, factionSystem });
+  nemesis.hud = hud;                     // Nemesis 要弹 toast（构造时 hud 还没有）
+  // 人事图面板（O 键）：Nemesis 的全部乐趣在于看清一张图再决定从哪层下手
+  const orgChart = new OrgChartUI({
+    nemesis,
+    getPillars: () => factionSystem.getBlackHoofPillars(),
+  });
   const slots = new SlotMachine(economy, audio, hud);
   const baccarat = new Baccarat(economy, audio, hud);
 
@@ -291,12 +308,36 @@ function boot() {
       }
       reputation?.addCrimeWanted?.(3);
       reputation?.onKnockNPC?.(npc.personality?.gang || null);
+      // 杀掉黑蹄会的人 → 岗位空缺 → 支柱受损 + 下属晋升顶替
+      const known = npcRegistry.findByDisplayName(name);
+      if (known) {
+        const r = nemesis.removeMember(known.id, "killed");
+        if (r) {
+          hud.toast?.(
+            `🏴 ${r.position.title}的位子空了` +
+            (r.promoted?.seat ? ` —— ${r.promoted.seat.displayName}顶上来了` : "，一时没人接手"),
+            { key: "nemesis-remove", duration: 5000 }
+          );
+        }
+      }
     },
     onRecruited: (npc, allegiance) => {
+      // 送回原势力的人要登记进 Nemesis，才会开始送情报、才会累积怀疑度、
+      // 才可能在晋升链里往上爬。只写 factions.player.members 是不够的。
+      if (allegiance.apparent !== "player") {
+        const name = npc.phone?.owner || "某人";
+        const known = npcRegistry.findByDisplayName(name);
+        const npcId = known?.id || npcRegistry.ensureRecord(name, {
+          job: npc.personality?.job, factionId: allegiance.origin,
+        }).id;
+        nemesis.registerMole(npcId, name);
+      }
       // 卧底不该出现在明面成员名单上，UI 侧靠 allegiance.apparent 区分
       hud.toast?.(
-        allegiance.apparent === "player" ? "📋 名单里多了一个人（按 N 查看）" : "📋 卧底已记入（按 N 查看）",
-        { key: "subdue-hint", duration: 3200 }
+        allegiance.apparent === "player"
+          ? "📋 名单里多了一个人（按 N 查看）"
+          : "🕵 卧底已记入人事图（按 O 查看）",
+        { key: "subdue-hint", duration: 3600 }
       );
     },
   });
@@ -329,6 +370,7 @@ function boot() {
     economy, reputation,
     newspaper, phone,
     npcManager,
+    nemesis,             // P4 ✓ 卧底情报/怀疑度/清洗 + 胜负判定
   });
 
   // 存档系统：完全禁用。每次刷新 = 重新开始第一天。
@@ -663,7 +705,7 @@ function boot() {
   });
 
   function anyModalOpen() {
-    return hud.shopOpen || phone.isOpen || newspaper.isOpen || conversation.isOpen || gangs.isOpen || slots.isOpen || baccarat.isOpen || stockMarket.isOpen || (encounterUI && encounterUI.isOpen) || !document.getElementById("task-detail").classList.contains("hidden");
+    return hud.shopOpen || phone.isOpen || newspaper.isOpen || conversation.isOpen || gangs.isOpen || slots.isOpen || baccarat.isOpen || stockMarket.isOpen || (encounterUI && encounterUI.isOpen) || (orgChart && orgChart.isOpen) || !document.getElementById("task-detail").classList.contains("hidden");
   }
 
   // ---- 右侧图标按钮栏 ----
@@ -749,6 +791,11 @@ function boot() {
     if (input.wasPressed("Tab")) openPanel("phone");
     if (input.wasPressed("KeyN")) openPanel("newspaper");
     if (input.wasPressed("KeyG") && !inSpecialMode) openPanel("gangs");
+    // O = 黑蹄会人事图（组织架构 / 渗透进度）。O 之前是空闲键。
+    if (input.wasPressed("KeyO") && !inSpecialMode) {
+      orgChart.toggle();
+      if (orgChart.isOpen) document.exitPointerLock();
+    }
     // 对话动作键不要被全局热键消费掉
     // KeyT/KeyR/KeyY 仅在非交互模式下处理
 

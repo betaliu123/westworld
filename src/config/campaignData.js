@@ -164,6 +164,17 @@ export const VICTORY_CONDITIONS = {
       hqLevel: 2,               // 驻地等级至少为 2
     },
   },
+  takeover: {
+    label: "内部接管",
+    description: "不曾正面击垮黑蹄会 —— 你把自己的人一层层送上去，最后整个内圈都听你的",
+    requirements: {
+      // 渗透路线：与"打崩支柱"并行的第二条通路。
+      // 让"收服敌人送回去当卧底"这套投入有一个真正的终点，
+      // 而不只是多几条情报。
+      moleRank: 4,              // 至少有一个卧底坐到二把手
+      loyalInnerCircle: 0,      // 会首身边再没有真正忠于他的堂主以上成员
+    },
+  },
   bitter: {
     label: "苦涩结局",
     description: "勉强制服头目，但付出了沉重代价",

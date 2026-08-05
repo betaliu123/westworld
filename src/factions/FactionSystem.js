@@ -243,6 +243,14 @@ export class FactionSystem {
       return "failure";
     }
 
+    // 渗透路线：不打崩任何支柱也能赢 —— 把自己的人送进内圈，会首被架空。
+    // 这是与"打崩支柱"并行的第二条路，让"收服 + 卧底"这套投入有终点。
+    const inf = this.nemesis?.infiltrationStatus?.();
+    if (inf) {
+      if (inf.canTakeOver) return "takeover";       // 内圈全是自己人 → 直接接管
+      if (inf.bossIsolated && collapsed >= 1) return "dominant"; // 架空 + 已崩一柱
+    }
+
     // 优势胜利
     if (collapsed >= 3 && pf.hqLevel >= 2) {
       return "dominant";
