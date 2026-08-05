@@ -2123,7 +2123,7 @@ export const TASK_DEFS = {
   task_main_home: {
     type: "main",
     title: "主线：购置房产",
-    description: "在镇上站稳脚跟的第一步——攒够钱买一处自己的房子。有了房子，你才能安心存放物品、规划下一步。去银行可以购买房产。",
+    description: "在镇上站稳脚跟的第一步——攒够钱买一处自己的房子。有了房子，你才能安心存放物品、规划下一步。走到街上待售的房屋门前按 E 即可购买；部分房产需要先在集市(M)买下地契。",
     objective: { type: "own_home" },
     reward: { money: 0, honor: 10 },
     deadline: 0, // 无期限

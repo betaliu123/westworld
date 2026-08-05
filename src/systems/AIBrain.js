@@ -948,10 +948,13 @@ export class AIBrain {
   }
 
   // 招募 NPC 入伙：玩家主动"拉拢入伙"
-  // playerFaction: { isBoss, playerInfluence, npcId }
-  respondToRecruit(playerFaction) {
-    // 已经是玩家帮派成员 → 拒绝
-    if (this.p.factionId === "player") {
+  // playerFaction: { isBoss, playerInfluence, npcId, trust, affection }
+  respondToRecruit(playerFaction = {}) {
+    // 已经是玩家帮派成员 → 拒绝。
+    // 注意读 `gang` 而不是 `factionId`：personality 上只有 gang
+    // （NPCManager.js:66 写的是 personality.gang = def.factionId），
+    // 原来查 this.p.factionId 永远是 undefined，这个分支从来没生效过。
+    if (this.p.gang === "player") {
       return {
         reply: "我已经跟着你了，老大！",
         mood: "friendly",
@@ -970,8 +973,8 @@ export class AIBrain {
       };
     }
 
-    // trust < 15 → 拒绝
-    if (playerFaction.trust < 15) {
+    // trust < 15 → 拒绝（trust 缺省按 0 算，别让 undefined 把门槛比较变成恒 false）
+    if ((playerFaction.trust || 0) < 15) {
       return {
         reply: this._talkPick(["我还不够了解你。", "我们才刚认识，谈这个太早了。", "抱歉，我不能随便加入别人。"]) || "抱歉，我不能随便加入别人。",
         mood: "neutral",

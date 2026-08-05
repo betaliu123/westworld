@@ -171,24 +171,36 @@ const EFFECTS = {
   },
 
   // ---- 玩家资源 ----
-  add_money({ worldState, eventLog, params, storyId }) {
+  // 注意：钱必须写 economy（玩家真钱包）。worldState.state.player.money 只是镜像，
+  // syncToGame 零调用 + 每晚 syncFromGame 反向覆盖 → 往镜像扣钱等于没扣。
+  // 这里同时更新镜像，只为让后续 player_money_min 之类的条件判定读到一致的值。
+  add_money({ worldState, economy, eventLog, params, storyId }) {
+    const amount = params.amount || 0;
+    if (economy?.addMoney) economy.addMoney(amount);
     const player = worldState.getPlayer();
-    player.money += (params.amount || 0);
-    if (params.amount < 0 && eventLog) {
+    if (player) player.money = economy ? economy.money : (player.money + amount);
+    if (amount < 0 && eventLog) {
       eventLog.record({
         type: "MONEY_LOST",
         actors: ["player"],
-        facts: { amount: -params.amount, storyId },
+        facts: { amount: -amount, storyId },
         tags: ["economy", "story"],
       });
     }
+    return { moneyDelta: amount };
   },
 
-  steal_money({ worldState, eventLog, params, storyId }) {
+  steal_money({ worldState, economy, eventLog, params, storyId }) {
+    // 以真钱包为基数算比例，别用镜像（镜像可能是上一次结算时的旧值）
+    const base = economy ? economy.money : (worldState.getPlayer()?.money || 0);
+    const ratio = params.ratio || 0.2;
+    // 只能偷得走他身上有的钱：min 是"至少偷这么多"，但不能超过余额
+    const stolen = Math.max(0, Math.min(base, Math.max(params.min || 50, Math.floor(base * ratio))));
+    if (stolen <= 0) return { stolen: 0 };
+
+    if (economy?.addMoney) economy.addMoney(-stolen);
     const player = worldState.getPlayer();
-    const amount = Math.floor(player.money * (params.ratio || 0.2));
-    const stolen = Math.max(params.min || 50, amount);
-    player.money -= stolen;
+    if (player) player.money = economy ? economy.money : Math.max(0, player.money - stolen);
 
     if (eventLog) {
       eventLog.record({
@@ -198,6 +210,7 @@ const EFFECTS = {
         tags: ["economy", "theft", "story", "betrayal"],
       });
     }
+    return { stolen };
   },
 
   // ---- 势力 ----
@@ -389,11 +402,11 @@ function pseudoRandom(seed) {
 
 /**
  * 执行单个效果。
- * @param {object} context - { worldState, relationshipSystem, eventLog, actorBindings, storyId, currentNode }
+ * @param {object} context - { worldState, relationshipSystem, eventLog, economy, reputation, actorBindings, storyId, currentNode }
  * @param {object} effect - { type, params }
  * @returns {object|null} 可能返回结果对象
  */
-export function apply({ worldState, relationshipSystem, eventLog, actorBindings, storyId, currentNode }, effect) {
+export function apply(context, effect) {
   if (!effect || !effect.type) return null;
 
   const handler = EFFECTS[effect.type];
@@ -403,7 +416,8 @@ export function apply({ worldState, relationshipSystem, eventLog, actorBindings,
   }
 
   try {
-    return handler({ worldState, relationshipSystem, eventLog, actorBindings, params: effect.params || {}, storyId, currentNode, actorBindings: actorBindings || {} });
+    // 整个 context 透传（以前是显式解构，新增依赖如 economy/reputation 会被静默丢掉）
+    return handler({ ...context, params: effect.params || {}, actorBindings: context.actorBindings || {} });
   } catch (e) {
     console.error(`[StoryEffects] Error applying ${effect.type}:`, e);
     return null;

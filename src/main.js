@@ -184,12 +184,18 @@ function boot() {
         hud.toast(`✅ 任务完成！「${t.title}」奖励：$${t.reward.money || 0}`);
         onTaskCompleted(t, target);
       }
+      // 打倒敌对势力的人 → 削弱其"人手"支柱。
+      // 以前 Combat 与 worldState 势力完全不通（两个平行宇宙）：杀黑蹄会成员
+      // 不掉任何支柱，而黑蹄会每天自动巩固最弱支柱 → 支柱只涨不跌、战役无法推进。
+      _damageFactionOnKnock(target, registryNpc);
     }
   });
   const sheriffs = new SheriffSquad(scene, town, { audio, hud });
 
   // P3 StoryTree
-  const storyRuntime = new StoryRuntime({ worldState, relationshipSystem, eventLog, npcRegistry });
+  // economy / reputation 必须注入：金钱与声望效果要直接写真实系统，
+  // 不能写 worldState 镜像（syncToGame 零调用 + 每晚被 syncFromGame 反向覆盖）
+  const storyRuntime = new StoryRuntime({ worldState, relationshipSystem, eventLog, npcRegistry, economy, reputation });
 
   // P4 Director
   const director = new Director({ worldState, relationshipSystem });
@@ -1017,6 +1023,40 @@ function boot() {
   function _affectionOf(npc) {
     const owner = npc.phone?.owner || "镇民";
     return _buildRelCtx(npc, npcRegistry.findByDisplayName(owner)).affection;
+  }
+
+  /**
+   * 打倒 NPC 后按其势力归属削弱对应支柱。
+   * 这是把街头战斗接进战役层的唯一通道 —— 不接的话支柱只会被黑蹄会自己每天巩固，
+   * 玩家永远打不垮它，十日战役无法推进。
+   */
+  function _damageFactionOnKnock(npc, registryNpc) {
+    // 打人这件事本身要进事件流：StoryConditions 的 event_has_tag(violence, player)
+    // 靠它判定（ST03 杀亲复仇的启动条件之一）。以前全项目没有任何地方记录
+    // violence 标签的事件，所以那个条件永远不成立。
+    eventLog?.record?.({
+      type: "NPC_BEATEN",
+      actors: ["player", registryNpc?.id].filter(Boolean),
+      location: "street",
+      facts: { npcId: registryNpc?.id || null, name: npc.phone?.owner || "镇民" },
+      tags: ["violence", "combat"],
+    });
+
+    // 场景侧归属用 personality.gang，档案侧用 registry 的 factionId
+    const faction = registryNpc?.factionId || npc.personality?.gang || null;
+    if (!faction || faction === "player") return;
+    if (faction !== "black_hoof") return; // 目前只有黑蹄会有支柱模型
+    // 职级越高，损失越大（干掉副手比干掉小弟伤筋动骨）
+    const rank = registryNpc?.factionRank || 1;
+    const amount = Math.max(2, Math.round(rank * 1.5));
+    const res = factionSystem.damagePillar("manpower", amount, "player_combat");
+    hud.toast(`⚔️ 黑蹄会人手 -${amount}（${res?.newValue ?? "?"}）`, { side: true, key: "pillar-manpower" });
+    eventLog?.record?.({
+      type: "PILLAR_DAMAGED",
+      actors: ["player"],
+      facts: { factionId: "black_hoof", pillar: "manpower", amount, via: "combat" },
+      tags: ["faction", "combat"],
+    });
   }
 
   /** 当前准心/近身锁定的 NPC（对话中优先保持原对象） */
@@ -2370,16 +2410,34 @@ function boot() {
         } else if (kind === "recruit") {
           // 招募：使用浮动面板显示结果
           npc.brain.startTalk(player.pos);
-          const isBoss = npc.personality.factionId === "player";
+          const owner = npc.phone?.owner || "镇民";
+          const reg = npcRegistry.findByDisplayName(owner);
+          // trust/affection 必须传进去 —— 以前没传，导致 respondToRecruit 里
+          // `playerFaction.trust < 15` 拿到 undefined（比较恒 false）把信任门槛
+          // 整个绕过，成功率也退化成与关系无关的固定值
+          const relCtx = _buildRelCtx(npc, reg);
           const r = npc.brain.respondToRecruit({
-            isBoss, playerInfluence: factionSystem.getPlayerInfluence(),
-            npcId: npcRegistry.findByDisplayName(npc.phone?.owner || "镇民")?.id,
+            isBoss: !!npc.personality?.gang,       // 有帮派归属的算"别家的人"，门槛更高
+            playerInfluence: factionSystem.getPlayerInfluence(),
+            npcId: reg?.id,
+            trust: relCtx.trust,
+            affection: relCtx.affection,
           });
           floatDlgText.textContent = r.reply || "";
           floatDlgText.className = r.mood || "neutral";
           showPlayerBubble("跟我混吧！");
           if (r.accepted) {
-            hud.toast("🎉 招募成功！新成员入伙", { key: "recruit" });
+            // 以前这里只弹一个 toast，不写任何数据 → members 恒为空，
+            // 于是成员收益/派遣/胜利条件全部锁死。现在真的入伙。
+            const memberId = reg?.id || _getNpcRelId(npc);
+            factionSystem.addPlayerMember(memberId);
+            npc.personality.gang = "player";       // 场景侧归属（AIBrain 读的是 gang）
+            const regNpc = reg && npcRegistry.get?.(reg.id);
+            if (regNpc) regNpc.factionId = "player"; // 档案侧归属
+            if (reg) phone.addContact(reg.id, reg.displayName, reg.job || "镇民");
+            _addNpcAffinity(npc, 10, 10);
+            hud.toast(`🎉 ${owner} 加入了你的帮派！`, { key: "recruit" });
+            gangs.render?.();
           }
           if (_checkNpcPatience(npc, "recruit")) break;
         }

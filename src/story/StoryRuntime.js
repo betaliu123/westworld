@@ -23,6 +23,12 @@ export class StoryRuntime {
     this.relationshipSystem = deps.relationshipSystem;
     this.eventLog = deps.eventLog;
     this.npcRegistry = deps.npcRegistry;
+    // 玩家真实资源系统。金钱/声望类效果必须直接写这里 ——
+    // worldState.state.player.money 只是个镜像，而 syncToGame 全项目零调用，
+    // 且每晚结算 Step1 的 syncFromGame 会用 economy.money 反向覆盖它，
+    // 所以往镜像里扣钱等于没扣（玩家钱包分文不动）。
+    this.economy = deps.economy || null;
+    this.reputation = deps.reputation || null;
   }
 
   /**
@@ -205,6 +211,9 @@ export class StoryRuntime {
       worldState: this.worldState,
       relationshipSystem: this.relationshipSystem,
       eventLog: this.eventLog,
+      // 金钱/声望效果直接作用于真实系统，不走 worldState 镜像
+      economy: this.economy,
+      reputation: this.reputation,
       actorBindings,
       storyId,
       currentNode: inst.currentNode,
@@ -401,13 +410,21 @@ export class StoryRuntime {
       console.log(`[StoryRuntime] ${storyId}: 错过 3 次自动推进 (${inst.currentNode})`);
     }
 
-    if (shouldAutoAdvance && node.canAutoAdvance) {
-      // 有玩家响应选项但不能 autoAdvance → 选第一个作为默认
-      if (node.playerResponses && node.playerResponses.length > 0 && !node.canAutoAdvance) {
+    // 强制推进。
+    //
+    // 原来这里是 `if (shouldAutoAdvance && node.canAutoAdvance)`，而内层又判
+    // `!node.canAutoAdvance` —— 两个条件互斥，导致「玩家一直没选就用默认选项」
+    // 这段永远不执行。后果：所有需要抉择的节点一旦玩家没响应就**永久卡死**，
+    // 整棵树停在第一个选择点（ST01 卡在 join、ST02 卡在 return）。
+    if (shouldAutoAdvance) {
+      const hasChoices = node.playerResponses && node.playerResponses.length > 0;
+      if (hasChoices) {
+        // 用第一个选项当默认（剧本里第一个通常是最保守/最中性的那个）
         const defaultResponse = node.playerResponses[0].id;
+        console.log(`[StoryRuntime] ${storyId}: 玩家未抉择，采用默认选项 ${defaultResponse} (${inst.currentNode})`);
         return this.advance(storyId, defaultResponse);
       }
-      return this.advance(storyId);
+      if (node.canAutoAdvance) return this.advance(storyId);
     }
 
     return null;

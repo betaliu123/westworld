@@ -43,6 +43,9 @@ export class DailySimulation {
     const ws = this.worldState;
     const day = ws.day;
     const errors = [];
+    // 存一份给 _applyEvent 用：每日事件的金钱变化必须落到真钱包
+    this._economy = economy;
+    this._reputation = reputation;
     console.log(`[DailySimulation] === 第 ${day} 天结算开始 ===`);
 
     // 辅助：安全执行一步，失败时记录错误并继续
@@ -115,7 +118,10 @@ export class DailySimulation {
                 type: "OPERATION_RESULT",
                 actors: ["player", ...(r.members || [])],
                 location: "world",
-                facts: { operationId: r.id, result: r.outcome, details: r },
+                // 键名必须是 outcome：StoryConditions.event_type_occurred 读的是
+                // ev.facts?.outcome（StoryConditions.js:139）。以前写成 result，
+                // 导致 ST11「失踪成员」的启动条件永远匹配不上、整棵树永不启动。
+                facts: { operationId: r.id, outcome: r.outcome, result: r.outcome, details: r },
                 visibility: ["player"],
                 tags: ["operation", r.success ? "success" : "failure"],
               });
@@ -372,9 +378,15 @@ export class DailySimulation {
    * 应用事件效果：改 world state、发手机消息、写报纸
    */
   _applyEvent(ws, evt, day) {
-    // 金钱变化
+    // 金钱变化。必须写 economy（真钱包）——只写 ws 镜像会在下次
+    // syncFromGame 时被 economy.money 覆盖掉，等于没生效。
     if (evt.moneyChange) {
-      ws.state.player.money = Math.max(0, (ws.state.player.money || 0) + evt.moneyChange);
+      if (this._economy?.addMoney) {
+        this._economy.addMoney(evt.moneyChange);
+        ws.state.player.money = this._economy.money;
+      } else {
+        ws.state.player.money = Math.max(0, (ws.state.player.money || 0) + evt.moneyChange);
+      }
     }
 
     // 关系变化
