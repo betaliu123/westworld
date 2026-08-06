@@ -136,6 +136,15 @@ export class AIBrain {
     this._talkPatience = 0;    // 对话耐心倒计时（秒），归零后 NPC 主动结束对话
     this._repeatCounts = {};   // 本轮对话中重复动作计数 { kind: count }
     this._saidInTalk = new Set(); // 本轮对话中已说过的台词（去重）
+    // 爬起来后一瘸一拐：_hurtLimp 置真期间走不快（慢速跛行），快速逃跑在这段时间内被压制
+    this._hurtLimp = false;
+    this._limpTtl = 0;
+  }
+
+  /** 让这个 NPC 一瘸一拐走 TTL 秒（爬起来 / 被救起后调用） */
+  setLimp(ttl = 12) {
+    this._hurtLimp = true;
+    this._limpTtl = Math.max(this._limpTtl, ttl);
   }
 
   // 供 NPCManager/NPCRegistry 设置重要 NPC 身份 ID
@@ -1160,8 +1169,13 @@ export class AIBrain {
 
   knockDown() {
     this._enter(State.DOWN);
-    this.stateTimer = randRange(4, 7);
+    // 倒地时间：约 3 游戏小时（1 天=400 真实秒，1 游戏小时≈16.7 秒 → 3 小时≈50 秒）。
+    // 玩家需要时间走过去决定处置（收服/补刀/放走），倒地太短等于没给机会。
+    this.stateTimer = randRange(46, 56);
     this.bubble = null;
+    // 爬起来后一瘸一拐：走不快，也跑不动（快速逃跑 = 玩家追不上，收服就没了意义）
+    this._hurtLimp = false;
+    this._limpTtl = 0;
   }
 
   // 玩家在家里行窃：被惊醒/当场撞见 → 依性格发怒或惊逃，天亮前不再安心回家
@@ -1361,13 +1375,22 @@ export class AIBrain {
         break;
 
       case State.FLEE: {
-        intent.flee = true;
-        intent.speedMul = 1.7;
+        // 一瘸一拐：走不快也跑不动（爬起来/被救起后），倒计时走完恢复
+        if (this._hurtLimp) {
+          this._limpTtl -= dt;
+          if (this._limpTtl <= 0) this._hurtLimp = false;
+          intent.flee = true;
+          intent.speedMul = 0.55;   // 慢速跛行，不是狂奔
+        } else {
+          intent.flee = true;
+          intent.speedMul = 1.7;
+        }
         // 优先跑去警局报案
         if (this._reportCrime && ctx.town.sheriffDoor) {
           const sd = ctx.town.sheriffDoor;
           intent.moveTo = { x: sd.x, z: sd.z };
-          intent.speedMul = 1.9;
+          // 瘸着也跑不快，报案会慢
+          intent.speedMul = this._hurtLimp ? 0.7 : 1.9;
           const dSd = Math.hypot(ctx.self.x - sd.x, ctx.self.z - sd.z);
           if (dSd < 2.2) {
             this._reportCrime = false;

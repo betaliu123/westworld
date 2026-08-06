@@ -133,6 +133,19 @@ export class NPC {
     }
     if (this.hp <= 0) {
       this.brain.knockDown();
+      // 立刻判定伤情，而不是等倒地计时结束再判 —— 否则玩家走到跟前还没 ⚡，
+      // 想收服却没入口；或计时一过轻伤者就爬起来跑，玩家永远追不上。
+      if (this._lethalHit) {
+        this.die("player");                 // 正中眉心 → 当场死亡（尸体）
+      } else {
+        const deficit = -Math.min(0, this.hp); // 被打穿的程度
+        if (deficit >= 2) {
+          // 重伤伏地：立即标 ⚡，可收服/补刀/放走；不起身
+          this.enterWounded();
+          this.brain.stateTimer = 999;      // 不清除，直到被处置或救走
+        }
+        // deficit < 2：轻伤倒地，3 游戏小时后自己爬起来一瘸一拐走
+      }
       return true;
     }
     return false;
@@ -377,6 +390,10 @@ export class NPC {
         // 伤太重，躺回去（重伤昏迷，本轮不再起来）
         this.brain.state = State.DOWN;
         this.brain.stateTimer = 999;
+      } else {
+        // 爬起来：伤还没好全，一瘸一拐走（不是快速逃跑）
+        this.brain.setLimp(12);
+        this.brain.say?.("……唔，疼……", 2.2);
       }
     }
 

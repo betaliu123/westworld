@@ -149,14 +149,20 @@ export class CorpseReactions {
       if (isWounded && HELPER_JOBS.has(job) && bravery >= 0.3) {
         npc.brain.say(WOUNDED_HELP_LINES[Math.floor(Math.random() * WOUNDED_HELP_LINES.length)], 2.8);
         this.moodFx?.(npc, "shocked");
+        // 走到伤者身边扶他起来：一瘸一拐地救走，不是当场满血复活
         if (!npc.brain._perform) {
+          const targetNpc = near;
           npc.brain.takeOver?.({
             moveTo: { x: near.pos.x, z: near.pos.z },
-            speedMul: 1.35, arriveDist: 1.3, immune: false,
+            speedMul: 1.2, arriveDist: 1.4, immune: false,
           });
           setTimeout(() => {
             if (npc.brain?._perform && !npc.brain._perform.sceneToken) npc.brain.release?.();
-          }, 4000);
+            // 到了就扶伤者起来：重伤者被救起后一瘸一拐自己走，不再躺到天荒地老
+            if (targetNpc?.isWounded && !targetNpc.dead) {
+              this._rescueWounded(npc, targetNpc);
+            }
+          }, 4200);
         }
         continue;
       }
@@ -184,6 +190,21 @@ export class CorpseReactions {
         npc.shakeFor?.(0.5, 0.16);
       }
     }
+  }
+
+  /** 医生/牧师/酒保把伏地重伤者扶起来：一瘸一拐自己走开，不再躺到天荒地老 */
+  _rescueWounded(helper, wounded) {
+    if (!wounded?.alive || wounded.dead || wounded.removed) return;
+    if (!wounded.isWounded && wounded.brain?.state !== "DOWN") return;
+    wounded.wounded = false;
+    wounded._outCold = false;
+    wounded.hp = Math.max(1, Math.ceil(wounded.maxHp * 0.2)); // 被救起也只有一点血
+    wounded.brain.state = "WANDER";
+    wounded.brain.stateTimer = 0;
+    wounded.brain._wantRevive = false;
+    wounded.brain.setLimp?.(14);        // 一瘸一拐走，不是快跑
+    wounded.brain.say?.("……谢谢，我能走。", 2.8);
+    helper.brain.say?.("慢点慢点，伤还没好。", 2.8);
   }
 
   /** 给 NPC 一个绕开尸体的落脚点：沿尸体→NPC 方向再往外推，并侧移一点 */
