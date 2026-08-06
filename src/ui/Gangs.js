@@ -45,9 +45,12 @@ export class Gangs {
     if (!bar) {
       bar = document.createElement("div");
       bar.className = "gangs-tabs";
-      // 插到 header 下面、列表上面
-      const header = this.modal.querySelector(".gangs-header");
-      this.modal.insertBefore(bar, header?.nextSibling || this.listEl);
+      // 插到 header 下面、列表上面。
+      // 注意：gangs-list 是 .gangs-frame 的子节点，不是 #gangs 的直接子节点，
+      // 所以必须用 listEl.parentNode 做 insertBefore 的参照父节点，否则报
+      // "node is not a child of this node"。
+      const listParent = this.listEl?.parentNode;
+      if (listParent) listParent.insertBefore(bar, this.listEl);
     }
     bar.innerHTML = "";
     for (const t of TABS) {
@@ -58,13 +61,15 @@ export class Gangs {
       b.dataset.tab = t.id;
       bar.appendChild(b);
     }
-    bar.addEventListener("click", (e) => {
+    // 用 onclick 覆盖而不是 addEventListener：_buildTabs 会被反复调用
+    // （构造 / openTab / 点击 tab），addEventListener 会越叠越多，点一次触发 N 次。
+    bar.onclick = (e) => {
       const btn = e.target.closest(".gangs-tab");
       if (!btn) return;
       this._tab = btn.dataset.tab;
       this._buildTabs();
       this.render();
-    });
+    };
   }
 
   get isOpen() {
