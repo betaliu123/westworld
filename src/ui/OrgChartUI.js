@@ -115,7 +115,13 @@ export class OrgChartUI {
 
   _wireClicks(scope) {
     for (const tab of scope.querySelectorAll(".org-tab")) {
-      tab.addEventListener("click", () => { this._view = tab.dataset.view; this._render(); });
+      tab.addEventListener("click", () => {
+        this._view = tab.dataset.view;
+        // 嵌入时重渲染到容器（_render 只更新隐藏弹窗的 DOM），
+        // 否则点"我的帮派"没反应
+        if (this._embedTarget) this.renderInto(this._embedTarget);
+        else this._render();
+      });
     }
     for (const btn of scope.querySelectorAll("[data-appoint]")) {
       btn.addEventListener("click", (e) => {
@@ -135,6 +141,7 @@ export class OrgChartUI {
         const ok = this.onAppoint?.(npcId, roleId);
         // 无论成败都重刷（失败也有 toast）
         if (this._embedTarget) this.renderInto(this._embedTarget);
+        else this._render();
       });
     }
   }

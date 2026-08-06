@@ -626,6 +626,10 @@ function boot() {
       dailySimulation.flushToUI(newspaper, phone, hud, worldClock.hour);
       worldClock.completeSleep();
       worldClock.advanceDay();
+      // 睡一觉：玩家血回满（playerCondition 只回精力，3D 实体的血在这里补）
+      player.health = 100;
+      playerCondition.health = 100;
+      hud.setHealth(player.health);
       hud.setDay(worldClock.day);
       hud.toast(`🌅 第${worldClock.day}天清晨，新的一天`, { key: "dawn" });
       gangs.render();
@@ -3521,7 +3525,8 @@ function boot() {
 
     // NPC 名字标签（有立绘的重要NPC）
     updateNPCNameTags();
-    healthBars.update(npcManager.all, player.pos, dt);
+    // 血条：逃跑的人也顶着（标记 TTL 用墙钟，这里无需 dt）
+    healthBars.update(npcManager.all, player.pos);
     emojiPops.update(npcManager.all, player.pos);
     aiLog.tick(); // 让过期的生成回执自己淡出
   });

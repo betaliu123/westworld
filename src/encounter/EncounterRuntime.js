@@ -244,6 +244,11 @@ export class EncounterRuntime {
     if (this.phase !== Phase.READY || !this.active) return false;
     const a = this.active;
     this.phase = Phase.ENGAGED;
+    // 谈事阶段：人已经到了、弹窗也开了，不再需要"走位接管"。
+    // 立即归还日程（不是等 1200ms）—— 否则弹窗期间 _perform 还挂着，
+    // think() 会一直走 takeOver 分支，玩家按 F 想继续聊也进不了对话状态，
+    // 看起来就像 NPC 卡死了。
+    a.npc.brain.release?.();
     this.ui.open({
       name: a.name,
       sub: a.title || "",
@@ -269,8 +274,12 @@ export class EncounterRuntime {
       this.log(`你说稍后再谈`);
     }
     try { this.onResolve(a, choiceId); } catch (e) { console.error("[Encounter] onResolve 出错", e); }
-    // 让他走开几步再归还日程，避免原地瞬切
+    // 谈完了：NPC 说句话，然后自己走开，回到日程
     const npc = a.npc;
+    const line = choiceId
+      ? pickFarewell(npc, a.choices?.find((x) => x.id === choiceId))
+      : "……那我改天再来找你。";
+    npc.brain?.say?.(line, 2.8);
     const t = setTimeout(() => {
       if (npc.brain?._perform) npc.brain.release?.();
     }, 1200);
@@ -294,6 +303,36 @@ export class EncounterRuntime {
     this.active = null;
     this.phase = Phase.IDLE;
   }
+}
+
+/** 遭遇谈完后的告别台词，按选择的后果轻重分档 */
+function pickFarewell(npc, choice) {
+  const name = npc?.phone?.owner || "镇民";
+  const job = npc?.personality?.job || "镇民";
+  const risky = choice?.risk === "high" || choice?.risk === "neg";
+  if (risky) {
+    return pick([
+      "……那就说定了。回头见。",
+      "行，这事我记下了。你也小心。",
+      "好，我等你消息。",
+    ]);
+  }
+  if (choice?.risk === "low" || choice?.risk === "pos") {
+    return pick([
+      "成，那就这么定了。",
+      "有你这句话我就放心了。",
+      "好，我先去忙了。",
+    ]);
+  }
+  return pick([
+    "嗯，我知道了。先走了。",
+    "成，回头再说。",
+    "行，那我先去忙了。",
+  ]);
+}
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 export { Phase as EncounterPhase, venueAffinity };

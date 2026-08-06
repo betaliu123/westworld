@@ -406,6 +406,12 @@ export class Phone {
 
     this.chatHeaderEl.innerHTML = `${portraitHtml}<span>${contact.displayName}</span>`;
 
+    // 帮派群聊：不是单人对聊，收服按钮 + 输入框都没意义，藏起来
+    const isGroup = contact.npcId === "gang_group" || contact.displayName === "帮派群聊";
+    if (this.recruitBtn) this.recruitBtn.style.display = isGroup ? "none" : "";
+    if (this.inputEl) this.inputEl.style.display = isGroup ? "none" : "";
+    if (this.sendBtn) this.sendBtn.style.display = isGroup ? "none" : "";
+
     // 好感度：聊天页头显示 NPC↔玩家 的关系（与联系人列表同一数据源）
     if (this.affinityEl) {
       const rel = this.worldState.state?.relationships?.[contact.npcId + "->player"] || null;
@@ -439,14 +445,31 @@ export class Phone {
       this.chatEl.appendChild(bubble);
     }
 
-    this.chatEl.scrollTop = this.chatEl.scrollHeight;
     this._renderQuickReplies(thread, contact);
+    // 等这一帧布局完成再滚到底 —— 直接设 scrollTop 会被 quick-replies /
+    // 输入行的高度变化顶回去，很多消息时滚不到底部。
+    requestAnimationFrame(() => {
+      this.chatEl.scrollTop = this.chatEl.scrollHeight;
+    });
   }
 
   _renderQuickReplies(thread, contact) {
     this.repliesEl.innerHTML = "";
     const lastMsg = thread?.messages?.slice(-1)[0];
     const replies = [];
+
+    // 帮派群聊：不显示单人对聊的快捷选项（知道了/聊点别的/打招呼），
+    // 群聊是看别人说话的地方，不是跟一个人对话
+    const isGroup = contact.npcId === "gang_group" || contact.displayName === "帮派群聊";
+    if (isGroup) {
+      // 群聊只给"看看大家"一个返回按钮式选项
+      const btn = document.createElement("button");
+      btn.className = "phone-reply-btn";
+      btn.textContent = "👥 回联系人列表";
+      btn.addEventListener("click", () => this.showContactList());
+      this.repliesEl.appendChild(btn);
+      return;
+    }
 
     if (lastMsg && lastMsg.from === "them") {
       if (lastMsg.hasTask && this.taskSystem) {

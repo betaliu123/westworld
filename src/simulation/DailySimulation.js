@@ -105,6 +105,29 @@ export class DailySimulation {
       }
     });
 
+    // Step 3.75: 过夜恢复 —— 伏地重伤的 NPC 第二天爬起来，残血的回满。
+    // （玩家血回满由 main.js 的睡眠处理器负责：那里能拿到 3D 玩家实体）
+    safeStep("Step3.75: overnightHeal", () => {
+      if (this.npcManager?.all) {
+        for (const npc of this.npcManager.all) {
+          if (!npc.alive || npc.dead) continue;
+          if (npc.wounded) {
+            // 重伤者过夜缓过来：起来，但只回 40% 血
+            npc.wounded = false;
+            npc._outCold = false;
+            npc.hp = Math.max(1, Math.ceil(npc.maxHp * 0.4));
+            npc.brain.state = "WANDER";
+            npc.brain.stateTimer = 0;
+            npc.brain._wantRevive = false;
+            npc.brain.setLimp?.(6);
+          } else {
+            // 残血者过夜回满
+            npc.hp = npc.maxHp;
+          }
+        }
+      }
+    });
+
     // Step 3.6: 股票日结算
     safeStep("Step3.6: stockMarket", () => {
       if (this.stockMarket) {

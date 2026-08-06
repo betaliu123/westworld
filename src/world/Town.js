@@ -48,26 +48,30 @@ export class Town {
   }
 
   /**
-   * 帮派驻地：教堂南侧的围合院落 + 一间小房子。
+   * 帮派驻地：取代邮局、坐镇主街正南的围合院落 + 银行大小的可进入主楼。
    *
-   * 为什么放在教堂南侧：坐标约定 z 轴正方向是南方（南口在 z:+bounds），
-   * 教堂是镇上唯一能讲"信仰与恐惧"的地方 —— 把驻地放在它的正南面，
-   * 玩家每次去教堂都能看见驻地，反过来也一样。视觉上"罪恶就睡在圣所脚下"。
+   * 为什么取代邮局：邮局是镇上唯一"可有可无"的可进入建筑，帮派占它正合适；
+   * 而且原来按教堂南侧偏移、教堂位置随机，偶尔会撞上别的房子（如餐馆）。
+   * 现在固定在主街正南、建筑环之外（x=0，z=128）—— 不会与任何随机建筑重叠，
+   * 又是从南边进镇第一眼能看见的地标。
    *
-   * 院落 = 四面栅栏围出一块空地 + 一栋小房子（帮派据点）+ 大门留朝北开向主街。
+   * 院落 = 四面栅栏围出一块空地 + 一栋帮派主楼（可进入）+ 大门留朝北开向主街
+   *        + 院子门口一面大旗（黑蹄会辨识）。
    * 小地图用 kind:"compound" 标注，画成小房子图标。
    */
   _buildCompound() {
-    // 找教堂：从 landmarks 里按名字定位（教堂是唯一 enterable 的地标）
-    const churchLm = this.landmarks.find((l) => l.name === "教堂");
-    if (!churchLm) return;
-    const cx = churchLm.x;
-    const cz = churchLm.z;
-
-    // 院落中心：教堂正南 14 米（避开教堂本体），院落 16×13
+    // 驻地取代邮局：邮局是镇上唯一"可有可无"的可进入建筑（帮派占它正合适），
+    // 已从 BUILDING_DEFS 里顶掉（见 _buildBuildings），不再和餐馆等随机摆放
+    // 的建筑抢位置 —— 原来按教堂南侧偏移，教堂位置随机，偶尔会撞上别的房子。
+    //
+    // 位置：主街正南、建筑环（±core≈±112）之外、南口（z≈+168）之内。
+    // 建筑环的 x 是 ±(14+depth/2)≈±18，这里 x=0 在主街上；z=128 在建筑环外，
+    // 不会与任何随机建筑重叠，又是从南边进镇第一眼能看见的地标。
     const W = 16, D = 13;
-    const ccx = cx;
-    const ccz = cz + 14;
+    const ccx = 0;
+    const ccz = 128;
+
+    // 小地图标注：小房子图标（kind:"compound"）在结尾统一加
 
     // 围墙：四面 createFence。栅栏默认沿局部 X 轴，需要旋转到沿 Z 轴的两边用 rotZ=π/2
     const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 });
@@ -292,7 +296,8 @@ export class Town {
   _buildBuildings() {
     // 每种建筑全镇仅 1 栋：可进入的重要场所先放在镇中心段，其余唯一建筑穿插，
     // 剩余空位用无招牌填充楼补齐。
-    const important = BUILDING_DEFS.filter((d) => d.enterable);
+    // 邮局被帮派驻地取代（_buildCompound 会占它的位置），不在这里生成。
+    const important = BUILDING_DEFS.filter((d) => d.enterable && d.name !== "邮局");
     const others = BUILDING_DEFS.filter((d) => !d.enterable);
     const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
     const queue = [...shuffle(important), ...shuffle(others)];
