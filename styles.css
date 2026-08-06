@@ -1029,7 +1029,7 @@ html, body {
 
 /* ---------- 帮派界面 ---------- */
 .gangs-frame {
-  width: 500px; max-width: 92vw; padding: 24px 26px;
+  width: 640px; max-width: 94vw; padding: 20px 22px;
 }
 .gangs-header {
   font-family: Georgia, serif; font-size: 24px; font-weight: 800; color: var(--gold);
@@ -1039,7 +1039,33 @@ html, body {
 }
 .gangs-header button { background: none; border: none; color: #b8996a; font-size: 22px; cursor: pointer; pointer-events: auto; }
 .gangs-header button:hover { color: var(--gold); }
-.gangs-list { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+/* 三个 tab：帮派 / 人事图 / 警长 */
+.gangs-tabs {
+  display: flex; gap: 6px; margin: 10px 0 0;
+  border-bottom: 1px solid rgba(200,151,58,.25); padding-bottom: 6px;
+}
+.gangs-tab {
+  background: none; border: 1px solid transparent; border-radius: 4px;
+  color: #b8996a; font-size: 13px; padding: 4px 12px; cursor: pointer;
+  transition: all .15s;
+}
+.gangs-tab:hover { color: var(--gold); border-color: rgba(200,151,58,.35); }
+.gangs-tab.active {
+  color: var(--gold); background: rgba(200,151,58,.14);
+  border-color: rgba(200,151,58,.5);
+}
+.gangs-embed { width: 100%; }
+/* 警长视图嵌在帮派面板里时，去掉它的独立框的边距/高度限制 */
+.gangs-embed .law-pillars { grid-template-columns: 1fr 1fr; }
+.gangs-embed .org-body { max-height: 56vh; }
+.gangs-list { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+/* 警长视图：名字+态度一行 */
+.law-name-row {
+  display: flex; align-items: center; gap: 10px; font-size: 15px;
+  margin-bottom: 10px; color: #f0e4c8;
+}
+.law-name-row .law-stance { font-size: 12px; padding: 2px 8px; border-radius: 3px; }
+.law-name-row .law-stance span { opacity: .7; font-size: 11px; margin-left: 4px; }
 .gang-row {
   display: flex; gap: 14px; align-items: flex-start; padding: 12px 14px;
   background: rgba(255,233,168,.06); border: 1px solid rgba(200,151,58,.25); border-radius: 8px;

@@ -81,6 +81,88 @@ export class LawUI {
     this.onClose();
   }
 
+  /** 渲染进任意容器（帮派面板的"警长"tab 用）。不建独立弹窗。 */
+  renderInto(container) {
+    if (!container) return;
+    this._embedTarget = container;
+    container.innerHTML = this._buildHtml();
+    this._bindActs(container);
+  }
+
+  _buildHtml() {
+    const s = this.law?.snapshot?.();
+    if (!s) return `<div class="org-empty">（警长势力数据未初始化）</div>`;
+
+    const stanceCls = STANCE_CLASS[s.stance] || "neutral";
+    const pillars = s.pillars.map((p) => {
+      const pct = Math.max(0, Math.min(100, p.value));
+      const cls = p.collapsed ? "collapsed" : pct <= p.collapseAt + 15 ? "low" : "";
+      return `
+        <div class="law-pillar ${cls}">
+          <div class="law-pillar-top">
+            <span>${esc(p.label)}</span>
+            <b>${p.value}${p.collapsed ? " · 已崩" : ""}</b>
+          </div>
+          <div class="law-bar"><i style="width:${pct}%"></i>
+            <u style="left:${Math.max(0, Math.min(100, p.collapseAt))}%"></u></div>
+        </div>`;
+    }).join("");
+
+    let raid;
+    if (s.bought) {
+      raid = `<div class="law-warn">⚠ 警长已被买通 —— 你递上去的证据不会有下文。<br>
+        想让他回头，得先把行贿的链条掐断（削黑蹄会的财富），或者曝光他与塞拉斯的停战协议把他逼到墙角。</div>`;
+    } else if (s.readyRaid) {
+      raid = `<div class="law-ready">⚖ 证据已够 —— 他今晚就会动手：<b>${esc(s.readyRaid.label)}</b></div>`;
+    } else if (s.nextRaid) {
+      raid = `<div class="law-next">下一步：<b>${esc(s.nextRaid.label)}</b>
+        <span>${s.blockers.length ? esc(s.blockers.join(" · ")) : "条件已满足"}</span></div>`;
+    } else {
+      raid = `<div class="law-ready">⚖ 该查的都查了。</div>`;
+    }
+
+    const acts = [
+      { id: "feed_evidence", label: "递交证据", hint: "把手里的东西交上去（卧底情报也会自动折算）" },
+      { id: "turn_in_thug", label: "交出逃犯", hint: "帮他补人手、长威信" },
+      { id: "back_publicly", label: "公开支持", hint: "长威信，但会被黑蹄会记上一笔" },
+      { id: "expose_truce", label: "曝光停战协议", hint: "重创他的廉洁与威信，同时打黑蹄会的威望", danger: true, once: s.truceExposed },
+      { id: "bribe_sheriff", label: "自己行贿", hint: "让他对你睁眼瞎 —— 但廉洁越低他越可能被别人买走", danger: true },
+    ];
+    const actsHtml = acts.map((a) => `
+      <button class="law-act ${a.danger ? "danger" : ""}" data-act="${a.id}" ${a.once ? "disabled" : ""}>
+        <b>${esc(a.label)}${a.once ? "（已曝光）" : ""}</b><span>${esc(a.hint)}</span>
+      </button>`).join("");
+
+    const bits = [
+      `与你的关系 ${s.rapport > 0 ? "+" : ""}${s.rapport}`,
+      `已交证据 ${s.evidenceFed}`,
+      `收贿 ${s.bribesTaken} 次`,
+      `已突袭 ${s.raidsDone.length}/4`,
+    ];
+    if (s.canPursue) bits.push(`<b class="law-hot">正在追捕你（强度 ${s.pursuit}）</b>`);
+
+    return `
+      <div class="law-name-row"><b>${esc(s.sheriffName)}</b>
+        <span class="law-stance ${stanceCls}">${esc(s.stanceLabel)} <span>${esc(s.stanceDesc)}</span></span>
+      </div>
+      <div class="law-pillars">${pillars}</div>
+      <div class="law-raid">${raid}</div>
+      <div class="law-acts">${actsHtml}</div>
+      <div class="law-foot">${bits.join(" · ")}</div>`;
+  }
+
+  _bindActs(scope) {
+    for (const btn of (scope || this.actsEl).querySelectorAll(".law-act")) {
+      btn.addEventListener("click", () => {
+        if (btn.disabled) return;
+        this.onAction(btn.dataset.act);
+        // 如果是嵌在帮派面板里，点完重刷对应容器
+        if (this._embedTarget) this.renderInto(this._embedTarget);
+        else this.refresh();
+      });
+    }
+  }
+
   refresh() {
     const s = this.law?.snapshot?.();
     if (!s) return;
@@ -128,13 +210,7 @@ export class LawUI {
       <button class="law-act ${a.danger ? "danger" : ""}" data-act="${a.id}" ${a.once ? "disabled" : ""}>
         <b>${esc(a.label)}${a.once ? "（已曝光）" : ""}</b><span>${esc(a.hint)}</span>
       </button>`).join("");
-    for (const btn of this.actsEl.querySelectorAll(".law-act")) {
-      btn.addEventListener("click", () => {
-        if (btn.disabled) return;
-        this.onAction(btn.dataset.act);
-        this.refresh();
-      });
-    }
+    this._bindActs();
 
     const bits = [
       `与你的关系 ${s.rapport > 0 ? "+" : ""}${s.rapport}`,

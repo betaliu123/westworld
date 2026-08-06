@@ -1,5 +1,11 @@
 // Gangs.js — 势力面板：展示玩家势力 + 黑蹄会四支柱。
 // 重写为十日战役视角，不再使用旧的帮派声望系统。
+//
+// 现在带三个 tab：
+//   帮派  —— 玩家势力 + 黑蹄会四支柱（原 G 面板内容）
+//   人事图 —— 黑蹄会组织架构（P4，原独立 O 面板）
+//   警长  —— 第三方势力（P5，原独立 K 面板）
+// O / K 快捷键都落到这个面板上，不再开独立弹窗。
 
 import { GANGS } from "../systems/AIBrain.js";
 
@@ -9,20 +15,69 @@ const GANG_INFO = {
   银矿兄弟会: { ico: "⛏️", desc: "淘金客与矿工结成的互助帮会，重义气。" },
 };
 
+const TABS = [
+  { id: "faction", label: "🏴 帮派" },
+  { id: "org",     label: "🕵 人事图" },
+  { id: "law",     label: "⚖ 警长" },
+];
+
 export class Gangs {
   constructor(reputation, deps = {}) {
     this.reputation = reputation;
     this.worldState = deps.worldState || null;
     this.factionSystem = deps.factionSystem || null;
+    // P4/P5：orgChartUI / lawUI 作为"渲染引擎"嵌进本面板的 tab
+    this.orgChartUI = deps.orgChartUI || null;
+    this.lawUI = deps.lawUI || null;
     this.modal = document.getElementById("gangs");
     this.listEl = document.getElementById("gangs-list");
     const close = document.getElementById("gangs-close");
     if (close) close.addEventListener("click", () => this.close());
-    if (reputation) reputation.onChange(() => { if (this.isOpen) this.render(); });
+    if (reputation) reputation.onChange(() => { if (this.isOpen && this._tab === "faction") this.render(); });
+    // 面板打开时保持 tab 同步渲染
+    this._tab = "faction";
+    this._buildTabs();
+  }
+
+  _buildTabs() {
+    if (!this.modal) return;
+    let bar = this.modal.querySelector(".gangs-tabs");
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.className = "gangs-tabs";
+      // 插到 header 下面、列表上面
+      const header = this.modal.querySelector(".gangs-header");
+      this.modal.insertBefore(bar, header?.nextSibling || this.listEl);
+    }
+    bar.innerHTML = "";
+    for (const t of TABS) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "gangs-tab" + (t.id === this._tab ? " active" : "");
+      b.textContent = t.label;
+      b.dataset.tab = t.id;
+      bar.appendChild(b);
+    }
+    bar.addEventListener("click", (e) => {
+      const btn = e.target.closest(".gangs-tab");
+      if (!btn) return;
+      this._tab = btn.dataset.tab;
+      this._buildTabs();
+      this.render();
+    });
   }
 
   get isOpen() {
     return this.modal && !this.modal.classList.contains("hidden");
+  }
+
+  /** 打开并定位到指定 tab（O/K 快捷键用） */
+  openTab(tabId) {
+    if (this._tab !== tabId) {
+      this._tab = tabId;
+      this._buildTabs();
+    }
+    this.open();
   }
 
   open() {
@@ -36,14 +91,27 @@ export class Gangs {
 
   render() {
     if (!this.listEl) return;
-
-    // 如果有 WorldState，优先展示战役视角
+    if (this._tab === "org") {
+      this.listEl.innerHTML = "";
+      const holder = document.createElement("div");
+      holder.className = "gangs-embed";
+      this.listEl.appendChild(holder);
+      this.orgChartUI?.renderInto(holder);
+      return;
+    }
+    if (this._tab === "law") {
+      this.listEl.innerHTML = "";
+      const holder = document.createElement("div");
+      holder.className = "gangs-embed";
+      this.listEl.appendChild(holder);
+      this.lawUI?.renderInto(holder);
+      return;
+    }
+    // 默认：原帮派内容
     if (this.worldState) {
       this._renderCampaign();
       return;
     }
-
-    // 回退：旧的帮派声望视图
     this._renderLegacy();
   }
 

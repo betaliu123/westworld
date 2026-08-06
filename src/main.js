@@ -144,15 +144,13 @@ function boot() {
   const newspaper = new Newspaper(audio);
   const conversation = new Conversation(audio);
   const minimap = new Minimap(town);
-  const gangs = new Gangs(reputation, { worldState, factionSystem });
   nemesis.hud = hud;                     // Nemesis 要弹 toast（构造时 hud 还没有）
   law.hud = hud;
-  // 人事图面板（O 键）：Nemesis 的全部乐趣在于看清一张图再决定从哪层下手
-  const orgChart = new OrgChartUI({
+  // 人事图 / 警长：不再是独立弹窗，而是嵌进帮派面板的 tab（O / K 键直接开对应 tab）
+  const orgChartUI = new OrgChartUI({
     nemesis,
     getPillars: () => factionSystem.getBlackHoofPillars(),
   });
-  // 警长面板（K 键）：看清四根支柱 + 下一档突袭还差什么 + 他怎么看你
   const lawUI = new LawUI({
     law,
     onAction: (actId) => {
@@ -168,6 +166,7 @@ function boot() {
       }
     },
   });
+  const gangs = new Gangs(reputation, { worldState, factionSystem, orgChartUI, lawUI });
   const slots = new SlotMachine(economy, audio, hud);
   const baccarat = new Baccarat(economy, audio, hud);
 
@@ -734,7 +733,7 @@ function boot() {
   });
 
   function anyModalOpen() {
-    return hud.shopOpen || phone.isOpen || newspaper.isOpen || conversation.isOpen || gangs.isOpen || slots.isOpen || baccarat.isOpen || stockMarket.isOpen || (encounterUI && encounterUI.isOpen) || (orgChart && orgChart.isOpen) || (lawUI && lawUI.isOpen) || !document.getElementById("task-detail").classList.contains("hidden");
+    return hud.shopOpen || phone.isOpen || newspaper.isOpen || conversation.isOpen || gangs.isOpen || slots.isOpen || baccarat.isOpen || stockMarket.isOpen || (encounterUI && encounterUI.isOpen) || !document.getElementById("task-detail").classList.contains("hidden");
   }
 
   // ---- 右侧图标按钮栏 ----
@@ -820,15 +819,24 @@ function boot() {
     if (input.wasPressed("Tab")) openPanel("phone");
     if (input.wasPressed("KeyN")) openPanel("newspaper");
     if (input.wasPressed("KeyG") && !inSpecialMode) openPanel("gangs");
-    // O = 黑蹄会人事图（组织架构 / 渗透进度）。O 之前是空闲键。
+    // O = 黑蹄会人事图（组织架构 / 渗透进度）—— 合并进帮派面板的 tab。
+    // 已在人事图 tab 时再按 O 就关闭；否则切过去。
     if (input.wasPressed("KeyO") && !inSpecialMode) {
-      orgChart.toggle();
-      if (orgChart.isOpen) document.exitPointerLock();
+      if (gangs.isOpen && gangs._tab === "org") { gangs.close(); }
+      else {
+        openPanel("gangs");
+        gangs.openTab("org");
+        if (gangs.isOpen) document.exitPointerLock();
+      }
     }
-    // K = 警长办公室（第三方势力）。K 之前是空闲键。
+    // K = 警长办公室（第三方势力）—— 合并进帮派面板的 tab。
     if (input.wasPressed("KeyK") && !inSpecialMode) {
-      lawUI.toggle();
-      if (lawUI.isOpen) document.exitPointerLock();
+      if (gangs.isOpen && gangs._tab === "law") { gangs.close(); }
+      else {
+        openPanel("gangs");
+        gangs.openTab("law");
+        if (gangs.isOpen) document.exitPointerLock();
+      }
     }
     // 对话动作键不要被全局热键消费掉
     // KeyT/KeyR/KeyY 仅在非交互模式下处理
@@ -3834,8 +3842,7 @@ function boot() {
       const debugLog = ws.debugLog || [];
       let h = '';
       // Section 7: AI 街头剧场
-      h += '<div class="debug-section"><div class="debug-section-title">🎭 AI 街头剧场 <span style="font-weight:400;opacity:.7">（F9 开演 · F10 传送 · F8 开演并传送）</span></div>';
-      const tst = theater.debugStatus();
+      h += '<div class="debug-section"><div class="debug-section-title">🎭 AI 街头剧场 <span style="font-weight:400;opacity:.7">（F9 开演 · F10 传送 · F8 开演并传送）</span></div>';      const tst = theater.debugStatus();
       if (tst.active) {
         h += '<div class="debug-row">正在上演：' + tst.tree + '</div>';
         h += '<div class="debug-row">节点 ' + tst.node + ' / 阶段 ' + tst.phase + ' / 玩家区域 ' + tst.zone + '</div>';
@@ -3858,9 +3865,20 @@ function boot() {
       if (tst.active) h += '<button class="debug-btn" onclick="__ww.theaterStop();__ww.debugPanel()">⏹ 立刻散场</button>';
       h += '</div></div>';
 
+      // Section 7c: 遭遇管线（P1）
+      const encPh = encounters.phase;
+      const encNpc = encounters.active?.name || null;
+      h += '<div class="debug-section"><div class="debug-section-title">👥 遭遇 / 抉择 <span style="font-weight:400;opacity:.7">（NPC 走过来找你谈事 → 按 F 开弹窗）</span></div>';
+      h += '<div class="debug-row"><span class="label">状态</span><span class="' + (encPh === "IDLE" ? 'value' : 'bad') + '">' + encPh + (encNpc ? ' · ' + encNpc : '') + '</span></div>';
+      h += '<div class="debug-actions" style="margin-top:6px">';
+      h += '<button class="debug-btn" onclick="__ww.encounterTest();__ww.debugPanel()">🎬 触发一场遭遇</button> ';
+      h += '<button class="debug-btn" onclick="__ww.debugPanel()">🔄 刷新状态</button>';
+      h += '</div>';
+      h += '<div class="debug-row" style="opacity:.6">点"触发一场遭遇"后，附近会有人专程走过来找你；等他到跟前按 F 就能谈。</div>';
+      h += '</div>';
+
       // Section 7b: 实时生成（大模型调用回执）
-      h += '<div class="debug-section"><div class="debug-section-title">🤖 实时生成 <span style="font-weight:400;opacity:.7">（Ctrl+L 开关顶部浮层）</span></div>';
-      h += '<div class="debug-row"><span class="label">顶部浮层</span><span class="' + (aiLog.enabled ? 'value' : 'warn') + '">' + (aiLog.enabled ? '开' : '关') + '</span></div>';
+      h += '<div class="debug-section"><div class="debug-section-title">🤖 实时生成 <span style="font-weight:400;opacity:.7">（Ctrl+L 开关顶部浮层）</span></div>';      h += '<div class="debug-row"><span class="label">顶部浮层</span><span class="' + (aiLog.enabled ? 'value' : 'warn') + '">' + (aiLog.enabled ? '开' : '关') + '</span></div>';
       h += '<div class="debug-row"><span class="label">剧场衔接</span><span class="value">max_tokens=' + GLUE_GEN.maxTokens + ' · reasoning=' + GLUE_GEN.reasoningEffort + '</span></div>';
       h += '<div class="debug-row"><span class="label">NPC对话</span><span class="value">max_tokens=' + CHAT_GEN.maxTokens + ' · reasoning=' + CHAT_GEN.reasoningEffort + '</span></div>';
       h += '<div class="debug-row"><span class="label">对话来源</span><span class="' + (npcChat.lastVia === 'llm' ? 'value' : 'bad') + '">' + npcChat.lastVia + (npcChat.lastError ? ' · ' + npcChat.lastError : '') + '</span></div>';

@@ -71,6 +71,16 @@ export class OrgChartUI {
     if (document.pointerLockElement) document.exitPointerLock();
   }
 
+  /**
+   * 渲染进任意容器（帮派面板的"人事图"tab 用）。
+   * 不建独立弹窗 —— 复用同一套 _buildHtml 逻辑。
+   */
+  renderInto(container) {
+    if (!container) return;
+    const { sub, body } = this._buildHtml();
+    container.innerHTML = `<div class="org-sub">${sub}</div><div class="org-body">${body}</div>`;
+  }
+
   close() {
     if (!this._open) return;
     this._open = false;
@@ -78,7 +88,7 @@ export class OrgChartUI {
     this.onClose();
   }
 
-  _render() {
+  _buildHtml() {
     const chart = this.nemesis?.orgChart?.() || [];
     const inf = this.nemesis?.infiltrationStatus?.() || {};
 
@@ -89,7 +99,7 @@ export class OrgChartUI {
     bits.push(`会首内圈 ${inf.loyalInnerCircle ?? "?"}`);
     if (inf.canTakeOver) bits.push(`<b class="org-win">内圈已空 —— 可以接管</b>`);
     else if (inf.bossIsolated) bits.push(`<b class="org-warn">会首已被架空</b>`);
-    this.subEl.innerHTML = bits.join(" · ");
+    const sub = bits.join(" · ");
 
     // 按职级分组：从会首往下，让"层"这个概念在视觉上立住
     const byRank = new Map();
@@ -129,7 +139,13 @@ export class OrgChartUI {
       }
       html += `</div></div>`;
     }
-    this.bodyEl.innerHTML = html || `<div class="org-empty">（暂无情报）</div>`;
+    return { sub, body: html || `<div class="org-empty">（暂无情报）</div>` };
+  }
+
+  _render() {
+    const { sub, body } = this._buildHtml();
+    this.subEl.innerHTML = sub;
+    this.bodyEl.innerHTML = body;
   }
 
   _pillarLabel(key) {
