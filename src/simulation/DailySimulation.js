@@ -26,6 +26,7 @@ export class DailySimulation {
     this.law = deps.law || null;               // 警长势力（第三方）
     this.business = deps.business || null;     // 产业经营（P7）
     this.messageGovernor = deps.messageGovernor || null; // P3 消息治理
+    this.consequences = deps.consequences || null;       // P8 剧场后果包
 
     this._listeners = {};
   }
@@ -239,6 +240,13 @@ export class DailySimulation {
       if (this.business) bizResult = this.business.settleDaily();
     });
 
+    // Step 14.8: 剧场后果包结算 —— 到期的延迟揭示/回报兑现。
+    // 放在胜负判定之前（reveal 的势力效果会影响 checkVictory）。
+    let csResult = null;
+    safeStep("Step14.8: consequences.settleDaily", () => {
+      if (this.consequences) csResult = this.consequences.settleDaily();
+    });
+
     // Step 15: 胜负判定。
     // 这一步以前根本没人调 —— checkVictory 写好了却零调用者，
     // 于是玩家无论做什么，游戏都不会结束。现在接上，并把结果写进
@@ -264,6 +272,7 @@ export class DailySimulation {
     }
     return {
       day, directorPlan, nemesis: nemesisResult, law: lawResult, business: bizResult,
+      consequences: csResult,
       victory: ws.state.victoryState || null,
       errors: errors.length > 0 ? errors : null,
     };

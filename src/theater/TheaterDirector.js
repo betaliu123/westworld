@@ -8,6 +8,7 @@ import { Casting } from "./Casting.js";
 import { TheaterGlue, GlueBudget } from "./TheaterGlue.js";
 import { TheaterRuntime } from "./TheaterRuntime.js";
 import { TheaterAftermath } from "./TheaterAftermath.js";
+import { attachTheaterConsequences } from "./attachConsequences.js";
 
 export class TheaterDirector {
   constructor(deps = {}) {
@@ -27,6 +28,9 @@ export class TheaterDirector {
 
     this.stage = new StageMap(this.town);
     this.aftermath = deps.aftermath || null; // 事件后续影响（报纸/来信/遗留物）
+    this.consequences = deps.consequences || null; // P8 后果包（势力/延迟揭示/回报/解锁）
+    // 把后果包挂到结局节点上（幂等，静态树数据保持纯净）
+    attachTheaterConsequences(THEATER_TREES);
     this.casting = new Casting({ npcManager: this.npcManager, stage: this.stage });
     // 配额用 GlueBudget 的默认值（20/分钟 + 400ms 冷却），别在这里写死覆盖掉
     this.glue = new TheaterGlue({ budget: new GlueBudget(), onReport: deps.onAiReport || null });
@@ -255,6 +259,17 @@ export class TheaterDirector {
       });
       if (done.news || done.message || done.item) {
         this._addLog(`（留下后续：${[done.news && "报纸", done.message && "来信", done.item && "遗留物"].filter(Boolean).join("、")}）`);
+      }
+    }
+    // P8 后果包：结构性后果（势力/延迟揭示/延迟回报/解锁），喂给 Nemesis 层
+    if (this.consequences) {
+      const csDone = this.consequences.apply(oc, {
+        treeId: meta.tree?.id || this.currentTree?.id,
+        outcomeId: oc.id || oc.title,
+        cast: this.scene?.cast,
+      });
+      if (csDone.scheduled > 0) {
+        this._addLog(`（${csDone.scheduled} 条后果在酝酿：迟来的真相 / 人情回报）`);
       }
     }
     if (oc.rumor && this.newspaper?.publish) {

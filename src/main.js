@@ -59,6 +59,7 @@ import { TheaterDirector } from "./theater/TheaterDirector.js";
 import { GLUE_GEN } from "./theater/TheaterGlue.js";
 import { TheaterUI } from "./theater/TheaterUI.js";
 import { TheaterAftermath } from "./theater/TheaterAftermath.js";
+import { ConsequenceSystem } from "./theater/ConsequenceSystem.js";
 // NPC 自由对话 + LLM 行为决策
 import { NpcChatService, ChatBudget, CHAT_GEN } from "./npc/NpcChatService.js";
 import { NpcActionExecutor } from "./npc/NpcActionExecutor.js";
@@ -367,6 +368,12 @@ function boot() {
   const onAiReport = (r) => aiLog.report(r);
 
   // ===== AI 剧场：每天上午在镇中心大街演一场街头事件 =====
+  // P8 后果包：结构性后果（势力/延迟揭示/延迟回报/解锁），theater 与日结共用
+  const consequences = new ConsequenceSystem({
+    worldState, factionSystem, law, nemesis, business: businessSystem, npcRegistry,
+    phone, newspaper, reputation, hud, getDay: () => worldClock.day,
+    log: (t) => eventLog?.record?.({ type: "CONSEQ_LOG", facts: { text: t }, tags: ["consequence"] }),
+  });
   theater = new TheaterDirector({
     npcManager, town, hud, sky, worldClock, reputation, economy, newspaper, eventLog,
     playerSay: (text) => showPlayerBubble(text),
@@ -374,6 +381,8 @@ function boot() {
     aftermath: new TheaterAftermath({
       newspaper, phone, hud, npcRegistry, getDay: () => worldClock.day,
     }),
+    // P8 后果包：结构性后果（势力/延迟揭示/延迟回报/解锁）
+    consequences,
   });
 
   // ===== 单个 NPC 的自由对话（准心对着谁就是在跟谁说话）=====
@@ -513,6 +522,7 @@ function boot() {
     law,                 // P5 ✓ 证据折算/行贿/突袭
     business: businessSystem,  // P7 ✓ 产业结算
     messageGovernor,     // P3 ✓ 消息限流/去名字/分类
+    consequences,        // P8 ✓ 剧场后果包
   });
 
   // 存档系统：完全禁用。每次刷新 = 重新开始第一天。
