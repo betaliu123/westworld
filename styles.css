@@ -306,6 +306,11 @@ html, body {
 #debug-panel-body .debug-row .warn { color: #f0c040; }
 #debug-panel-body .debug-row .bad { color: #e2564a; }
 #debug-panel-body .debug-empty { color: #6a5a4a; font-style: italic; }
+#debug-panel-body .debug-num {
+  width: 64px; background: #14141c; color: #f0d089; border: 1px solid #3a3a45;
+  border-radius: 4px; padding: 2px 6px; font-size: 12px; text-align: right;
+}
+#debug-panel-body .debug-num:focus { outline: none; border-color: #8a6a2f; }
 #debug-panel-body .debug-summary {
   display: flex; flex-wrap: wrap; gap: 6px 12px; padding-bottom: 10px;
   margin-bottom: 10px; border-bottom: 1px solid rgba(200,151,58,.3);
@@ -765,6 +770,30 @@ html, body {
 }
 .org-title { font-size: 18px; color: var(--gold); letter-spacing: 1px; }
 .org-sub { font-size: 12px; opacity: .82; }
+/* 人事图子 tab（黑蹄会/我的帮派/警长） */
+.org-tabs { display: flex; gap: 6px; padding: 8px 16px 0; }
+.org-tabs-mini { display: flex; gap: 6px; margin-bottom: 8px; }
+.org-tab {
+  background: none; border: 1px solid transparent; border-radius: 4px;
+  color: #b8996a; font-size: 12px; padding: 4px 10px; cursor: pointer;
+}
+.org-tab:hover { color: var(--gold); border-color: rgba(200,151,58,.35); }
+.org-tab.active { color: var(--gold); background: rgba(200,151,58,.14); border-color: rgba(200,151,58,.5); }
+/* 我的帮派：任命控件 */
+.org-card-actions { margin-top: 5px; }
+.org-appoint { display: flex; gap: 4px; align-items: center; }
+.org-select {
+  flex: 1; min-width: 0; background: #14141c; color: #f0e4c8;
+  border: 1px solid #3a3a45; border-radius: 3px; font-size: 10px; padding: 2px 4px;
+}
+.org-appoint-btn {
+  background: rgba(200,151,58,.16); border: 1px solid rgba(200,151,58,.45);
+  color: #f0e4c8; font-size: 10px; padding: 2px 7px; border-radius: 3px; cursor: pointer;
+}
+.org-appoint-btn:hover { background: rgba(200,151,58,.3); }
+.org-card.is-free { border-style: dashed; border-color: rgba(127,220,160,.35); }
+.org-bar { height: 7px; background: rgba(0,0,0,.45); border-radius: 4px; overflow: hidden; margin: 4px 0; }
+.org-bar i { display: block; height: 100%; background: linear-gradient(90deg, #8a6a2f, var(--gold)); }
 .org-win { color: #7fdca0; }
 .org-warn { color: #e9c46a; }
 .org-close {

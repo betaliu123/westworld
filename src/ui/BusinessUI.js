@@ -150,6 +150,9 @@ export class BusinessUI {
     if (this._embedTarget) this.renderInto(this._embedTarget);
   }
 
+  /** 供外部（遭遇弹窗结算后）刷新面板 */
+  refresh() { this._refresh(); }
+
   // 派人：如果只有一个空岗直接派第一个自由成员；否则点一下弹选择
   _assignFlow(bizId, postIdx, scope) {
     const free = (this.factionSystem?.getOpenMembers?.() || []).filter((id) => {

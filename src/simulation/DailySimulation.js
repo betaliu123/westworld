@@ -27,6 +27,8 @@ export class DailySimulation {
     this.business = deps.business || null;     // 产业经营（P7）
     this.messageGovernor = deps.messageGovernor || null; // P3 消息治理
     this.consequences = deps.consequences || null;       // P8 剧场后果包
+    this.playerOrg = deps.playerOrg || null;             // P11 自己帮派人事图（任命加成）
+    this.gangGroup = deps.gangGroup || null;             // P11 帮派群聊
 
     this._listeners = {};
   }
@@ -245,6 +247,15 @@ export class DailySimulation {
     let csResult = null;
     safeStep("Step14.8: consequences.settleDaily", () => {
       if (this.consequences) csResult = this.consequences.settleDaily();
+    });
+
+    // Step 14.9: 自己帮派人事图（任命加成）+ 群聊每日闲聊/拍马屁
+    safeStep("Step14.9: playerOrg+gangGroup", () => {
+      if (this.playerOrg) this.playerOrg.settleDaily();
+      if (this.gangGroup) this.gangGroup.settleDaily((npcId) => {
+        const rec = this.npcRegistry?.get?.(npcId);
+        return rec?.affection ?? 0;
+      });
     });
 
     // Step 15: 胜负判定。

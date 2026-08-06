@@ -29,6 +29,9 @@ export class Player {
     this.attackTimer = 0;   // 攻击动画计时
     this.attackCooldown = 0;
     this.inVehicle = null;
+    // 战斗属性（调试面板可调）：伤害倍率 与 减伤
+    this.damage = 1.0;      // 造成的伤害倍率（1.0 = 原始）
+    this.defense = 0;       // 减免受到的伤害点数（0 = 不减）
 
     // 无敌帧（受击后短暂无敌，避免被群殴秒杀）
     this.invincibilityTimer = 0;
@@ -247,7 +250,9 @@ export class Player {
 
   takeDamage(amount) {
     if (this._dead || this.invincibilityTimer > 0 || this._knockedDown) return;
-    this.health = clamp(this.health - amount, 0, 100);
+    // 防御：减免收到的伤害（调试面板可调）。减不到 0 以下，至少 1 点。
+    const reduced = Math.max(1, amount - (this.defense || 0));
+    this.health = clamp(this.health - reduced, 0, 100);
     this.invincibilityTimer = this.invincibilityDuration;
     if (this.health <= 0) {
       this._dead = true;

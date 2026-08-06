@@ -19,6 +19,13 @@ export class Combat {
     this.onNpcKnocked = deps.onNpcKnocked || null;
     this.onNpcHit = deps.onNpcHit || null; // 每次命中都回调（含未击倒），供 AI 剧场做出戏反应
     this.hitFlash = 0;
+    // 玩家伤害倍率来源（调试面板可调：player.damage）。null 时用 1.0。
+    this.playerRef = deps.playerRef || null;
+  }
+
+  /** 当前伤害倍率（读玩家属性；拿不到就 1.0） */
+  _dmgMul() {
+    return this.playerRef?.damage ?? 1.0;
   }
 
   /**
@@ -75,7 +82,14 @@ export class Combat {
       part = "leg";
       damage = 1; // 打腿伤害低，但会让人跑不动
     }
-    const knocked = target.hit(playerPos, false, damage);
+
+    // 近距离枪击伤害加成：贴脸一枪打不透的敌人，近距离应当更疼。
+    // 距离 ≤ 3m 时 +2（贴身几乎等于挨喷子），3~6m 线性衰减到 0。
+    // 让"近身交火"与"远距离点射"有明显差异，鼓励玩家控制交战距离。
+    const closeBonus = dist <= 3 ? 2 : (dist >= 6 ? 0 : Math.round(2 * (1 - (dist - 3) / 3)));
+    if (part !== "head") damage += closeBonus;
+
+    const knocked = target.hit(playerPos, false, Math.round(damage * this._dmgMul()));
 
     if (part === "head") {
       if (lethal) {
@@ -127,7 +141,7 @@ export class Combat {
       this.npcManager.broadcastPanic(player.pos, target ? 8 : 5);
       if (target) {
         if (this.audio) { this.audio.hit(); this.audio.npcVoice("hurt"); }
-        const knocked = target.hit(player.pos);
+        const knocked = target.hit(player.pos, false, Math.round(1 * this._dmgMul()));
         this.hud.toast(knocked ? "💥 击倒了一个 NPC！" : "👊 命中！");
         // 记录交手历史
         this.npcManager.recordEncounter(target, "hit_by_player", { day: this.currentDay || 0, knocked });

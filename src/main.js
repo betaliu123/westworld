@@ -70,6 +70,8 @@ import { SubdueSystem } from "./encounter/SubdueSystem.js";
 import { NemesisSystem } from "./factions/NemesisSystem.js";
 import { LawSystem } from "./factions/LawSystem.js";
 import { BusinessSystem } from "./factions/BusinessSystem.js";
+import { PlayerOrgSystem } from "./factions/PlayerOrgSystem.js";
+import { GangGroupChat } from "./factions/GangGroupChat.js";
 import { MessageGovernor } from "./systems/MessageGovernor.js";
 import { OrgChartUI } from "./ui/OrgChartUI.js";
 import { LawUI } from "./ui/LawUI.js";
@@ -147,6 +149,9 @@ function boot() {
     log: (t) => eventLog?.record?.({ type: "BIZ_LOG", facts: { text: t }, tags: ["biz"] }),
   });
 
+  // P11 玩家自己帮派的人事图 + 任命（任命后发短信）—— 在 phone/hud 之后装配
+  // （见 phone 创建处）
+
   // UI
   const hud = new HUD(economy, reputation);
   const dialogue = new Dialogue(camera);
@@ -157,9 +162,26 @@ function boot() {
   nemesis.hud = hud;                     // Nemesis 要弹 toast（构造时 hud 还没有）
   law.hud = hud;
   businessSystem.hud = hud;
+
+  // P11 玩家自己帮派的人事图 + 任命（任命后发短信）+ 帮派群聊
+  const playerOrg = new PlayerOrgSystem({
+    worldState, factionSystem, npcRegistry,
+    phone, hud,
+    log: (t) => eventLog?.record?.({ type: "PLAYERORG_LOG", facts: { text: t }, tags: ["playerorg"] }),
+  });
+  const gangGroup = new GangGroupChat({
+    worldState, phone, factionSystem, npcRegistry, hud,
+  });
+  businessSystem.playerOrg = playerOrg;  // 账房任命加成（账房坐镇 → 产业收益 +10%）
+
   // 人事图 / 警长 / 产业：不再是独立弹窗，而是嵌进帮派面板的 tab（O / K 键直接开对应 tab）
   const orgChartUI = new OrgChartUI({
     nemesis,
+    playerOrg, law, npcRegistry,
+    onAppoint: (npcId, roleId) => {
+      const r = playerOrg.appoint(npcId, roleId);
+      if (!r.ok) hud.toast?.(`❌ ${r.error === "not_member" ? "还不是你的人" : "任命失败"}`, { key: "appoint", duration: 3000 });
+    },
     getPillars: () => factionSystem.getBlackHoofPillars(),
   });
   const lawUI = new LawUI({
@@ -195,7 +217,6 @@ function boot() {
     onRaid: (bizId) => {
       const biz = businessSystem.getBusiness(bizId);
       if (!biz) return;
-      // 弹窗：先给战力预估（优势/势均力敌/劣势），再让玩家选投入多少人手
       const nMembers = factionSystem.getOpenMembers().length;
       const basePower = 30 + nMembers * 12 + Math.round(player.health / 10); // 玩家状态当战力
       const defense = biz.owner === "black_hoof"
@@ -204,9 +225,12 @@ function boot() {
       const est = basePower / (basePower + Math.max(5, defense));
       const estLabel = est >= 0.62 ? "优势" : est >= 0.42 ? "势均力敌" : "劣势";
       const players = [1, 2, 3, 5];
+      const memberWarning = nMembers === 0
+        ? "（你还没有明面成员，人手全靠自己）"
+        : `（你有 ${nMembers} 个明面成员）`;
       encounterUI.open({
         name: biz.name,
-        sub: `抢夺 · ${estLabel}（预估战力 $${Math.round(basePower)}）`,
+        sub: `抢夺 · ${estLabel}（预估战力 $${Math.round(basePower)}）${memberWarning}`,
         beats: [
           `你带人站在${biz.name}门口。里面是${biz.owner === "black_hoof" ? "黑蹄会的人" : "几个看店伙计"}。`,
           `要看你的胆子和人手了。`,
@@ -218,14 +242,17 @@ function boot() {
           note: n >= 3 ? "人多势众但动静大" : "轻装快袭",
         })),
         onChoice: (choiceId) => {
-          if (!choiceId || !choiceId.startsWith("raid:")) return;
+          if (!choiceId || !choiceId.startsWith("raid:")) { businessUI.refresh(); return; }
           const n = +choiceId.split(":")[1];
           const power = 30 + n * 12 + Math.round(player.health / 10);
           const r = businessSystem.raid(bizId, power);
           if (r.ok) {
             hud.toast?.(r.success ? `🏴 抢下了${biz.name}！` : `💥 抢夺失败，损失 $${r.moneyLost}`, { key: "biz-raid", duration: 4200 });
             if (r.success) reputation.addWanted(15);
+          } else if (r.error) {
+            hud.toast?.(`❌ ${r.error === "already_owned" ? "这家已经是你的了" : "抢夺失败"}`, { key: "biz-raid", duration: 3200 });
           }
+          businessUI.refresh();
         },
       });
     },
@@ -332,6 +359,7 @@ function boot() {
       });
       npcRegistry?.update?.(targetId, { trust: 30, trueFactionId: "player" });
       businessSystem?.state?.history?.push({ day: worldState.day, type: "phone_recruit", npcId: targetId });
+      gangGroup?.announceNewMember?.(contact.displayName);
       hud.toast?.(`📱 ${contact.displayName} 答应入伙了！`, { key: "phone-recruit", duration: 3600 });
       return "行。我跟你干。镇上的事，也该有人站出来管管了。";
     }
@@ -365,11 +393,14 @@ function boot() {
   const emojiPops = new EmojiPops(camera);
 
   const combat = new Combat(npcManager, loot, hud, { audio, reputation, newspaper,
+    playerRef: player,   // 调试面板可调 player.damage（伤害倍率）
     onNpcHit: (target, knocked) => {
       theater?.notifyNpcHit(target, knocked);
       // 玩家打了人 → 立刻标敌（血条马上出来），倒地则移出战斗
       if (knocked) factions.clear(target);
       else factions.markEnemy(target);
+      // 逃跑也顶着血条：被玩家打过的人 4 秒内都显示（除非倒地/走远）
+      healthBars.mark(target);
     },
     onNpcKnocked: (target) => {
       // 检查任务完成：击败NPC
@@ -519,6 +550,10 @@ function boot() {
         }).id;
         nemesis.registerMole(npcId, name);
       }
+      // 明面加入的成员 → 群聊里有人欢迎
+      if (allegiance.apparent === "player") {
+        gangGroup?.announceNewMember?.(npc.phone?.owner || "新成员");
+      }
       // 卧底不该出现在明面成员名单上，UI 侧靠 allegiance.apparent 区分
       hud.toast?.(
         allegiance.apparent === "player"
@@ -565,6 +600,8 @@ function boot() {
     business: businessSystem,  // P7 ✓ 产业结算
     messageGovernor,     // P3 ✓ 消息限流/去名字/分类
     consequences,        // P8 ✓ 剧场后果包
+    playerOrg,           // P11 ✓ 任命加成
+    gangGroup,           // P11 ✓ 群聊
   });
 
   // 存档系统：完全禁用。每次刷新 = 重新开始第一天。
@@ -3484,7 +3521,7 @@ function boot() {
 
     // NPC 名字标签（有立绘的重要NPC）
     updateNPCNameTags();
-    healthBars.update(npcManager.all, player.pos);
+    healthBars.update(npcManager.all, player.pos, dt);
     emojiPops.update(npcManager.all, player.pos);
     aiLog.tick(); // 让过期的生成回执自己淡出
   });
@@ -3995,6 +4032,18 @@ function boot() {
     taskSystem, stockMarket, showTaskDetail, renderTaskBar,
     // 快捷调试
     debugAdvanceDay() { worldClock.debugAdvanceDay(); hud.setDay(worldClock.day); },
+    setPlayerDamage(v) {
+      const n = parseFloat(v);
+      if (!Number.isFinite(n)) return;
+      player.damage = Math.max(0.1, Math.min(20, n));
+      hud.toast?.(`⚔️ 伤害倍率 ${player.damage.toFixed(1)}`, { key: "dbg-dmg", duration: 2000 });
+    },
+    setPlayerDefense(v) {
+      const n = parseInt(v, 10);
+      if (!Number.isFinite(n)) return;
+      player.defense = Math.max(0, Math.min(100, n));
+      hud.toast?.(`🛡 防御减免 ${player.defense}`, { key: "dbg-def", duration: 2000 });
+    },
     debugSave() { saveSystem.save(); },
     debugLoad() {
       const s = saveSystem.load();
@@ -4079,6 +4128,18 @@ function boot() {
       h += '<span>⭐ 荣誉 ' + reputation.honor + '</span>';
       h += '<span>🚨 通缉 ' + reputation.wantedStars + '星</span>';
       h += '<span>🤖 LLM: ' + (narrativeService.enabled ? '✅ 已启用' : '⏸️ 已禁用') + '</span>';
+      h += '</div>';
+
+      // Section 0.5: 玩家战斗属性（调试用：伤害倍率 / 减伤）
+      h += '<div class="debug-section"><div class="debug-section-title">⚔️ 玩家战斗属性 <span style="font-weight:400;opacity:.7">（调完按回车生效）</span></div>';
+      h += '<div class="debug-row"><span class="label">伤害倍率</span>';
+      h += '<input class="debug-num" id="dbg-dmg" type="number" step="0.1" min="0.1" max="20" value="' + player.damage.toFixed(1) + '" '
+        + 'onchange="__ww.setPlayerDamage(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" /> '
+        + '<span style="opacity:.6">× 造成的伤害（1.0=原始）</span></div>';
+      h += '<div class="debug-row"><span class="label">防御减免</span>';
+      h += '<input class="debug-num" id="dbg-def" type="number" step="1" min="0" max="100" value="' + player.defense + '" '
+        + 'onchange="__ww.setPlayerDefense(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()" /> '
+        + '<span style="opacity:.6">− 每下受到的伤害</span></div>';
       h += '</div>';
 
       // Section 1: 帮派动态

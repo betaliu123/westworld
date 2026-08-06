@@ -17,6 +17,31 @@ export class HealthBars {
     this.barPool = [];
     this.dotPool = [];
     this._v = new THREE.Vector3();
+    // 最近被玩家打过、还在视野里的 NPC —— 逃跑了也顶着血条，直到走远或倒地
+    this._marked = new Set();
+    this._markedSince = new Map(); // npc -> 上次可见时间（淘汰用）
+    this._markTtl = 4;            // 标记 4 秒内没再被看到就清掉
+  }
+
+  /** 玩家打了一个 NPC → 标记它（逃跑也显示血条）。由 main 在命中时调用 */
+  mark(npc) {
+    if (!npc) return;
+    this._marked.add(npc);
+  }
+
+  _tickMarked(dt) {
+    for (const npc of [...this._marked]) {
+      const last = this._markedSince.get(npc) || 0;
+      if (dt > 0 && last > 0) {
+        if (performance.now() / 1000 - last > this._markTtl) {
+          this._marked.delete(npc);
+          this._markedSince.delete(npc);
+        }
+      } else if (npc.dead || npc.removed || !npc.alive) {
+        this._marked.delete(npc);
+        this._markedSince.delete(npc);
+      }
+    }
   }
 
   _acquire(pool, className) {
@@ -34,22 +59,25 @@ export class HealthBars {
     return item;
   }
 
-  update(npcs, playerPos) {
+  update(npcs, playerPos, dt = 0) {
     if (!this.layer) return;
     for (const p of [this.barPool, this.dotPool]) {
       for (const item of p) { item.inUse = false; item.el.style.display = "none"; }
     }
-    if (!this.factions?.inCombat && !this.factions?.allies.size) return;
+    this._tickMarked(dt);
 
-    // 收集需要显示的目标：只要掉了血、且在战斗或逃跑中，就给反馈（不只限阵营）
-    // 即：你打了谁，谁就该顶着血条，哪怕他在逃跑
+    // 收集需要显示的目标：只要掉了血、且在战斗/逃跑中 / 或最近被玩家打过
+    // 就不再依赖"场上还有敌人"—— 逃跑的人也顶着血条
     const list = [];
+    const now = performance.now() / 1000;
     for (const npc of npcs) {
       if (!npc.alive || npc.brain?.state === "DOWN") continue;
       const b = npc.brain;
       const damaged = (npc.hp ?? npc.maxHp) < (npc.maxHp || 1);
       const inFight = b?.state === "ANGRY" || b?.state === "FLEE";
-      if (!damaged || !inFight) continue;
+      const marked = this._marked.has(npc);
+      if (!damaged || (!inFight && !marked)) continue;
+      if (marked) this._markedSince.set(npc, now);
       const side = this.factions.sideOf(npc); // enemy/ally 决定红绿，未标阵营按 enemy
       const d = Math.hypot(npc.pos.x - playerPos.x, npc.pos.z - playerPos.z);
       if (d > SHOW_DIST) continue;

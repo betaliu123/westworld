@@ -267,6 +267,12 @@ export class BusinessSystem {
       this.factionSystem?.damagePillar?.("wealth", Math.round(moleLeak), "卧底分流");
     }
 
+    // P11 账房先生加成：任命了账房 → 产业收益 +10%
+    const incomeBonus = this.playerOrg?.state?.lastBonus?.incomeBonus ?? 0;
+    if (incomeBonus > 0) {
+      totalYield = Math.round(totalYield * (1 + incomeBonus));
+    }
+
     // 帮派金库入账：只入产业净产出（维护费已在 totalYield 里扣了）。
     // 注意：settleIncome 在 Step5 先跑（扣薪水+加 hq 收入），这里在 Step14.75 补产业产出，
     // 不重复扣薪水，只把产业部分加进来。
