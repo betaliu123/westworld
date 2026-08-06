@@ -623,44 +623,54 @@ function boot() {
     }
 
     if (!atHome) {
-      // 露宿街头 → 传送到街角屋檐下，营造"刚醒"氛围
       if (insideRoom) { exitInterior(); }
-      // 用建筑门的坐标找街角
-      const streetCorners = [];
-      if (town.doors && town.doors.length > 0) {
-        for (const door of town.doors) {
-          streetCorners.push({ x: door.x + 2.5, z: door.z + 2.5 });
-          streetCorners.push({ x: door.x - 2.5, z: door.z - 2.5 });
-        }
-      }
-      if (streetCorners.length > 0) {
-        const corner = streetCorners[Math.floor(Math.random() * streetCorners.length)];
-        const resolved = town.resolveCollision(corner.x, corner.z, 0.5);
+      // 无房产时在帮派驻地醒来：有自己的据点，睡在自家院墙里
+      if (town.compound) {
+        const gate = town.compound.gate;
+        const resolved = town.resolveCollision(gate.x, gate.z, 0.5);
         player.teleport(resolved.x, resolved.z, town);
-        hud.toast("🌅 你在街角檐下醒来，寒气刺骨...", { key: "roughsleep", duration: 5000 });
-        playerCondition.energy = Math.min(100, playerCondition.energy + 15);
-        playerCondition.fatigue = Math.max(0, playerCondition.fatigue - 20);
-        player.takeDamage(12);
+        hud.toast("🌅 你在帮派驻地的大院里醒来……", { key: "hqsleep", duration: 5000 });
+        playerCondition.energy = Math.min(100, playerCondition.energy + 20);
+        playerCondition.fatigue = Math.max(0, playerCondition.fatigue - 25);
       } else {
-        hud.toast("🌙 露宿街头...没有家的夜晚格外寒冷", { key: "roughsleep" });
-        player.takeDamage(15);
-      }
-      // 让附近 NPC 冒泡吐槽
-      setTimeout(() => {
-        const nearby = npcManager.all.filter(n => {
-          const d = Math.hypot(player.pos.x - n.pos.x, player.pos.z - n.pos.z);
-          return n.alive && d < 8;
-        }).slice(0, 3);
-        const homelessLines = [
-          "哪来的流浪汉……", "这人睡大街上了？", "啧，没家的可怜虫",
-          "嘿，别挡着路！", "又一个醉倒街头的", "能不能换个地方睡",
-        ];
-        for (const n of nearby) {
-          setTimeout(() => {
-            if (n.brain && n.alive) n.brain.say(homelessLines[Math.floor(Math.random() * homelessLines.length)], 3.0);
-          }, Math.random() * 2000);
+        // 露宿街头 → 传送到街角屋檐下，营造"刚醒"氛围
+        // 用建筑门的坐标找街角
+        const streetCorners = [];
+        if (town.doors && town.doors.length > 0) {
+          for (const door of town.doors) {
+            streetCorners.push({ x: door.x + 2.5, z: door.z + 2.5 });
+            streetCorners.push({ x: door.x - 2.5, z: door.z - 2.5 });
+          }
         }
-      }, 1800);
+        if (streetCorners.length > 0) {
+          const corner = streetCorners[Math.floor(Math.random() * streetCorners.length)];
+          const resolved = town.resolveCollision(corner.x, corner.z, 0.5);
+          player.teleport(resolved.x, resolved.z, town);
+          hud.toast("🌅 你在街角檐下醒来，寒气刺骨...", { key: "roughsleep", duration: 5000 });
+          playerCondition.energy = Math.min(100, playerCondition.energy + 15);
+          playerCondition.fatigue = Math.max(0, playerCondition.fatigue - 20);
+          player.takeDamage(12);
+        } else {
+          hud.toast("🌙 露宿街头...没有家的夜晚格外寒冷", { key: "roughsleep" });
+          player.takeDamage(15);
+        }
+        // 让附近 NPC 冒泡吐槽
+        setTimeout(() => {
+          const nearby = npcManager.all.filter(n => {
+            const d = Math.hypot(player.pos.x - n.pos.x, player.pos.z - n.pos.z);
+            return n.alive && d < 8;
+          }).slice(0, 3);
+          const homelessLines = [
+            "哪来的流浪汉……", "这人睡大街上了？", "啧，没家的可怜虫",
+            "嘿，别挡着路！", "又一个醉倒街头的", "能不能换个地方睡",
+          ];
+          for (const n of nearby) {
+            setTimeout(() => {
+              if (n.brain && n.alive) n.brain.say(homelessLines[Math.floor(Math.random() * homelessLines.length)], 3.0);
+            }, Math.random() * 2000);
+          }
+        }, 1800);
+      }
     }
 
     // 触发睡觉结算

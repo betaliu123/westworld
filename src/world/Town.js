@@ -42,6 +42,113 @@ export class Town {
     this._buildPlacePoints();
     // 民居（主街两侧空地），在商铺之后生成以便避让碰撞体
     this.homes = buildHomes(this);
+    // 帮派驻地：教堂南侧围合院落（最后生成，避免被别的建筑挤占）
+    this.compound = null;
+    this._buildCompound();
+  }
+
+  /**
+   * 帮派驻地：教堂南侧的围合院落 + 一间小房子。
+   *
+   * 为什么放在教堂南侧：坐标约定 z 轴正方向是南方（南口在 z:+bounds），
+   * 教堂是镇上唯一能讲"信仰与恐惧"的地方 —— 把驻地放在它的正南面，
+   * 玩家每次去教堂都能看见驻地，反过来也一样。视觉上"罪恶就睡在圣所脚下"。
+   *
+   * 院落 = 四面栅栏围出一块空地 + 一栋小房子（帮派据点）+ 大门留朝北开向主街。
+   * 小地图用 kind:"compound" 标注，画成小房子图标。
+   */
+  _buildCompound() {
+    // 找教堂：从 landmarks 里按名字定位（教堂是唯一 enterable 的地标）
+    const churchLm = this.landmarks.find((l) => l.name === "教堂");
+    if (!churchLm) return;
+    const cx = churchLm.x;
+    const cz = churchLm.z;
+
+    // 院落中心：教堂正南 14 米（避开教堂本体），院落 16×13
+    const W = 16, D = 13;
+    const ccx = cx;
+    const ccz = cz + 14;
+
+    // 围墙：四面 createFence。栅栏默认沿局部 X 轴，需要旋转到沿 Z 轴的两边用 rotZ=π/2
+    const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 });
+    const wood = mat(0x5e4020);
+    const posts = [];
+    const addPost = (x, z) => {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.5, 0.22), wood);
+      p.position.set(x, 0.75, z);
+      p.castShadow = true;
+      this.group.add(p);
+      posts.push(p);
+    };
+    // 四个角柱 + 每边几根立柱，形成围栏骨架（比整段栅栏更好控制开口）
+    const NX = Math.floor(W / 2.4), NZ = Math.floor(D / 2.4);
+    for (let i = 0; i <= NX; i++) {
+      addPost(ccx - W / 2 + (W / NX) * i, ccz - D / 2);
+      addPost(ccx - W / 2 + (W / NX) * i, ccz + D / 2);
+    }
+    for (let j = 0; j <= NZ; j++) {
+      // 北面留 4 米大门（朝主街），只围两侧
+      if (ccx - W / 2 + (D / NZ) * j < ccx - 2 || ccx - W / 2 + (D / NZ) * j > ccx + 2) {
+        addPost(ccx - W / 2, ccz - D / 2 + (D / NZ) * j);
+        addPost(ccx + W / 2, ccz - D / 2 + (D / NZ) * j);
+      }
+    }
+    // 横杆（两圈）：北边大门处断开
+    const rail = (from, to, y) => {
+      const len = Math.hypot(to.x - from.x, to.z - from.z);
+      if (len < 0.3) return;
+      const r = new THREE.Mesh(new THREE.BoxGeometry(len, 0.1, 0.09), wood);
+      r.position.set((from.x + to.x) / 2, y, (from.z + to.z) / 2);
+      r.rotation.y = Math.atan2(to.z - from.z, to.x - from.x);
+      r.castShadow = true;
+      this.group.add(r);
+    };
+    const seg = (a, b) => { rail(a, b, 0.5); rail(a, b, 1.0); };
+    // 南墙 + 东西墙全段
+    seg({ x: ccx - W / 2, z: ccz - D / 2 }, { x: ccx + W / 2, z: ccz - D / 2 });
+    seg({ x: ccx - W / 2, z: ccz - D / 2 }, { x: ccx - W / 2, z: ccz + D / 2 });
+    seg({ x: ccx + W / 2, z: ccz - D / 2 }, { x: ccx + W / 2, z: ccz + D / 2 });
+    // 北墙：留 4 米大门
+    seg({ x: ccx - W / 2, z: ccz + D / 2 }, { x: ccx - 2, z: ccz + D / 2 });
+    seg({ x: ccx + 2, z: ccz + D / 2 }, { x: ccx + W / 2, z: ccz + D / 2 });
+
+    // 院落碰撞体：四边围墙，但大门处断开（北边中间 4 米不阻挡）
+    const wallT = 0.4;
+    this._addRectCollider(ccx, ccz - D / 2, W / 2 + wallT, wallT);   // 南墙（全段）
+    // 北墙分两段，中间留 4 米大门（从 ccx-2 到 ccx+2 是门，不设碰撞）
+    this._addRectCollider(ccx - (W / 2 + 2) / 2, ccz + D / 2, (W / 2 - 2) / 2 + wallT, wallT); // 西段
+    this._addRectCollider(ccx + (W / 2 + 2) / 2, ccz + D / 2, (W / 2 - 2) / 2 + wallT, wallT); // 东段
+    this._addRectCollider(ccx - W / 2, ccz, wallT, D / 2);            // 西墙
+    this._addRectCollider(ccx + W / 2, ccz, wallT, D / 2);            // 东墙
+
+    // 院内小房子：帮派据点（8×6×5），门朝北（朝大门/主街）
+    const hx = ccx, hz = ccz + D / 2 - 3;
+    const hb = createBuilding({ name: "帮派驻地", sign: "HQ", width: 8, depth: 6, height: 5, chimney: true });
+    hb.position.set(hx, 0, hz);
+    hb.rotation.y = Math.PI;   // 门朝北
+    this.group.add(hb);
+    this._addRectCollider(hx, hz, 8 / 2 + 0.4, 6 / 2 + 0.4);
+    this.windows.push(...(hb.userData.windows || []));
+
+    // 门口地垫（可交互提示）
+    const matDoor = mat(0xe8c96a);
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 1.6), matDoor);
+    pad.position.set(hx, 0.03, hz + 6 / 2 + 0.9);
+    pad.rotation.y = 0;
+    this.group.add(pad);
+
+    // 供睡觉/复活/小地图使用的驻地信息
+    this.compound = {
+      x: hx, z: hz,
+      centerX: ccx, centerZ: ccz,
+      doorX: hx, doorZ: hz + 6 / 2 + 1.6,   // 屋门（北侧）
+      gate: { x: ccx, z: ccz + D / 2 + 1.0 }, // 院落大门（北侧，朝主街）
+      gateX: ccx, gateZ: ccz + D / 2 + 1.0,
+      width: W, depth: D,
+    };
+
+    // 小地图标注：小房子图标（kind:"compound"）
+    this.landmarks.push({ name: "帮派驻地", x: hx, z: hz, kind: "compound" });
   }
 
   // 生成可就近购买的房产（大宅），买下后可进入自己的房子（来自配置 PROPERTIES）

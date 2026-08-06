@@ -58,7 +58,9 @@ export class Minimap {
     // 建筑
     for (const lm of this.town.landmarks) {
       const p = this._w2m(lm.x, lm.z);
-      if (lm.kind === "enterable") {
+      if (lm.kind === "compound") {
+        this._drawHouse(ctx, p.mx, p.my, "#c0a24a"); // 帮派驻地：小房子
+      } else if (lm.kind === "enterable") {
         ctx.fillStyle = "#ffce54"; // 可进入建筑：金色
         ctx.fillRect(p.mx - 3, p.my - 3, 6, 6);
       } else if (lm.kind === "property") {
@@ -71,21 +73,25 @@ export class Minimap {
     }
   }
 
+  // 小房子图标：墙体 + 三角屋顶 + 门（复用 markOwnedHouse 的造型，参数化颜色）
+  _drawHouse(ctx, mx, my, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(mx - 4, my - 2, 8, 6);
+    ctx.beginPath();
+    ctx.moveTo(mx - 5, my - 2);
+    ctx.lineTo(mx, my - 7);
+    ctx.lineTo(mx + 5, my - 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(mx - 1, my + 1, 2, 3);
+  }
+
   // 玩家已购房产可动态补画（购买后调用）：蓝色小屋图标，一眼认出"这是我的家"
   markOwnedHouse(x, z) {
     const ctx = this._staticCanvas.getContext("2d");
     const p = this._w2m(x, z);
-    // 蓝色小屋：墙体 + 三角屋顶 + 白色小门
-    ctx.fillStyle = "#3aa0ff";
-    ctx.fillRect(p.mx - 4, p.my - 2, 8, 6);
-    ctx.beginPath();
-    ctx.moveTo(p.mx - 5, p.my - 2);
-    ctx.lineTo(p.mx, p.my - 7);
-    ctx.lineTo(p.mx + 5, p.my - 2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(p.mx - 1, p.my + 1, 2, 3);
+    this._drawHouse(ctx, p.mx, p.my, "#3aa0ff");
   }
 
   /**
