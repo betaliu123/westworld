@@ -257,6 +257,42 @@ function boot() {
   const stockMarket = new StockMarket(worldState, economy, audio);
   phone.taskSystem = taskSystem;
   hud.setStockMarket(stockMarket);
+  // 手机自由输入：/招 /收服 让联系人入伙（远程收服）。
+  // 说服力按好感 + 名誉算，比当面洗脑低；成功后走招募管线写数据。
+  phone.setFreeTextHandler((npcId, raw, contact) => {
+    const isRecruitCmd = /^(招|收服|入伙|跟我干|加入|招揽)\b/.test(raw.trim()) || /招(你)?(入伙|来)|收服你|跟我干/.test(raw);
+    const isRecruitWord = /(入伙|跟我干|招|收服|跟我|来我这边|跟我走)/.test(raw);
+    if (!isRecruitCmd && !isRecruitWord) {
+      // 普通消息：根据关键字给点带人味的回复
+      const key = raw;
+      if (/(最近|怎么样|还好吗|忙)/.test(key)) return "还行吧，就是镇上不太平。你那边呢？";
+      if (/(钱|生意|买卖)/.test(key)) return "这年头钱不好挣啊，有路子的话可以聊聊。";
+      if (/(黑蹄|帮派|势力)/.test(key)) return "别在消息里说这些，见面聊。";
+      return "嗯，我记下了。有事再说。";
+    }
+
+    // 远程收服：说服力 = 好感×0.5 + 名誉×0.3 + 随机，明显低于当面洗脑
+    const known = npcRegistry.findByDisplayName(contact.displayName);
+    const rec = known && npcRegistry.get(known.id);
+    const affection = (rec?.affection ?? 0) / 100;
+    const honorFrac = Math.max(0, Math.min(1, (reputation.honor + 100) / 200));
+    const persuasion = Math.max(0.02, Math.min(0.6, 0.18 + affection * 0.45 + honorFrac * 0.2 + (Math.random() - 0.5) * 0.1));
+    if (Math.random() < persuasion) {
+      // 成功：写真实归属 + 招募
+      const { id: targetId } = known && npcRegistry.ensureRecord
+        ? npcRegistry.ensureRecord(contact.displayName, { job: contact.job })
+        : { id: npcId };
+      factionSystem.addPlayerMember(targetId, {
+        job: contact.job, trust: 30, recruitedBy: "phone",
+        undercover: false, displayName: contact.displayName,
+      });
+      npcRegistry?.update?.(targetId, { trust: 30, trueFactionId: "player" });
+      businessSystem?.state?.history?.push({ day: worldState.day, type: "phone_recruit", npcId: targetId });
+      hud.toast?.(`📱 ${contact.displayName} 答应入伙了！`, { key: "phone-recruit", duration: 3600 });
+      return "行。我跟你干。镇上的事，也该有人站出来管管了。";
+    }
+    return "……我得想想。改天当面说吧。";
+  });
 
   // RDR2 式准心交互系统
   const interaction = new InteractionSystem(camera, scene);

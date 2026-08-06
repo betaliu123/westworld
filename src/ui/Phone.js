@@ -19,11 +19,65 @@ export class Phone {
     this.activeContactId = null;
     this.isOpen = false;
     this.taskSystem = null;
+    // 自由输入：远程收服/招揽的钩子（由 main.js 注入，返回 {ok,text}）
+    this.onFreeText = null;
 
     document.getElementById("phone-close").addEventListener("click", () => this.close());
     document.getElementById("phone-back").addEventListener("click", () => this.showContactList());
     this.tabContacts.addEventListener("click", () => this._switchTab("contacts"));
     this.tabTasks.addEventListener("click", () => this._switchTab("tasks"));
+
+    this.inputEl = document.getElementById("phone-input");
+    this.sendBtn = document.getElementById("phone-input-send");
+    if (this.inputEl) {
+      this.inputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); this._sendFreeText(); }
+      });
+    }
+    if (this.sendBtn) {
+      this.sendBtn.addEventListener("click", () => this._sendFreeText());
+    }
+  }
+
+  /** 自由输入框的钩子（远程收服等），由 main.js 设置 */
+  setFreeTextHandler(fn) { this.onFreeText = fn; }
+
+  _sendFreeText() {
+    const raw = (this.inputEl?.value || "").trim();
+    if (!raw || !this.activeContactId) return;
+    if (this.inputEl) this.inputEl.value = "";
+    const contact = this.contacts[this.activeContactId];
+    if (!contact) return;
+    const thread = contact.threads[0];
+
+    // 玩家消息进聊天
+    thread.messages.push({
+      from: "me", who: "我", text: raw,
+      time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+      day: this.worldState.day, isUnread: false,
+    });
+
+    // 交给 main.js 处理（远程收服 / 招揽 / 通用回复）
+    const handler = this.onFreeText;
+    if (handler) {
+      try {
+        const result = handler(this.activeContactId, raw, contact);
+        if (result && typeof result === "string") {
+          thread.messages.push({
+            from: "them", who: contact.displayName, text: result,
+            time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+            day: this.worldState.day, isUnread: false,
+          });
+        }
+      } catch (err) {
+        thread.messages.push({
+          from: "them", who: contact.displayName, text: "……信号不太好，你说什么？",
+          time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+          day: this.worldState.day, isUnread: false,
+        });
+      }
+    }
+    this._renderChat(this.activeContactId);
   }
 
   get contacts() {
