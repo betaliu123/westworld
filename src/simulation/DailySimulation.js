@@ -24,6 +24,7 @@ export class DailySimulation {
     this.taskSystem = deps.taskSystem || null;
     this.nemesis = deps.nemesis || null;       // 组织架构/卧底/晋升
     this.law = deps.law || null;               // 警长势力（第三方）
+    this.business = deps.business || null;     // 产业经营（P7）
 
     this._listeners = {};
   }
@@ -230,6 +231,13 @@ export class DailySimulation {
       if (this.law) lawResult = this.law.settleDaily();
     });
 
+    // Step 14.75: 产业经营结算 —— 岗位产出、卧底分流、维护费、薪水。
+    // 放在势力结算里（affect pf.money），胜负判定之前（moleLeak 会削黑蹄会 wealth）。
+    let bizResult = null;
+    safeStep("Step14.75: business.settleDaily", () => {
+      if (this.business) bizResult = this.business.settleDaily();
+    });
+
     // Step 15: 胜负判定。
     // 这一步以前根本没人调 —— checkVictory 写好了却零调用者，
     // 于是玩家无论做什么，游戏都不会结束。现在接上，并把结果写进
@@ -254,7 +262,7 @@ export class DailySimulation {
       console.log(`[DailySimulation] === 第 ${day} 天结算完成 ===`);
     }
     return {
-      day, directorPlan, nemesis: nemesisResult, law: lawResult,
+      day, directorPlan, nemesis: nemesisResult, law: lawResult, business: bizResult,
       victory: ws.state.victoryState || null,
       errors: errors.length > 0 ? errors : null,
     };

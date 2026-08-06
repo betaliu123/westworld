@@ -17,6 +17,7 @@ const GANG_INFO = {
 
 const TABS = [
   { id: "faction", label: "🏴 帮派" },
+  { id: "biz",     label: "🏪 产业" },
   { id: "org",     label: "🕵 人事图" },
   { id: "law",     label: "⚖ 警长" },
 ];
@@ -26,9 +27,10 @@ export class Gangs {
     this.reputation = reputation;
     this.worldState = deps.worldState || null;
     this.factionSystem = deps.factionSystem || null;
-    // P4/P5：orgChartUI / lawUI 作为"渲染引擎"嵌进本面板的 tab
+    // P4/P5/P7：orgChartUI / lawUI / businessUI 作为"渲染引擎"嵌进本面板的 tab
     this.orgChartUI = deps.orgChartUI || null;
     this.lawUI = deps.lawUI || null;
+    this.businessUI = deps.businessUI || null;
     this.modal = document.getElementById("gangs");
     this.listEl = document.getElementById("gangs-list");
     const close = document.getElementById("gangs-close");
@@ -110,6 +112,14 @@ export class Gangs {
       holder.className = "gangs-embed";
       this.listEl.appendChild(holder);
       this.lawUI?.renderInto(holder);
+      return;
+    }
+    if (this._tab === "biz") {
+      this.listEl.innerHTML = "";
+      const holder = document.createElement("div");
+      holder.className = "gangs-embed";
+      this.listEl.appendChild(holder);
+      this.businessUI?.renderInto(holder);
       return;
     }
     // 默认：原帮派内容

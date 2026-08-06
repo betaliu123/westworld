@@ -68,8 +68,10 @@ import { EncounterRuntime } from "./encounter/EncounterRuntime.js";
 import { SubdueSystem } from "./encounter/SubdueSystem.js";
 import { NemesisSystem } from "./factions/NemesisSystem.js";
 import { LawSystem } from "./factions/LawSystem.js";
+import { BusinessSystem } from "./factions/BusinessSystem.js";
 import { OrgChartUI } from "./ui/OrgChartUI.js";
 import { LawUI } from "./ui/LawUI.js";
+import { BusinessUI } from "./ui/BusinessUI.js";
 import { EncounterUI } from "./ui/EncounterUI.js";
 import { AmmoSystem } from "./systems/AmmoSystem.js";
 import { CorpseReactions } from "./systems/CorpseReactions.js";
@@ -137,6 +139,12 @@ function boot() {
     log: (t) => eventLog?.record?.({ type: "LAW_LOG", facts: { text: t }, tags: ["law"] }),
   });
 
+  // P7 产业经营：和平（投资）与暴力（抢夺）两条路。挂在 DailySimulation 上做日结算。
+  const businessSystem = new BusinessSystem({
+    worldState, factionSystem, nemesis, npcRegistry,
+    log: (t) => eventLog?.record?.({ type: "BIZ_LOG", facts: { text: t }, tags: ["biz"] }),
+  });
+
   // UI
   const hud = new HUD(economy, reputation);
   const dialogue = new Dialogue(camera);
@@ -146,7 +154,8 @@ function boot() {
   const minimap = new Minimap(town);
   nemesis.hud = hud;                     // Nemesis 要弹 toast（构造时 hud 还没有）
   law.hud = hud;
-  // 人事图 / 警长：不再是独立弹窗，而是嵌进帮派面板的 tab（O / K 键直接开对应 tab）
+  businessSystem.hud = hud;
+  // 人事图 / 警长 / 产业：不再是独立弹窗，而是嵌进帮派面板的 tab（O / K 键直接开对应 tab）
   const orgChartUI = new OrgChartUI({
     nemesis,
     getPillars: () => factionSystem.getBlackHoofPillars(),
@@ -166,7 +175,70 @@ function boot() {
       }
     },
   });
-  const gangs = new Gangs(reputation, { worldState, factionSystem, orgChartUI, lawUI });
+  // 产业经营 tab：投资（和平）直接扣钱包，抢夺走遭遇弹窗做数值结算
+  const businessUI = new BusinessUI({
+    business: businessSystem,
+    factionSystem, npcRegistry,
+    onInvest: (bizId, tier) => {
+      const r = businessSystem.invest(bizId, tier, {
+        money: economy.money,
+        spend: (amt) => economy.addMoney(-amt),
+      });
+      if (!r.ok) {
+        hud.toast?.(`❌ ${r.error === "no_money" ? "钱不够" : r.error === "enemy_cannot_buy" ? "黑蹄会的产业只能抢" : "操作失败"}`, { key: "biz-invest", duration: 3200 });
+      } else {
+        hud.toast?.(`✅ ${r.ownerChanged ? `买下了产业` : `已入股（持股 ${Math.round(r.share * 100)}%）`}`, { key: "biz-invest", duration: 3200 });
+      }
+    },
+    onRaid: (bizId) => {
+      const biz = businessSystem.getBusiness(bizId);
+      if (!biz) return;
+      // 弹窗：先给战力预估（优势/势均力敌/劣势），再让玩家选投入多少人手
+      const nMembers = factionSystem.getOpenMembers().length;
+      const basePower = 30 + nMembers * 12 + Math.round(player.health / 10); // 玩家状态当战力
+      const defense = biz.owner === "black_hoof"
+        ? (factionSystem.getPillarValue("manpower") * 0.5 + factionSystem.getPillarValue("territory") * 0.3 + (worldState.state.factions.black_hoof.heat || 0) * 0.2)
+        : 25;
+      const est = basePower / (basePower + Math.max(5, defense));
+      const estLabel = est >= 0.62 ? "优势" : est >= 0.42 ? "势均力敌" : "劣势";
+      const players = [1, 2, 3, 5];
+      encounterUI.open({
+        name: biz.name,
+        sub: `抢夺 · ${estLabel}（预估战力 $${Math.round(basePower)}）`,
+        beats: [
+          `你带人站在${biz.name}门口。里面是${biz.owner === "black_hoof" ? "黑蹄会的人" : "几个看店伙计"}。`,
+          `要看你的胆子和人手了。`,
+        ],
+        choices: players.map((n) => ({
+          id: "raid:" + n,
+          label: `投入 ${n} 人`,
+          risk: n >= 3 ? "high" : n >= 2 ? "mid" : "low",
+          note: n >= 3 ? "人多势众但动静大" : "轻装快袭",
+        })),
+        onChoice: (choiceId) => {
+          if (!choiceId || !choiceId.startsWith("raid:")) return;
+          const n = +choiceId.split(":")[1];
+          const power = 30 + n * 12 + Math.round(player.health / 10);
+          const r = businessSystem.raid(bizId, power);
+          if (r.ok) {
+            hud.toast?.(r.success ? `🏴 抢下了${biz.name}！` : `💥 抢夺失败，损失 $${r.moneyLost}`, { key: "biz-raid", duration: 4200 });
+            if (r.success) reputation.addWanted(15);
+          }
+        },
+      });
+    },
+    onAssign: (bizId, postIdx, npcId) => {
+      if (!npcId) { hud.toast?.("❌ 没有可派的明面成员", { key: "biz-assign", duration: 2600 }); return; }
+      const r = businessSystem.assignPost(bizId, postIdx, npcId);
+      if (r.ok) hud.toast?.(`✅ 已派人上岗`, { key: "biz-assign", duration: 2600 });
+    },
+    onUpgrade: (bizId) => {
+      const r = businessSystem.upgrade(bizId);
+      if (!r.ok) hud.toast?.(`❌ ${r.error === "no_money" ? "金库钱不够" : "无法升级"}`, { key: "biz-up", duration: 2600 });
+      else hud.toast?.(`⬆ 升到 Lv.${r.level}`, { key: "biz-up", duration: 2600 });
+    },
+  });
+  const gangs = new Gangs(reputation, { worldState, factionSystem, orgChartUI, lawUI, businessUI });
   const slots = new SlotMachine(economy, audio, hud);
   const baccarat = new Baccarat(economy, audio, hud);
 
@@ -399,6 +471,7 @@ function boot() {
     npcManager,
     nemesis,             // P4 ✓ 卧底情报/怀疑度/清洗 + 胜负判定
     law,                 // P5 ✓ 证据折算/行贿/突袭
+    business: businessSystem,  // P7 ✓ 产业结算
   });
 
   // 存档系统：完全禁用。每次刷新 = 重新开始第一天。

@@ -843,6 +843,45 @@ html, body {
 }
 .law-hot { color: #ff9d92; }
 
+/* ---------- 产业经营（P7）---------- */
+.biz-summary { font-size: 12px; color: #e8dcc0; margin-bottom: 10px; opacity: .9; }
+.biz-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.biz-card {
+  padding: 8px 10px; border-radius: 5px; background: rgba(0,0,0,.28);
+  border: 1px solid rgba(200,151,58,.24);
+}
+.biz-head { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #f0e4c8; }
+.biz-head small { opacity: .65; font-size: 11px; }
+.biz-meta { font-size: 11px; opacity: .68; margin: 2px 0 6px; }
+.biz-posts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; }
+.biz-post {
+  padding: 5px 7px; border-radius: 4px; background: rgba(255,255,255,.05);
+  border: 1px solid rgba(200,151,58,.18);
+}
+.biz-post-top { display: flex; justify-content: space-between; font-size: 12px; }
+.biz-post-top b { color: #f0e4c8; font-weight: 600; }
+.biz-post-note { font-size: 10px; opacity: .6; margin-top: 2px; }
+.biz-candidate {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 6px 9px; border-radius: 4px; background: rgba(0,0,0,.2);
+  border: 1px solid rgba(200,151,58,.16);
+}
+.biz-cand-name { font-size: 13px; color: #f0e4c8; }
+.biz-cand-owner { font-size: 11px; opacity: .7; margin-right: auto; }
+.biz-cand-actions { display: flex; gap: 5px; flex-wrap: wrap; }
+.biz-btn {
+  background: rgba(200,151,58,.14); border: 1px solid rgba(200,151,58,.4);
+  color: #f0e4c8; font-size: 11px; padding: 3px 8px; border-radius: 3px; cursor: pointer;
+}
+.biz-btn:hover { background: rgba(200,151,58,.26); }
+.biz-btn.danger { border-color: rgba(226,86,74,.5); background: rgba(226,86,74,.14); }
+.biz-btn.danger:hover { background: rgba(226,86,74,.26); }
+.biz-btn.mini { font-size: 10px; padding: 1px 6px; }
+.biz-free-list { display: flex; flex-direction: column; gap: 3px; font-size: 12px; opacity: .85; }
+.biz-free small { opacity: .6; margin-left: 4px; }
+.biz-leak { color: #ff9d92; }
+.biz-pick { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; padding: 6px; background: rgba(0,0,0,.35); border-radius: 4px; }
+
 /* ---------- 报纸 ---------- */
 .paper-frame {
   width: 620px; max-width: 94vw; max-height: 86vh; overflow-y: auto;
