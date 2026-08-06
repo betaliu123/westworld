@@ -2107,7 +2107,7 @@ function boot() {
 
     if (action === "praise" || action === "greet") {
       npc.brain.startTalk(player.pos);
-      const result = npc.brain.respondTo(action, reputation.honor);
+      const result = npc.brain.respondTo(action, reputation.honor, _buildRelCtx(npc, npcRegistry.findByDisplayName(npc.phone?.owner || "镇民")));
       floatDlgText.textContent = result.reply || result.text || "（对方点了点头）";
       floatDlgText.className = result.mood || "";
       showPlayerBubble(action === "greet" ? "你好啊！" : "真不错！");
@@ -2793,7 +2793,10 @@ function boot() {
         } else if (kind === "threat") {
           // 威胁：使用浮动面板显示结果
           npc.brain.startTalk(player.pos);
-          const r = npc.brain.respondTo("threat", reputation.honor);
+          const owner = npc.phone?.owner || "镇民";
+          const reg = npcRegistry.findByDisplayName(owner);
+          const relCtx = _buildRelCtx(npc, reg);
+          const r = npc.brain.respondTo("threat", reputation.honor, relCtx);
           floatDlgText.textContent = r.reply || "（对方被吓到了）";
           floatDlgText.className = r.mood || "";
           showPlayerBubble("给我老实点！");

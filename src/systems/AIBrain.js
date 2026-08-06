@@ -207,13 +207,18 @@ export class AIBrain {
       const pool = persona?.hostile || DIALOGUE_REPLY.greetHostile;
       return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetHostile);
     }
+    if (affection < 0) {
+      const pool = persona?.wary || DIALOGUE_REPLY.greetWary;
+      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetWary);
+    }
     if (affection >= 30) {
       const pool = persona?.friendly || DIALOGUE_REPLY.greetFriendly;
       return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetFriendly);
     }
-    if (affection < 0) {
-      const pool = persona?.wary || DIALOGUE_REPLY.greetWary;
-      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetWary);
+    if (affection >= 1) {
+      // 1~29 轻好档
+      const pool = persona?.warm || persona?.friendly || DIALOGUE_REPLY.greetFriendly;
+      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetFriendly);
     }
     const pool = persona?.neutral || persona?.stranger || DIALOGUE_REPLY.greetStranger;
     return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetStranger);
@@ -903,7 +908,7 @@ export class AIBrain {
    * 玩家对话选项的回应。
    * @param {string} kind 'greet' | 'praise' | 'threat'
    * @param {number} honor 玩家当前荣誉，用于调整语气
-   * @param {object} [relCtx] 可选关系上下文 { affection, playerIsBoss }
+   * @param {object} [relCtx] 可选关系上下文 { affection, playerIsBoss, playerWanted, hurtRecently, woundedRecently, factionRep }
    * @returns {object} { reply, mood, tip } tip 为可选情报
    */
   respondTo(kind, honor = 0, relCtx = {}) {
@@ -912,49 +917,162 @@ export class AIBrain {
     let tip = null;
 
     if (kind === "threat") {
-      // 依胆量决定：胆大者可能翻脸，胆小者惊惧
-      if (this.p.bravery > 0.65 && chance(0.5)) {
-        this._enter(State.ANGRY);
-        this.threat = this.threat;
-        const angryLines = this._npcId ? NPC_THREAT_DEFIANT[this._npcId] : null;
-        reply = this._talkPick(angryLines) || this._talkPick(ANGRY_TALK) || pick(ANGRY_TALK); // 兜底
-        mood = "angry";
-      } else {
-        this._enter(State.STARTLED);
-        this.emotion = Math.min(1, this.emotion + 0.5);
-        const scaredLines = this._npcId ? NPC_THREAT_SCARED[this._npcId] : null;
-        reply = this._talkPick(scaredLines) || this._talkPick(DIALOGUE_REPLY.threat) || pick(DIALOGUE_REPLY.threat);
-        mood = "scared";
-      }
-      return { reply, mood, tip };
+      return this._respondThreat(relCtx);
     }
 
     // 友好类：荣誉高/社交高的 NPC 更热情，且可能给情报小费
     const warm = honor > 0 || this.p.sociability > 0.5;
     if (kind === "praise") {
-      const personalPraise = this._npcId ? NPC_PRAISE[this._npcId] : null;
-      reply = this._talkPick(personalPraise) || this._talkPick(DIALOGUE_REPLY.praise) || pick(DIALOGUE_REPLY.praise);
-      mood = "friendly";
-    } else {
-      // 根据玩家关系和 NPC 身份选择个性化招呼（P14：分条件 + 人设池）
-      const affection = relCtx.affection || 0;
-      const playerIsBoss = relCtx.playerIsBoss || false;
-      const greetCtx = {
-        playerWanted: relCtx.playerWanted || false,
-        fleeing: this.state === State.FLEE,
-        hurtRecently: !!this._grudgeAgainstPlayer && relCtx.hurtRecently !== false,
-        woundedRecently: relCtx.woundedRecently || false,
-        factionRep: relCtx.factionRep || null,
-      };
-      reply = this._getGreeting(affection, playerIsBoss, greetCtx) || pick(DIALOGUE_REPLY.greetStranger);
-      mood = affection >= 30 ? "friendly" : affection <= -20 ? "hostile" : "neutral";
+      return this._respondPraise(relCtx, warm);
     }
+
+    // 打招呼：根据玩家关系和 NPC 身份选择个性化招呼（P14：分条件 + 人设池）
+    const ctx = this._conditionCtx(relCtx);
+    const affection = relCtx.affection || 0;
+    reply = this._getGreeting(affection, relCtx.playerIsBoss || false, ctx) || pick(DIALOGUE_REPLY.greetStranger);
+    mood = affection >= 30 ? "friendly" : affection <= -20 ? "hostile" : "neutral";
     // 友好互动后有概率透露情报
     if (warm && chance(0.35 + this.p.sociability * 0.3)) {
       tip = pick(DIALOGUE_REPLY.tip);
     }
     this.say(reply, 2.6);
     return { reply, mood, tip };
+  }
+
+  /** 汇总打招呼/称赞/威胁共用的条件上下文（P14） */
+  _conditionCtx(relCtx = {}) {
+    return {
+      playerWanted: relCtx.playerWanted || false,
+      fleeing: this.state === State.FLEE,
+      hurtRecently: !!this._grudgeAgainstPlayer && relCtx.hurtRecently !== false,
+      woundedRecently: relCtx.woundedRecently || false,
+      factionRep: relCtx.factionRep || null,
+      affection: relCtx.affection || 0,
+      playerIsBoss: relCtx.playerIsBoss || false,
+    };
+  }
+
+  /** 称赞：条件化 + 人设池（P15：专用 praise 池优先，talk 池兜底） */
+  _respondPraise(relCtx = {}, warm = false) {
+    const ctx = this._conditionCtx(relCtx);
+    const np = PERSONA_TALK[this._npcId];
+    const pra = np?.praise;      // 称赞专用池
+    const talk = np?.talk;       // 打招呼池兜底
+    const perNpc = this._npcId ? NPC_PRAISE[this._npcId] : null;
+    let reply = null;
+    let mood = "friendly";
+
+    // 逃跑中还夸 → 他没心思听
+    if (ctx.fleeing) {
+      reply = this._talkPick(pra?.fleeing) || this._talkPick(talk?.fleeing)
+        || pick(["让开！我没空听这个！", "（头也不回）现在不是夸的时候！"]);
+      mood = "wary";
+    } else if (ctx.woundedRecently) {
+      reply = this._talkPick(pra?.woundedRecently) || this._talkPick(talk?.woundedRecently)
+        || pick(["……你还敢来？你打我的时候可不是这副嘴脸。", "少来这套。那天的伤我还记着。"]);
+      mood = "hostile";
+    } else if (ctx.hurtRecently) {
+      reply = this._talkPick(pra?.hurtRecently) || this._talkPick(talk?.hurtRecently)
+        || pick(["你前脚打我，后脚夸我？有意思。", "（揉着淤青）夸我没用，我还疼着呢。"]);
+      mood = "wary";
+    } else if (ctx.playerWanted) {
+      reply = this._talkPick(pra?.playerWanted) || this._talkPick(talk?.playerWanted)
+        || pick(["你一个被通缉的，还来跟我套近乎？", "警长正在找你，你倒有闲心夸我。"]);
+      mood = "wary";
+    } else if (ctx.factionRep === "low") {
+      reply = this._talkPick(pra?.factionLow) || this._talkPick(talk?.factionLow)
+        || pick(["你这人在我们这儿名声可不咋地，夸我也不领情。", "哼，你们那边的人夸我，我不敢接。"]);
+      mood = "hostile";
+    } else if (ctx.playerIsBoss && this.p.gang === "player") {
+      reply = this._talkPick(pra?.boss) || this._talkPick(talk?.boss)
+        || pick(["老大夸我，我可得好好表现。", "头儿说句话，比赏钱还提气。"]);
+    } else if (this.p.gang === "player") {
+      reply = this._talkPick(pra?.member) || this._talkPick(talk?.member)
+        || pick(["自己人别这么客气，应该的。", "跟着老大干，图的就是这份认可。"]);
+    } else if (ctx.factionRep === "high") {
+      reply = this._talkPick(pra?.factionHigh) || this._talkPick(talk?.factionHigh)
+        || pick(["你在这儿名声不错，这话我信。", "镇上难得有明白人，这句夸我收下了。"]);
+    } else if (ctx.affection >= 30) {
+      reply = this._talkPick(pra?.friendly) || this._talkPick(talk?.friendly)
+        || (perNpc ? this._talkPick(perNpc) : null);
+    } else if (ctx.affection >= 1) {
+      // 1~29 轻好档
+      reply = this._talkPick(pra?.warm) || this._talkPick(talk?.warm)
+        || (perNpc ? this._talkPick(perNpc) : null);
+    } else if (ctx.affection <= -20) {
+      // 敌对档：夸一个恨你的人，只会被当成嘲讽
+      reply = this._talkPick(pra?.hostile) || this._talkPick(talk?.hostile)
+        || pick(["你少来假惺惺的。", "你以为夸我两句，以前的账就算了？"]);
+      mood = "hostile";
+    } else if (ctx.affection < 0) {
+      reply = this._talkPick(pra?.wary) || this._talkPick(talk?.wary)
+        || pick(["别来这套，咱俩没那么熟。", "（狐疑地看着你）你今天有点反常。"]);
+      mood = "wary";
+    }
+
+    reply = reply || this._talkPick(perNpc) || this._talkPick(DIALOGUE_REPLY.praise) || pick(DIALOGUE_REPLY.praise);
+    this.say(reply, 2.6);
+    const tip = warm && chance(0.35 + this.p.sociability * 0.3) ? pick(DIALOGUE_REPLY.tip) : null;
+    return { reply, mood, tip };
+  }
+
+  /** 威胁：保留胆量翻脸/惊惧决策，台词按条件 + 人设（P15：专用 threat 池优先） */
+  _respondThreat(relCtx = {}) {
+    const ctx = this._conditionCtx(relCtx);
+    const np = PERSONA_TALK[this._npcId];
+    const th = np?.threat;       // 威胁专用池
+    const talk = np?.talk;       // 打招呼池兜底
+    const perNpc = this._npcId ? NPC_THREAT_DEFIANT[this._npcId] : null;
+    const perNpcScared = this._npcId ? NPC_THREAT_SCARED[this._npcId] : null;
+
+    // 玩家是帮派老大且这是自己人 → 威胁是开玩笑，不会翻脸
+    if (ctx.playerIsBoss && this.p.gang === "player") {
+      this.say(this._talkPick(th?.boss) || this._talkPick(talk?.member) || "老大，你这是跟我开玩笑吧？", 2.8);
+      return { reply: "（自家老大，他咧嘴笑了）你可别吓我。", mood: "friendly", tip: null };
+    }
+    if (this.p.gang === "player") {
+      this.say(this._talkPick(th?.member) || this._talkPick(talk?.member) || "同门兄弟，别拿枪指我。", 2.8);
+      return { reply: "（有点无奈）自己人，别这样。", mood: "neutral", tip: null };
+    }
+    // 逃跑中 → 没空对峙，只想跑
+    if (ctx.fleeing) {
+      this.say(this._talkPick(th?.fleeing) || this._talkPick(talk?.fleeing) || "让开！别挡路！", 2.6);
+      return { reply: "（他一边跑一边回头喊）别挡我！", mood: "scared", tip: null };
+    }
+    // 你重伤过他 → 他记恨到极点，翻脸概率更高
+    const defChance = (this.p.bravery > 0.65 ? 0.5 : 0.18) + (ctx.woundedRecently ? 0.25 : 0);
+    if (this.p.bravery > 0.65 || chance(defChance)) {
+      this._enter(State.ANGRY);
+      this.threat = this.threat;
+      let pool = null;
+      if (ctx.woundedRecently) pool = th?.woundedRecently || talk?.woundedRecently;
+      else if (ctx.hurtRecently) pool = th?.hurtRecently || talk?.hurtRecently;
+      else if (ctx.playerWanted) pool = th?.playerWanted || talk?.playerWanted;
+      else if (ctx.factionRep === "high") pool = th?.factionHigh || talk?.factionHigh;
+      else if (ctx.factionRep === "low") pool = th?.factionLow || talk?.factionLow;
+      else if (ctx.affection >= 30) pool = th?.friendly || talk?.friendly;
+      else if (ctx.affection >= 1) pool = th?.warm || talk?.warm;
+      else if (ctx.affection <= -20) pool = th?.hostile || talk?.hostile;
+      else if (ctx.affection < 0) pool = th?.wary || talk?.wary;
+      reply = this._talkPick(pool) || this._talkPick(perNpc) || this._talkPick(ANGRY_TALK) || pick(ANGRY_TALK);
+      this.say(reply, 3);
+      return { reply, mood: "angry", tip: null };
+    }
+    this._enter(State.STARTLED);
+    this.emotion = Math.min(1, this.emotion + 0.5);
+    let pool = null;
+    if (ctx.woundedRecently) pool = th?.woundedRecently || talk?.woundedRecently;
+    else if (ctx.hurtRecently) pool = th?.hurtRecently || talk?.hurtRecently;
+    else if (ctx.playerWanted) pool = th?.playerWanted || talk?.playerWanted;
+    else if (ctx.factionRep === "low") pool = th?.factionLow || talk?.factionLow;
+    else if (ctx.factionRep === "high") pool = th?.factionHigh || talk?.factionHigh;
+    else if (ctx.affection >= 30) pool = th?.friendly || talk?.friendly;
+    else if (ctx.affection >= 1) pool = th?.warm || talk?.warm;
+    else if (ctx.affection <= -20) pool = th?.hostile || talk?.hostile;
+    else if (ctx.affection < 0) pool = th?.wary || talk?.wary;
+    reply = this._talkPick(pool) || this._talkPick(perNpcScared) || this._talkPick(DIALOGUE_REPLY.threat) || pick(DIALOGUE_REPLY.threat);
+    this.say(reply, 2.8);
+    return { reply, mood: "scared", tip: null };
   }
 
   // 勒索/抢劫：要挟对方交钱。根据 NPC 身份/性格/帮派完全不同。
