@@ -118,12 +118,16 @@ export class Town {
 
     // 院落碰撞体：四边围墙，但大门处断开（北边中间 4 米不阻挡）
     const wallT = 0.4;
-    this._addRectCollider(ccx, ccz - D / 2, W / 2 + wallT, wallT);   // 南墙（全段）
+    // 标记 compound：_buildInterestPoints 会跳过它们，避免 NPC 生成在驻地墙上卡死
+    const tag = (x, z, hw, hd) => {
+      this.colliders.push({ x, z, halfW: hw, halfD: hd, compound: true });
+    };
+    tag(ccx, ccz - D / 2, W / 2 + wallT, wallT);   // 南墙（全段）
     // 北墙分两段，中间留 4 米大门（从 ccx-2 到 ccx+2 是门，不设碰撞）
-    this._addRectCollider(ccx - (W / 2 + 2) / 2, ccz + D / 2, (W / 2 - 2) / 2 + wallT, wallT); // 西段
-    this._addRectCollider(ccx + (W / 2 + 2) / 2, ccz + D / 2, (W / 2 - 2) / 2 + wallT, wallT); // 东段
-    this._addRectCollider(ccx - W / 2, ccz, wallT, D / 2);            // 西墙
-    this._addRectCollider(ccx + W / 2, ccz, wallT, D / 2);            // 东墙
+    tag(ccx - (W / 2 + 2) / 2, ccz + D / 2, (W / 2 - 2) / 2 + wallT, wallT); // 西段
+    tag(ccx + (W / 2 + 2) / 2, ccz + D / 2, (W / 2 - 2) / 2 + wallT, wallT); // 东段
+    tag(ccx - W / 2, ccz, wallT, D / 2);            // 西墙
+    tag(ccx + W / 2, ccz, wallT, D / 2);            // 东墙
 
     // 院内主楼：帮派驻地（银行大小，可进入）。门朝北（朝大门/主街）。
     // 尺寸与银行同级（12×10×5.5），比原来 8×6 的小房子气派得多。
@@ -135,7 +139,7 @@ export class Town {
     hb.position.set(hx, 0, hz);
     // 门朝北（+z，朝大院门口/主街）：createBuilding 的门在 +depth/2，不旋转即可
     this.group.add(hb);
-    this._addRectCollider(hx, hz, 12 / 2 + 0.4, 10 / 2 + 0.4);
+    this.colliders.push({ x: hx, z: hz, halfW: 12 / 2 + 0.4, halfD: 10 / 2 + 0.4, compound: true });
     this.windows.push(...(hb.userData.windows || []));
 
     // 可进入：登记门口（门朝北，朝大街侧），让 InteractionSystem 能选中"进入"
@@ -182,6 +186,11 @@ export class Town {
 
     // 小地图标注：小房子图标（kind:"compound"）
     this.landmarks.push({ name: "帮派驻地", x: hx, z: hz, kind: "compound" });
+
+    // 注册为帮派成员的常去场所（hq）—— 玩家帮派的人会来这儿扎堆。
+    // 用一个带 _interior 的入口点：NPC 到门口就进室内（与其它可进入建筑一致）。
+    if (!this.places.hq) this.places.hq = [];
+    this.places.hq.push({ name: "帮派驻地", x: this.compound.doorX, z: this.compound.doorZ, _interior: "帮派驻地" });
   }
 
   // 生成可就近购买的房产（大宅），买下后可进入自己的房子（来自配置 PROPERTIES）
@@ -460,10 +469,12 @@ export class Town {
       { name: "广场", x: 0, z: 0 },
       { name: "水塔", x: -26, z: -30 },
       { name: "北口", x: 0, z: -this.bounds + 12 },
-      { name: "南口", x: 0, z: this.bounds - 12 },
+      // 南口被帮派驻地占了（驻地在 (0,128)，门朝南口）—— 南口不作为 NPC 游走/生成点，
+      // 否则 NPC 生成在驻地墙边卡死。
     ];
-    // 每栋建筑门口作为兴趣点
+    // 每栋建筑门口作为兴趣点（跳过帮派驻地的碰撞体）
     for (const c of this.colliders) {
+      if (c.compound) continue;   // 驻地围墙/主楼：不生成门口兴趣点
       const towardStreet = c.x < 0 ? c.x + c.halfW + 2 : c.x - c.halfW - 2;
       pts.push({ name: "店门", x: towardStreet, z: c.z });
     }
@@ -591,6 +602,10 @@ export class Town {
     const pt = pick(pool);
     if (type === "plaza") {
       return { x: pt.x + randRange(-4, 4), z: pt.z + randRange(-4, 4) };
+    }
+    // 帮派驻地：就那一个点，别散开（都挤在大门口扎堆），进室内
+    if (type === "hq") {
+      return { x: pt.x, z: pt.z, _interior: pt._interior || pt.name };
     }
     return { x: pt.x, z: pt.z, _interior: pt.name };
   }

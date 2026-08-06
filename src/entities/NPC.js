@@ -133,6 +133,8 @@ export class NPC {
     }
     if (this.hp <= 0) {
       this.brain.knockDown();
+      // P14：记录"最近被玩家重伤"（供打招呼/对话分条件）
+      if (!byNpc) this._woundedByPlayerDay = this._currentDay || 1;
       // 立刻判定伤情，而不是等倒地计时结束再判 —— 否则玩家走到跟前还没 ⚡，
       // 想收服却没入口；或计时一过轻伤者就爬起来跑，玩家永远追不上。
       if (this._lethalHit) {

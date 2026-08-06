@@ -1360,9 +1360,23 @@ function boot() {
   function _buildRelCtx(npc, registryNpc) {
     const npcId = registryNpc?.id || npc.phone?.owner || "镇民";
     const rel = worldState.state.relationships?.[npcId + "->player"] || { trust: 0, affection: 0 };
-    const isPlayerFaction = npc.personality?.factionId === "player";
+    // P14 修正：玩家帮派成员用 personality.gang（NPCManager 写的是 gang），
+    // 原来查 factionId 永远 undefined，boss 招呼从不生效。
+    const isPlayerFaction = npc.personality?.gang === "player";
     const playerIsBoss = isPlayerFaction && factionSystem.getPlayerInfluence?.() > 30;
-    return { affection: rel.affection || 0, trust: rel.trust || 0, playerIsBoss };
+    // 最近被玩家打过/重伤（P14：记恨招呼）
+    const g = npc._grudgeAgainstPlayer;
+    const hurtRecently = !!g && (g.day >= worldState.day - 1);
+    const woundedRecently = (npc._woundedByPlayerDay ?? -99) >= worldState.day - 1;
+    // 玩家在这人所在势力的声望（P14）
+    const gang = npc.personality?.gang;
+    const gangRep = gang ? reputation.gangs?.[gang] ?? 0 : 0;
+    const factionRep = gangRep >= 15 ? "high" : gangRep <= -15 ? "low" : null;
+    return {
+      affection: rel.affection || 0, trust: rel.trust || 0, playerIsBoss,
+      playerWanted: (reputation.wantedStars || 0) > 0,
+      hurtRecently, woundedRecently, factionRep,
+    };
   }
 
   // 获取任意 NPC 的关系 ID（registry NPC 用 id，普通 NPC 用 phone.owner/phone.id）

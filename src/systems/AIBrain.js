@@ -8,6 +8,7 @@ import {
   NPC_THREAT_DEFIANT, NPC_THREAT_SCARED, NPC_PRAISE, JOB_DIALOGUE,
 } from "../config/gameData.js";
 import { AIMED_LINES, AIMED_DEFAULT } from "../config/aimedLines.js";
+import { PERSONA_TALK, JOB_BUBBLE } from "../config/personaTalk.js";
 
 // 根据好感度值返回阶段标签：hostile / low / neutral / high
 function _getAffinityStage(affection) {
@@ -77,8 +78,15 @@ const SEGMENT_FALLBACK = {
 /**
  * 从日程表里取某时段该去的场所类型。
  * 老表（JOB_SCHEDULE 等）只有 4 个键，新时段自动降级到对应的旧键。
+ * personality.gang === "player" 的人（玩家帮派成员）优先去帮派驻地（hq）扎堆。
  */
-export function placeForSegment(schedule, seg) {
+export function placeForSegment(schedule, seg, personality = null) {
+  // 玩家帮派成员：白天/傍晚常回驻地扎堆，晚上回自己家睡觉
+  if (personality && personality.gang === "player") {
+    if (seg === "dawn" || seg === "latenight") return schedule?.[seg] || "home";
+    if (seg === "morning" || seg === "evening") return "hq";
+    return schedule?.[seg] || "hq";
+  }
   if (!schedule || !seg) return null;
   if (schedule[seg]) return schedule[seg];
   const fb = SEGMENT_FALLBACK[seg];
@@ -152,26 +160,63 @@ export class AIBrain {
     this._npcId = id;
   }
 
-  // 根据玩家关系和NPC身份选择招呼用语
-  _getGreeting(affection = 0, playerIsBoss = false) {
-    // 玩家是帮派老大且该NPC是玩家帮派成员 → boss 招呼
-    if (playerIsBoss && this.p.factionId === "player") {
-      const personal = NPC_GREETINGS[this._npcId];
-      return this._talkPick(personal?.boss) || this._talkPick(DIALOGUE_REPLY.greetBoss);
+  // 根据玩家关系和NPC身份选择招呼用语（P14：分条件 + 人设池）
+  // ctx: { affection, playerIsBoss, playerWanted, fleeing, hurtRecently, woundedRecently, factionRep }
+  _getGreeting(affection = 0, playerIsBoss = false, ctx = {}) {
+    const persona = PERSONA_TALK[this._npcId]?.talk;
+
+    // 1) 逃跑中：优先说逃跑相关的话
+    if (ctx.fleeing) {
+      const pool = persona?.fleeing || DIALOGUE_REPLY.greetHostile;
+      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetHostile) || "让开！";
     }
-    // 负声望
+    // 2) 玩家最近重伤/打过他 → 记恨/警惕
+    if (ctx.woundedRecently) {
+      const pool = persona?.woundedRecently || persona?.hurtRecently || DIALOGUE_REPLY.greetHostile;
+      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetHostile);
+    }
+    if (ctx.hurtRecently) {
+      const pool = persona?.hurtRecently || DIALOGUE_REPLY.greetWary;
+      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetWary);
+    }
+    // 3) 玩家正在被通缉
+    if (ctx.playerWanted) {
+      const pool = persona?.playerWanted || DIALOGUE_REPLY.greetHostile;
+      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetHostile);
+    }
+    // 4) 玩家是帮派老大且这人是玩家帮派成员 → boss / member
+    if (playerIsBoss && this.p.gang === "player") {
+      const pool = persona?.boss || persona?.member || DIALOGUE_REPLY.greetBoss;
+      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetBoss);
+    }
+    if (this.p.gang === "player") {
+      const pool = persona?.member || DIALOGUE_REPLY.greetFriendly;
+      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetFriendly);
+    }
+    // 5) 势力声望高/低（玩家在这人所在帮派的名声）
+    if (ctx.factionRep === "high") {
+      const pool = persona?.factionHigh || DIALOGUE_REPLY.greetFriendly;
+      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetFriendly);
+    }
+    if (ctx.factionRep === "low") {
+      const pool = persona?.factionLow || DIALOGUE_REPLY.greetHostile;
+      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetHostile);
+    }
+    // 6) 好感档位
     if (affection <= -20) {
-      const personal = NPC_GREETINGS[this._npcId];
-      return this._talkPick(personal?.negative) || this._talkPick(DIALOGUE_REPLY.greetHostile);
+      const pool = persona?.hostile || DIALOGUE_REPLY.greetHostile;
+      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetHostile);
     }
-    // 正声望
     if (affection >= 30) {
-      const personal = NPC_GREETINGS[this._npcId];
-      return this._talkPick(personal?.positive) || this._talkPick(DIALOGUE_REPLY.greetFriendly);
+      const pool = persona?.friendly || DIALOGUE_REPLY.greetFriendly;
+      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetFriendly);
     }
-    // 陌生人
-    const personal = NPC_GREETINGS[this._npcId];
-    return this._talkPick(personal?.stranger) || this._talkPick(DIALOGUE_REPLY.greetStranger);
+    if (affection < 0) {
+      const pool = persona?.wary || DIALOGUE_REPLY.greetWary;
+      return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetWary);
+    }
+    const pool = persona?.neutral || persona?.stranger || DIALOGUE_REPLY.greetStranger;
+    return this._talkPick(pool) || pick(DIALOGUE_REPLY.greetStranger);
   }
 
   say(text, duration = 2.4) {
@@ -278,9 +323,18 @@ export class AIBrain {
     return this._talkPick(pool) || pick(pool);
   }
 
-  // 依当前小时选一句符合时段的闲聊
+  // 依当前小时选一句符合时段的闲聊（P14：有人设的用 PERSONA_TALK.bubbles，
+  // 普通路人按职业用 JOB_BUBBLE，最后回退通用 SMALL_TALK）
   _smallTalk() {
     const seg = this._talkSeg || "noon";
+    const persona = this._npcId ? PERSONA_TALK[this._npcId]?.bubbles : null;
+    if (persona && persona[seg] && persona[seg].length) {
+      return this._talkPick(persona[seg]) || pick(persona[seg]);
+    }
+    const jobBubble = JOB_BUBBLE[this.p.job];
+    if (jobBubble && jobBubble[seg] && jobBubble[seg].length) {
+      return this._talkPick(jobBubble[seg]) || pick(jobBubble[seg]);
+    }
     return pick(SMALL_TALK[seg] || SMALL_TALK.noon);
   }
 
@@ -882,10 +936,17 @@ export class AIBrain {
       reply = this._talkPick(personalPraise) || this._talkPick(DIALOGUE_REPLY.praise) || pick(DIALOGUE_REPLY.praise);
       mood = "friendly";
     } else {
-      // 根据玩家关系和 NPC 身份选择个性化招呼
+      // 根据玩家关系和 NPC 身份选择个性化招呼（P14：分条件 + 人设池）
       const affection = relCtx.affection || 0;
       const playerIsBoss = relCtx.playerIsBoss || false;
-      reply = this._getGreeting(affection, playerIsBoss) || pick(DIALOGUE_REPLY.greetStranger);
+      const greetCtx = {
+        playerWanted: relCtx.playerWanted || false,
+        fleeing: this.state === State.FLEE,
+        hurtRecently: !!this._grudgeAgainstPlayer && relCtx.hurtRecently !== false,
+        woundedRecently: relCtx.woundedRecently || false,
+        factionRep: relCtx.factionRep || null,
+      };
+      reply = this._getGreeting(affection, playerIsBoss, greetCtx) || pick(DIALOGUE_REPLY.greetStranger);
       mood = affection >= 30 ? "friendly" : affection <= -20 ? "hostile" : "neutral";
     }
     // 友好互动后有概率透露情报
@@ -1279,7 +1340,7 @@ export class AIBrain {
 
     // 在家里：睡觉；到点该出门了就离开（NPC 实体负责执行传送）
     if (this.state === State.AT_HOME) {
-        const placeType = placeForSegment(this.p.schedule, this._segment || "latenight");
+        const placeType = placeForSegment(this.p.schedule, this._segment || "latenight", this.p);
       if (placeType !== "home" && !this._disturbed) {
         intent.exitHome = true;
       } else {
@@ -1291,7 +1352,7 @@ export class AIBrain {
 
     // 在室内场所（上班/消费）：待到日程换地点再走
     if (this.state === State.AT_PLACE) {
-      const placeType = placeForSegment(this.p.schedule, this._segment || "noon");
+      const placeType = placeForSegment(this.p.schedule, this._segment || "noon", this.p);
       if (placeType !== this._placeType) {
         intent.exitPlace = true;
       } else {
@@ -1455,7 +1516,7 @@ export class AIBrain {
       default: {
         if (!this.target || this.stateTimer <= 0) {
           // 按日程取当前时段应去的地点类型，交由 town 解析为坐标
-          const placeType = placeForSegment(this.p.schedule, this._segment || "noon");
+          const placeType = placeForSegment(this.p.schedule, this._segment || "noon", this.p);
           if (placeType && ctx.town.placePoint) {
             this.target = ctx.town.placePoint(placeType, this);
             // 回自己民居时打上标记，到达门口即进屋

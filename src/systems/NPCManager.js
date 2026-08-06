@@ -1,7 +1,7 @@
 // NPCManager.js — NPC 生成、批量 AI 调度、恐慌广播、远近细节分级。
 
 import { NPC } from "../entities/NPC.js";
-import { State } from "./AIBrain.js";
+import { State, placeForSegment } from "./AIBrain.js";
 import { randRange, distance2D } from "../core/MathUtils.js";
 import { AI_PANIC, BUMP, HOMES, BURGLARY } from "../config/gameData.js";
 import { IMPORTANT_NPCS } from "../config/npcData.js";
@@ -142,9 +142,9 @@ export class NPCManager {
     if (!target || !target._interior || !this.interiors) return;
     const room = this.interiors.get(target._interior);
     if (!room) { npc.brain.target = null; return; }
-    // 当前时段该 NPC 应去的场所类型（saloon/shop/work/church）
+    // 当前时段该 NPC 应去的场所类型（saloon/shop/work/church/hq）
     const seg = hour >= 5 && hour < 11 ? "morning" : hour >= 11 && hour < 17 ? "noon" : hour >= 17 && hour < 21 ? "evening" : "night";
-    const placeType = npc.personality.schedule ? npc.personality.schedule[seg] : null;
+    const placeType = placeForSegment(npc.personality.schedule, seg, npc.personality);
     const door = { x: target.x, z: target.z };
     npc.enterPlace(room, placeType, door);
   }
