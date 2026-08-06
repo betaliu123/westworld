@@ -29,6 +29,7 @@ export class Phone {
 
     this.inputEl = document.getElementById("phone-input");
     this.sendBtn = document.getElementById("phone-input-send");
+    this.badgeEl = document.getElementById("phone-badge");
     if (this.inputEl) {
       this.inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") { e.preventDefault(); this._sendFreeText(); }
@@ -38,6 +39,23 @@ export class Phone {
       this.sendBtn.addEventListener("click", () => this._sendFreeText());
     }
   }
+
+  /** P3 未读徽章：有未读消息时手机标题挂数字，打开手机后清零 */
+  _updateBadge() {
+    if (!this.badgeEl) return;
+    const total = Object.values(this.contacts).reduce((n, c) => {
+      return n + (c.threads?.[0]?.messages?.filter((m) => m.isUnread).length || 0);
+    }, 0);
+    if (total > 0) {
+      this.badgeEl.textContent = total > 99 ? "99+" : String(total);
+      this.badgeEl.classList.remove("hidden");
+    } else {
+      this.badgeEl.classList.add("hidden");
+    }
+  }
+
+  /** 有未读消息时立即更新徽章（外部调用） */
+  notifyUnread() { this._updateBadge(); }
 
   /** 自由输入框的钩子（远程收服等），由 main.js 设置 */
   setFreeTextHandler(fn) { this.onFreeText = fn; }
@@ -131,6 +149,9 @@ export class Phone {
     thread.messages.push(newMsg);
     if (thread.messages.length > 50) thread.messages.shift();
 
+    // P3 未读徽章：有未读消息就挂手机标题
+    this._updateBadge();
+
     // 新消息通知：Toast + 提示音（不在手机界面内时显示）
     if (!this.isOpen) {
       const preview = text.length > 18 ? text.substring(0, 18) + "…" : text;
@@ -176,11 +197,13 @@ export class Phone {
       this.contactListEl.innerHTML = `<div style="padding:40px;text-align:center;color:#6a6a75;font-size:14px;">📭 暂无联系人<br><small>去和镇民聊聊天吧（按 F 对话）</small></div>`;
       this.modal.classList.remove("hidden");
       this.isOpen = true;
+      this._updateBadge();
       return true;
     }
     this.showContactList();
     this.modal.classList.remove("hidden");
     this.isOpen = true;
+    this._updateBadge();
     return true;
   }
 
@@ -220,6 +243,7 @@ export class Phone {
     this.contactsView.classList.add("hidden");
     this.chatView.classList.remove("hidden");
     this._renderChat(npcId);
+    this._updateBadge();
   }
 
   _switchTab(tab) {

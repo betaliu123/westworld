@@ -25,6 +25,7 @@ export class DailySimulation {
     this.nemesis = deps.nemesis || null;       // 组织架构/卧底/晋升
     this.law = deps.law || null;               // 警长势力（第三方）
     this.business = deps.business || null;     // 产业经营（P7）
+    this.messageGovernor = deps.messageGovernor || null; // P3 消息治理
 
     this._listeners = {};
   }
@@ -589,7 +590,11 @@ export class DailySimulation {
         : ws.drainPhoneMessages(); // 无时间信息→全部立即投递
       for (const m of messages) {
         const npcId = m.npcId || "system";
-        phone.deliverMessage(npcId, m.from, m.text, { taskId: m.taskId || null });
+        // P3 消息治理：限流 + 去名字前缀 + 分类
+        const admit = this.messageGovernor?.admit?.(m);
+        if (admit && admit.send === false) continue;   // 被限流，静默丢弃
+        const cleaned = admit?.cleaned ?? m.text;
+        phone.deliverMessage(npcId, m.from, cleaned, { taskId: m.taskId || null });
       }
     }
   }

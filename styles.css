@@ -522,6 +522,14 @@ html, body {
   font-size: 17px; font-weight: 700; border-bottom: 1px solid #2c2c36;
 }
 .phone-header button { background: none; border: none; color: #8a8a95; font-size: 18px; cursor: pointer; pointer-events: auto; }
+/* P3 未读徽章：手机标题上的红点数字 */
+.phone-badge {
+  display: inline-block; min-width: 16px; height: 16px; line-height: 16px;
+  padding: 0 4px; margin-left: 6px; border-radius: 8px;
+  background: #e2564a; color: #fff; font-size: 10px; font-weight: 700;
+  text-align: center; vertical-align: middle; animation: badgePop .25s ease-out;
+}
+@keyframes badgePop { from { transform: scale(.4); } to { transform: scale(1); } }
 
 /* Contacts list */
 #phone-contacts-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }

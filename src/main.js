@@ -69,6 +69,7 @@ import { SubdueSystem } from "./encounter/SubdueSystem.js";
 import { NemesisSystem } from "./factions/NemesisSystem.js";
 import { LawSystem } from "./factions/LawSystem.js";
 import { BusinessSystem } from "./factions/BusinessSystem.js";
+import { MessageGovernor } from "./systems/MessageGovernor.js";
 import { OrgChartUI } from "./ui/OrgChartUI.js";
 import { LawUI } from "./ui/LawUI.js";
 import { BusinessUI } from "./ui/BusinessUI.js";
@@ -489,6 +490,9 @@ function boot() {
   };
   interaction.theaterDirector = theater;
 
+  // P3 消息治理：手机消息限流 + 去名字前缀 + 分类（挂在 DailySimulation 投递时）
+  const messageGovernor = new MessageGovernor({ worldState });
+
   // DailySimulation（完整装配）
   const dailySimulation = new DailySimulation({
     worldState, eventLog, playerCondition,
@@ -508,6 +512,7 @@ function boot() {
     nemesis,             // P4 ✓ 卧底情报/怀疑度/清洗 + 胜负判定
     law,                 // P5 ✓ 证据折算/行贿/突袭
     business: businessSystem,  // P7 ✓ 产业结算
+    messageGovernor,     // P3 ✓ 消息限流/去名字/分类
   });
 
   // 存档系统：完全禁用。每次刷新 = 重新开始第一天。
