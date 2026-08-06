@@ -29,6 +29,7 @@ export class DailySimulation {
     this.consequences = deps.consequences || null;       // P8 剧场后果包
     this.playerOrg = deps.playerOrg || null;             // P11 自己帮派人事图（任命加成）
     this.gangGroup = deps.gangGroup || null;             // P11 帮派群聊
+    this.stockNews = deps.stockNews || null;             // P13 股市新闻/小道消息/玩家影响
 
     this._listeners = {};
   }
@@ -133,7 +134,10 @@ export class DailySimulation {
       if (this.stockMarket) {
         const recentArticles = ws.state.newspaperQueue || [];
         const factionActions = ws.state.lastFactionActions || [];
-        this.stockMarket.settleDay(recentArticles, factionActions);
+        // 玩家行为影响（前一天在商铺杀人 → 今天对应股票跌）
+        const playerDelta = this.stockNews?.playerActionDelta?.() || {};
+        this.stockMarket.settleDay(recentArticles, factionActions, playerDelta);
+        this.stockNews?.clearPlayerActions?.();
       }
     });
 
@@ -381,6 +385,16 @@ export class DailySimulation {
         }
       }
 
+      // P13 股市新闻 + 小道消息（DS 生成，进报纸 + 手机）
+      if (this.stockNews) {
+        try {
+          const rumorNpc = this._pickRumorContact();
+          await this.stockNews.settleDaily(ws.day, rumorNpc);
+        } catch (e) {
+          console.warn("[DailySimulation] 股市新闻生成失败:", e);
+        }
+      }
+
       console.log("[DailySimulation] ✅ LLM 内容就绪:");
       console.log(`  └─ 标题: ${llmResult.textPackages.map(p => p.newspaperHeadline).filter(Boolean).join(", ")}`);
       console.log(`  └─ 消息: ${llmResult.textPackages.map(p => p.phoneMessage).filter(Boolean).join(" | ")}`);
@@ -391,6 +405,14 @@ export class DailySimulation {
     } catch (e) {
       console.warn("[DailySimulation] 后台 LLM 调用失败:", e.message);
     }
+  }
+
+  /** 挑一个收到"股市小道消息"的手机联系人 */
+  _pickRumorContact() {
+    const contacts = this.worldState?.state?.phoneContacts || {};
+    const ids = Object.keys(contacts).filter((id) => id !== "gang_group");
+    if (!ids.length) return null;
+    return ids[Math.floor(Math.random() * ids.length)];
   }
 
   // ============================================================
@@ -643,8 +665,8 @@ export class DailySimulation {
   }
 }
 
-// ============================================================
-// 每日事件模板池 — 20+ 个带有世界实际影响的事件
+  // ============================================================
+  // 每日事件模板池 — 20+ 个带有世界实际影响的事件
 // ============================================================
 
 // 成员事件：帮派成员自主行为

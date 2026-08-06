@@ -72,6 +72,7 @@ import { LawSystem } from "./factions/LawSystem.js";
 import { BusinessSystem } from "./factions/BusinessSystem.js";
 import { PlayerOrgSystem } from "./factions/PlayerOrgSystem.js";
 import { GangGroupChat } from "./factions/GangGroupChat.js";
+import { StockNewsService } from "./factions/StockNewsService.js";
 import { MessageGovernor } from "./systems/MessageGovernor.js";
 import { OrgChartUI } from "./ui/OrgChartUI.js";
 import { LawUI } from "./ui/LawUI.js";
@@ -285,7 +286,13 @@ function boot() {
   }
   const stockMarket = new StockMarket(worldState, economy, audio);
   phone.taskSystem = taskSystem;
+  phone.setStockMarket(stockMarket);   // 手机股市 tab
   hud.setStockMarket(stockMarket);
+  // P13 股市新闻/小道消息/玩家行为影响
+  const stockNews = new StockNewsService({
+    worldState, newspaper, phone,
+    log: (t) => eventLog?.record?.({ type: "STOCKNEWS_LOG", facts: { text: t }, tags: ["stocknews"] }),
+  });
   // 手机收服按钮（输入框上方，类似接任务按钮）—— 不靠手输关键词
   phone.setRecruitHandler((npcId, contact) => onPhoneRecruit(npcId, contact));
   // 手机自由输入：普通消息走 DS flash（npcChat.respond）回复，
@@ -403,6 +410,10 @@ function boot() {
       healthBars.mark(target);
     },
     onNpcKnocked: (target) => {
+      // P13 玩家在商铺里杀人 → 对应股票第二天下跌
+      if (insideRoom && stockNews) {
+        stockNews.recordPlayerAction("kill", insideRoom);
+      }
       // 检查任务完成：击败NPC
       const owner = target.phone?.owner || "镇民";
       const registryNpc = npcRegistry.findByDisplayName(owner);
@@ -602,6 +613,7 @@ function boot() {
     consequences,        // P8 ✓ 剧场后果包
     playerOrg,           // P11 ✓ 任命加成
     gangGroup,           // P11 ✓ 群聊
+    stockNews,           // P13 ✓ 股市新闻/小道消息/玩家影响
   });
 
   // 存档系统：完全禁用。每次刷新 = 重新开始第一天。

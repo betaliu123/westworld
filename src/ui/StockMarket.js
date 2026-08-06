@@ -35,13 +35,22 @@ export class StockMarket {
   open() {
     this._selectedStock = null;
     this._tradeMode = null;
+    this._embedTarget = null;   // 银行弹窗：渲染到自己的 #stock-body
     this._render();
     this.modal.classList.remove("hidden");
+  }
+
+  /** 渲染进任意容器（手机股市 tab 用）。不建独立弹窗。 */
+  renderInto(container) {
+    if (!container) return;
+    this._embedTarget = container;
+    this._render(container);
   }
 
   close() {
     this.modal.classList.add("hidden");
     this._selectedStock = null;
+    this._embedTarget = null;
   }
 
   selectStock(stockId) {
@@ -89,8 +98,9 @@ export class StockMarket {
 
   /**
    * Daily price settlement. Called from DailySimulation.
+   * @param playerActionDelta {stockId: number} 玩家行为导致的额外涨跌（由 StockNewsService 提供）
    */
-  settleDay(newspaperArticles, factionActions) {
+  settleDay(newspaperArticles, factionActions, playerActionDelta = {}) {
     const newsCategories = (newspaperArticles || []).map(a => a.category || "daily");
 
     for (const def of STOCK_DEFS) {
@@ -110,6 +120,11 @@ export class StockMarket {
         change -= 0.02;
       }
 
+      // 玩家行为影响（在商铺杀人 → 第二天股票下跌）
+      if (playerActionDelta[def.id]) {
+        change += playerActionDelta[def.id];
+      }
+
       change = Math.max(-0.15, Math.min(0.15, change));
       const newPrice = Math.max(1, Math.round(data.currentPrice * (1 + change)));
       data.currentPrice = newPrice;
@@ -118,8 +133,8 @@ export class StockMarket {
     }
   }
 
-  _render() {
-    const body = document.getElementById("stock-body");
+  _render(targetOverride = null) {
+    const body = targetOverride || this._embedTarget || document.getElementById("stock-body");
     if (!body) return;
 
     const portfolio = this.economy.getStockPortfolio ? this.economy.getStockPortfolio() : {};

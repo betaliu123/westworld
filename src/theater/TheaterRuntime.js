@@ -149,7 +149,10 @@ export class TheaterRuntime {
       this.zoneLevel = level; // 必须先更新再回调：_renderChoices 会检查 zoneLevel
       this._onZoneChange(from, level);
     }
-    if (level === "interact") this.playerEverJoined = true;
+    // 注意：不再在这里把 playerEverJoined 置 true。
+    // "进了 interact 范围"不等于"参与了演出" —— 玩家可能只是路过、或压根在屋里，
+    // 不该因为走近舞台就给结算结果。真正的参与 = 选了选项 / 发了自由输入，
+    // 在 handleChoice / handleFreeText 里才置真。
 
     // 演员就位
     if (this.phase === Phase.GATHERING) {
@@ -402,6 +405,7 @@ export class TheaterRuntime {
     if (!choice) return null;
     this.waitingChoice = false;
     this._clearChoices();
+    this.playerEverJoined = true;   // 真的选了才算参与（结算才有你一份）
     // 玩家自己也要开口，说的是情景台词而不是按钮上的干巴巴标签
     const spoken = choice.line || choice.label;
     this.hooks.playerSay?.(spoken);
@@ -424,6 +428,7 @@ export class TheaterRuntime {
     // 这时用开场节点当上下文——玩家看到的就是开场，戏一就位也会跳到这里。
     const node = this.node || this.tree.nodes.find((n) => n.id === this.tree.entryNode) || this.tree.nodes[0];
     if (!node) return;
+    this.playerEverJoined = true;   // 自由输入也算参与
     this.hooks.playerSay?.(t); // 自由输入同样让玩家冒泡，别只有 NPC 在说话
     this.hooks.log?.(`你：${t}`);
     // 记录举动，影响结局

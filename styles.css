@@ -422,6 +422,12 @@ html, body {
 }
 .stock-row:hover { background: rgba(255,233,168,.08); border-color: rgba(200,151,58,.5); }
 .stock-row.selected { background: rgba(255,206,84,.1); border-color: var(--gold); }
+/* 手机股市 tab：窄屏适配（银行弹窗里的样式不变） */
+#phone-stock-body { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 12px; background: #0e0e12; }
+#phone-stock-body .stock-summary { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; }
+#phone-stock-body .stock-row { padding: 7px 8px; }
+#phone-stock-body .stock-chart canvas { width: 100%; height: 80px; }
+#phone-stock-view { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .stock-info { flex: 1; }
 .stock-name { font-size: 15px; font-weight: 700; color: #f3e8d0; }
 .stock-desc { font-size: 11px; color: #8a7a6a; }

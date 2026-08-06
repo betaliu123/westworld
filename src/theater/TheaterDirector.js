@@ -245,11 +245,16 @@ export class TheaterDirector {
   }
 
   _applyOutcome(oc, meta = {}) {
-    this._applyEffects({ cash: oc.cash, honor: oc.honor, wanted: oc.wanted });
+    // 玩家没参与（没选过选项、没发过自由输入，只是路过/在屋里）：
+    // 这场戏是别人演完的，不该给玩家任何结果 —— 不加钱、不加声望、不上通缉、
+    // 不触发后果包、不写报纸说"你做了什么"。
+    const joined = !!meta.playerJoined;
+    this._applyEffects(joined ? { cash: oc.cash, honor: oc.honor, wanted: oc.wanted } : {});
     // 只用中间的结局横幅，不再额外发 toast（否则同一句话屏幕上出现两遍）
-    this.ui?.showOutcome?.(oc);
+    this.ui?.showOutcome?.(oc, { playerJoined: joined });
     const lines = (oc.lines || []).join("；");
-    this._addLog(`【结局】${oc.title}${lines ? " —— " + lines : ""}`);
+    this._addLog(`【结局】${oc.title}${lines ? " —— " + lines : ""}${joined ? "" : "（你当时不在场）"}`);
+    if (!joined) return;   // 没参与 → 后续的一切后果都与你无关
     // 让这次选择在散场后仍然留下痕迹：报纸 / 来信 / 可摸到的遗留物
     if (this.aftermath) {
       const done = this.aftermath.apply(oc, {

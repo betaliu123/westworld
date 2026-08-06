@@ -13,12 +13,16 @@ export class Phone {
     this.repliesEl = document.getElementById("phone-quick-replies");
     this.contactsView = document.getElementById("phone-contacts-view");
     this.chatView = document.getElementById("phone-chat-view");
+    this.stockView = document.getElementById("phone-stock-view");
+    this.stockBody = document.getElementById("phone-stock-body");
     this.tabContacts = document.getElementById("phone-tab-contacts");
     this.tabTasks = document.getElementById("phone-tab-tasks");
+    this.tabStock = document.getElementById("phone-tab-stock");
 
     this.activeContactId = null;
     this.isOpen = false;
     this.taskSystem = null;
+    this.stockMarket = null;  // 由 main.js 注入，用于手机股市 tab
     // 自由输入：远程收服/招揽的钩子（由 main.js 注入，返回 {ok,text}）
     this.onFreeText = null;
 
@@ -26,6 +30,7 @@ export class Phone {
     document.getElementById("phone-back").addEventListener("click", () => this.showContactList());
     this.tabContacts.addEventListener("click", () => this._switchTab("contacts"));
     this.tabTasks.addEventListener("click", () => this._switchTab("tasks"));
+    if (this.tabStock) this.tabStock.addEventListener("click", () => this._switchTab("stock"));
 
     this.inputEl = document.getElementById("phone-input");
     this.sendBtn = document.getElementById("phone-input-send");
@@ -48,6 +53,9 @@ export class Phone {
 
   /** 收服按钮的钩子（main.js 注入） */
   setRecruitHandler(fn) { this.onRecruit = fn; }
+
+  /** 注入股票市场实例（手机股市 tab 用） */
+  setStockMarket(sm) { this.stockMarket = sm; }
 
   _sendRecruit() {
     if (!this.activeContactId) return;
@@ -278,6 +286,7 @@ export class Phone {
     this.activeContactId = null;
     this.contactsView.classList.remove("hidden");
     this.chatView.classList.add("hidden");
+    if (this.stockView) this.stockView.classList.add("hidden");
     this._renderContactList();
   }
 
@@ -285,20 +294,37 @@ export class Phone {
     this.activeContactId = npcId;
     this.contactsView.classList.add("hidden");
     this.chatView.classList.remove("hidden");
+    if (this.stockView) this.stockView.classList.add("hidden");
     this._renderChat(npcId);
     this._updateBadge();
   }
 
   _switchTab(tab) {
+    const hideAll = () => {
+      this.contactsView.classList.add("hidden");
+      this.chatView.classList.add("hidden");
+      if (this.stockView) this.stockView.classList.add("hidden");
+    };
+    for (const [btn, name] of [[this.tabContacts, "contacts"], [this.tabTasks, "tasks"], [this.tabStock, "stock"]]) {
+      if (btn) btn.classList.toggle("active", name === tab);
+    }
     if (tab === "contacts") {
-      this.tabContacts.classList.add("active");
-      this.tabTasks.classList.remove("active");
+      hideAll();
       this.showContactList();
     } else if (tab === "tasks" && this.taskSystem) {
-      this.tabContacts.classList.remove("active");
-      this.tabTasks.classList.add("active");
+      hideAll();
+      this.contactsView.classList.remove("hidden");
       this._renderTaskView();
+    } else if (tab === "stock" && this.stockMarket) {
+      hideAll();
+      if (this.stockView) this.stockView.classList.remove("hidden");
+      this._renderStockView();
     }
+  }
+
+  _renderStockView() {
+    if (!this.stockMarket || !this.stockBody) return;
+    this.stockMarket.renderInto(this.stockBody);
   }
 
   _renderTaskView() {
