@@ -121,30 +121,59 @@ export class Town {
     this._addRectCollider(ccx - W / 2, ccz, wallT, D / 2);            // 西墙
     this._addRectCollider(ccx + W / 2, ccz, wallT, D / 2);            // 东墙
 
-    // 院内小房子：帮派据点（8×6×5），门朝北（朝大门/主街）
+    // 院内主楼：帮派驻地（银行大小，可进入）。门朝北（朝大门/主街）。
+    // 尺寸与银行同级（12×10×5.5），比原来 8×6 的小房子气派得多。
     const hx = ccx, hz = ccz + D / 2 - 3;
-    const hb = createBuilding({ name: "帮派驻地", sign: "HQ", width: 8, depth: 6, height: 5, chimney: true });
+    const hb = createBuilding({
+      name: "帮派驻地", sign: "HQ", signBg: "#3a1f10", signFg: "#e8c96a",
+      width: 12, depth: 10, height: 5.5, chimney: true, hasPorch: true,
+    });
     hb.position.set(hx, 0, hz);
-    hb.rotation.y = Math.PI;   // 门朝北
+    // 门朝北（+z，朝大院门口/主街）：createBuilding 的门在 +depth/2，不旋转即可
     this.group.add(hb);
-    this._addRectCollider(hx, hz, 8 / 2 + 0.4, 6 / 2 + 0.4);
+    this._addRectCollider(hx, hz, 12 / 2 + 0.4, 10 / 2 + 0.4);
     this.windows.push(...(hb.userData.windows || []));
 
-    // 门口地垫（可交互提示）
+    // 可进入：登记门口（门朝北，朝大街侧），让 InteractionSystem 能选中"进入"
+    // 与 _buildBuildings 里 enterable 建筑同一套逻辑：door 名 = 房间名 = 室内 key
+    const doorX = hx;
+    const doorZ = hz + 10 / 2 + 1.2;   // 门在建筑北侧（+z）
+    this.doors.push({ name: "帮派驻地", x: doorX, z: doorZ });
+    // 门口金色地垫（可交互提示）
     const matDoor = mat(0xe8c96a);
-    const pad = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 1.6), matDoor);
-    pad.position.set(hx, 0.03, hz + 6 / 2 + 0.9);
-    pad.rotation.y = 0;
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 1.8), matDoor);
+    pad.position.set(doorX, 0.03, doorZ + 1.2);
     this.group.add(pad);
+
+    // 院子正门口一面大旗：帮派辨识（杆 + 三角红旗 + 深色底）
+    const flagPole = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 5.2, 10), mat(0x3a2a1a, 0.8));
+    flagPole.position.set(ccx + W / 2 - 1.6, 2.6, ccz + D / 2 + 1.4);
+    flagPole.castShadow = true;
+    this.group.add(flagPole);
+    const flagCloth = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.4, 1.3, 1, 1),
+      new THREE.MeshBasicMaterial({ color: 0x8a1f1f, side: THREE.DoubleSide })
+    );
+    flagCloth.position.set(ccx + W / 2 - 1.6 + 1.2, 4.4, ccz + D / 2 + 1.4);
+    this.group.add(flagCloth);
+    // 旗上简笔符号（马蹄印 → 黑蹄会的标志）
+    const hoofMat = new THREE.MeshBasicMaterial({ color: 0x141414, side: THREE.DoubleSide });
+    const hoofA = new THREE.Mesh(new THREE.CircleGeometry(0.22, 14), hoofMat);
+    hoofA.position.set(ccx + W / 2 - 1.6 + 1.05, 4.5, ccz + D / 2 + 1.405);
+    this.group.add(hoofA);
+    const hoofB = new THREE.Mesh(new THREE.CircleGeometry(0.22, 14), hoofMat);
+    hoofB.position.set(ccx + W / 2 - 1.6 + 1.4, 4.5, ccz + D / 2 + 1.405);
+    this.group.add(hoofB);
 
     // 供睡觉/复活/小地图使用的驻地信息
     this.compound = {
       x: hx, z: hz,
       centerX: ccx, centerZ: ccz,
-      doorX: hx, doorZ: hz + 6 / 2 + 1.6,   // 屋门（北侧）
+      doorX, doorZ: doorZ,                // 屋门（北侧）
       gate: { x: ccx, z: ccz + D / 2 + 1.0 }, // 院落大门（北侧，朝主街）
       gateX: ccx, gateZ: ccz + D / 2 + 1.0,
       width: W, depth: D,
+      interiorName: "帮派驻地",           // 可进入的室内房间名
     };
 
     // 小地图标注：小房子图标（kind:"compound"）

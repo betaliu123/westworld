@@ -673,6 +673,41 @@ const INTERIOR_DEFS = {
       it.addPatron(-3, 0.6, { female: true });
     },
   },
+  帮派驻地: {
+    name: "帮派驻地", width: 19, depth: 15, floor: 0x6b4a2b, wall: 0x4a3620,
+    decorate(it) {
+      // 大门正对的一张长桌：帮派议事 / 收账的台面
+      it._furniture(6, 0.9, 1.6, 0, -it.depth / 2 + 3.2, 0x3a2a18, 3.2);
+      it._furniture(6, 0.12, 0.5, 0, -it.depth / 2 + 2.4, 0x5e4020);
+      // 头目桌（右后角）：更像"坐镇"的地方
+      it._furniture(2.6, 1.1, 1.4, it.width / 2 - 2.4, -it.depth / 2 + 2, 0x3a2620, 1.6);
+      it._furniture(1.6, 0.5, 0.5, it.width / 2 - 2.4, -it.depth / 2 + 1.3, 0x7a5a2a);
+      // 酒桶墙架（左墙）
+      for (let i = 0; i < 4; i++) {
+        it._furniture(1, 1.3, 1, -it.width / 2 + 1.3, -it.depth / 2 + 2.2 + i * 2.6, 0x6b4a2b, 0.8);
+      }
+      // 火炉/壁炉（后墙中间，暖光氛围）
+      it._furniture(2.2, 2.4, 0.6, 0, -it.depth / 2 + 1.2, 0x4a4038, 1.4);
+      // 藏钱柜（右前角，金锁发光 = 可摸的驻地金库）
+      it._furniture(1.8, 1.6, 0.9, it.width / 2 - 1.4, it.depth / 2 - 1.6, 0x3a2a18, 1.1);
+      const marker = new THREE.Mesh(
+        new THREE.BoxGeometry(0.28, 0.28, 0.28),
+        new THREE.MeshStandardMaterial({
+          color: 0xffce54, emissive: 0xffb830, emissiveIntensity: 0.9,
+          metalness: 0.6, roughness: 0.3,
+        })
+      );
+      marker.position.set(it.origin.x + it.width / 2 - 1.4, 1.9, it.origin.z + it.depth / 2 - 1.6);
+      it.group.add(marker);
+      it.stashMarker = marker;
+      it.stashLocal = { x: it.width / 2 - 1.4, z: it.depth / 2 - 1.6 };
+      // 站岗的帮派成员（气氛）：两个打手 + 一个账房
+      it.addPatron(0, -it.depth / 2 + 4.4, { shirt: 0x3a2a4a, hat: 0x1a1a22 }); // 坐镇头目
+      it.addPatron(-3, 2.5, { shirt: 0x4a2a2a });   // 打手
+      it.addPatron(3.5, 3, { shirt: 0x2a3a2a });    // 打手
+      it.addPatron(-4, -1.5, { female: true, shirt: 0x6a4a5a }); // 账房/记账
+    },
+  },
 };
 
 // 玩家房产的室内布局（购买后可进入；无 NPC，是玩家自己的家）

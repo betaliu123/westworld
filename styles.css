@@ -594,6 +594,24 @@ html, body {
 }
 .phone-reply-btn:hover { background: #2f6b4f; color: #fff; border-color: #4ae26a; }
 
+/* 收服按钮行：输入框上方，类似"接任务"按钮 */
+.phone-actions-row {
+  padding: 6px 12px 2px; background: #1a1a22;
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.phone-action-btn {
+  padding: 6px 14px; background: #3a2a1a; color: #f0d089; border: 1px solid #8a6a2f;
+  border-radius: 14px; font-size: 12px; cursor: pointer; pointer-events: auto;
+  transition: background .12s, border-color .12s;
+}
+.phone-action-btn:hover { background: #4a3a20; border-color: #f0d089; }
+
+/* 聊天页头好感度徽章 */
+.phone-chat-affinity {
+  margin-left: auto; font-size: 11px; color: #9ab8d4; opacity: .85;
+  white-space: nowrap;
+}
+
 /* Task button in message bubble */
 .msg-task-btn {
   margin-top: 6px; padding: 4px 10px; background: rgba(255,206,84,.2); color: var(--gold);

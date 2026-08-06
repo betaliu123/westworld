@@ -30,6 +30,9 @@ export class Phone {
     this.inputEl = document.getElementById("phone-input");
     this.sendBtn = document.getElementById("phone-input-send");
     this.badgeEl = document.getElementById("phone-badge");
+    this.affinityEl = document.getElementById("phone-chat-affinity");
+    this.recruitBtn = document.getElementById("phone-btn-recruit");
+    this.onRecruit = null;   // 收服按钮的钩子（由 main.js 注入，返回给对方看的回复文本）
     if (this.inputEl) {
       this.inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") { e.preventDefault(); this._sendFreeText(); }
@@ -38,6 +41,45 @@ export class Phone {
     if (this.sendBtn) {
       this.sendBtn.addEventListener("click", () => this._sendFreeText());
     }
+    if (this.recruitBtn) {
+      this.recruitBtn.addEventListener("click", () => this._sendRecruit());
+    }
+  }
+
+  /** 收服按钮的钩子（main.js 注入） */
+  setRecruitHandler(fn) { this.onRecruit = fn; }
+
+  _sendRecruit() {
+    if (!this.activeContactId) return;
+    const contact = this.contacts[this.activeContactId];
+    if (!contact) return;
+    const thread = contact.threads[0];
+    // 玩家消息
+    thread.messages.push({
+      from: "me", who: "我", text: "跟我干，怎么样？",
+      time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+      day: this.worldState.day, isUnread: false,
+    });
+    // 交给 main.js 处理（收服判定 + 写数据），返回对方的回复
+    if (this.onRecruit) {
+      try {
+        const reply = this.onRecruit(this.activeContactId, contact);
+        if (reply) {
+          thread.messages.push({
+            from: "them", who: contact.displayName, text: String(reply),
+            time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+            day: this.worldState.day, isUnread: false,
+          });
+        }
+      } catch (e) {
+        thread.messages.push({
+          from: "them", who: contact.displayName, text: "……信号不太好，你说什么？",
+          time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+          day: this.worldState.day, isUnread: false,
+        });
+      }
+    }
+    this._renderChat(this.activeContactId);
   }
 
   /** P3 未读徽章：有未读消息时手机标题挂数字，打开手机后清零 */
@@ -60,7 +102,7 @@ export class Phone {
   /** 自由输入框的钩子（远程收服等），由 main.js 设置 */
   setFreeTextHandler(fn) { this.onFreeText = fn; }
 
-  _sendFreeText() {
+  async _sendFreeText() {
     const raw = (this.inputEl?.value || "").trim();
     if (!raw || !this.activeContactId) return;
     if (this.inputEl) this.inputEl.value = "";
@@ -75,11 +117,12 @@ export class Phone {
       day: this.worldState.day, isUnread: false,
     });
 
-    // 交给 main.js 处理（远程收服 / 招揽 / 通用回复）
+    // 交给 main.js 处理（远程收服 / 招揽 / DS flash 通用回复）。
+    // 处理函数可能是 async（手机聊天接真实大模型），所以 await 一下。
     const handler = this.onFreeText;
     if (handler) {
       try {
-        const result = handler(this.activeContactId, raw, contact);
+        const result = await handler(this.activeContactId, raw, contact);
         if (result && typeof result === "string") {
           thread.messages.push({
             from: "them", who: contact.displayName, text: result,
@@ -362,6 +405,20 @@ export class Phone {
       : `<div class="phone-chat-portrait-emoji">${contact.avatar || '👤'}</div>`;
 
     this.chatHeaderEl.innerHTML = `${portraitHtml}<span>${contact.displayName}</span>`;
+
+    // 好感度：聊天页头显示 NPC↔玩家 的关系（与联系人列表同一数据源）
+    if (this.affinityEl) {
+      const rel = this.worldState.state?.relationships?.[contact.npcId + "->player"] || null;
+      const aff = rel?.affection ?? 0;
+      let label = "🤝 初识";
+      if (aff >= 50) label = "💖 亲近";
+      else if (aff >= 20) label = "😊 友善";
+      else if (aff >= -20) label = "😐 普通";
+      else if (aff >= -50) label = "😒 冷淡";
+      else label = "😡 厌恶";
+      this.affinityEl.textContent = `${label} ${aff > 0 ? "+" : ""}${aff}`;
+    }
+
     const thread = contact.threads[0];
     this.chatEl.innerHTML = "";
 

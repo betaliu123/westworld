@@ -259,28 +259,70 @@ function boot() {
   const stockMarket = new StockMarket(worldState, economy, audio);
   phone.taskSystem = taskSystem;
   hud.setStockMarket(stockMarket);
-  // 手机自由输入：/招 /收服 让联系人入伙（远程收服）。
-  // 说服力按好感 + 名誉算，比当面洗脑低；成功后走招募管线写数据。
+  // 手机收服按钮（输入框上方，类似接任务按钮）—— 不靠手输关键词
+  phone.setRecruitHandler((npcId, contact) => onPhoneRecruit(npcId, contact));
+  // 手机自由输入：普通消息走 DS flash（npcChat.respond）回复，
+  // 收服/入伙 交给输入框上方的「收服」按钮（见 onPhoneRecruit），
+  // 不靠玩家手输关键词。
   phone.setFreeTextHandler((npcId, raw, contact) => {
-    const isRecruitCmd = /^(招|收服|入伙|跟我干|加入|招揽)\b/.test(raw.trim()) || /招(你)?(入伙|来)|收服你|跟我干/.test(raw);
-    const isRecruitWord = /(入伙|跟我干|招|收服|跟我|来我这边|跟我走)/.test(raw);
-    if (!isRecruitCmd && !isRecruitWord) {
-      // 普通消息：根据关键字给点带人味的回复
-      const key = raw;
-      if (/(最近|怎么样|还好吗|忙)/.test(key)) return "还行吧，就是镇上不太平。你那边呢？";
-      if (/(钱|生意|买卖)/.test(key)) return "这年头钱不好挣啊，有路子的话可以聊聊。";
-      if (/(黑蹄|帮派|势力)/.test(key)) return "别在消息里说这些，见面聊。";
+    // 明确的关键词收服仍兼容（老玩家肌肉记忆），但正常路径走按钮
+    if (/^(招|收服|入伙|跟我干|加入|招揽)\b/.test(raw.trim())) {
+      return onPhoneRecruit(npcId, contact);
+    }
+    // 普通消息 → DS flash LLM 回复（用联系人档案构造代理 npc）
+    return respondPhoneChat(npcId, raw, contact);
+  });
+
+  /**
+   * 手机聊天的 LLM 回复（DS flash）。
+   * 联系人只有档案没有场景实体，这里用一个轻量代理 npc 喂给 npcChat，
+   * 让手机聊天跟当面聊天一样接真实大模型。
+   */
+  async function respondPhoneChat(npcId, raw, contact) {
+    const known = npcRegistry.findByDisplayName(contact.displayName);
+    const rec = known ? npcRegistry.get(known.id) : null;
+    const proxyNpc = {
+      phone: { owner: contact.displayName, id: npcId },
+      personality: {
+        job: contact.job || rec?.job || "镇民",
+        bravery: rec?.traits?.bravery ?? 0.5,
+        aggression: rec?.traits?.aggression ?? 0.5,
+        greed: rec?.traits?.greed ?? 0.5,
+        sociability: rec?.traits?.sociability ?? 0.5,
+        wealth: 0.5,
+        gang: rec?.factionId || null,
+      },
+      cashReserve: 0,
+      brain: { state: "IDLE", emotion: 0 },
+    };
+    const relCtx = _buildRelCtx(proxyNpc, known);
+    try {
+      const r = await npcChat.respond({
+        npc: proxyNpc,
+        text: raw,
+        ctx: { ...relCtx, honor: reputation.honor, playerMoney: economy.money, dailyUse: {} },
+      });
+      return r?.say || "……";
+    } catch (e) {
+      // LLM 挂了或超预算 → 退化成带人味的本地回复
+      if (/(最近|怎么样|还好吗|忙)/.test(raw)) return "还行吧，就是镇上不太平。你那边呢？";
+      if (/(钱|生意|买卖)/.test(raw)) return "这年头钱不好挣啊，有路子的话可以聊聊。";
+      if (/(黑蹄|帮派|势力)/.test(raw)) return "别在消息里说这些，见面聊。";
       return "嗯，我记下了。有事再说。";
     }
+  }
 
-    // 远程收服：说服力 = 好感×0.5 + 名誉×0.3 + 随机，明显低于当面洗脑
+  /**
+   * 手机收服（按钮/关键词触发）：说服力按好感+名誉，比当面洗脑低。
+   * 成功走招募管线写数据。返回给对方看的回复文本。
+   */
+  function onPhoneRecruit(npcId, contact) {
     const known = npcRegistry.findByDisplayName(contact.displayName);
     const rec = known && npcRegistry.get(known.id);
     const affection = (rec?.affection ?? 0) / 100;
     const honorFrac = Math.max(0, Math.min(1, (reputation.honor + 100) / 200));
     const persuasion = Math.max(0.02, Math.min(0.6, 0.18 + affection * 0.45 + honorFrac * 0.2 + (Math.random() - 0.5) * 0.1));
     if (Math.random() < persuasion) {
-      // 成功：写真实归属 + 招募
       const { id: targetId } = known && npcRegistry.ensureRecord
         ? npcRegistry.ensureRecord(contact.displayName, { job: contact.job })
         : { id: npcId };
@@ -294,7 +336,7 @@ function boot() {
       return "行。我跟你干。镇上的事，也该有人站出来管管了。";
     }
     return "……我得想想。改天当面说吧。";
-  });
+  }
 
   // RDR2 式准心交互系统
   const interaction = new InteractionSystem(camera, scene);
