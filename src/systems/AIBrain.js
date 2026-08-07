@@ -1022,6 +1022,7 @@ export class AIBrain {
     const np = PERSONA_TALK[this._npcId];
     const th = np?.threat;       // 威胁专用池
     const talk = np?.talk;       // 打招呼池兜底
+    let reply = null;
     const perNpc = this._npcId ? NPC_THREAT_DEFIANT[this._npcId] : null;
     const perNpcScared = this._npcId ? NPC_THREAT_SCARED[this._npcId] : null;
 
