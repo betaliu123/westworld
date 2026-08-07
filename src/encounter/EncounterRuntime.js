@@ -284,7 +284,12 @@ export class EncounterRuntime {
     const npc = a.npc;
     const line = choiceId
       ? pickFarewell(npc, a.choices?.find((x) => x.id === choiceId))
-      : "……那我改天再来找你。";
+      : pick([
+          "……那我改天再来找你。",
+          "行，你忙你的，我晚点再来。",
+          "那等你有空再说。我先走了。",
+          "好，你先想清楚，回头我再来。",
+        ]);
     npc.brain?.say?.(line, 2.8);
     const t = setTimeout(() => {
       if (npc.brain?._perform) npc.brain.release?.();
@@ -311,34 +316,74 @@ export class EncounterRuntime {
   }
 }
 
-/** 遭遇谈完后的告别台词，按选择的后果轻重分档 */
+/** 遭遇谈完后的告别台词，按选择的后果轻重 + 对方性格分档 */
 function pickFarewell(npc, choice) {
-  const name = npc?.phone?.owner || "镇民";
-  const job = npc?.personality?.job || "镇民";
+  const job = npc?.personality?.job || "";
+  const bravery = npc?.personality?.bravery ?? 0.5;
   const risky = choice?.risk === "high" || choice?.risk === "neg";
+  const pos = choice?.risk === "low" || choice?.risk === "pos";
+
+  // 职业味的告别（比通用更拟真）
+  const jobLines = {
+    "酒保": ["这杯算我的，回头常来。", "慢走，下回来喝酒我给你留着好座。", "得，我去招呼别的客人了。"],
+    "赌徒": ["成，赌桌上见。手气这种东西，说有就有。", "那我先回牌桌了，钱还等着赢回来呢。"],
+    "牛仔": ["驾，那就这样，路上小心。", "行，改天请你喝一杯。马还在等我呢。"],
+    "商人": ["好，生意人的话一诺千金。账目的事找我就行。", "那我回铺子算账了，回头谈。"],
+    "医生": ["行了，我得回医馆了，还有病人等着。", "照顾好自己，别让我在医馆见到你。"],
+    "牧师": ["愿主保佑你，孩子。", "我去做晚祷了，你有空来教堂坐坐。"],
+    "铁匠": ["成，锤子还在炉子上呢。", "回铺子了，有刀剑要修随时找我。"],
+    "马夫": ["好嘞，马棚那几匹还等着喂呢。", "那我回马厩了，明儿见。"],
+    "记者": ["这事我能写进报纸吗？开玩笑的。回编辑部了。", "好，这素材够我写一版了。"],
+    "歌女": ["那我上台了，回头听我唱啊。", "成，我去准备今晚的曲子。"],
+    "赏金猎人": ["行，有悬赏的活计记得招呼我。", "我该去追那笔悬赏了，后会有期。"],
+  };
+  const jobPick = jobLines[job];
+  if (jobPick && chance(0.6)) {
+    return pick(jobPick);
+  }
+
   if (risky) {
     return pick([
       "……那就说定了。回头见。",
       "行，这事我记下了。你也小心。",
       "好，我等你消息。",
+      "干了这单，咱们可都别声张。",
+      "成，这事就烂在你我肚子里。",
     ]);
   }
-  if (choice?.risk === "low" || choice?.risk === "pos") {
+  if (pos) {
+    // 看性格：胆大的爽快，胆小的多客套
+    if (bravery > 0.6) {
+      return pick([
+        "爽快！就这么定了。",
+        "成，有你这句话我就放心了。",
+        "好，我先把事办了，回头找你。",
+        "痛快！这事儿包我身上。",
+      ]);
+    }
     return pick([
-      "成，那就这么定了。",
-      "有你这句话我就放心了。",
-      "好，我先去忙了。",
+      "谢谢……那我就放心了。",
+      "成，谢谢你肯帮我。",
+      "那我先去了，真的谢谢你。",
+      "好，我记你这份情。",
     ]);
   }
   return pick([
     "嗯，我知道了。先走了。",
     "成，回头再说。",
     "行，那我先去忙了。",
+    "得，话就到这儿，我走了。",
+    "那就不耽误你了，回见。",
+    "好，回头要是想起什么再说。",
   ]);
 }
 
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function chance(p) {
+  return Math.random() < p;
 }
 
 export { Phase as EncounterPhase, venueAffinity };

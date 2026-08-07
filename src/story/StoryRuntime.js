@@ -146,6 +146,53 @@ export class StoryRuntime {
   }
 
   /**
+   * 强制启动一个 StoryTree（玩家从手机故事 tab 手动触发，无视 startConditions）。
+   * 会尝试用 NPC 注册表匹配 actorSlots；匹配不到就空绑定创建。
+   * @returns {object|null} 实例或 null
+   */
+  forceStart(storyId) {
+    const def = this.getDefinition(storyId);
+    if (!def) return null;
+    const existing = this.worldState.getStoryInstance?.(storyId);
+    if (existing && (existing.status === "active" || existing.status === "pending")) return existing;
+    // 手动启动：跳过 startConditions（玩家想玩就玩），只给绑定角色
+    const bindings = this._buildActorBindings(this.worldState, def) || {};
+    // 绕过 tryCreate 的条件检查：直接创建实例
+    const instance = {
+      id: storyId,
+      status: "active",
+      currentNode: null,
+      completedNodes: [],
+      chosenResponses: [],
+      nodeStates: {},
+      actorBindings: bindings,
+      createdAt: this.worldState.day,
+      flags: { manualStart: true },
+      merges: [],
+      rewrites: [],
+    };
+    const firstNodeKey = Object.keys(def.nodes || {})[0];
+    if (firstNodeKey) {
+      instance.currentNode = firstNodeKey;
+      instance.nodeStates[firstNodeKey] = {
+        startedDay: this.worldState.day,
+        playerDelivered: false,
+        softExpired: false,
+        hardExpired: false,
+        missCount: 0,
+      };
+    }
+    this.worldState.setStoryInstance?.(storyId, instance);
+    this.eventLog?.record?.({
+      type: "STORY_MANUAL_START",
+      actors: Object.values(bindings),
+      facts: { storyId, title: def.title, day: this.worldState.day },
+      tags: ["story", "manual"],
+    });
+    return instance;
+  }
+
+  /**
    * 检查当前节点的前置条件是否满足。
    * @returns {object} { canAdvance: boolean, needsPlayerChoice: boolean, deadline: object }
    */

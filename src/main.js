@@ -442,6 +442,16 @@ function boot() {
   const storyRuntime = new StoryRuntime({ worldState, relationshipSystem, eventLog, npcRegistry, economy, reputation });
   phone.setStoryRuntime(storyRuntime);
   phone.setStoryHud(hud);
+  // 手机故事 tab 的"立即开始"按钮：强行启动未触发的故事
+  phone.setStoryStartHandler((storyId) => {
+    const def = storyRuntime.getDefinition(storyId);
+    if (!def) return { ok: false };
+    const inst = storyRuntime.forceStart(storyId);
+    if (!inst) return { ok: false };
+    const bindNames = Object.values(inst.actorBindings || {}).map((a) => a).join("、");
+    hud.toast(`📖 已开始《${def.title}》${bindNames ? `（${bindNames}）` : ""}`, { key: "story-start", duration: 3600 });
+    return { ok: true };
+  });
 
   // P4 Director
   const director = new Director({ worldState, relationshipSystem });

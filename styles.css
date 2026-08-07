@@ -428,6 +428,13 @@ html, body {
 #phone-stock-body .stock-row { padding: 7px 8px; }
 #phone-stock-body .stock-chart canvas { width: 100%; height: 80px; }
 #phone-stock-view { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+/* 手机故事 tab：可滚动 + 启动按钮 */
+#phone-stories-view { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+#phone-stories-body { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 12px; background: #0e0e12; }
+.phone-story-start-btn { display: inline-block; margin-top: 6px; padding: 3px 10px; font-size: 11px;
+  background: rgba(255,206,84,.15); border: 1px solid rgba(255,206,84,.4); border-radius: 6px;
+  color: var(--gold); cursor: pointer; }
+.phone-story-start-btn:hover { background: rgba(255,206,84,.25); }
 .stock-info { flex: 1; }
 .stock-name { font-size: 15px; font-weight: 700; color: #f3e8d0; }
 .stock-desc { font-size: 11px; color: #8a7a6a; }

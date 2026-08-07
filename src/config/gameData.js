@@ -1897,7 +1897,7 @@ export const LOOT = {
 // 15. 全局参数（WORLD）
 // ============================================================
 export const WORLD = {
-  npcCount: 40,            // NPC 总数
+  npcCount: 28,            // NPC 总数（控制大街密度，留出小剧场/事件的余量）
   townBounds: 180,         // 小镇半径
   panicRadius: 22,         // 恐慌广播默认半径
 };

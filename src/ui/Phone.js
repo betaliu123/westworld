@@ -69,6 +69,9 @@ export class Phone {
   /** 注入 hud（故事 tab 用：把"去哪找"提示发到 toast） */
   setStoryHud(hud) { this.storyHud = hud; }
 
+  /** 注入强行启动 handler（main.js 提供，返回 {ok, text}） */
+  setStoryStartHandler(fn) { this.onStoryStart = fn; }
+
   _sendRecruit() {
     if (!this.activeContactId) return;
     const contact = this.contacts[this.activeContactId];
@@ -414,7 +417,7 @@ export class Phone {
 
     let html = "";
     for (const s of all) {
-      // 未开始：置灰卡片，显示标题+描述+触发条件
+      // 未开始：置灰卡片，显示标题+描述+触发条件+启动按钮
       if (s.status === "not_started" || s.status === "pending") {
         html += `<div class="phone-story-card locked" data-story="${s.storyId}">
           <div class="phone-story-head"><span class="phone-story-icon">🔒</span>
@@ -425,6 +428,7 @@ export class Phone {
           </div>
           <div class="phone-story-desc">${s.description || ""}</div>
           <div class="phone-story-miss">${s.status === "not_started" ? "多去镇上走动、处理事件，慢慢就会遇到" : "等待时机"}</div>
+          <button class="phone-story-start-btn" data-start="${s.storyId}">▶ 立即开始</button>
         </div>`;
         continue;
       }
@@ -477,6 +481,19 @@ export class Phone {
         const st = all.find((s) => s.storyId === sid);
         if (this.storyHud) {
           this.storyHud.toast(`📜 ${st?.channelHint ? "去找： " + st.channelHint : "留意镇上动静"}`, { key: "story_" + sid, duration: 3600 });
+        }
+      });
+    }
+    // 启动按钮：强制开始未触发的故事
+    for (const btn of this.storiesBody.querySelectorAll(".phone-story-start-btn")) {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const sid = btn.dataset.start;
+        if (!sid || !this.onStoryStart) return;
+        const res = this.onStoryStart(sid);
+        if (res && res.ok) {
+          // 启动成功 → 重渲染
+          this._renderStoriesView();
         }
       });
     }
