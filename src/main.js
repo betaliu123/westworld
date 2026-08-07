@@ -442,7 +442,8 @@ function boot() {
   const storyRuntime = new StoryRuntime({ worldState, relationshipSystem, eventLog, npcRegistry, economy, reputation });
   phone.setStoryRuntime(storyRuntime);
   phone.setStoryHud(hud);
-  // 手机故事 tab 的"立即开始"按钮：强行启动未触发的故事
+  // 手机故事 tab 的"立即开始"按钮：强行启动未触发的故事。
+  // 启动后立刻让首个节点触达玩家（NPC 过来 / 手机来信），不是等下一次睡觉。
   phone.setStoryStartHandler((storyId) => {
     const def = storyRuntime.getDefinition(storyId);
     if (!def) return { ok: false };
@@ -450,6 +451,8 @@ function boot() {
     if (!inst) return { ok: false };
     const bindNames = Object.values(inst.actorBindings || {}).map((a) => a).join("、");
     hud.toast(`📖 已开始《${def.title}》${bindNames ? `（${bindNames}）` : ""}`, { key: "story-start", duration: 3600 });
+    // 下一帧（主循环里 encounters/deliveryPlanner 都就绪了）投递首个节点
+    _pendingStoryDeliver = { storyId };
     return { ok: true };
   });
 
@@ -725,6 +728,7 @@ function boot() {
   let _knockdownText = document.getElementById("knockdown-text");
   let _knockdownSub = document.getElementById("knockdown-sub");
   let _respawnPending = null; // { x, z, collider, insideRoom, toastMsg, nearbyNpc }
+  let _pendingStoryDeliver = null; // { storyId } — 手动启动的故事，待主循环投递首个节点
 
   function showKnockdown(reason, subText) {
     _knockdownOverlay.classList.remove("hidden");
@@ -3337,6 +3341,14 @@ function boot() {
     microEvents.update();  // 微型事件：进建筑/街角随手可参与的轻量小场景
     pairChat.update(dt);   // 熟人相遇双人闲聊
 
+    // 手动启动的故事：立即投递首个节点，让 NPC 触达玩家（不用等下次睡觉）
+    if (_pendingStoryDeliver) {
+      const pd = _pendingStoryDeliver;
+      _pendingStoryDeliver = null;
+      try { deliverStoryNodeNow(pd.storyId); }
+      catch (e) { console.error("[Main] 故事投递失败", e); }
+    }
+
     // 瞄准检测：你举着枪对着谁，谁就该有反应（看/惊/跑/警告）
     document.body.classList.toggle("aiming", !!player.aiming);
     if (player.aiming && !insideRoom) {
@@ -3471,6 +3483,37 @@ function boot() {
       }
     }
   });
+
+  /**
+   * 立即投递一个故事节点的首个环节，让 NPC 触达玩家。
+   * - 节点要玩家抉择 → 走遭遇管线（NPC 走过来 ❗ F 弹窗）
+   * - 自动推进节点 → 绑定 NPC 立刻发手机消息 + 标记已投递
+   */
+  function deliverStoryNodeNow(storyId) {
+    const def = storyRuntime.getDefinition(storyId);
+    const inst = worldState.getStoryInstance(storyId);
+    if (!def || !inst || !inst.currentNode) return false;
+    const node = def.nodes[inst.currentNode];
+    if (!node) return false;
+
+    // 需要抉择 → NPC 主动过来
+    if (node.playerResponses?.length && !node.canAutoAdvance) {
+      return requestStoryEncounter(storyId, inst.currentNode);
+    }
+
+    // 自动节点 → 立即手机来信（绑定 NPC 发的），并推进
+    const bindings = inst.actorBindings || {};
+    const npcId = Object.values(bindings)[0];
+    const regNpc = npcId && npcRegistry.get ? npcRegistry.get(npcId) : null;
+    const fromName = regNpc?.displayName || def.title;
+    const text = `${node.title}：${node.description || "有新动静"}`;
+    // 直接投给手机（绕过 slot 分拣，立刻可见）
+    phone.deliverMessage(npcId || "system", fromName, text, { taskId: null });
+    // 推进到下一个节点（让剧情往前走）
+    storyRuntime.advance(storyId, null);
+    storyRuntime.markDelivered?.(storyId);
+    return true;
+  }
 
   /**
    * 把一个「需要玩家抉择」的故事节点交给遭遇管线。
