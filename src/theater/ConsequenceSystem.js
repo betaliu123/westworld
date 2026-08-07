@@ -20,6 +20,7 @@ export class ConsequenceSystem {
     this.phone = deps.phone || null;
     this.newspaper = deps.newspaper || null;
     this.reputation = deps.reputation || null;
+    this.storyRuntime = deps.storyRuntime || null;  // P17 打通：剧场结局回写 StoryTree
     this.hud = deps.hud || null;
     this.getDay = deps.getDay || (() => 1);
     this.log = deps.log || (() => {});
@@ -91,7 +92,34 @@ export class ConsequenceSystem {
       }
     }
 
-    this.log(`【后果包】${ctx.treeId || "?"} 应用：势力=${!!cs.faction} 揭示=${!!cs.reveal} 延迟=${(cs.delayed || []).length} 解锁=${(cs.unlock || []).length}`);
+    // 5) 回写 StoryTree：剧场结局推进/创建长线剧情（打通 P17）
+    //    story: { action:"advance"|"create"|"setFlag", storyId, choiceId?, flag?, value? }
+    if (cs.story && this.storyRuntime) {
+      const s = cs.story;
+      try {
+        if (s.action === "advance" && s.storyId) {
+          const inst = this.worldState.getStoryInstance?.(s.storyId);
+          if (inst && inst.status === "active") {
+            this.storyRuntime.advance(s.storyId, s.choiceId || null);
+            out.story = { action: "advance", storyId: s.storyId };
+          }
+        } else if (s.action === "create" && s.storyId) {
+          const okc = this.storyRuntime.tryCreate?.(s.storyId, s.bindings || {});
+          if (okc) out.story = { action: "create", storyId: s.storyId };
+        } else if (s.action === "setFlag" && s.storyId) {
+          const inst = this.worldState.getStoryInstance?.(s.storyId);
+          if (inst) {
+            inst.flags = inst.flags || {};
+            inst.flags[s.flag] = s.value ?? true;
+            out.story = { action: "setFlag", storyId: s.storyId, flag: s.flag };
+          }
+        }
+      } catch (e) {
+        console.error("[Consequence] story 回写失败", e);
+      }
+    }
+
+    this.log(`【后果包】${ctx.treeId || "?"} 应用：势力=${!!cs.faction} 揭示=${!!cs.reveal} 延迟=${(cs.delayed || []).length} 解锁=${(cs.unlock || []).length} 故事=${!!cs.story}`);
     return out;
   }
 

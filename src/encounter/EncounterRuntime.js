@@ -101,7 +101,9 @@ export class EncounterRuntime {
    * LLM 不可用/判不合理 → 规则第一名 + 剧本兜底台词。
    */
   async _cast(spec, venue) {
-    const all = (this.npcManager?.all || []).filter((n) => this._available(n));
+    // spec.jobs 可选：限制候选的职业（微型事件常用，避免牧师来谈送花）
+    const jobs = spec.jobs && spec.jobs.length ? spec.jobs : null;
+    const all = (this.npcManager?.all || []).filter((n) => this._available(n) && (!jobs || jobs.includes(n.personality?.job)));
     if (!all.length) return null;
 
     // 剧情指定的人优先（但仍要求他可用且不太远）
@@ -274,6 +276,10 @@ export class EncounterRuntime {
       this.log(`你说稍后再谈`);
     }
     try { this.onResolve(a, choiceId); } catch (e) { console.error("[Encounter] onResolve 出错", e); }
+    // spec 级 onResolve（MicroEventSystem / StoryTree 各自的结算），与全局结算叠加
+    if (a.onResolve) {
+      try { a.onResolve(a, choiceId); } catch (e) { console.error("[Encounter] spec.onResolve 出错", e); }
+    }
     // 谈完了：NPC 说句话，然后自己走开，回到日程
     const npc = a.npc;
     const line = choiceId

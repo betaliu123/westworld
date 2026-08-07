@@ -97,6 +97,8 @@ export const CONSEQUENCE_PACKS = {
         text: "旧金山一切都好。那张票是我这辈子第一张去别处的通行证。这是我省下的，还你。",
         effects: { cash: 90 } },
     ],
+    // P17 打通：萝丝离开后，镇上那个找父亲的孩子（ST08）有了新的线索
+    story: { action: "create", storyId: "orphan_clue", bindings: {} },
   },
   "saloon_triangle::e_justice": {
     faction: { law: { evidence: 2, authority: 1 } },
@@ -136,6 +138,8 @@ export const CONSEQUENCE_PACKS = {
       channel: "phone",
       effects: { faction: { player: { influence: 1 } } },
     },
+    // P17 打通：扒手的妹妹病着 → 镇上闹病（ST07 药铺短缺）
+    story: { action: "create", storyId: "medicine_shortage", bindings: {} },
   },
   "street_pickpocket::e_escape": {
     reveal: {
@@ -171,6 +175,8 @@ export const CONSEQUENCE_PACKS = {
       effects: { faction: { law: { authority: 2, integrity: 2 } } },
       unlock: ["bank_accountant_cleared"],
     },
+    // P17 打通：账房被冤枉的事传开 → 商贩也被人栽赃缺斤少两（ST05 集市纠纷）
+    story: { action: "create", storyId: "market_scale", bindings: {} },
   },
   "bank_bounty::e_truth2": {
     faction: { player: { money: 120, influence: 1 } },

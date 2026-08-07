@@ -67,6 +67,8 @@ import { AiLog } from "./systems/AiLog.js";
 // 统一遭遇管线：NPC 主动来找玩家 → 中央强决策弹窗（世界暂停）
 import { EncounterRuntime } from "./encounter/EncounterRuntime.js";
 import { SubdueSystem } from "./encounter/SubdueSystem.js";
+import { MicroEventSystem } from "./event/MicroEventSystem.js";
+import { PairChatSystem } from "./event/PairChatSystem.js";
 import { NemesisSystem } from "./factions/NemesisSystem.js";
 import { LawSystem } from "./factions/LawSystem.js";
 import { BusinessSystem } from "./factions/BusinessSystem.js";
@@ -457,7 +459,7 @@ function boot() {
   // P8 后果包：结构性后果（势力/延迟揭示/延迟回报/解锁），theater 与日结共用
   const consequences = new ConsequenceSystem({
     worldState, factionSystem, law, nemesis, business: businessSystem, npcRegistry,
-    phone, newspaper, reputation, hud, getDay: () => worldClock.day,
+    phone, newspaper, reputation, hud, storyRuntime, getDay: () => worldClock.day,
     log: (t) => eventLog?.record?.({ type: "CONSEQ_LOG", facts: { text: t }, tags: ["consequence"] }),
   });
   theater = new TheaterDirector({
@@ -526,6 +528,27 @@ function boot() {
   });
   // 让交互面板知道谁在等玩家搭话（❗ 那个人的 F 键要压过其它交互）
   interaction.setRefs({ npcManager, town, loot, vehicles, interiors, encounters });
+
+  // 微型交互事件：进建筑/街角随手可参与的轻量小场景（复用遭遇弹窗）
+  const microEvents = new MicroEventSystem({
+    encounters, hud, reputation, economy,
+    getDay: () => worldClock.day,
+    getHour: () => worldClock.hour,
+    getPlayerPos: () => player.pos,
+    getVenue: () => insideRoom || null,
+    onAffinity: (npcId, trust, affection) => {
+      const rel = relationshipSystem.applyChange?.(npcId, "player", { trust, affection }) ||
+        worldState.getRelationship?.(npcId, "player");
+      return rel;
+    },
+    npcRegistry,
+  });
+
+  // 熟人相遇双人闲聊：两个认识的 NPC 碰上，停下说两句（DS 生成台词）
+  const pairChat = new PairChatSystem({
+    npcManager, npcRegistry, relationshipSystem,
+    getDay: () => worldClock.day,
+  });
 
   // 处置伏地重伤者：玩家暴力的出口。共用遭遇弹窗（open 时带自己的 onChoice）。
   const subdue = new SubdueSystem({
@@ -3301,6 +3324,8 @@ function boot() {
     factions.update(dt, player.pos);
     corpseReactions.update(dt);
     encounters.update();   // 遭遇管线：NPC 走过来 / 到位后等玩家按 F
+    microEvents.update();  // 微型事件：进建筑/街角随手可参与的轻量小场景
+    pairChat.update(dt);   // 熟人相遇双人闲聊
 
     // 瞄准检测：你举着枪对着谁，谁就该有反应（看/惊/跑/警告）
     document.body.classList.toggle("aiming", !!player.aiming);
