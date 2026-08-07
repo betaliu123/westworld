@@ -131,6 +131,7 @@ export class AIBrain {
     this.emotion = 0;          // 0 平静 → 1 极度激动
     this.bubble = null;        // 当前想说的话
     this.bubbleTimer = 0;
+    this._ambientCd = 0;       // 闲聊冷却：避免聚堆时原地不停冒泡
     this.attackCd = 0;
     this.homePoint = null;     // 无民居 NPC 的家坐标（由 NPCManager 分配）
     this.home = null;          // 真实民居引用（NPCManager 分配住户后非空）
@@ -1401,6 +1402,7 @@ export class AIBrain {
     if (this.emojiTimer > 0) this.emojiTimer -= dt;
     else this.emoji = null;
     if (this.attackCd > 0) this.attackCd -= dt;
+    if (this._ambientCd > 0) this._ambientCd -= dt;
     // 情绪自然衰减（速率来自配置，越大平复越快）
     this.emotion = Math.max(0, this.emotion - dt * AI_PANIC.emotionDecay);
 
@@ -1476,7 +1478,10 @@ export class AIBrain {
         intent.exitPlace = true;
       } else {
         intent.wanderRoom = true; // NPC 实体在屋内选点游走
-        if (chance(dt * 0.1) && this.p.sociability > 0.35) this.say(this._smallTalk());
+        if (this._ambientCd <= 0 && chance(dt * 0.1) && this.p.sociability > 0.35) {
+          this.say(this._smallTalk());
+          this._ambientCd = randRange(6, 10);
+        }
       }
       return intent;
     }
@@ -1628,13 +1633,18 @@ export class AIBrain {
 
       case State.IDLE:
         if (this.stateTimer <= 0) this._enter(State.WANDER);
-        if (!this._ambientMuted && chance(dt * 0.15) && this.p.sociability > 0.4) this.say(this._smallTalk());
+        if (!this._ambientMuted && this._ambientCd <= 0 && chance(dt * 0.15) && this.p.sociability > 0.4) {
+          this.say(this._smallTalk());
+          this._ambientCd = randRange(6, 10); // 冒泡后冷却：不连刷
+        }
         break;
 
       case State.WANDER:
       default: {
+        // 防卡死：去一个点走了很久都没到（被墙/人群挡住），就换个点。
+        // stateTimer 到点即视为"这次没走到"，重新按日程取点；避免一群人挤在
+        // 同一个门口互相推、永远到不了判定距离 → 原地卡死不换目标。
         if (!this.target || this.stateTimer <= 0) {
-          // 按日程取当前时段应去的地点类型，交由 town 解析为坐标
           const placeType = placeForSegment(this.p.schedule, this._segment || "noon", this.p);
           if (placeType && ctx.town.placePoint) {
             this.target = ctx.town.placePoint(placeType, this);
@@ -1644,16 +1654,22 @@ export class AIBrain {
             this.target = ctx.town.randomInterestPoint();
           }
           this._enter(State.WANDER);
+          break;
         }
         intent.moveTo = this.target;
         const d = Math.hypot(ctx.self.x - this.target.x, ctx.self.z - this.target.z);
         if (this.target._home && d < 2.4) {
+          this.target = null;    // 到达即清空，避免原地往返
           intent.enterHome = true; // 到达家门口 → NPC 实体传送进屋
         } else if (this.target._interior && d < 2.4) {
+          this.target = null;    // 到达即清空
           intent.enterPlace = true; // 到达室内场所门口 → 传送进室内（上班/消费）
         } else if (d < 2) {
           this._enter(State.IDLE);
-          if (!this._ambientMuted && chance(0.5) && this.p.sociability > 0.35) this.say(this._smallTalk());
+          if (!this._ambientMuted && this._ambientCd <= 0 && chance(0.5) && this.p.sociability > 0.35) {
+            this.say(this._smallTalk());
+            this._ambientCd = randRange(6, 10);
+          }
         }
         break;
       }

@@ -603,9 +603,15 @@ export class Town {
     if (type === "plaza") {
       return { x: pt.x + randRange(-4, 4), z: pt.z + randRange(-4, 4) };
     }
-    // 帮派驻地：就那一个点，别散开（都挤在大门口扎堆），进室内
+    // 帮派驻地：门口前散开一片落点，避免全体挤在一个点上互相碰撞卡死。
+    // 落点分布在大门口北侧（朝主街）的一个弧带，越靠门越多人往里挤。
     if (type === "hq") {
-      return { x: pt.x, z: pt.z, _interior: pt._interior || pt.name };
+      const doorX = pt.x, doorZ = pt.z;
+      const ang = randRange(-Math.PI * 0.5, Math.PI * 0.5); // 门前 ±90°
+      const rad = randRange(0.5, 4.5);
+      // 沿门前弧带散开；用 resolveCollision 把落在建筑/墙里的点推出来
+      const sc = this.resolveCollision(doorX + Math.sin(ang) * rad, doorZ + Math.cos(ang) * rad, 0.5);
+      return { x: sc.x, z: sc.z, _interior: pt._interior || pt.name };
     }
     return { x: pt.x, z: pt.z, _interior: pt.name };
   }
