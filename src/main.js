@@ -455,6 +455,17 @@ function boot() {
     _pendingStoryDeliver = { storyId };
     return { ok: true };
   });
+  // 手机消息里的故事决策按钮：点了推进剧情
+  phone.setStoryChoiceHandler((storyId, choiceId) => {
+    const def = storyRuntime.getDefinition(storyId);
+    const inst = worldState.getStoryInstance(storyId);
+    const node = def?.nodes?.[inst?.currentNode];
+    const choice = node?.playerResponses?.find((r) => r.id === choiceId);
+    storyRuntime.advance(storyId, choiceId);
+    if (def && choice) {
+      hud.toast(`📖 ${def.title} · ${choice.label}`, { key: "story-choice", duration: 3000 });
+    }
+  });
 
   // P4 Director
   const director = new Director({ worldState, relationshipSystem });
@@ -3486,8 +3497,8 @@ function boot() {
 
   /**
    * 立即投递一个故事节点的首个环节，让 NPC 触达玩家。
-   * - 节点要玩家抉择 → 走遭遇管线（NPC 走过来 ❗ F 弹窗）
-   * - 自动推进节点 → 绑定 NPC 立刻发手机消息 + 标记已投递
+   * - 优先：NPC 主动走过来（遭遇管线，当面弹窗抉择）
+   * - 兜底：NPC 发手机消息 + 消息里带决策按钮（当面/手机都能选）
    */
   function deliverStoryNodeNow(storyId) {
     const def = storyRuntime.getDefinition(storyId);
@@ -3495,23 +3506,25 @@ function boot() {
     if (!def || !inst || !inst.currentNode) return false;
     const node = def.nodes[inst.currentNode];
     if (!node) return false;
+    const responses = node.playerResponses || [];
 
-    // 需要抉择 → NPC 主动过来
-    if (node.playerResponses?.length && !node.canAutoAdvance) {
-      return requestStoryEncounter(storyId, inst.currentNode);
+    // 优先让 NPC 当面来
+    if (responses.length && !node.canAutoAdvance) {
+      const ok = requestStoryEncounter(storyId, inst.currentNode);
+      if (ok) return true;
+      // 遭遇忙/没合适的人 → 落到手机
     }
 
-    // 自动节点 → 立即手机来信（绑定 NPC 发的），并推进
+    // 手机来信，带决策选项（绑定 NPC 发）
     const bindings = inst.actorBindings || {};
     const npcId = Object.values(bindings)[0];
     const regNpc = npcId && npcRegistry.get ? npcRegistry.get(npcId) : null;
     const fromName = regNpc?.displayName || def.title;
     const text = `${node.title}：${node.description || "有新动静"}`;
-    // 直接投给手机（绕过 slot 分拣，立刻可见）
-    phone.deliverMessage(npcId || "system", fromName, text, { taskId: null });
-    // 推进到下一个节点（让剧情往前走）
-    storyRuntime.advance(storyId, null);
-    storyRuntime.markDelivered?.(storyId);
+    phone.deliverMessage(npcId || "system", fromName, text, {
+      storyId, storyNodeId: inst.currentNode,
+      storyChoices: responses.map((r) => ({ id: r.id, label: r.label })),
+    });
     return true;
   }
 

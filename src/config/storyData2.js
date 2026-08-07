@@ -42,8 +42,15 @@ export const ST05_MARKET_SCALE = {
       ],
       emotionalIntensity: 2,
       cooldownTags: [],
-      canAutoAdvance: true,
-      nextNode: "inspect",
+      canAutoAdvance: false,
+      playerResponses: [
+        { id: "rumor_look", label: "上前问个明白", effects: [
+          { type: "modify_relationship", params: { trust: 5, affection: 3 } },
+        ], nextNode: "inspect" },
+        { id: "rumor_skip", label: "事不关己", effects: [
+          { type: "add_event", params: { type: "IGNORED_RUMOR", tags: ["minor"] } },
+        ], nextNode: "faded" },
+      ],
     },
     inspect: {
       id: "inspect",
@@ -151,8 +158,15 @@ export const ST06_OLD_FEUD = {
       ],
       emotionalIntensity: 3,
       cooldownTags: [],
-      canAutoAdvance: true,
-      nextNode: "backstory",
+      canAutoAdvance: false,
+      playerResponses: [
+        { id: "tavern_ask", label: "上前劝两句", effects: [
+          { type: "modify_relationship", params: { trust: 5, affection: 3 } },
+        ], nextNode: "backstory" },
+        { id: "tavern_watch", label: "先看热闹", effects: [
+          { type: "add_event", params: { type: "WATCHED_FEUD", tags: ["minor"] } },
+        ], nextNode: "backstory" },
+      ],
     },
     backstory: {
       id: "backstory",
@@ -263,8 +277,15 @@ export const ST07_MEDICINE_SHORTAGE = {
       ],
       emotionalIntensity: 3,
       cooldownTags: [],
-      canAutoAdvance: true,
-      nextNode: "find",
+      canAutoAdvance: false,
+      playerResponses: [
+        { id: "clinic_help", label: "答应帮忙找药", effects: [
+          { type: "modify_relationship", params: { trust: 8, affection: 5 } },
+        ], nextNode: "find" },
+        { id: "clinic_decline", label: "实在没空", effects: [
+          { type: "add_event", params: { type: "DECLINED_MEDICINE", tags: ["minor"] } },
+        ], nextNode: "faded" },
+      ],
     },
     find: {
       id: "find",
@@ -371,8 +392,18 @@ export const ST08_ORPHAN_CLUE = {
       ],
       emotionalIntensity: 2,
       cooldownTags: [],
-      canAutoAdvance: true,
-      nextNode: "badge",
+      canAutoAdvance: false,
+      playerResponses: [
+        { id: "street_ask", label: "上前问问", effects: [
+          { type: "modify_relationship", params: { trust: 5, affection: 4 } },
+        ], nextNode: "badge" },
+        { id: "street_help", label: "主动帮他查", effects: [
+          { type: "modify_relationship", params: { trust: 8, affection: 6 } },
+        ], nextNode: "badge" },
+        { id: "street_pass", label: "当没看见", effects: [
+          { type: "add_event", params: { type: "IGNORED_KID", tags: ["minor"] } },
+        ], nextNode: "faded" },
+      ],
     },
     badge: {
       id: "badge",

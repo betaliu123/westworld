@@ -72,6 +72,9 @@ export class Phone {
   /** 注入强行启动 handler（main.js 提供，返回 {ok, text}） */
   setStoryStartHandler(fn) { this.onStoryStart = fn; }
 
+  /** 注入故事手机选项 handler（main.js 提供，点击选项推进剧情） */
+  setStoryChoiceHandler(fn) { this.onStoryChoice = fn; }
+
   _sendRecruit() {
     if (!this.activeContactId) return;
     const contact = this.contacts[this.activeContactId];
@@ -219,6 +222,9 @@ export class Phone {
       time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
       day: this.worldState.day,
       hasTask: opts.taskId || null,
+      storyId: opts.storyId || null,
+      storyNodeId: opts.storyNodeId || null,
+      storyChoices: opts.storyChoices || null,
       isUnread: true,
       // 会话对数：该联系人整个聊天里"轮到 NPC 说"的第几条（me+them 各占半轮，
       // 这里给纯数字展示用，显示"（第N轮）"）
@@ -610,11 +616,29 @@ export class Phone {
       if (msg.hasTask) {
         content += `<div class="msg-task-btn" data-task-id="${msg.hasTask}">📋 查看任务</div>`;
       }
+      if (msg.storyChoices && msg.storyChoices.length) {
+        for (const c of msg.storyChoices) {
+          content += `<div class="msg-task-btn msg-story-choice" data-story="${msg.storyId}" data-node="${msg.storyNodeId || ""}" data-choice="${c.id}">▶ ${c.label}</div>`;
+        }
+      }
       bubble.innerHTML = content;
       this.chatEl.appendChild(bubble);
     }
 
     this._renderQuickReplies(thread, contact);
+    // 故事决策按钮：点了推进剧情
+    for (const el of this.chatEl.querySelectorAll(".msg-story-choice")) {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const storyId = el.dataset.story;
+        const choiceId = el.dataset.choice;
+        if (!storyId || !choiceId || !this.onStoryChoice) return;
+        this.onStoryChoice(storyId, choiceId);
+        // 关掉按钮，避免重复点
+        el.style.opacity = "0.4";
+        el.style.pointerEvents = "none";
+      });
+    }
     // 等这一帧布局完成再滚到底 —— 直接设 scrollTop 会被 quick-replies /
     // 输入行的高度变化顶回去，很多消息时滚不到底部。
     requestAnimationFrame(() => {
