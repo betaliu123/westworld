@@ -164,36 +164,60 @@ export class MicroEventSystem {
     this.getVenue = deps.getVenue || (() => null); // insideRoom 或 null
     this.onAffinity = deps.onAffinity || null;     // (npcId, trust, affection)
     this.npcRegistry = deps.npcRegistry;
-    this.pendingVenue = null;   // 上帧所在的场所，用于"刚进入"边沿判定
+    this._tryingVenue = null;   // 当前正在尝试触发的场所
+    this._tryingStarted = false;
+    this._retryT = 0;           // 重试倒计时
+    this._inFlight = false;     // 上一次请求是否还在飞行（LLM 选角慢）
   }
 
   /** 事件池（暴露给测试/调试） */
   get events() { return MICRO_EVENTS; }
 
   /**
-   * 每帧调用：检测玩家刚进入某个场所 → 概率触发一个微型事件。
+   * 每帧调用：玩家进入某场所后，保证"每天每个建筑至少有一次"微型事件。
+   * 触发失败（LLM选角没成功/NPC不可用/遭遇管线忙）不记录冷却，稍后重试。
    * @param {number} dt
    * @returns {boolean} 是否触发
    */
-  update() {
+  update(dt = 0) {
     const venue = this.getVenue();
-    // 只在"从别处进入该场所"的边沿触发，站着不动不重复
-    if (venue === this.pendingVenue) return false;
-    this.pendingVenue = venue;
     const day = this.getDay();
-    const hour = this.getHour();
+    const cooldownKey = venue || "outdoor";
     const pool = MICRO_EVENTS.filter((e) => e.venue === (venue || "outdoor"));
     if (!pool.length) return false;
-    // 冷却：每个场所一天最多触发一次
-    const cooldownKey = venue || "outdoor";
+    // 冷却：每个场所每天最多触发一次（只在真正成功弹出后设置）
     const last = COOLDOWNS.get(cooldownKey);
     if (last === day) return false;
-    // 概率触发（进场所约 45% 机会，避免每次都弹）
-    if (Math.random() > 0.45) return false;
-    COOLDOWNS.set(cooldownKey, day);
+    // 场所变了 → 重置尝试标记，新场所从第一帧开始试
+    if (venue !== this._tryingVenue) {
+      this._tryingVenue = venue;
+      this._tryingStarted = false;
+      this._retryT = 0;
+    }
+    // 上一次请求还在飞行中（LLM 选角可能要十几秒）→ 等待，不重复发起
+    if (this._inFlight) return false;
+    // 节流重试：进场后第一帧就试，之后每 9~14 秒重试直到成功（或换场所）
+    if (this._tryingStarted) {
+      this._retryT -= dt;
+      if (this._retryT > 0) return false;
+      this._retryT = randRange(9, 14);
+    }
+    this._tryingStarted = true;
 
     const evt = pool[Math.floor(Math.random() * pool.length)];
-    return this.fire(evt);
+    this._inFlight = true;
+    const p = this.fire(evt);
+    if (p && typeof p.then === "function") {
+      p.then((ok) => {
+        if (ok) COOLDOWNS.set(cooldownKey, day);  // 真正弹出来了才算触发过
+        this._inFlight = false;
+      }).catch(() => { this._inFlight = false; });
+      return true;
+    }
+    // 同步返回（无 encounters 等）
+    this._inFlight = false;
+    if (p) COOLDOWNS.set(cooldownKey, day);
+    return !!p;
   }
 
   /**
@@ -251,4 +275,8 @@ export class MicroEventSystem {
     if (fx.affection) parts.push(`好感${fx.affection > 0 ? "+" : ""}${fx.affection}`);
     return parts.length ? parts.join(" ") : "无变化";
   }
+}
+
+function randRange(min, max) {
+  return min + Math.random() * (max - min);
 }

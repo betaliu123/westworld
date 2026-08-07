@@ -618,6 +618,62 @@ export class StoryRuntime {
   }
 
   /**
+   * 获取所有 StoryTree 的状态摘要（含未开始的），供手机故事 tab 完整展示。
+   * @returns {Array} [{ storyId, title, status:"active"|"completed"|"pending"|"not_started", ... }]
+   */
+  getAllStoryStatus() {
+    const out = [];
+    const day = this.worldState.day;
+    for (const [storyId, def] of Object.entries(ALL_STORIES)) {
+      const inst = this.worldState.state.storyInstances?.[storyId];
+      const base = {
+        storyId,
+        title: def.title,
+        category: def.category || "",
+        description: def.description || "",
+        actorSlots: Object.keys(def.actorSlots || {}),
+        startConditions: def.startConditions || [],
+      };
+      if (!inst) {
+        out.push({ ...base, status: "not_started" });
+        continue;
+      }
+      if (inst.status === "completed") {
+        out.push({ ...base, status: "completed", completedDay: inst.completedDay ?? day });
+        continue;
+      }
+      if (inst.status !== "active" || !inst.currentNode) {
+        out.push({ ...base, status: inst.status || "pending" });
+        continue;
+      }
+      const node = def.nodes[inst.currentNode];
+      const nodeState = inst.nodeStates?.[inst.currentNode] || {};
+      const dl = node?.softDeadline;
+      out.push({
+        ...base,
+        status: "active",
+        currentNode: inst.currentNode,
+        nodeTitle: node?.title || "",
+        nodeType: node?.type || "?",
+        nodeDescription: node?.description || "",
+        actorBindings: inst.actorBindings || {},
+        missCount: nodeState.missCount || 0,
+        needsPlayerChoice: !!(node?.playerResponses?.length && !node?.canAutoAdvance),
+        deadlineDays: dl?.beforeDay ? dl.beforeDay - day : null,
+        channelHint: this._channelHint(node),
+      });
+    }
+    return out;
+  }
+
+  _channelHint(node) {
+    if (!node) return null;
+    const chans = (node.candidateDeliveries || []).map((c) => c.channel).filter(Boolean);
+    if (!chans.length) return null;
+    return chans.map((c) => ({ location: "去镇里找", hq: "回驻地", phone: "等手机消息", newspaper: "看报纸", rumor: "在酒馆/广场打听" })[c] || c).join(" · ");
+  }
+
+  /**
    * 获取所有活跃的 StoryTree 实例摘要（供手机故事 tab 展示）。
    * @returns {Array} [{ storyId, title, currentNode, nodeTitle, type, description, actorBindings, missCount, channelHint, needsPlayerChoice, deadlineDays }]
    */

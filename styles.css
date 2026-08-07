@@ -651,6 +651,9 @@ html, body {
 /* 手机-故事 tab */
 .phone-story-card { padding: 10px 12px; margin: 8px 10px; background: rgba(255,255,255,.05); border-radius: 10px; cursor: pointer; border: 1px solid rgba(255,255,255,.06); }
 .phone-story-card:hover { background: rgba(255,255,255,.09); }
+.phone-story-card.locked { opacity: .5; cursor: default; background: rgba(255,255,255,.02); }
+.phone-story-card.locked:hover { background: rgba(255,255,255,.02); }
+.phone-story-card.done { opacity: .6; cursor: default; }
 .phone-story-head { display: flex; align-items: center; gap: 8px; }
 .phone-story-icon { font-size: 18px; }
 .phone-story-info { flex: 1; min-width: 0; }

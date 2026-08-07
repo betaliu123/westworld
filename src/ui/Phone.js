@@ -395,70 +395,88 @@ export class Phone {
     }
   }
 
-  /** 故事 tab：列出所有活跃的 StoryTree、当前节点、截止天数、去哪找 */
+  /** 故事 tab：列出所有 StoryTree（进行中的高亮 + 未开始的置灰），截止天数、去哪找 */
   _renderStoriesView() {
     if (!this.storyRuntime || !this.storiesBody) return;
     const sr = this.storyRuntime;
     const day = this.worldState.day;
-    const active = sr.getActiveStories?.() || [];
-
-    if (active.length === 0) {
-      this.storiesBody.innerHTML = `<div style="padding:40px;text-align:center;color:#6a6a75;font-size:14px;">📜 暂无进行中的故事<br><small>世界还在酝酿……多去镇上走走，留意报纸和传闻</small></div>`;
+    const all = sr.getAllStoryStatus?.() || [];
+    if (!all.length) {
+      this.storiesBody.innerHTML = `<div style="padding:40px;text-align:center;color:#6a6a75;font-size:14px;">📜 暂无故事线<br><small>世界还在酝酿……</small></div>`;
       return;
     }
 
+    // 排序：进行中 > 未开始 > 已完成
+    const rank = { active: 0, pending: 1, not_started: 1, completed: 2 };
+    all.sort((a, b) => (rank[a.status] ?? 1) - (rank[b.status] ?? 1));
+
+    const typeIcons = { introduction: "👋", relationship: "💛", faction: "🏴", turning_point: "⚡", investigation: "🔍", resolution: "🏁" };
+
     let html = "";
-    for (const s of active) {
-      const def = sr.getDefinition(s.storyId);
-      const node = def?.nodes?.[s.currentNode];
-      if (!node) continue;
-
-      // 节点类型图标
-      const typeIcons = { introduction: "👋", relationship: "💛", faction: "🏴", turning_point: "⚡", investigation: "🔍", resolution: "🏁" };
-      const icon = typeIcons[node.type] || "📜";
-
-      // 截止信息：softDeadline.beforeDay 是最后期限
-      const dl = node.softDeadline;
-      let deadlineText = "";
-      let urgent = false;
-      if (dl && dl.beforeDay) {
-        const left = dl.beforeDay - day;
-        if (left <= 0) { deadlineText = "今日截止"; urgent = true; }
-        else if (left <= 2) { deadlineText = `${left}天后截止`; urgent = true; }
-        else deadlineText = `${left}天后截止`;
-      } else {
-        deadlineText = "长期";
+    for (const s of all) {
+      // 未开始：置灰卡片，显示标题+描述+触发条件
+      if (s.status === "not_started" || s.status === "pending") {
+        html += `<div class="phone-story-card locked" data-story="${s.storyId}">
+          <div class="phone-story-head"><span class="phone-story-icon">🔒</span>
+            <div class="phone-story-info">
+              <div class="phone-story-title">${s.title}</div>
+              <div class="phone-story-node">${s.status === "pending" ? "等待触发…" : "尚未开始"}</div>
+            </div>
+          </div>
+          <div class="phone-story-desc">${s.description || ""}</div>
+          <div class="phone-story-miss">${s.status === "not_started" ? "多去镇上走动、处理事件，慢慢就会遇到" : "等待时机"}</div>
+        </div>`;
+        continue;
+      }
+      if (s.status === "completed") {
+        html += `<div class="phone-story-card done" data-story="${s.storyId}">
+          <div class="phone-story-head"><span class="phone-story-icon">🏁</span>
+            <div class="phone-story-info">
+              <div class="phone-story-title">${s.title}</div>
+              <div class="phone-story-node">已了结</div>
+            </div>
+          </div>
+        </div>`;
+        continue;
       }
 
-      // 玩家需要选择
-      const needsChoice = !!(node.playerResponses && node.playerResponses.length > 0 && !node.canAutoAdvance);
+      // 进行中：完整卡片
+      const node = sr.getDefinition(s.storyId)?.nodes?.[s.currentNode];
+      const icon = typeIcons[s.nodeType] || "📜";
 
-      // 参与的 NPC
+      let deadlineText = "长期";
+      let urgent = false;
+      if (s.deadlineDays != null) {
+        if (s.deadlineDays <= 0) { deadlineText = "今日截止"; urgent = true; }
+        else if (s.deadlineDays <= 2) { deadlineText = `${s.deadlineDays}天后截止`; urgent = true; }
+        else deadlineText = `${s.deadlineDays}天后截止`;
+      }
+
       const actors = Object.values(s.actorBindings || {}).map((a) => a).join("、");
       const actorNames = actors ? ` · ${actors}` : "";
 
       html += `<div class="phone-story-card" data-story="${s.storyId}">
         <div class="phone-story-head"><span class="phone-story-icon">${icon}</span>
           <div class="phone-story-info">
-            <div class="phone-story-title">${def.title}</div>
-            <div class="phone-story-node">${node.title}</div>
+            <div class="phone-story-title">${s.title}</div>
+            <div class="phone-story-node">${s.nodeTitle}</div>
           </div>
           <span class="phone-story-deadline ${urgent ? "urgent" : ""}">${deadlineText}</span>
         </div>
-        <div class="phone-story-desc">${node.description || ""}${actorNames}</div>
-        ${needsChoice ? '<div class="phone-story-choice">✋ 需要你来做决定</div>' : ""}
+        <div class="phone-story-desc">${s.nodeDescription || ""}${actorNames}</div>
+        ${s.needsPlayerChoice ? '<div class="phone-story-choice">✋ 需要你来做决定</div>' : ""}
         ${s.missCount > 0 ? `<div class="phone-story-miss">⚠️ 错过 ${s.missCount} 次机会</div>` : ""}
       </div>`;
     }
     this.storiesBody.innerHTML = html;
 
     // 点击故事卡 → 提示去哪找（toast）
-    for (const el of this.storiesBody.querySelectorAll(".phone-story-card")) {
+    for (const el of this.storiesBody.querySelectorAll(".phone-story-card:not(.locked):not(.done)")) {
       el.addEventListener("click", () => {
         const sid = el.dataset.story;
-        const chans = sr.getActiveStories?.().find((s) => s.storyId === sid)?.channelHint;
+        const st = all.find((s) => s.storyId === sid);
         if (this.storyHud) {
-          this.storyHud.toast(`📜 ${chans ? "去找： " + chans : "留意镇上动静"}`, { key: "story_" + sid, duration: 3600 });
+          this.storyHud.toast(`📜 ${st?.channelHint ? "去找： " + st.channelHint : "留意镇上动静"}`, { key: "story_" + sid, duration: 3600 });
         }
       });
     }

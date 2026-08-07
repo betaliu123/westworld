@@ -251,7 +251,8 @@ export class TheaterDirector {
     const joined = !!meta.playerJoined;
     this._applyEffects(joined ? { cash: oc.cash, honor: oc.honor, wanted: oc.wanted } : {});
     // 只用中间的结局横幅，不再额外发 toast（否则同一句话屏幕上出现两遍）
-    this.ui?.showOutcome?.(oc, { playerJoined: joined });
+    // 没参与的结局横幅也不弹 —— 你全程没沾边，凭什么给你播结果
+    if (joined) this.ui?.showOutcome?.(oc, { playerJoined: joined });
     const lines = (oc.lines || []).join("；");
     this._addLog(`【结局】${oc.title}${lines ? " —— " + lines : ""}${joined ? "" : "（你当时不在场）"}`);
     if (!joined) return;   // 没参与 → 后续的一切后果都与你无关
