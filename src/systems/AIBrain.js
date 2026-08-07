@@ -4,7 +4,7 @@
 import { randRange, chance, pick } from "../core/MathUtils.js";
 import {
   SMALL_TALK, SCARED_TALK, ANGRY_TALK, DIALOGUE_REPLY, NPC_GREETINGS, ROLE_INTERACTIONS,
-  JOBS, GANGS, JOB_SCHEDULE, PERSONALITY, AI_PANIC,
+  JOBS, GANGS, JOB_SCHEDULE, PERSONALITY, AI_PANIC, LOITER_SOLICIT,
   NPC_THREAT_DEFIANT, NPC_THREAT_SCARED, NPC_PRAISE, JOB_DIALOGUE,
 } from "../config/gameData.js";
 import { AIMED_LINES, AIMED_DEFAULT } from "../config/aimedLines.js";
@@ -132,6 +132,7 @@ export class AIBrain {
     this.bubble = null;        // 当前想说的话
     this.bubbleTimer = 0;
     this._ambientCd = 0;       // 闲聊冷却：避免聚堆时原地不停冒泡
+    this._loitering = null;    // 店门口招徕：{ door:{x,z} } 上班时段站屋檐下
     this.attackCd = 0;
     this.homePoint = null;     // 无民居 NPC 的家坐标（由 NPCManager 分配）
     this.home = null;          // 真实民居引用（NPCManager 分配住户后非空）
@@ -1375,6 +1376,8 @@ export class AIBrain {
 
   _enter(state) {
     this.state = state;
+    // 离开日常状态（受击/逃/怒/倒地/进剧场）→ 店门口招徕结束
+    if (state !== State.IDLE && state !== State.WANDER) this._loitering = null;
     switch (state) {
       case State.STARTLED: this.stateTimer = randRange(0.5, 1.1); break;
       case State.FLEE: this.stateTimer = randRange(3, 6); break;
@@ -1414,10 +1417,32 @@ export class AIBrain {
     if (seg !== this._segment) {
       this._segment = seg;
       this._disturbed = false;
+      // 换时段 → 门口招徕结束，回去按新日程行动
+      this._loitering = null;
       if (this.state === State.WANDER || this.state === State.IDLE) {
         this.target = null; // 触发下方 WANDER 重新按新时段取点
         this.stateTimer = 0;
       }
+    }
+
+    // 店门口招徕客人（上班时段不进室内，站在屋檐下）
+    if (this._loitering && (this.state === State.IDLE || this.state === State.WANDER)) {
+      const door = this._loitering.door;
+      const d = Math.hypot(ctx.self.x - door.x, ctx.self.z - door.z);
+      if (d > 3.2) {
+        intent.moveTo = door;               // 走回店门口
+        intent.speedMul = 0.85;
+      } else {
+        // 站门口，偶尔招徕两句 / 往街上看
+        if (this._ambientCd <= 0 && chance(dt * 0.35) && this.p.sociability > 0.3) {
+          this.say(pick(LOITER_SOLICIT), 2.4);
+          this._ambientCd = randRange(8, 14);
+        }
+        if (ctx.playerDist < 4 && this.p.sociability > 0.4) {
+          intent.glanceTarget = ctx.playerRef;
+        }
+      }
+      return intent;
     }
 
     const intent = { moveTo: null, speedMul: 1, flee: false, wantAttack: false };

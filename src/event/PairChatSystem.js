@@ -53,7 +53,24 @@ export class PairChatSystem {
 
   update(dt) {
     // 推进当前对聊
-    if (this._chatting) return this._stepChat(dt);
+    if (this._chatting) {
+      // 看门狗：两人走散了/有人死了 → 立即散伙并归还日程
+      const c = this._chatting;
+      if (!c.a?.alive || !c.b?.alive) {
+        c.a?.brain?.release?.();
+        c.b?.brain?.release?.();
+        this._chatting = null;
+        return false;
+      }
+      const d = Math.hypot(c.a.pos.x - c.b.pos.x, c.a.pos.z - c.b.pos.z);
+      if (d > CHAT_DIST * 1.6) {
+        c.a?.brain?.release?.();
+        c.b?.brain?.release?.();
+        this._chatting = null;
+        return false;
+      }
+      return this._stepChat(dt);
+    }
     this._scanT -= dt;
     if (this._scanT > 0) return false;
     this._scanT = SCAN_INTERVAL;
@@ -130,7 +147,7 @@ export class PairChatSystem {
     const key = this._pairKey(a, b) || "pair";
     this._cooldown.set(key, this.now() + COOLDOWN_SEC);
     this._chatting = { a, b, arch, lines: seg, lineIdx: 0, t: 0, key };
-    // 两人站定，面对彼此
+    // 两人站定，面对面（用 takeOver 接管：停在原地 + 朝向对方）
     this._face(a, b);
     this._face(b, a);
     this._say(a, seg[0]);
@@ -141,10 +158,17 @@ export class PairChatSystem {
   _stepChat(dt) {
     const c = this._chatting;
     c.t -= dt;
+    // 对聊期间持续保持两人相对站着
+    if (c.a?.brain && c.b?.brain) {
+      this._faceKeep(c.a, c.b);
+      this._faceKeep(c.b, c.a);
+    }
     if (c.t <= 0) {
       c.lineIdx += 1;
       if (c.lineIdx >= c.lines.length) {
-        // 聊完散伙
+        // 聊完散伙：归还两人日程
+        c.a?.brain?.release?.();
+        c.b?.brain?.release?.();
         this._chatting = null;
         return true;
       }
@@ -153,7 +177,6 @@ export class PairChatSystem {
       this._lastA = speaker;
       c.t = this._duration(c.lines[c.lineIdx]);
     }
-    // 保持两人相对站着（不打断日常，聊完自然走开）
     return false;
   }
 
@@ -166,10 +189,17 @@ export class PairChatSystem {
   }
 
   _face(a, b) {
-    // 轻量停步：清掉行走目标让他们原地站住（不动用 takeOver，聊完自然恢复日程）
-    if (a.brain?.state === "WANDER") {
-      a.brain.target = null;
-      a.brain.stateTimer = 4;  // 站一小会儿再继续走
-    }
+    // 接管：停在原地、朝向对方。聊完由 _stepChat 统一 release 归还日程。
+    // takeOver 返回 false 说明 NPC 处于 DOWN 等不可接管状态 → 取消对聊
+    const ok1 = a.brain?.takeOver?.({
+      moveTo: null, faceTarget: b.pos, immune: true, chat: true,
+    });
+    if (ok1 === false) return false;
+    return true;
+  }
+
+  _faceKeep(a, b) {
+    // 对聊期间持续更新朝向（对方在动的话跟着转）
+    a.brain?.perform?.({ faceTarget: b.pos, moveTo: null, immune: true, chat: true });
   }
 }

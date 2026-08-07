@@ -613,6 +613,16 @@ export class Town {
       const sc = this.resolveCollision(doorX + Math.sin(ang) * rad, doorZ + Math.cos(ang) * rad, 0.5);
       return { x: sc.x, z: sc.z, _interior: pt._interior || pt.name };
     }
+    // 工作/消费场所（work/shop/saloon/church）：门口前散开一片落点。
+    // 原来所有人挤同一个门口坐标 → 整排人堵在街上互相推、谁也别想进门。
+    // 现在沿门口弧带散开，多数人站屋檐下/店门口招徕，少数能挤进去。
+    if (type === "work" || type === "shop" || type === "saloon" || type === "church") {
+      const doorX = pt.x, doorZ = pt.z;
+      const ang = randRange(-Math.PI * 0.55, Math.PI * 0.55);
+      const rad = randRange(0.4, 4.0);
+      const sc = this.resolveCollision(doorX + Math.sin(ang) * rad, doorZ + Math.cos(ang) * rad, 0.5);
+      return { x: sc.x, z: sc.z, _interior: pt._interior || pt.name };
+    }
     return { x: pt.x, z: pt.z, _interior: pt.name };
   }
 

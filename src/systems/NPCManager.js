@@ -145,6 +145,16 @@ export class NPCManager {
     // 当前时段该 NPC 应去的场所类型（saloon/shop/work/church/hq）
     const seg = hour >= 5 && hour < 11 ? "morning" : hour >= 11 && hour < 17 ? "noon" : hour >= 17 && hour < 21 ? "evening" : "night";
     const placeType = placeForSegment(npc.personality.schedule, seg, npc.personality);
+    // 上班/开店时有一部分人站在店门口屋檐下招徕客人（不进室内），
+    // 别整条街的人都钻进屋里、或者在大街正中间傻站。
+    const isWorkShift = placeType === "work" || placeType === "shop";
+    const loiter = isWorkShift && Math.random() < 0.5;
+    if (loiter) {
+      npc.brain._loitering = { door: { x: target.x, z: target.z } };
+      npc.brain._enter(State.IDLE);
+      npc.brain.target = null;
+      return;
+    }
     const door = { x: target.x, z: target.z };
     npc.enterPlace(room, placeType, door);
   }
