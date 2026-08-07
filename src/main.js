@@ -438,6 +438,8 @@ function boot() {
   // economy / reputation 必须注入：金钱与声望效果要直接写真实系统，
   // 不能写 worldState 镜像（syncToGame 零调用 + 每晚被 syncFromGame 反向覆盖）
   const storyRuntime = new StoryRuntime({ worldState, relationshipSystem, eventLog, npcRegistry, economy, reputation });
+  phone.setStoryRuntime(storyRuntime);
+  phone.setStoryHud(hud);
 
   // P4 Director
   const director = new Director({ worldState, relationshipSystem });

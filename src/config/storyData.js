@@ -1,5 +1,8 @@
 // storyData.js — StoryTree 定义。所有 StoryTree 的节点、条件、效果、情绪弧。
 // 这是配置数据，不包含逻辑。逻辑由 StoryRuntime / StoryConditions / StoryEffects 处理。
+// 铺量树（ST05~ST08）在 storyData2.js，底部合并进 ALL_STORIES。
+
+import { STORIES_V2 } from "./storyData2.js";
 
 // ============================================================
 // ST01: 信任、背叛与裁决
@@ -316,6 +319,10 @@ export const ST02_LIFE_DEBT = {
       effects: [
         { type: "add_memory", params: { text: "有人救过我，我记得" } },
       ],
+      candidateDeliveries: [
+        { channel: "phone", priority: 3 },
+        { channel: "rumor", priority: 2 },
+      ],
       emotionalIntensity: 1,
       canAutoAdvance: true,
       nextNode: "return",
@@ -385,8 +392,16 @@ export const ST03_KIN_REVENGE = {
     avenger: { requiredTags: ["family_of_protege"], description: "复仇者（亲属）" },
   },
   startConditions: [
-    { type: "npc_dead", params: { npcId: "npc_eli" } },
-    { type: "event_has_tag", params: { tag: "violence", actor: "player" } },
+    { type: "or", params: { conditions: [
+      { type: "and", params: { conditions: [
+        { type: "npc_dead", params: { npcId: "npc_eli" } },
+        { type: "event_has_tag", params: { tag: "violence", actor: "player" } },
+      ] } },
+      { type: "and", params: { conditions: [
+        { type: "played_days_min", params: { value: 3 } },
+        { type: "player_money_min", params: { value: 50 } },
+      ] } },
+    ] } },
   ],
   nodes: {
     discovery: {
@@ -500,7 +515,13 @@ export const ST11_MISSING_MEMBER = {
     missingMember: { requiredTags: [], description: "失踪成员" },
   },
   startConditions: [
-    { type: "event_type_occurred", params: { type: "OPERATION_RESULT", outcome: "missing" } },
+    { type: "or", params: { conditions: [
+      { type: "event_type_occurred", params: { type: "OPERATION_RESULT", outcome: "missing" } },
+      { type: "and", params: { conditions: [
+        { type: "played_days_min", params: { value: 2 } },
+        { type: "player_money_min", params: { value: 30 } },
+      ] } },
+    ] } },
   ],
   nodes: {
     reported_missing: {
@@ -625,4 +646,5 @@ export const ALL_STORIES = {
   life_debt: ST02_LIFE_DEBT,
   kin_revenge: ST03_KIN_REVENGE,
   missing_member: ST11_MISSING_MEMBER,
+  ...STORIES_V2,
 };

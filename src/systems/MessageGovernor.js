@@ -96,9 +96,16 @@ export class MessageGovernor {
     const npcId = msg.npcId || msg.from || "system";
     const cls = classifyMessage(msg, msg.from);
 
+    // 去重：同一 NPC 最近发过的内容完全相同则跳过（防跨天重复刷屏）。
+    // 紧急消息例外（人命关天，允许重复强调）。
+    if (cls.priority !== PRIORITY.HIGH && this._isRepeat(npcId, cls.text)) {
+      return { send: false, reason: "duplicate", priority: cls.priority, category: cls.category };
+    }
+
     // 紧急消息不卡每日上限（人命关天）
     if (cls.priority === PRIORITY.HIGH) {
       this._bump(npcId, day);
+      this._remember(npcId, cls.text);
       return { send: true, cleaned: cls.text, priority: cls.priority, category: cls.category };
     }
 
@@ -109,6 +116,25 @@ export class MessageGovernor {
       return { send: false, reason: "rate_limited", priority: cls.priority, category: cls.category };
     }
     this._bump(npcId, day);
+    this._remember(npcId, cls.text);
     return { send: true, cleaned: cls.text, priority: cls.priority, category: cls.category };
+  }
+
+  /** 记录最近发过的文本（每 NPC 记最近 6 条，供跨天去重） */
+  _remember(npcId, text) {
+    if (!this._st.recent) this._st.recent = {};
+    const arr = this._st.recent[npcId] || [];
+    const norm = String(text || "").trim();
+    arr.push(norm);
+    if (arr.length > 6) arr.splice(0, arr.length - 6);
+    this._st.recent[npcId] = arr;
+  }
+
+  /** 判断这条文本是不是该 NPC 最近发过（内容相同即重复） */
+  _isRepeat(npcId, text) {
+    const arr = this._st.recent?.[npcId] || [];
+    const norm = String(text || "").trim();
+    if (!norm) return false;
+    return arr.some((t) => t === norm);
   }
 }

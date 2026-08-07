@@ -618,6 +618,42 @@ export class StoryRuntime {
   }
 
   /**
+   * 获取所有活跃的 StoryTree 实例摘要（供手机故事 tab 展示）。
+   * @returns {Array} [{ storyId, title, currentNode, nodeTitle, type, description, actorBindings, missCount, channelHint, needsPlayerChoice, deadlineDays }]
+   */
+  getActiveStories() {
+    const out = [];
+    const day = this.worldState.day;
+    for (const [storyId, inst] of Object.entries(this.worldState.state.storyInstances || {})) {
+      if (inst.status !== "active" || !inst.currentNode) continue;
+      const def = ALL_STORIES[storyId];
+      if (!def) continue;
+      const node = def.nodes[inst.currentNode];
+      if (!node) continue;
+      const nodeState = inst.nodeStates[inst.currentNode] || {};
+      const dl = node.softDeadline;
+      const chans = (node.candidateDeliveries || []).map((c) => c.channel).filter(Boolean);
+      const channelHint = chans.length
+        ? chans.map((c) => ({ location: "去镇里找", hq: "回驻地", phone: "等手机消息", newspaper: "看报纸", rumor: "在酒馆/广场打听" })[c] || c).join(" · ")
+        : null;
+      out.push({
+        storyId,
+        title: def.title,
+        currentNode: inst.currentNode,
+        nodeTitle: node.title,
+        type: node.type || "?",
+        description: node.description || "",
+        actorBindings: inst.actorBindings || {},
+        missCount: nodeState.missCount || 0,
+        needsPlayerChoice: !!(node.playerResponses && node.playerResponses.length > 0 && !node.canAutoAdvance),
+        channelHint,
+        deadlineDays: dl?.beforeDay ? dl.beforeDay - day : null,
+      });
+    }
+    return out;
+  }
+
+  /**
    * 获取所有活跃的 StoryTree 候选交付节点（供 Director 使用）。
    * @returns {Array} [{ storyId, nodeId, title, description, candidateDeliveries, emotionalIntensity, cooldownTags }]
    */

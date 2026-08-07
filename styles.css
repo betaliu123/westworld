@@ -646,6 +646,21 @@ html, body {
 .msg.them { align-self: flex-start; background: #26262f; border-bottom-left-radius: 4px; }
 .msg.me { align-self: flex-end; background: #2f6b4f; border-bottom-right-radius: 4px; }
 .msg .who { display: block; font-size: 11px; opacity: .6; margin-bottom: 2px; }
+.msg .msg-seq { font-style: normal; opacity: .75; margin-left: 4px; color: #9ab8d4; font-size: 10px; }
+
+/* 手机-故事 tab */
+.phone-story-card { padding: 10px 12px; margin: 8px 10px; background: rgba(255,255,255,.05); border-radius: 10px; cursor: pointer; border: 1px solid rgba(255,255,255,.06); }
+.phone-story-card:hover { background: rgba(255,255,255,.09); }
+.phone-story-head { display: flex; align-items: center; gap: 8px; }
+.phone-story-icon { font-size: 18px; }
+.phone-story-info { flex: 1; min-width: 0; }
+.phone-story-title { font-size: 13px; font-weight: 600; color: #e8e8e8; }
+.phone-story-node { font-size: 11px; color: #9ab8d4; margin-top: 1px; }
+.phone-story-deadline { font-size: 10px; color: #9ab8d4; white-space: nowrap; }
+.phone-story-deadline.urgent { color: #ff8a80; font-weight: 600; }
+.phone-story-desc { font-size: 11px; color: #8a8a95; margin-top: 4px; line-height: 1.4; }
+.phone-story-choice { font-size: 10px; color: #ffce54; margin-top: 4px; }
+.phone-story-miss { font-size: 10px; color: #ff8a80; margin-top: 3px; }
 
 /* ---------- 商店 ---------- */
 .shop-frame {

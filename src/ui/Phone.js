@@ -15,14 +15,19 @@ export class Phone {
     this.chatView = document.getElementById("phone-chat-view");
     this.stockView = document.getElementById("phone-stock-view");
     this.stockBody = document.getElementById("phone-stock-body");
+    this.storiesView = document.getElementById("phone-stories-view");
+    this.storiesBody = document.getElementById("phone-stories-body");
     this.tabContacts = document.getElementById("phone-tab-contacts");
     this.tabTasks = document.getElementById("phone-tab-tasks");
     this.tabStock = document.getElementById("phone-tab-stock");
+    this.tabStories = document.getElementById("phone-tab-stories");
 
     this.activeContactId = null;
     this.isOpen = false;
     this.taskSystem = null;
     this.stockMarket = null;  // 由 main.js 注入，用于手机股市 tab
+    this.storyRuntime = null; // 由 main.js 注入，用于手机故事 tab
+    this.storyHud = null;     // 由 main.js 注入，用于故事 tab 里"去哪找"提示
     // 自由输入：远程收服/招揽的钩子（由 main.js 注入，返回 {ok,text}）
     this.onFreeText = null;
 
@@ -31,6 +36,7 @@ export class Phone {
     this.tabContacts.addEventListener("click", () => this._switchTab("contacts"));
     this.tabTasks.addEventListener("click", () => this._switchTab("tasks"));
     if (this.tabStock) this.tabStock.addEventListener("click", () => this._switchTab("stock"));
+    if (this.tabStories) this.tabStories.addEventListener("click", () => this._switchTab("stories"));
 
     this.inputEl = document.getElementById("phone-input");
     this.sendBtn = document.getElementById("phone-input-send");
@@ -56,6 +62,12 @@ export class Phone {
 
   /** 注入股票市场实例（手机股市 tab 用） */
   setStockMarket(sm) { this.stockMarket = sm; }
+
+  /** 注入 StoryRuntime（手机故事 tab 用） */
+  setStoryRuntime(sr) { this.storyRuntime = sr; }
+
+  /** 注入 hud（故事 tab 用：把"去哪找"提示发到 toast） */
+  setStoryHud(hud) { this.storyHud = hud; }
 
   _sendRecruit() {
     if (!this.activeContactId) return;
@@ -188,14 +200,26 @@ export class Phone {
       contact.threads = [{ contactName: fromName || contact.displayName, messages: [] }];
     }
     const thread = contact.threads[0];
+
+    // 去重：与最近一条 NPC 消息完全相同则跳过（防重复消息刷屏）。
+    // 只对"来自 NPC"的消息去重；玩家自己发的消息永远保留。
+    const lastThem = [...thread.messages].reverse().find((m) => m.from === "them");
+    const clean = String(text || "").trim();
+    if (lastThem && lastThem.text && this._sameMessage(lastThem.text, clean)) {
+      return null;
+    }
+
     const newMsg = {
       from: "them",
       who: fromName || contact.displayName,
-      text,
+      text: clean,
       time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
       day: this.worldState.day,
       hasTask: opts.taskId || null,
       isUnread: true,
+      // 会话对数：该联系人整个聊天里"轮到 NPC 说"的第几条（me+them 各占半轮，
+      // 这里给纯数字展示用，显示"（第N轮）"）
+      seq: thread.messages.filter((m) => m.from === "them").length + 1,
     };
     thread.messages.push(newMsg);
     if (thread.messages.length > 50) thread.messages.shift();
@@ -205,10 +229,16 @@ export class Phone {
 
     // 新消息通知：Toast + 提示音（不在手机界面内时显示）
     if (!this.isOpen) {
-      const preview = text.length > 18 ? text.substring(0, 18) + "…" : text;
+      const preview = clean.length > 18 ? clean.substring(0, 18) + "…" : clean;
       this._showNotification(contact, fromName || contact.displayName, preview);
     }
     return newMsg;
+  }
+
+  /** 判断两条消息是否重复（忽略首尾空格 + "名字："前缀） */
+  _sameMessage(a, b) {
+    const strip = (s) => String(s).trim().replace(/^[^：:]{1,8}[：:]\s*/, "");
+    return strip(a) === strip(b);
   }
 
   _showNotification(contact, displayName, preview) {
@@ -304,8 +334,9 @@ export class Phone {
       this.contactsView.classList.add("hidden");
       this.chatView.classList.add("hidden");
       if (this.stockView) this.stockView.classList.add("hidden");
+      if (this.storiesView) this.storiesView.classList.add("hidden");
     };
-    for (const [btn, name] of [[this.tabContacts, "contacts"], [this.tabTasks, "tasks"], [this.tabStock, "stock"]]) {
+    for (const [btn, name] of [[this.tabContacts, "contacts"], [this.tabTasks, "tasks"], [this.tabStock, "stock"], [this.tabStories, "stories"]]) {
       if (btn) btn.classList.toggle("active", name === tab);
     }
     if (tab === "contacts") {
@@ -319,6 +350,10 @@ export class Phone {
       hideAll();
       if (this.stockView) this.stockView.classList.remove("hidden");
       this._renderStockView();
+    } else if (tab === "stories" && this.storyRuntime) {
+      hideAll();
+      if (this.storiesView) this.storiesView.classList.remove("hidden");
+      this._renderStoriesView();
     }
   }
 
@@ -357,6 +392,75 @@ export class Phone {
           }
         });
       }
+    }
+  }
+
+  /** 故事 tab：列出所有活跃的 StoryTree、当前节点、截止天数、去哪找 */
+  _renderStoriesView() {
+    if (!this.storyRuntime || !this.storiesBody) return;
+    const sr = this.storyRuntime;
+    const day = this.worldState.day;
+    const active = sr.getActiveStories?.() || [];
+
+    if (active.length === 0) {
+      this.storiesBody.innerHTML = `<div style="padding:40px;text-align:center;color:#6a6a75;font-size:14px;">📜 暂无进行中的故事<br><small>世界还在酝酿……多去镇上走走，留意报纸和传闻</small></div>`;
+      return;
+    }
+
+    let html = "";
+    for (const s of active) {
+      const def = sr.getDefinition(s.storyId);
+      const node = def?.nodes?.[s.currentNode];
+      if (!node) continue;
+
+      // 节点类型图标
+      const typeIcons = { introduction: "👋", relationship: "💛", faction: "🏴", turning_point: "⚡", investigation: "🔍", resolution: "🏁" };
+      const icon = typeIcons[node.type] || "📜";
+
+      // 截止信息：softDeadline.beforeDay 是最后期限
+      const dl = node.softDeadline;
+      let deadlineText = "";
+      let urgent = false;
+      if (dl && dl.beforeDay) {
+        const left = dl.beforeDay - day;
+        if (left <= 0) { deadlineText = "今日截止"; urgent = true; }
+        else if (left <= 2) { deadlineText = `${left}天后截止`; urgent = true; }
+        else deadlineText = `${left}天后截止`;
+      } else {
+        deadlineText = "长期";
+      }
+
+      // 玩家需要选择
+      const needsChoice = !!(node.playerResponses && node.playerResponses.length > 0 && !node.canAutoAdvance);
+
+      // 参与的 NPC
+      const actors = Object.values(s.actorBindings || {}).map((a) => a).join("、");
+      const actorNames = actors ? ` · ${actors}` : "";
+
+      html += `<div class="phone-story-card" data-story="${s.storyId}">
+        <div class="phone-story-head"><span class="phone-story-icon">${icon}</span>
+          <div class="phone-story-info">
+            <div class="phone-story-title">${def.title}</div>
+            <div class="phone-story-node">${node.title}</div>
+          </div>
+          <span class="phone-story-deadline ${urgent ? "urgent" : ""}">${deadlineText}</span>
+        </div>
+        <div class="phone-story-desc">${node.description || ""}${actorNames}</div>
+        ${needsChoice ? '<div class="phone-story-choice">✋ 需要你来做决定</div>' : ""}
+        ${s.missCount > 0 ? `<div class="phone-story-miss">⚠️ 错过 ${s.missCount} 次机会</div>` : ""}
+      </div>`;
+    }
+    this.storiesBody.innerHTML = html;
+
+    // 点击故事卡 → 提示去哪找（toast）
+    for (const el of this.storiesBody.querySelectorAll(".phone-story-card")) {
+      el.addEventListener("click", () => {
+        const sid = el.dataset.story;
+        const chans = sr.getActiveStories?.().find((s) => s.storyId === sid)?.channelHint;
+        if (this.storyHud) {
+          this.storyHud.toast(`📜 ${chans ? "去找： " + chans : "留意镇上动静"}`, { key: "story_" + sid, duration: 3600 });
+        }
+      });
     }
   }
 
@@ -458,12 +562,16 @@ export class Phone {
       this.chatEl.innerHTML = `<div style="text-align:center;color:#6a6a75;font-size:13px;padding-top:60px;">还没有消息<br>等 NPC 主动联系，或打个招呼吧</div>`;
     }
 
+    let seqNo = 0;
     for (const msg of (thread?.messages || [])) {
       msg.isUnread = false;
+      seqNo += 1;
       const bubble = document.createElement("div");
       bubble.className = "msg " + (msg.from === "me" ? "me" : "them");
 
-      let content = `<span class="who">${msg.who} · ${msg.time || ""}</span>${msg.text}`;
+      // 会话对数：从第一条起每来一条消息算一回合（me/them 都算），
+      // 渲染时现算，不依赖存储 —— 所有入口加的消息都能正确编号
+      let content = `<span class="who">${msg.who} · ${msg.time || ""} <em class="msg-seq">（第${seqNo}回合）</em></span>${msg.text}`;
       if (msg.hasTask) {
         content += `<div class="msg-task-btn" data-task-id="${msg.hasTask}">📋 查看任务</div>`;
       }
