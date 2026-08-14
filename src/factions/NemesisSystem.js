@@ -176,6 +176,20 @@ export class NemesisSystem {
 
     this.log(`${seat.displayName}（${pos.title}）从黑蹄会消失了（${this._reasonText(reason)}）`);
     const promoted = this._fillVacancy(seat.posId);
+    // 头目/高位出局 → 告诉玩家谁顶上来了（认识系统：没见过的显示？？？）
+    if (promoted) {
+      const p = promoted.seat;
+      const pName = this.npcRegistry?.get ? (() => {
+        const known = this.npcRegistry.get(p.npcId);
+        return known ? (known.displayName || p.displayName) : p.displayName;
+      })() : p.displayName;
+      if (pos.rank >= 3) {
+        this.hud?.toast?.(`👑 ${seat.displayName}（${pos.title}）倒了 —— ${pName}接了他的位子`, { key: "nemesis-successor", duration: 5200 });
+      } else {
+        this.hud?.toast?.(`${seat.displayName}（${pos.title}）出局 —— ${pName}顶上`, { key: "nemesis-successor", duration: 4200 });
+      }
+      this.log(`${pName}顶替了${pos.title}`);
+    }
     return { removed: seat, position: pos, promoted };
   }
 

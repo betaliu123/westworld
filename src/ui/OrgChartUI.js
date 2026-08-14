@@ -18,11 +18,14 @@ export class OrgChartUI {
     this.playerOrg = deps.playerOrg || null;   // 玩家自己帮派的人事图
     this.law = deps.law || null;               // 警长势力（第三个人事图）
     this.npcRegistry = deps.npcRegistry || null;
+    this.factionSystem = deps.factionSystem || null;   // 读玩家帮派数值
+    this.worldState = deps.worldState || null;
+    this.displayNameOf = deps.displayNameOf || null;   // (npcId) => 显示名（不认识→？？？）
     this.onAppoint = deps.onAppoint || null;   // 任命回调 (npcId, roleId)
     this.getPillars = deps.getPillars || (() => null);
     this.onClose = deps.onClose || (() => {});
     this._open = false;
-    this._view = "bh";    // bh=黑蹄会 player=我的帮派 law=警长
+    this._view = "player";    // player=我的帮派（默认，打开先看自己的成员+数值）
     this._build();
     this._bind();
   }
@@ -179,7 +182,13 @@ export class OrgChartUI {
       byRank.get(n.rank).push(n);
     }
     const ranks = [...byRank.keys()].sort((a, b) => b - a);
-    const nameOf = (posId) => chart.find((x) => x.posId === posId)?.name || "—";
+    const nameOf = (posId) => {
+      const n = chart.find((x) => x.posId === posId);
+      if (!n) return "—";
+      // 认识系统：没接触过的人显示？？？，接触过才露真名
+      if (this.displayNameOf && n.npcId) return this.displayNameOf(n.npcId);
+      return n.name || "—";
+    };
 
     let html = "";
     for (const r of ranks) {
@@ -226,7 +235,23 @@ export class OrgChartUI {
     subBits.push(`未任命 ${unassigned.length}人`);
     const sub = subBits.join(" · ") || "你的帮派人事图";
 
-    let html = `<div class="org-rank"><div class="org-rank-label">👑 会首<span>你</span></div><div class="org-rank-cards">
+    // 帮派数值总览（资金/人力/影响力/士气/驻地等级）
+    const pf = this.factionSystem?.getPlayerFaction?.() || this.worldState?.state?.factions?.player;
+    let statsHtml = "";
+    if (pf) {
+      const stat = (label, v, warn = false) =>
+        `<div class="org-stat"><span class="org-stat-label">${label}</span><span class="org-stat-val ${warn ? "warn" : ""}">${v ?? "—"}</span></div>`;
+      const lowMorale = (pf.morale ?? 100) < 40;
+      statsHtml = `<div class="org-stats">
+        ${stat("💰 资金", pf.money ?? 0)}
+        ${stat("👥 人力", pf.manpower ?? 0)}
+        ${stat("🔥 影响力", pf.influence ?? 0)}
+        ${stat("💪 士气", (pf.morale ?? 0) + (lowMorale ? "（低迷）" : ""), lowMorale)}
+        ${stat("🏠 驻地", (pf.hqLevel ?? 1) + " 级")}
+      </div>`;
+    }
+
+    let html = statsHtml + `<div class="org-rank"><div class="org-rank-label">👑 会首<span>你</span></div><div class="org-rank-cards">
       <div class="org-card is-mole"><div class="org-card-top"><span class="org-name">你自己</span></div>
       <div class="org-card-mid">会首 · 发号施令</div><div class="org-card-bot"><span>顶层</span></div></div>
     </div></div>`;

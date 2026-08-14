@@ -79,7 +79,10 @@ export class PairChatSystem {
 
   _scan() {
     const all = (this.npcManager?.all || this.npcManager?.npcs || []).filter((n) => n?.alive && n.brain);
-    const onFoot = all.filter((n) => !n.insideHome && !n.insideRoom && this._idle(n));
+    // 排除剧场演员（_perform 接管中）和正在被遭遇征召的人，别把台上的人拉去闲聊
+    const onFoot = all.filter((n) =>
+      !n.insideHome && !n.insideRoom && this._idle(n) && !n.brain._perform && !n.brain._encSummon
+    );
     const n = onFoot.length;
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {

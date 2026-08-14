@@ -36,8 +36,9 @@ export class Gangs {
     const close = document.getElementById("gangs-close");
     if (close) close.addEventListener("click", () => this.close());
     if (reputation) reputation.onChange(() => { if (this.isOpen && this._tab === "faction") this.render(); });
-    // 面板打开时保持 tab 同步渲染
-    this._tab = "faction";
+    // 打开时默认落在"我的帮派人事图"（玩家自己的成员 + 数值），
+    // 老的"帮派"tab 保留但不再默认展示
+    this._tab = "org";
     this._buildTabs();
   }
 
@@ -190,6 +191,30 @@ export class Gangs {
 
     bhSection.innerHTML = pillarsHTML;
     this.listEl.appendChild(bhSection);
+
+    // === 我在各方势力的声望 ===
+    const repSection = document.createElement("div");
+    repSection.className = "faction-section";
+    const gangReps = this.reputation?.gangs || {};
+    const repRows = [];
+    if (gangReps.black_hoof != null) {
+      const v = gangReps.black_hoof;
+      repRows.push(`<div class="faction-stat"><span class="fs-label">🏴 黑蹄会声望</span><span class="fs-val" style="color:${v < -15 ? '#e2564a' : v > 15 ? '#78dc78' : '#f0c040'}">${v > 0 ? "+" : ""}${v}</span></div>`);
+    }
+    if (gangReps.law != null) {
+      const v = gangReps.law;
+      repRows.push(`<div class="faction-stat"><span class="fs-label">⭐ 警局声望</span><span class="fs-val" style="color:${v < -15 ? '#e2564a' : v > 15 ? '#78dc78' : '#f0c040'}">${v > 0 ? "+" : ""}${v}</span></div>`);
+    }
+    if (gangReps.player != null) {
+      const v = gangReps.player;
+      repRows.push(`<div class="faction-stat"><span class="fs-label">🏠 自己帮派声望</span><span class="fs-val">${v > 0 ? "+" : ""}${v}</span></div>`);
+    }
+    if (repRows.length) {
+      repSection.innerHTML = `<div class="faction-title">🤝 我在各方的声望</div>
+        <div class="faction-stats">${repRows.join("")}</div>
+        <div style="font-size:11px;color:#b8a888;margin-top:6px">杀帮派/警署的人会掉他们在你心中的声望，长期行侠/做事会回升。</div>`;
+      this.listEl.appendChild(repSection);
+    }
 
     // === 已崩溃统计 + 胜利条件提示 ===
     const statusSection = document.createElement("div");

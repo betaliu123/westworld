@@ -1,6 +1,7 @@
 // theaterStoryTrees.js — 个人连续小剧场 + 势力相关小剧场（DS 生成 + 结构修复 + 中文化）
 // 个人剧场：protagonistId 绑定主角 NPC；势力剧场：kind=faction。
-// 角色不写 name → 选角用 NPC 真实中文显示名。自动生成，勿手改结构。
+// nameAliases: 台词里硬编码的绰号/名字 → 角色，运行时替换成真实 NPC 名。
+// 自动生成，勿手改结构。
 
 export const STORY_TREES = {
   "story_erin_ledger": {
@@ -400,7 +401,11 @@ export const STORY_TREES = {
           "wanted": 1
         }
       }
-    ]
+    ],
+    "nameAliases": {
+      "艾琳": "erin",
+      "艾琳·沃德": "erin"
+    }
   },
   "story_jack_debt": {
     "id": "story_jack_debt",
@@ -627,7 +632,11 @@ export const STORY_TREES = {
           }
         ]
       }
-    ]
+    ],
+    "nameAliases": {
+      "杰克": "jack",
+      "杰克·莫罗": "jack"
+    }
   },
   "faction_infight": {
     "id": "faction_infight",
@@ -865,7 +874,10 @@ export const STORY_TREES = {
           }
         ]
       }
-    ]
+    ],
+    "nameAliases": {
+      "狡狐": "member_b"
+    }
   },
   "faction_rival_wariness": {
     "id": "faction_rival_wariness",
@@ -1102,6 +1114,7 @@ export const STORY_TREES = {
           }
         ]
       }
-    ]
+    ],
+    "nameAliases": {}
   }
 };

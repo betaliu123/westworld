@@ -184,7 +184,7 @@ function boot() {
   // 人事图 / 警长 / 产业：不再是独立弹窗，而是嵌进帮派面板的 tab（O / K 键直接开对应 tab）
   const orgChartUI = new OrgChartUI({
     nemesis,
-    playerOrg, law, npcRegistry,
+    playerOrg, law, npcRegistry, factionSystem, worldState,
     onAppoint: (npcId, roleId) => {
       const r = playerOrg.appoint(npcId, roleId);
       if (!r.ok) hud.toast?.(`❌ ${r.error === "not_member" ? "还不是你的人" : "任命失败"}`, { key: "appoint", duration: 3000 });
@@ -1457,6 +1457,8 @@ function boot() {
   // 构建 NPC 关系上下文，供 AIBrain 选择个性化招呼
   function _buildRelCtx(npc, registryNpc) {
     const npcId = registryNpc?.id || npc.phone?.owner || "镇民";
+    // 交互即认识
+    _markNpcKnown(npcId);
     const rel = worldState.state.relationships?.[npcId + "->player"] || { trust: 0, affection: 0 };
     // P14 修正：玩家帮派成员用 personality.gang（NPCManager 写的是 gang），
     // 原来查 factionId 永远 undefined，boss 招呼从不生效。
@@ -1482,6 +1484,53 @@ function boot() {
     const owner = npc.phone?.owner || "镇民";
     const reg = npcRegistry.findByDisplayName(owner);
     return reg ? reg.id : (npc.phone?.id || owner);
+  }
+
+  // ---- 认识系统：玩家交互过才算"认识"，之前头顶只显示？？？·职业 ----
+
+  function _knownNpcIds() {
+    if (!worldState.state.knownNpcs) worldState.state.knownNpcs = [];
+    return worldState.state.knownNpcs;
+  }
+
+  /** 玩家认识这个 NPC 了吗（打过招呼/谈过话/一起干过事） */
+  function _knowsNpc(npcId) {
+    if (!npcId) return false;
+    const reg = npcRegistry.get(npcId);
+    if (reg && (reg.meta?.isSeedAlly)) return true; // 初始成员/好友开局就认识
+    return _knownNpcIds().includes(npcId);
+  }
+
+  /** 标记认识（在打招呼/对话/遭遇结算时调用） */
+  function _markNpcKnown(npcId) {
+    if (!npcId) return;
+    const arr = _knownNpcIds();
+    if (!arr.includes(npcId)) arr.push(npcId);
+  }
+
+  /** 头顶/面板显示名：不认识 → ？？？·职业；认识 → 真名（+势力名） */
+  function _displayNameFor(npc) {
+    const owner = npc.phone?.owner || "";
+    const job = npc.personality?.job || "镇民";
+    const reg = npcRegistry.findByDisplayName(owner);
+    const nid = reg?.id || npc.brain?._npcId || null;
+    // 没有注册 ID 的普通路人：永远是"？？？·职业"（不可逐一认识）
+    if (!nid) return `？？？·${job}`;
+    if (!_knowsNpc(nid)) return `？？？·${job}`;
+    return owner || reg?.displayName || job;
+  }
+
+  /** 认识的人的名字下面加势力名（属于某个势力/玩家帮派） */
+  function _factionLineFor(npc) {
+    const owner = npc.phone?.owner || "";
+    const reg = npcRegistry.findByDisplayName(owner);
+    const nid = reg?.id || npc.brain?._npcId || null;
+    if (!nid || !_knowsNpc(nid)) return null;
+    const gang = npc.personality?.gang;
+    if (gang === "player") return "我的帮派";
+    if (gang === "black_hoof") return "黑蹄会";
+    if (gang) return String(gang);
+    return null;
   }
 
   // 通用好感度修改（不论 registry 与否都记录）
@@ -1531,6 +1580,7 @@ function boot() {
           });
         }
         phone.addContact(s.id, s.displayName, s.job);
+        _markNpcKnown(s.id);   // 初始成员开局就认识
       }
       // 好友：贝西、玛莎、老魏（关系好但不在帮派，供势力剧场的"好友"角色）
       const friends = [
@@ -1546,6 +1596,7 @@ function boot() {
           });
         }
         phone.addContact(f.id, f.displayName, f.job);
+        _markNpcKnown(f.id);   // 好友开局就认识
       }
     } catch (e) {
       console.error("[Main] seedInitialAllies 失败", e);
@@ -2218,6 +2269,9 @@ function boot() {
   function showFloatDialogue(npc, text, mood) {
     floatDlgNpc = npc;
     const owner = npc.phone?.owner || "镇民";
+    // 认识系统：没打过招呼前显示 ？？？·职业，交互后才露真名
+    const dispName = _displayNameFor(npc);
+    const facLine = _factionLineFor(npc);
     // 查找 registry 中的 npcId 以获取头像
     const regNpc = npcRegistry.findByDisplayName(owner);
     const npcId = regNpc?.id;
@@ -2228,7 +2282,7 @@ function boot() {
     } else if (floatDlgAvatar) {
       floatDlgAvatar.classList.add("hidden");
     }
-    floatDlgName.textContent = `${owner} · ${npc.personality.job}`;
+    floatDlgName.textContent = facLine ? `${dispName}（${facLine}）· ${npc.personality.job}` : `${dispName} · ${npc.personality.job}`;
     floatDlgText.textContent = text;
     floatDlgText.className = "";
     if (mood) floatDlgText.classList.add(mood);
@@ -4064,8 +4118,10 @@ function boot() {
       if (!npc.alive || npc.brain.state === "DOWN") continue;
       // 正在演戏的人由剧场层显示舞台名（更贴剧情），这里跳过，避免头上叠两个名字
       if (npc.brain._perform) continue;
-      const nid = npc.brain._npcId;
-      if (!nid || !NAME_TAG_NPCS.has(nid)) continue;
+      // 认识系统：任何 NPC 都显示名字牌（不认识 → ？？？·职业），
+      // 但距离裁剪照旧，避免满屏标签
+      const disp = _displayNameFor(npc);
+      if (!disp) continue;
 
       // 距离裁剪
       const dx = npc.pos.x - camera.position.x;
@@ -4091,8 +4147,11 @@ function boot() {
         t.inUse = true;
       }
 
-      const impNpc = npcRegistry.get(nid);
-      t.el.textContent = impNpc?.displayName || npc.phone?.owner || "";
+      const facLine = _factionLineFor(npc);
+      // 认识的人：名字 + 下方小字势力名；不认识：？？？·职业
+      t.el.innerHTML = facLine
+        ? `<span>${disp}</span><em class="npc-name-fac">${facLine}</em>`
+        : `<span>${disp}</span>`;
       t.el.style.display = "block";
       t.el.style.left = `${x}px`;
       t.el.style.top = `${y}px`;

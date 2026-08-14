@@ -37,34 +37,34 @@ export const PAIR_CHAT = {
   ],
   "相好": [
     [
-      "Miss Abigail, I didn't e",
-      "Mr. Turner. I was just..",
-      "Not as pretty as... well",
-      "If you'd like. But don't"
+      "姑娘，今儿个赶集买了些啥？",
+      "扯了几尺蓝布，先生您呢？",
+      "我就转转，看有啥新鲜玩意。",
+      "我瞧见你，倒比啥都新鲜。"
     ],
     [
-      "Evenin', Anne. You're wa",
-      "I've walked this road a ",
-      "I just worry, with coyot",
-      "You're sweet to say so. "
+      "你家牧场那边，草料够不够？",
+      "够的，多亏你上回帮着收。",
+      "那点活儿，不算个啥。",
+      "你总这样，让人心里过不去。"
     ],
     [
-      "That new bonnet suits yo",
-      "Why, Mr. Brooks, I didn'",
-      "I notice more than you t",
-      "I would consider it. But"
+      "镇上的星星，今晚格外亮堂。",
+      "是啊，风也凉得正好。",
+      "你披件衣裳，别着了凉。",
+      "你倒是比风还让人清爽。"
     ],
     [
-      "Joseph! I saw you ridin'",
-      "Just lucky, Miss Liza. T",
-      "You're too modest. I sav",
-      "For me? I reckon I'd wal"
+      "镇上杂货铺，进了新咖啡。",
+      "你爱喝那个？我倒没尝过。",
+      "下回我煮一壶，给你送去。",
+      "那怎么好意思，又麻烦你。"
     ],
     [
-      "You're out early, Mrs. H",
-      "Ain't you the gentleman.",
-      "A little dirt never hurt",
-      "Were you now? And what w"
+      "明儿个教堂有唱诗，你去吗？",
+      "去，你来不来接我一道？",
+      "我正想说，怕你不肯呢。",
+      "你这人，总爱抢我的话。"
     ]
   ],
   "旧怨": [

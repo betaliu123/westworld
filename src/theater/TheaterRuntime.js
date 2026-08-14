@@ -37,6 +37,18 @@ export class TheaterRuntime {
     this.gluePending = false;
     this.resolving = false;          // 收束锁：进入后只许去终局
     this.startedAt = this.now();
+    // 名字替换表：alias → 真实 NPC 名（台词里硬编码的绰号/名字换成实际演员名）
+    this._nameMap = {};
+    for (const c of this.cast || []) {
+      const real = c.npc?.phone?.owner || c.stageName || "";
+      if (real) this._nameMap[c.roleId] = real;
+      if (c.stageName && c.stageName !== c.roleId) this._nameMap[c.stageName] = real;
+    }
+    for (const [alias, roleId] of Object.entries(this.tree?.nameAliases || {})) {
+      if (this._nameMap[roleId]) this._nameMap[alias] = this._nameMap[roleId];
+    }
+    // 最长优先替换（避免"艾琳"先被替换成"艾琳·沃德"里的一部分）
+    this._subKeys = Object.keys(this._nameMap).sort((a, b) => b.length - a.length);
     this.gatherDeadline = this.startedAt + THEATER_CONFIG.actorArriveTimeout * 1000;
     this.playerEverJoined = false;
     this.zoneLevel = "outside";      // outside | sense | interact
@@ -326,6 +338,17 @@ export class TheaterRuntime {
     this.nodeEndAt = last + 1200;
   }
 
+  /** 把台词里的别名/角色占位替换成真实 NPC 名（"狡狐"→"杰克·莫罗"等） */
+  _sub(text) {
+    if (!text || !this._subKeys?.length) return text;
+    let out = String(text);
+    for (const key of this._subKeys) {
+      const re = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
+      out = out.replace(re, this._nameMap[key]);
+    }
+    return out;
+  }
+
   _playBeat(beat) {
     const m = this.memberOf(beat.speaker);
     if (!m) return;
@@ -335,11 +358,12 @@ export class TheaterRuntime {
     this._faceAddressee(npc, beat);
     if (beat.text) {
       const dur = beat.mood === "angry" || beat.mood === "scared" ? 3.2 : 2.8;
-      npc.brain.say(beat.text.slice(0, THEATER_CONFIG.maxBubbleChars), dur);
+      const text = this._sub(beat.text).slice(0, THEATER_CONFIG.maxBubbleChars);
+      npc.brain.say(text, dur);
       if (beat.mood === "angry" || beat.mood === "scared") npc.brain.emotion = 0.8;
       // 情绪表现：emoji + 抖一下身子。beat 可以显式写 emoji/shake 覆盖默认映射
       this.hooks.moodFx?.(npc, beat.mood, beat.emoji, beat.shake);
-      this.hooks.log?.(`${m.stageName}：${beat.text}`);
+      this.hooks.log?.(`${m.stageName}：${text}`);
     }
   }
 
@@ -386,7 +410,7 @@ export class TheaterRuntime {
     this.hooks.onChoices?.(
       this.node.choices.map((c) => ({
         id: c.id,
-        label: c.label,
+        label: this._sub(c.label),
         icon: c.icon || "▶",
         risk: c.risk || "medium",
       })),

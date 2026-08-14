@@ -1466,13 +1466,14 @@ export class AIBrain {
     }
 
     // ── LLM 决策的"跟随"：优先于日程，但不抢战斗/逃跑/倒地 ──
+    // 跟随目标（召集的帮派成员等）：战斗/逃跑时暂停但不取消，平静后继续跟
     if (this._follow) {
       const busy = this.state === State.DOWN || this.state === State.FLEE || this.state === State.ANGRY;
-      this._followUntil -= dt;
       const ref = this._follow.ref;
-      if (busy || this._followUntil <= 0 || !ref) {
-        this.stopFollow();
-      } else {
+      if (this._followUntil > 0) this._followUntil -= dt;
+      if (this._followUntil <= 0 || !ref) {
+        this.stopFollow();  // 超时或被跟丢 → 真的结束
+      } else if (!busy) {
         const d = Math.hypot(ctx.self.x - ref.x, ctx.self.z - ref.z);
         if (d > this._follow.stopDist) {
           intent.moveTo = { x: ref.x, z: ref.z };
@@ -1482,6 +1483,7 @@ export class AIBrain {
         }
         return intent;
       }
+      // busy 时：掉下去走战斗/逃跑分支，但 _follow 还在，等平静后自然恢复
     }
 
     // 在家里：睡觉；到点该出门了就离开（NPC 实体负责执行传送）
