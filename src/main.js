@@ -185,6 +185,14 @@ function boot() {
   const orgChartUI = new OrgChartUI({
     nemesis,
     playerOrg, law, npcRegistry, factionSystem, worldState,
+    // 认识系统：人事图里没接触过的人显示？？？
+    displayNameOf: (npcId) => {
+      if (!npcId) return "—";
+      if (_knowsNpc(npcId)) return npcRegistry.get(npcId)?.displayName || npcId;
+      const job = npcRegistry.get(npcId)?.job || "";
+      return job ? `？？？·${job}` : "？？？";
+    },
+    getGangReps: () => reputation?.gangs || null,
     onAppoint: (npcId, roleId) => {
       const r = playerOrg.appoint(npcId, roleId);
       if (!r.ok) hud.toast?.(`❌ ${r.error === "not_member" ? "还不是你的人" : "任命失败"}`, { key: "appoint", duration: 3000 });
@@ -1457,8 +1465,8 @@ function boot() {
   // 构建 NPC 关系上下文，供 AIBrain 选择个性化招呼
   function _buildRelCtx(npc, registryNpc) {
     const npcId = registryNpc?.id || npc.phone?.owner || "镇民";
-    // 交互即认识
-    _markNpcKnown(npcId);
+    // 交互即认识（第一次会弹"你知道了他的名字…"）
+    _markNpcKnown(npcId, npc);
     const rel = worldState.state.relationships?.[npcId + "->player"] || { trust: 0, affection: 0 };
     // P14 修正：玩家帮派成员用 personality.gang（NPCManager 写的是 gang），
     // 原来查 factionId 永远 undefined，boss 招呼从不生效。
@@ -1486,7 +1494,14 @@ function boot() {
     return reg ? reg.id : (npc.phone?.id || owner);
   }
 
-  // ---- 认识系统：玩家交互过才算"认识"，之前头顶只显示？？？·职业 ----
+  // ---- 认识系统：玩家交互过才算"认识"，之前头顶不显示名字 ----
+
+  /** NPC 对应的 registry id（没有就 null） */
+  function _regIdOf(npc) {
+    const owner = npc.phone?.owner || "";
+    const reg = owner ? npcRegistry.findByDisplayName(owner) : null;
+    return reg?.id || npc.brain?._npcId || null;
+  }
 
   function _knownNpcIds() {
     if (!worldState.state.knownNpcs) worldState.state.knownNpcs = [];
@@ -1501,11 +1516,22 @@ function boot() {
     return _knownNpcIds().includes(npcId);
   }
 
-  /** 标记认识（在打招呼/对话/遭遇结算时调用） */
-  function _markNpcKnown(npcId) {
-    if (!npcId) return;
+  /** 标记认识（在打招呼/对话/遭遇结算时调用）。返回是否"第一次认识" */
+  function _markNpcKnown(npcId, npc = null) {
+    if (!npcId) return false;
     const arr = _knownNpcIds();
-    if (!arr.includes(npcId)) arr.push(npcId);
+    if (arr.includes(npcId)) return false;
+    arr.push(npcId);
+    // 第一次知道名字 → 屏幕中间给个提示（认识感）
+    const reg = npcRegistry.get(npcId);
+    const name = reg?.displayName || npc?.phone?.owner || "这个人";
+    const job = reg?.job || npc?.personality?.job || "";
+    const gang = npc?.personality?.gang;
+    const facText = gang === "player" ? "，是你帮派的人"
+      : gang === "black_hoof" ? "，黑蹄会的人"
+      : gang ? `，${gang}的人` : "";
+    hud?.toast?.(`🤝 你知道了他的名字：${name}${job ? `（${job}）` : ""}${facText}`, { key: "met-" + npcId, duration: 4600 });
+    return true;
   }
 
   /** 头顶/面板显示名：不认识 → ？？？·职业；认识 → 真名（+势力名） */
@@ -1580,7 +1606,7 @@ function boot() {
           });
         }
         phone.addContact(s.id, s.displayName, s.job);
-        _markNpcKnown(s.id);   // 初始成员开局就认识
+        if (!_knownNpcIds().includes(s.id)) _knownNpcIds().push(s.id);  // 开局就认识（不弹提示）
       }
       // 好友：贝西、玛莎、老魏（关系好但不在帮派，供势力剧场的"好友"角色）
       const friends = [
@@ -1596,7 +1622,7 @@ function boot() {
           });
         }
         phone.addContact(f.id, f.displayName, f.job);
-        _markNpcKnown(f.id);   // 好友开局就认识
+        if (!_knownNpcIds().includes(f.id)) _knownNpcIds().push(f.id);  // 好友开局就认识（不弹提示）
       }
     } catch (e) {
       console.error("[Main] seedInitialAllies 失败", e);
@@ -3503,7 +3529,7 @@ function boot() {
     if (_pendingStoryDeliver) {
       const pd = _pendingStoryDeliver;
       _pendingStoryDeliver = null;
-      try { deliverStoryNodeNow(pd.storyId); }
+      try { deliverStoryNodeNow(pd.storyId, { force: true }); }
       catch (e) { console.error("[Main] 故事投递失败", e); }
     }
 
@@ -3648,25 +3674,45 @@ function boot() {
    * - 其次：NPC 主动走过来（遭遇管线，当面弹窗抉择）
    * - 兜底：NPC 发手机消息 + 消息里带决策按钮（当面/手机都能选）
    */
-  function deliverStoryNodeNow(storyId) {
+  function deliverStoryNodeNow(storyId, opts = {}) {
     const def = storyRuntime.getDefinition(storyId);
     const inst = worldState.getStoryInstance(storyId);
     if (!def || !inst || !inst.currentNode) return false;
     const node = def.nodes[inst.currentNode];
     if (!node) return false;
     const responses = node.playerResponses || [];
+    const force = !!opts.force;   // 手机"立即开始"：一定要拉起一场戏
 
     // 个人小剧场：故事绑定的 NPC 有专属剧本 → 让他亲身上台开演
     const bindings = inst.actorBindings || {};
     const boundNpcId = Object.values(bindings)[0];
-    const personalTree = boundNpcId
+    let tree = boundNpcId
       ? STORY_TREE_LIST.find((t) => t.protagonistId === boundNpcId)
       : null;
-    if (personalTree && !theater.active) {
-      const started = theater.startStoryTree(personalTree, boundNpcId);
+    // 强制启动且没有专属剧本 → 挑一棵能演的（优先势力剧场，其次任意个人剧场）
+    if (!tree && force) {
+      const cands = [
+        ...STORY_TREE_LIST.filter((t) => t.kind === "faction"),
+        ...STORY_TREE_LIST.filter((t) => t.kind === "personal"),
+      ];
+      tree = cands[Math.floor(Math.random() * cands.length)] || null;
+    }
+    if (tree && !theater.active) {
+      const started = theater.startStoryTree(tree, tree.protagonistId || boundNpcId || null);
       if (started) {
-        hud.toast(`🎭 ${def.title} · ${personalTree.title}`, { key: "story-personal", duration: 4000 });
+        hud.toast(`🎭 ${def.title} · ${tree.title}`, { key: "story-personal", duration: 4200 });
+        // 传送到舞台边（省去跑过去），玩家马上能看到戏
+        if (force) {
+          const c = theater.stage.center;
+          const safe = town.resolveCollision(c.x + 3.5, c.z + 3.5, 0.45);
+          player.pos.set(safe.x, player.pos.y, safe.z);
+          hud.toast("已把你带到事发地点", { side: true, key: "story-tp", duration: 3000 });
+        }
         return true;
+      }
+      // 开不了戏（凑不齐角色）→ 告诉玩家原因，再落到遭遇/手机
+      if (force && theater.lastFailReason) {
+        hud.toast(`⚠️ 这场戏演不起来：${theater.lastFailReason}`, { duration: 5000, key: "story-nocast" });
       }
     }
 
@@ -4118,9 +4164,11 @@ function boot() {
       if (!npc.alive || npc.brain.state === "DOWN") continue;
       // 正在演戏的人由剧场层显示舞台名（更贴剧情），这里跳过，避免头上叠两个名字
       if (npc.brain._perform) continue;
-      // 认识系统：任何 NPC 都显示名字牌（不认识 → ？？？·职业），
-      // 但距离裁剪照旧，避免满屏标签
-      const disp = _displayNameFor(npc);
+      // 认识系统：只给"认识的人"挂名字牌。不认识的一律不显示 ——
+      // 满街？？？比不显示更乱（名字在左下角交互面板里给）
+      const nid = _regIdOf(npc);
+      if (!nid || !_knowsNpc(nid)) continue;
+      const disp = npc.phone?.owner || npcRegistry.get(nid)?.displayName || "";
       if (!disp) continue;
 
       // 距离裁剪

@@ -368,6 +368,7 @@ export class Phone {
     this.contactsView.classList.remove("hidden");
     this.chatView.classList.add("hidden");
     if (this.stockView) this.stockView.classList.add("hidden");
+    if (this.storiesView) this.storiesView.classList.add("hidden");
     this._renderContactList();
   }
 
@@ -375,6 +376,7 @@ export class Phone {
     this.activeContactId = npcId;
     this.contactsView.classList.add("hidden");
     this.chatView.classList.remove("hidden");
+    if (this.storiesView) this.storiesView.classList.add("hidden");
     if (this.stockView) this.stockView.classList.add("hidden");
     this._renderChat(npcId);
     this._updateBadge();

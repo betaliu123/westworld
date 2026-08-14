@@ -722,6 +722,7 @@ export class AIBrain {
   /** 跟着某个目标走（targetRef 是活引用，会持续更新位置） */
   follow(targetRef, { seconds = 20, stopDist = 2.4 } = {}) {
     if (this.state === State.DOWN) return false;
+    this._loitering = null;          // 被召集了就别再站店门口招徕
     this._follow = { ref: targetRef, stopDist };
     this.threat = targetRef;         // 顺便让他朝着你
     this._enter(State.WANDER);
@@ -1425,26 +1426,6 @@ export class AIBrain {
       }
     }
 
-    // 店门口招徕客人（上班时段不进室内，站在屋檐下）
-    if (this._loitering && (this.state === State.IDLE || this.state === State.WANDER)) {
-      const door = this._loitering.door;
-      const d = Math.hypot(ctx.self.x - door.x, ctx.self.z - door.z);
-      if (d > 3.2) {
-        intent.moveTo = door;               // 走回店门口
-        intent.speedMul = 0.85;
-      } else {
-        // 站门口，偶尔招徕两句 / 往街上看
-        if (this._ambientCd <= 0 && chance(dt * 0.35) && this.p.sociability > 0.3) {
-          this.say(pick(LOITER_SOLICIT), 2.4);
-          this._ambientCd = randRange(8, 14);
-        }
-        if (ctx.playerDist < 4 && this.p.sociability > 0.4) {
-          intent.glanceTarget = ctx.playerRef;
-        }
-      }
-      return intent;
-    }
-
     const intent = { moveTo: null, speedMul: 1, flee: false, wantAttack: false };
 
     // ── AI 剧场接管：被征召为演员时，绕过日程/时段逻辑，只听剧场调度 ──
@@ -1484,6 +1465,41 @@ export class AIBrain {
         return intent;
       }
       // busy 时：掉下去走战斗/逃跑分支，但 _follow 还在，等平静后自然恢复
+    }
+
+    // 店门口招徕客人（上班时段不进室内，站在屋檐下）。
+    // 优先级在跟随之后 —— 被召集的成员该跟着玩家走，而不是回去站店门口。
+    // 站位用一次性算好的固定落点（不是门本身），避免"到不了门口→来回踱步"。
+    if (this._loitering && (this.state === State.IDLE || this.state === State.WANDER)) {
+      const L = this._loitering;
+      if (!L.spot) {
+        // 门口侧前方一点，带个体固定偏移，几个人不会叠在一起
+        const a = (this.p.scheduleJitter || 0) * Math.PI + Math.random() * 0.6;
+        L.spot = { x: L.door.x + Math.cos(a) * 1.8, z: L.door.z + Math.sin(a) * 1.8 };
+      }
+      const d = Math.hypot(ctx.self.x - L.spot.x, ctx.self.z - L.spot.z);
+      if (d > 1.6) {
+        // 走不到就别死磕：卡 4 秒后就地站定（避免在门口来回踱步）
+        L.stuck = (L.stuck || 0) + dt;
+        if (L.stuck > 4) {
+          L.spot = { x: ctx.self.x, z: ctx.self.z };  // 就地当成站位
+          L.stuck = 0;
+        } else {
+          intent.moveTo = L.spot;           // 走到屋檐下的站位
+          intent.speedMul = 0.8;
+        }
+      } else {
+        L.stuck = 0;
+        // 到位就站定，不再移动（原来一直往门口挪 → 卡门口走来走去）
+        if (this._ambientCd <= 0 && chance(dt * 0.35) && this.p.sociability > 0.3) {
+          this.say(pick(LOITER_SOLICIT), 2.4);
+          this._ambientCd = randRange(8, 14);
+        }
+        if (ctx.playerDist < 5 && this.p.sociability > 0.35) {
+          intent.glanceTarget = ctx.playerRef;   // 有客人路过就看两眼
+        }
+      }
+      return intent;
     }
 
     // 在家里：睡觉；到点该出门了就离开（NPC 实体负责执行传送）

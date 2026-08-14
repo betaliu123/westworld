@@ -21,6 +21,7 @@ export class OrgChartUI {
     this.factionSystem = deps.factionSystem || null;   // 读玩家帮派数值
     this.worldState = deps.worldState || null;
     this.displayNameOf = deps.displayNameOf || null;   // (npcId) => 显示名（不认识→？？？）
+    this.getGangReps = deps.getGangReps || null;        // () => { black_hoof, law, ... } 各方声望
     this.onAppoint = deps.onAppoint || null;   // 任命回调 (npcId, roleId)
     this.getPillars = deps.getPillars || (() => null);
     this.onClose = deps.onClose || (() => {});
@@ -235,20 +236,36 @@ export class OrgChartUI {
     subBits.push(`未任命 ${unassigned.length}人`);
     const sub = subBits.join(" · ") || "你的帮派人事图";
 
-    // 帮派数值总览（资金/人力/影响力/士气/驻地等级）
+    // 帮派数值总览（资金/人力/影响力/士气/驻地等级）+ 我在各方的声望
     const pf = this.factionSystem?.getPlayerFaction?.() || this.worldState?.state?.factions?.player;
     let statsHtml = "";
     if (pf) {
-      const stat = (label, v, warn = false) =>
-        `<div class="org-stat"><span class="org-stat-label">${label}</span><span class="org-stat-val ${warn ? "warn" : ""}">${v ?? "—"}</span></div>`;
+      const stat = (label, v, cls = "") =>
+        `<div class="org-stat"><span class="org-stat-label">${label}</span><span class="org-stat-val ${cls}">${v ?? "—"}</span></div>`;
       const lowMorale = (pf.morale ?? 100) < 40;
-      statsHtml = `<div class="org-stats">
-        ${stat("💰 资金", pf.money ?? 0)}
+      statsHtml = `<div class="org-block"><div class="org-block-title">📊 帮派实力</div><div class="org-stats">
+        ${stat("💰 资金", "$" + (pf.money ?? 0))}
         ${stat("👥 人力", pf.manpower ?? 0)}
         ${stat("🔥 影响力", pf.influence ?? 0)}
-        ${stat("💪 士气", (pf.morale ?? 0) + (lowMorale ? "（低迷）" : ""), lowMorale)}
-        ${stat("🏠 驻地", (pf.hqLevel ?? 1) + " 级")}
-      </div>`;
+        ${stat("💪 士气", (pf.morale ?? 0) + (lowMorale ? " 低迷" : ""), lowMorale ? "bad" : "good")}
+        ${stat("🏠 驻地", "Lv." + (pf.hqLevel ?? 1))}
+      </div></div>`;
+    }
+    // 各方声望（杀帮派/警署的人会掉）
+    const reps = this.getGangReps ? this.getGangReps() : null;
+    if (reps) {
+      const repRow = (label, v) => {
+        const cls = v <= -15 ? "bad" : v >= 15 ? "good" : "";
+        const desc = v <= -30 ? "（视你为敌）" : v <= -15 ? "（提防你）" : v >= 30 ? "（认你这个人）" : v >= 15 ? "（有点交情）" : "（互不相干）";
+        return `<div class="org-stat"><span class="org-stat-label">${label}</span><span class="org-stat-val ${cls}">${v > 0 ? "+" : ""}${v} <em>${desc}</em></span></div>`;
+      };
+      const rows = [];
+      if (reps.black_hoof != null) rows.push(repRow("🏴 黑蹄会", reps.black_hoof));
+      if (reps.law != null) rows.push(repRow("⭐ 警局", reps.law));
+      if (rows.length) {
+        statsHtml += `<div class="org-block"><div class="org-block-title">🤝 我在各方的声望</div><div class="org-stats">${rows.join("")}</div>
+          <div class="org-note">杀他们的人 / 抢他们的产业会掉声望；行侠仗义、帮他们办事会回升。</div></div>`;
+      }
     }
 
     let html = statsHtml + `<div class="org-rank"><div class="org-rank-label">👑 会首<span>你</span></div><div class="org-rank-cards">
