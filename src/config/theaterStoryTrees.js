@@ -1,6 +1,6 @@
-// theaterStoryTrees.js — 个人连续小剧场 + 势力相关小剧场（DS 生成 + 结构修复）
+// theaterStoryTrees.js — 个人连续小剧场 + 势力相关小剧场（DS 生成 + 结构修复 + 中文化）
 // 个人剧场：protagonistId 绑定主角 NPC；势力剧场：kind=faction。
-// 自动生成，勿手改结构。
+// 角色不写 name → 选角用 NPC 真实中文显示名。自动生成，勿手改结构。
 
 export const STORY_TREES = {
   "story_erin_ledger": {
@@ -14,7 +14,6 @@ export const STORY_TREES = {
     "roles": [
       {
         "roleId": "erin",
-        "name": "bookkeeper",
         "required": true,
         "jobs": [
           "会计"
@@ -22,7 +21,6 @@ export const STORY_TREES = {
       },
       {
         "roleId": "boss",
-        "name": "boss",
         "required": true,
         "jobs": [
           "商人",
@@ -31,7 +29,6 @@ export const STORY_TREES = {
       },
       {
         "roleId": "rival",
-        "name": "rival",
         "required": true,
         "jobs": [
           "赌徒",
@@ -416,7 +413,6 @@ export const STORY_TREES = {
     "roles": [
       {
         "roleId": "jack",
-        "name": "gunman",
         "required": true,
         "jobs": [
           "枪手",
@@ -425,7 +421,6 @@ export const STORY_TREES = {
       },
       {
         "roleId": "debtor",
-        "name": "debtor",
         "required": true,
         "jobs": [
           "帮派头目",
@@ -434,7 +429,6 @@ export const STORY_TREES = {
       },
       {
         "roleId": "friend",
-        "name": "friend",
         "required": true,
         "jobs": [
           "酒保",
@@ -646,7 +640,6 @@ export const STORY_TREES = {
     "roles": [
       {
         "roleId": "member_a",
-        "name": "member",
         "required": true,
         "jobs": [
           "帮派头目",
@@ -656,7 +649,6 @@ export const STORY_TREES = {
       },
       {
         "roleId": "member_b",
-        "name": "member",
         "required": true,
         "jobs": [
           "帮派头目",
@@ -666,7 +658,6 @@ export const STORY_TREES = {
       },
       {
         "roleId": "onlooker",
-        "name": "onlooker",
         "required": true,
         "jobs": [
           "商人",
@@ -887,7 +878,6 @@ export const STORY_TREES = {
     "roles": [
       {
         "roleId": "rival_boss",
-        "name": "rival",
         "required": true,
         "jobs": [
           "帮派头目",
@@ -896,7 +886,6 @@ export const STORY_TREES = {
       },
       {
         "roleId": "hench",
-        "name": "hench",
         "required": true,
         "jobs": [
           "赌徒",
@@ -906,7 +895,6 @@ export const STORY_TREES = {
       },
       {
         "roleId": "neutral",
-        "name": "neutral",
         "required": true,
         "jobs": [
           "酒保",
@@ -1013,21 +1001,21 @@ export const STORY_TREES = {
         "outcome": {
           "title": "井水不犯河水",
           "lines": [
-            "rival_boss：既然路过，那便请便。",
-            "hench：下次可别撞上咱们。"
+            "既然路过，那便请便。",
+            "下次可别撞上咱们。"
           ],
           "honor": 1
         },
         "beats": [
           {
             "speaker": "rival_boss",
-            "text": "rival_boss：既然路过，那便请便。",
+            "text": "既然路过，那便请便。",
             "delayMs": 2000,
             "mood": "neutral"
           },
           {
             "speaker": "rival_boss",
-            "text": "hench：下次可别撞上咱们。",
+            "text": "下次可别撞上咱们。",
             "delayMs": 2000,
             "mood": "neutral"
           }
@@ -1040,8 +1028,8 @@ export const STORY_TREES = {
         "outcome": {
           "title": "不欢而散",
           "lines": [
-            "rival_boss：好小子，你有种。",
-            "hench：咱们走着瞧。"
+            "好小子，你有种。",
+            "咱们走着瞧。"
           ],
           "honor": 2,
           "wanted": 1
@@ -1049,13 +1037,13 @@ export const STORY_TREES = {
         "beats": [
           {
             "speaker": "rival_boss",
-            "text": "rival_boss：好小子，你有种。",
+            "text": "好小子，你有种。",
             "delayMs": 2000,
             "mood": "neutral"
           },
           {
             "speaker": "rival_boss",
-            "text": "hench：咱们走着瞧。",
+            "text": "咱们走着瞧。",
             "delayMs": 2000,
             "mood": "neutral"
           }
@@ -1068,20 +1056,20 @@ export const STORY_TREES = {
         "outcome": {
           "title": "形同陌路",
           "lines": [
-            "hench：这家伙怪得很。",
-            "rival_boss：盯紧点，别让他坏了事。"
+            "这家伙怪得很。",
+            "盯紧点，别让他坏了事。"
           ]
         },
         "beats": [
           {
             "speaker": "rival_boss",
-            "text": "hench：这家伙怪得很。",
+            "text": "这家伙怪得很。",
             "delayMs": 2000,
             "mood": "neutral"
           },
           {
             "speaker": "rival_boss",
-            "text": "rival_boss：盯紧点，别让他坏了事。",
+            "text": "盯紧点，别让他坏了事。",
             "delayMs": 2000,
             "mood": "neutral"
           }
@@ -1094,21 +1082,21 @@ export const STORY_TREES = {
         "outcome": {
           "title": "没了耐心",
           "lines": [
-            "rival_boss：看来是个哑巴，咱们走。",
-            "hench：浪费老子时间。"
+            "看来是个哑巴，咱们走。",
+            "浪费老子时间。"
           ],
           "wanted": 1
         },
         "beats": [
           {
             "speaker": "rival_boss",
-            "text": "rival_boss：看来是个哑巴，咱们走。",
+            "text": "看来是个哑巴，咱们走。",
             "delayMs": 2000,
             "mood": "neutral"
           },
           {
             "speaker": "rival_boss",
-            "text": "hench：浪费老子时间。",
+            "text": "浪费老子时间。",
             "delayMs": 2000,
             "mood": "neutral"
           }

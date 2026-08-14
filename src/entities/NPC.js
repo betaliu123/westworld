@@ -319,6 +319,16 @@ export class NPC {
     this.brain.target = null;
   }
 
+  /** 直接传送到指定坐标（同步逻辑 pos + 表现 mesh，先退出室内） */
+  teleportTo(x, z) {
+    if (this.insideHome) this.exitHome?.();
+    else if (this.insideRoom) this.exitPlace?.();
+    this.pos.set(x, 0, z);
+    this.mesh.position.set(x, 0, z);
+    this.brain?.stopFollow?.();
+    if (this.brain) this.brain.target = null;
+  }
+
   update(dt, ctx) {
     if (this.removed) return { moveTo: null, speedMul: 1 };
     this.time += dt;

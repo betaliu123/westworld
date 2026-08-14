@@ -12,6 +12,8 @@ export class Casting {
   constructor(deps = {}) {
     this.npcManager = deps.npcManager;
     this.stage = deps.stage;
+    // 选角倾向解析器：返回 { npcId -> 加分 }，用于优先征召"玩家帮派成员 / 好友 / 有关系的人"
+    this.priorityResolver = deps.priorityResolver || null;
   }
   /**
    * 为一棵剧本树选角。
@@ -24,16 +26,14 @@ export class Casting {
     const result = [];
     const pool = this._pool();
     const preferId = opts.preferNpcId;
+    // 记录为什么选不齐（供"前置要求不符"提示）
+    this.lastFailReason = null;
 
     for (const role of tree.roles) {
       const count = role.count || 1;
-      // 角色要求的性别（树里内联的优先，其次查覆盖层）。
-      // 这是**硬约束**而不是打分项：以前性别只值 -40 分，别的加分项一叠加
-      // 就能盖过去，于是女模型的路人被派去演"得州比利"。
       const wantFemale = roleGenderOf(tree.id, role);
       const picked = [];
       for (let i = 0; i < count; i++) {
-        // 指定的主角角色：优先用 preferNpcId 对应的 NPC
         let npc = null;
         if (preferId && role.roleId === (tree.protagonistRole || tree.roles[0]?.roleId) && i === 0) {
           npc = pool.find((n) => this._npcId(n) === preferId) || null;
@@ -44,7 +44,10 @@ export class Casting {
         picked.push(npc);
       }
       if (role.required && picked.length === 0) {
-        return null; // 关键角色没人演 → 今天这场戏开不了（Director 会稍后重试）
+        // 记录缺哪个角色（中文角色名优先，其次职业）
+        const jobs = role.jobs?.length ? role.jobs.join("/") : "任意";
+        this.lastFailReason = `缺「${role.name || jobs}」角色：需要 ${jobs}，镇上${pool.length ? "没有合适的" : "没有可征召的人"}`;
+        return null;
       }
       picked.forEach((npc, i) => {
         result.push({
@@ -102,6 +105,13 @@ export class Casting {
   _score(role, npc) {
     const p = npc.personality || {};
     let s = 0;
+
+    // 玩家帮派成员 / 好友 / 有关系的人优先（势力剧场的"自己人"、个人剧场的熟人）
+    if (this.priorityResolver) {
+      const id = this._npcId(npc);
+      const bonus = this.priorityResolver(id, npc);
+      if (bonus) s += bonus;
+    }
 
     // 职业匹配是最强信号
     if (role.jobs && role.jobs.length) {

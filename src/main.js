@@ -167,6 +167,9 @@ function boot() {
   law.hud = hud;
   businessSystem.hud = hud;
 
+  // 初始塞一两个帮派成员 + 好友：让势力剧场/召集/选角一开始就有"自己人"可用
+  seedInitialAllies();
+
   // P11 玩家自己帮派的人事图 + 任命（任命后发短信）+ 帮派群聊
   const playerOrg = new PlayerOrgSystem({
     worldState, factionSystem, npcRegistry,
@@ -317,12 +320,16 @@ function boot() {
       return { text: "我现在脱不开身，等会儿再说。" };
     }
     // 当天跟随玩家 + 标记为友方（自动打玩家敌人）
+    // 先传送到玩家附近（省得从镇那头慢慢跑），再跟着你
+    const ang = Math.random() * Math.PI * 2;
+    const spot = { x: player.pos.x + Math.cos(ang) * 3.2, z: player.pos.z + Math.sin(ang) * 3.2 };
+    const safe = town.resolveCollision?.(spot.x, spot.z, 0.6) || spot;
+    if (npc.teleportTo) npc.teleportTo(safe.x, safe.z);
+    else npc.pos.set(safe.x, 0, safe.z);
     npc.brain.follow(player, { seconds: 99999, stopDist: 2.6 });
     factions.markAlly(npc);
     npc._summonedToday = worldClock.day;
-    if (npc.insideRoom) npc.exitPlace?.();
-    else if (npc.insideHome) npc.exitHome?.();
-    hud.toast(`📢 ${contact.displayName} 应召前来，跟着你办事`, { key: "summon-ok", duration: 3600 });
+    hud.toast(`📢 ${contact.displayName} 应召而来（已到身边），跟着你办事`, { key: "summon-ok", duration: 3600 });
     return { text: "马上到。我跟着你，谁动你我收拾谁。" };
   });
   phone.setMemberCheck((npcId) => {
@@ -520,6 +527,7 @@ function boot() {
   });
   theater = new TheaterDirector({
     npcManager, town, hud, sky, worldClock, reputation, economy, newspaper, eventLog,
+    factionSystem, relationshipSystem, npcRegistry,
     playerSay: (text) => showPlayerBubble(text),
     onAiReport,
     aftermath: new TheaterAftermath({
@@ -1497,6 +1505,51 @@ function boot() {
   function _affectionOf(npc) {
     const owner = npc.phone?.owner || "镇民";
     return _buildRelCtx(npc, npcRegistry.findByDisplayName(owner)).affection;
+  }
+
+  /**
+   * 初始帮派成员 + 好友（幂等，只在还没有时塞）：
+   * 杰克·莫罗（枪手）和 艾琳·沃德（会计）开局就是玩家帮派成员；
+   * 顺便给几个关系好的 NPC 设置对玩家的高好感，让势力剧场/召集/选角有人可用。
+   */
+  function seedInitialAllies() {
+    try {
+      const pf = factionSystem.getPlayerFaction();
+      const seed = [
+        { id: "npc_jack", displayName: "杰克·莫罗", job: "枪手", trust: 40, affection: 30 },
+        { id: "npc_erin", displayName: "艾琳·沃德", job: "会计", trust: 35, affection: 35 },
+      ];
+      for (const s of seed) {
+        if (pf && !pf.members.includes(s.id)) factionSystem.addPlayerMember(s.id, {
+          job: s.job, trust: s.trust, recruitedBy: "initial", undercover: false, displayName: s.displayName,
+        });
+        npcRegistry?.update?.(s.id, { trust: s.trust, trueFactionId: "player" });
+        if (!worldState.getRelationship?.(s.id, "player")) {
+          worldState.setRelationship?.(s.id, "player", {
+            trust: s.trust, affection: s.affection, fear: 0, debt: 0, resentment: 0, respect: 20,
+            lastInteractionDay: worldState.day, flags: [],
+          });
+        }
+        phone.addContact(s.id, s.displayName, s.job);
+      }
+      // 好友：贝西、玛莎、老魏（关系好但不在帮派，供势力剧场的"好友"角色）
+      const friends = [
+        { id: "npc_bessie", displayName: "贝西·柯尔", job: "酒馆老板", trust: 30, affection: 40 },
+        { id: "npc_martha", displayName: "玛莎·贝尔", job: "医生", trust: 25, affection: 35 },
+        { id: "npc_wei", displayName: "老魏", job: "工具店主", trust: 30, affection: 30 },
+      ];
+      for (const f of friends) {
+        if (!worldState.getRelationship?.(f.id, "player")) {
+          worldState.setRelationship?.(f.id, "player", {
+            trust: f.trust, affection: f.affection, fear: 0, debt: 0, resentment: 0, respect: 15,
+            lastInteractionDay: worldState.day, flags: [],
+          });
+        }
+        phone.addContact(f.id, f.displayName, f.job);
+      }
+    } catch (e) {
+      console.error("[Main] seedInitialAllies 失败", e);
+    }
   }
 
   /**
@@ -4181,7 +4234,10 @@ function boot() {
       } else {
         ok = theater.debugStart(treeId, preferNpcId);
       }
-      if (!ok) hud.toast("开演失败：附近凑不齐合适的演员，换个剧本或走到镇中心再试", { duration: 5000 });
+      if (!ok) {
+        const reason = theater.lastFailReason || "附近凑不齐合适的演员";
+        hud.toast(`开演失败：${reason}（换个剧本或走到镇中心再试）`, { duration: 5000 });
+      }
       return ok;
     },
     theaterStop: () => theater.scene?.disband("调试强制散场"),

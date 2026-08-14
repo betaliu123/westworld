@@ -21,6 +21,9 @@ export class TheaterDirector {
     this.economy = deps.economy;
     this.newspaper = deps.newspaper;
     this.eventLog = deps.eventLog;
+    this.factionSystem = deps.factionSystem || null;
+    this.relationshipSystem = deps.relationshipSystem || null;
+    this.npcRegistry = deps.npcRegistry || null;
     this.ui = deps.ui || null; // TheaterUI
     this.playerSay = deps.playerSay || null; // 玩家冒泡（由 main.js 的 showPlayerBubble 提供）
     this.npcAction = deps.npcAction || null; // 执行 LLM 给演员配的行为（NpcActionExecutor）
@@ -31,13 +34,19 @@ export class TheaterDirector {
     this.consequences = deps.consequences || null; // P8 后果包（势力/延迟揭示/回报/解锁）
     // 把后果包挂到结局节点上（幂等，静态树数据保持纯净）
     attachTheaterConsequences(THEATER_TREES);
-    this.casting = new Casting({ npcManager: this.npcManager, stage: this.stage });
+    this.casting = new Casting({
+      npcManager: this.npcManager,
+      stage: this.stage,
+      // 选角倾向：优先玩家帮派成员 / 好友 / 有关系的人（势力剧场要"自己人"，个人剧场要熟人）
+      priorityResolver: (npcId, npc) => this._castPriority(npcId, npc),
+    });
     // 配额用 GlueBudget 的默认值（20/分钟 + 400ms 冷却），别在这里写死覆盖掉
     this.glue = new TheaterGlue({ budget: new GlueBudget(), onReport: deps.onAiReport || null });
 
     this.scene = null;            // 当前 TheaterRuntime
     this.log = [];                // 叙事纪实（中文文本）
     this.lastPlayedDay = 0;       // 上次开演是第几天
+    this.lastFailReason = null;   // 最近一次开演失败的原因（供"前置要求不符"提示）
     this.todayTriggerHour = this._rollTriggerHour();
     this._prevHour = this.sky?.hour ?? 8;
     this.failedAttempts = 0;
@@ -128,20 +137,24 @@ export class TheaterDirector {
 
   /** 开一场个人/势力小剧场（不在每日随机池里，由故事投递/调试面板触发） */
   startStoryTree(tree, preferNpcId = null) {
-    if (this.active) return false;
-    if (!tree || !tree.nodes || !tree.entryNode) return false;
-    return this._begin(tree, preferNpcId, this.worldClock?.day ?? 1);
+    if (this.active) { this.lastFailReason = "已经有剧场在演了"; return false; }
+    if (!tree || !tree.nodes || !tree.entryNode) { this.lastFailReason = "剧本数据不完整"; return false; }
+    const ok = this._begin(tree, preferNpcId, this.worldClock?.day ?? 1);
+    if (!ok && !this.lastFailReason) this.lastFailReason = this.casting.lastFailReason || "凑不齐角色";
+    return ok;
   }
 
   _begin(tree, preferNpcId = null, day = this.worldClock?.day ?? 1) {
     const cast = this.casting.cast(tree, { preferNpcId });
     if (!cast) {
       this.failedAttempts++;
-      this._addLog(`【${tree.title}】今天凑不齐角色，改天再演`);
+      this.lastFailReason = this.casting.lastFailReason || "今天凑不齐角色";
+      this._addLog(`【${tree.title}】${this.lastFailReason}`);
       // 稍后再试（把触发时刻推后 20 分钟游戏时间）
       if (this.failedAttempts < 4) this.todayTriggerHour = Math.min(THEATER_CONFIG.windowEnd - 0.2, this.todayTriggerHour + 0.33);
       return false;
     }
+    this.lastFailReason = null;
 
     this.lastPlayedDay = day;
     this.scene = new TheaterRuntime({
@@ -325,6 +338,25 @@ export class TheaterDirector {
     return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
   }
 
+  _castPriority(npcId, npc) {
+    let bonus = 0;
+    // 玩家帮派成员 +50（势力剧场的"自己人"，召集/内讧最该是他们）
+    const pf = this.factionSystem?.getPlayerFaction?.();
+    if (pf?.members?.includes?.(npcId)) bonus += 50;
+    // 玩家好友 / 关系好的熟人（affection/trust 高）加分，个人剧场的熟人优先
+    const rel = this.relationshipSystem?.get?.(npcId, "player")
+      || this.worldState?.state?.relationships?.[npcId + "->player"];
+    if (rel) {
+      const aff = rel.affection || 0;
+      const trust = rel.trust || 0;
+      if (aff >= 30) bonus += 20;
+      else if (aff >= 10) bonus += 10;
+      if (trust >= 30) bonus += 10;
+      if (rel.resentment >= 40) bonus -= 15; // 结怨的人别硬塞上台
+    }
+    return bonus;
+  }
+
   // ---- 调试 ----
 
   debugStart(treeId, preferNpcId = null) {
@@ -333,7 +365,9 @@ export class TheaterDirector {
     this.scene = null;
     this.ui?.setEventActive?.(false);
     this.lastPlayedDay = -1; // 允许同一天反复开演
-    return this.startShow(this.worldClock?.day ?? 1, treeId || null, preferNpcId);
+    const ok = this.startShow(this.worldClock?.day ?? 1, treeId || null, preferNpcId);
+    if (!ok && !this.lastFailReason) this.lastFailReason = this.casting.lastFailReason || "凑不齐角色";
+    return ok;
   }
 
   debugStatus() {
