@@ -13,16 +13,17 @@ export class Casting {
     this.npcManager = deps.npcManager;
     this.stage = deps.stage;
   }
-
   /**
    * 为一棵剧本树选角。
    * @param {object} tree theaterData 里的剧本
+   * @param {object} opts { preferNpcId } 优先指定的主角 NPC（个人/连续剧场）
    * @returns {Array<{roleId, npc, spec}>|null} 选不齐必需角色时返回 null
    */
-  cast(tree) {
+  cast(tree, opts = {}) {
     const used = new Set();
     const result = [];
     const pool = this._pool();
+    const preferId = opts.preferNpcId;
 
     for (const role of tree.roles) {
       const count = role.count || 1;
@@ -32,7 +33,12 @@ export class Casting {
       const wantFemale = roleGenderOf(tree.id, role);
       const picked = [];
       for (let i = 0; i < count; i++) {
-        const npc = this._bestFor(role, pool, used, wantFemale);
+        // 指定的主角角色：优先用 preferNpcId 对应的 NPC
+        let npc = null;
+        if (preferId && role.roleId === (tree.protagonistRole || tree.roles[0]?.roleId) && i === 0) {
+          npc = pool.find((n) => this._npcId(n) === preferId) || null;
+        }
+        if (!npc) npc = this._bestFor(role, pool, used, wantFemale);
         if (!npc) break;
         used.add(npc);
         picked.push(npc);
@@ -50,6 +56,11 @@ export class Casting {
       });
     }
     return result;
+  }
+
+  _npcId(npc) {
+    const reg = this.npcManager?.npcRegistry?.findByDisplayName?.(npc.phone?.owner || "");
+    return reg?.id || npc.phone?.id || npc.phone?.owner || null;
   }
 
   /** NPC 的显示名（项目里显示名存在 phone.owner） */

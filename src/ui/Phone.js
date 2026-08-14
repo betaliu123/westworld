@@ -43,7 +43,9 @@ export class Phone {
     this.badgeEl = document.getElementById("phone-badge");
     this.affinityEl = document.getElementById("phone-chat-affinity");
     this.recruitBtn = document.getElementById("phone-btn-recruit");
+    this.summonBtn = document.getElementById("phone-btn-summon");
     this.onRecruit = null;   // 收服按钮的钩子（由 main.js 注入，返回给对方看的回复文本）
+    this.onSummon = null;    // 召集按钮的钩子（由 main.js 注入，返回 {ok,text}）
     if (this.inputEl) {
       this.inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") { e.preventDefault(); this._sendFreeText(); }
@@ -55,6 +57,46 @@ export class Phone {
     if (this.recruitBtn) {
       this.recruitBtn.addEventListener("click", () => this._sendRecruit());
     }
+    if (this.summonBtn) {
+      this.summonBtn.addEventListener("click", () => this._sendSummon());
+    }
+  }
+
+  /** 召集按钮的钩子（main.js 注入） */
+  setSummonHandler(fn) { this.onSummon = fn; }
+
+  /** 判断联系人是否玩家帮派成员的钩子（main.js 注入） */
+  setMemberCheck(fn) { this.isPlayerMember = fn; }
+
+  _sendSummon() {
+    if (!this.activeContactId) return;
+    const contact = this.contacts[this.activeContactId];
+    if (!contact) return;
+    const thread = contact.threads[0];
+    thread.messages.push({
+      from: "me", who: "我", text: "过来跟着我，有事要办。",
+      time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+      day: this.worldState.day, isUnread: false,
+    });
+    if (this.onSummon) {
+      try {
+        const reply = this.onSummon(this.activeContactId, contact);
+        if (reply && reply.text) {
+          thread.messages.push({
+            from: "them", who: contact.displayName, text: String(reply.text),
+            time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+            day: this.worldState.day, isUnread: false,
+          });
+        }
+      } catch (e) {
+        thread.messages.push({
+          from: "them", who: contact.displayName, text: "……信号不太好，你说什么？",
+          time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+          day: this.worldState.day, isUnread: false,
+        });
+      }
+    }
+    this._renderChat(this.activeContactId);
   }
 
   /** 收服按钮的钩子（main.js 注入） */
@@ -580,6 +622,9 @@ export class Phone {
     // 帮派群聊：不是单人对聊，收服按钮 + 输入框都没意义，藏起来
     const isGroup = contact.npcId === "gang_group" || contact.displayName === "帮派群聊";
     if (this.recruitBtn) this.recruitBtn.style.display = isGroup ? "none" : "";
+    // 召集按钮：只对自己的帮派成员显示
+    const isMember = this.isPlayerMember ? this.isPlayerMember(contact.npcId) : false;
+    if (this.summonBtn) this.summonBtn.style.display = (isGroup || !isMember) ? "none" : "";
     if (this.inputEl) this.inputEl.style.display = isGroup ? "none" : "";
     if (this.sendBtn) this.sendBtn.style.display = isGroup ? "none" : "";
 

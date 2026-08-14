@@ -59,6 +59,7 @@ import { TheaterDirector } from "./theater/TheaterDirector.js";
 import { GLUE_GEN } from "./theater/TheaterGlue.js";
 import { TheaterUI } from "./theater/TheaterUI.js";
 import { TheaterAftermath } from "./theater/TheaterAftermath.js";
+import { THEATER_TREES, STORY_TREE_LIST } from "./config/theaterData.js";
 import { ConsequenceSystem } from "./theater/ConsequenceSystem.js";
 // NPC 自由对话 + LLM 行为决策
 import { NpcChatService, ChatBudget, CHAT_GEN } from "./npc/NpcChatService.js";
@@ -297,6 +298,37 @@ function boot() {
   });
   // 手机收服按钮（输入框上方，类似接任务按钮）—— 不靠手输关键词
   phone.setRecruitHandler((npcId, contact) => onPhoneRecruit(npcId, contact));
+  // 手机召集按钮（只对玩家帮派成员显示）：NPC 回"马上到"，当天跟随玩家作战
+  phone.setSummonHandler((npcId, contact) => {
+    const known = npcRegistry.findByDisplayName(contact.displayName);
+    const targetId = known?.id || npcId;
+    // 在场上找这个 NPC 的实体（能走动、能战斗的那个）
+    const npc = npcManager.all.find((n) => {
+      if (!n.alive || !n.brain) return false;
+      const reg = npcRegistry.findByDisplayName(n.phone?.owner || "");
+      return reg?.id === targetId || n.phone?.id === targetId || n.phone?.owner === contact.displayName;
+    });
+    if (!npc) {
+      hud.toast(`📢 ${contact.displayName} 现在不在镇上`, { key: "summon-away", duration: 3000 });
+      return { text: "……我现在不在镇上，改天吧。" };
+    }
+    if (npc.brain.state === "DOWN" || npc.brain.state === "FLEE" || npc.brain.state === "ANGRY") {
+      hud.toast(`📢 ${contact.displayName} 现在脱不开身`, { key: "summon-busy", duration: 3000 });
+      return { text: "我现在脱不开身，等会儿再说。" };
+    }
+    // 当天跟随玩家 + 标记为友方（自动打玩家敌人）
+    npc.brain.follow(player, { seconds: 99999, stopDist: 2.6 });
+    factions.markAlly(npc);
+    npc._summonedToday = worldClock.day;
+    if (npc.insideRoom) npc.exitPlace?.();
+    else if (npc.insideHome) npc.exitHome?.();
+    hud.toast(`📢 ${contact.displayName} 应召前来，跟着你办事`, { key: "summon-ok", duration: 3600 });
+    return { text: "马上到。我跟着你，谁动你我收拾谁。" };
+  });
+  phone.setMemberCheck((npcId) => {
+    const pf = factionSystem.getPlayerFaction?.();
+    return !!(pf?.members && pf.members.includes(npcId));
+  });
   // 手机自由输入：普通消息走 DS flash（npcChat.respond）回复，
   // 收服/入伙 交给输入框上方的「收服」按钮（见 onPhoneRecruit），
   // 不靠玩家手输关键词。
@@ -673,6 +705,14 @@ function boot() {
   worldClock.on("sleep", () => {
     try {
       hud.toast("😴 你躺下休息，世界在你沉睡时继续运转……", { key: "sleep" });
+      // 召集的成员一天就散：睡觉后各回各岗（停止跟随 + 解除友方标记）
+      for (const n of npcManager.all) {
+        if (n._summonedToday === worldClock.day && n.brain) {
+          n.brain.stopFollow?.();
+          factions.clear?.(n);
+          n._summonedToday = null;
+        }
+      }
       dailySimulation.playerPos = player.pos;  // 供亲友报复系统用
       const summary = dailySimulation.run(economy, reputation, newspaper, hud);
       // 如果部分步骤失败，给玩家一个提示但不打断流程
@@ -3497,7 +3537,8 @@ function boot() {
 
   /**
    * 立即投递一个故事节点的首个环节，让 NPC 触达玩家。
-   * - 优先：NPC 主动走过来（遭遇管线，当面弹窗抉择）
+   * - 优先：该故事绑定 NPC 有个人小剧场 → 开演（主角亲身上台）
+   * - 其次：NPC 主动走过来（遭遇管线，当面弹窗抉择）
    * - 兜底：NPC 发手机消息 + 消息里带决策按钮（当面/手机都能选）
    */
   function deliverStoryNodeNow(storyId) {
@@ -3508,23 +3549,43 @@ function boot() {
     if (!node) return false;
     const responses = node.playerResponses || [];
 
-    // 优先让 NPC 当面来
-    if (responses.length && !node.canAutoAdvance) {
+    // 个人小剧场：故事绑定的 NPC 有专属剧本 → 让他亲身上台开演
+    const bindings = inst.actorBindings || {};
+    const boundNpcId = Object.values(bindings)[0];
+    const personalTree = boundNpcId
+      ? STORY_TREE_LIST.find((t) => t.protagonistId === boundNpcId)
+      : null;
+    if (personalTree && !theater.active) {
+      const started = theater.startStoryTree(personalTree, boundNpcId);
+      if (started) {
+        hud.toast(`🎭 ${def.title} · ${personalTree.title}`, { key: "story-personal", duration: 4000 });
+        return true;
+      }
+    }
+
+    // 让 NPC 当面来：有决策走遭遇抉择；没有决策（引言节点）也来当面说
+    if (!theater.active) {
       const ok = requestStoryEncounter(storyId, inst.currentNode);
       if (ok) return true;
       // 遭遇忙/没合适的人 → 落到手机
     }
 
-    // 手机来信，带决策选项（绑定 NPC 发）
-    const bindings = inst.actorBindings || {};
-    const npcId = Object.values(bindings)[0];
+    // 手机来信：有选项带决策按钮；没选项也不发死文本，而是以"来当面说"的方式
+    const npcId = boundNpcId;
     const regNpc = npcId && npcRegistry.get ? npcRegistry.get(npcId) : null;
     const fromName = regNpc?.displayName || def.title;
-    const text = `${node.title}：${node.description || "有新动静"}`;
-    phone.deliverMessage(npcId || "system", fromName, text, {
-      storyId, storyNodeId: inst.currentNode,
-      storyChoices: responses.map((r) => ({ id: r.id, label: r.label })),
-    });
+    if (responses.length) {
+      const text = `${node.title}：${node.description || "有新动静"}`;
+      phone.deliverMessage(npcId || "system", fromName, text, {
+        storyId, storyNodeId: inst.currentNode,
+        storyChoices: responses.map((r) => ({ id: r.id, label: r.label })),
+      });
+      return true;
+    }
+    // 无选项的引言节点：不发死文本，直接让 NPC 来当面说（用遭遇管线，若可用）
+    // 若遭遇也开不了，才退化成一段"来信"（比标题+描述更像话）
+    const text = `${node.title}：${node.description || "有件事想当面跟你说。"}\n——找个机会来见我。`;
+    phone.deliverMessage(npcId || "system", fromName, text, { storyId });
     return true;
   }
 
@@ -4107,8 +4168,19 @@ function boot() {
     narrativeService,
     // AI 剧场
     theater, theaterUI,
+    _theaterTrees: THEATER_TREES,
+    _storyTrees: STORY_TREE_LIST,
     theaterStart: (treeId) => {
-      const ok = theater.debugStart(treeId);
+      // 个人剧场：自动绑定主角 NPC（protagonistId）
+      const tree = [...THEATER_TREES, ...STORY_TREE_LIST].find((t) => t.id === treeId);
+      const preferNpcId = tree?.protagonistId || null;
+      // 个人/势力小剧场用独立入口（不在每日随机池）
+      let ok;
+      if (tree && !THEATER_TREES.includes(tree)) {
+        ok = theater.startStoryTree(tree, preferNpcId);
+      } else {
+        ok = theater.debugStart(treeId, preferNpcId);
+      }
       if (!ok) hud.toast("开演失败：附近凑不齐合适的演员，换个剧本或走到镇中心再试", { duration: 5000 });
       return ok;
     },
@@ -4121,6 +4193,14 @@ function boot() {
       hud.toast("已传送到镇中心大街", { side: true, key: "theater-tp" });
     },
     theaterStatus: () => theater.debugStatus(),
+    theaterTreeOptions: () => {
+      const trees = [...(window.__ww._theaterTrees || []), ...(window.__ww._storyTrees || [])];
+      const kinds = { personal: "个人", faction: "势力" };
+      return trees.map((t) => {
+        const label = t.kind ? `[${kinds[t.kind] || "?"}] ${t.title}` : t.title;
+        return `<option value="${t.id}">${label}</option>`;
+      }).join("");
+    },
     // 遭遇管线调试：手动发起一次遭遇，或查看当前状态
     encounterStatus: () => ({ phase: encounters.phase, active: encounters.active?.id || null, npc: encounters.active?.name || null }),
     encounterTest: (title = "试探") => encounters.request({
@@ -4208,14 +4288,15 @@ function boot() {
         h += '<div class="debug-row">当前没有演出。今日开演时刻 ' + tst.todayTriggerHour + ' 点，已演过第 ' + tst.lastPlayedDay + ' 天</div>';
       }
       h += '<div class="debug-row" style="opacity:.7">走到镇中心大街（16 米内）才会出现事件选项和可对话状态</div>';
-      h += '<div class="debug-actions" style="margin-top:6px">';
-      h += '<button class="debug-btn" onclick="__ww.theaterStart();__ww.debugPanel()">🎲 随机开演</button> ';
-      h += '<button class="debug-btn" onclick="__ww.theaterStart(\'high_noon_duel\');__ww.debugPanel()">🔫 正午决斗</button> ';
-      h += '<button class="debug-btn" onclick="__ww.theaterStart(\'saloon_triangle\');__ww.debugPanel()">🥃 酒馆争风</button> ';
-      h += '<button class="debug-btn" onclick="__ww.theaterStart(\'street_pickpocket\');__ww.debugPanel()">🫳 街角扒手</button> ';
+      h += '<div class="debug-row" style="margin-top:6px">';
+      h += '<select id="debug-theater-select" style="background:#1c1c24;color:#e8e8e8;border:1px solid #3a3a44;border-radius:6px;padding:4px 8px;font-size:12px;max-width:220px">';
+      h += '<option value="">— 选择要开演的剧本 —</option>';
+      h += window.__ww.theaterTreeOptions?.() || '';
+      h += '</select>';
+      h += ' <button class="debug-btn" onclick="var s=document.getElementById(\'debug-theater-select\');__ww.theaterStart(s.value);__ww.debugPanel()">🎬 开演</button> ';
       h += '<button class="debug-btn" onclick="__ww.theaterGoStage();__ww.debugPanel()">🏃 传送到舞台</button> ';
       if (tst.active) h += '<button class="debug-btn" onclick="__ww.theaterStop();__ww.debugPanel()">⏹ 立刻散场</button>';
-      h += '</div></div>';
+      h += '</div>';
 
       // Section 7c: 遭遇管线（P1）
       const encPh = encounters.phase;

@@ -114,8 +114,8 @@ export class TheaterDirector {
     this._mutedNpcs?.clear();
   }
 
-  /** 开一场戏（可指定剧本 id，调试用） */
-  startShow(day = this.worldClock?.day ?? 1, treeId = null) {
+  /** 开一场戏（可指定剧本 id 与主角 NPC，调试/剧情用） */
+  startShow(day = this.worldClock?.day ?? 1, treeId = null, preferNpcId = null) {
     if (this.active) return false;
     // 第一天固定演三角恋——这出戏冲击感最强，适合当玩家的第一场
     let tree;
@@ -123,8 +123,18 @@ export class TheaterDirector {
     else if (day === 1) tree = THEATER_TREES.find((t) => t.id === "saloon_triangle");
     if (!tree) tree = THEATER_TREES[Math.floor(Math.random() * THEATER_TREES.length)];
     if (!tree) return false;
+    return this._begin(tree, preferNpcId, day);
+  }
 
-    const cast = this.casting.cast(tree);
+  /** 开一场个人/势力小剧场（不在每日随机池里，由故事投递/调试面板触发） */
+  startStoryTree(tree, preferNpcId = null) {
+    if (this.active) return false;
+    if (!tree || !tree.nodes || !tree.entryNode) return false;
+    return this._begin(tree, preferNpcId, this.worldClock?.day ?? 1);
+  }
+
+  _begin(tree, preferNpcId = null, day = this.worldClock?.day ?? 1) {
+    const cast = this.casting.cast(tree, { preferNpcId });
     if (!cast) {
       this.failedAttempts++;
       this._addLog(`【${tree.title}】今天凑不齐角色，改天再演`);
@@ -317,13 +327,13 @@ export class TheaterDirector {
 
   // ---- 调试 ----
 
-  debugStart(treeId) {
+  debugStart(treeId, preferNpcId = null) {
     // 立刻放人（不等 4 秒走开过渡），否则选角会因为旧演员还被锁着而凑不齐
     this.scene?.forceRelease();
     this.scene = null;
     this.ui?.setEventActive?.(false);
     this.lastPlayedDay = -1; // 允许同一天反复开演
-    return this.startShow(this.worldClock?.day ?? 1, treeId || null);
+    return this.startShow(this.worldClock?.day ?? 1, treeId || null, preferNpcId);
   }
 
   debugStatus() {

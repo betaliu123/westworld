@@ -941,6 +941,11 @@ export const THIEF_TREE = {
 // 第一天固定演三角恋（冲击感最强），之后从全部剧本里随机。
 import { GENERATED_TREES } from "./theaterEvents.js";
 import { THEATER_EXTRAS } from "./theaterExtras.js";
+import { STORY_TREES } from "./theaterStoryTrees.js";
+
+// 个人连续小剧场 + 势力小剧场（独立列表，不走每日随机池 —— 那需要全套 reactions/
+// aftermath 校验；这些树由故事投递 / 调试面板手动触发）
+export const STORY_TREE_LIST = Object.values(STORY_TREES);
 
 export const THEATER_TREES = [DUEL_TREE, TRIANGLE_TREE, THIEF_TREE, ...GENERATED_TREES];
 
