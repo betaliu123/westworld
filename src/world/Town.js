@@ -485,6 +485,21 @@ export class Town {
     return pick(this.interestPoints);
   }
 
+  /**
+   * 两点之间是否互相看得见（中间没有建筑挡住）。
+   * 用于"只有目击到的 NPC 才会赶来帮忙"—— 隔着一栋楼就当没看见。
+   * 线段 vs 矩形（AABB）相交检测，够用且便宜。
+   */
+  hasLineOfSight(from, to) {
+    if (!from || !to) return false;
+    for (const c of this.colliders) {
+      const minX = c.x - c.halfW, maxX = c.x + c.halfW;
+      const minZ = c.z - c.halfD, maxZ = c.z + c.halfD;
+      if (segmentIntersectsAABB(from.x, from.z, to.x, to.z, minX, minZ, maxX, maxZ)) return false;
+    }
+    return true;
+  }
+
   // 自然景观：镇外围（core 之外、bounds 之内）布置公园、湖泊、森林
   _buildNature() {
     const matL = (c, r = 1) => new THREE.MeshStandardMaterial({ color: c, roughness: r });
@@ -627,8 +642,7 @@ export class Town {
   }
 
   // 供载具/玩家/NPC 共用的碰撞解算：把点从障碍中推出，返回修正后的 {x, z}
-  resolveCollision(x, z, radius) {
-    let nx = x;
+  resolveCollision(x, z, radius) {    let nx = x;
     let nz = z;
     // 矩形障碍
     for (const c of this.colliders) {
@@ -704,4 +718,26 @@ export class Town {
       }
     }
   }
+}
+
+/** 线段与轴对齐矩形是否相交（slab 法），供视线遮挡判定 */
+function segmentIntersectsAABB(x1, z1, x2, z2, minX, minZ, maxX, maxZ) {
+  // 两端点都在同一侧 → 不可能相交（快速排除）
+  if ((x1 < minX && x2 < minX) || (x1 > maxX && x2 > maxX)) return false;
+  if ((z1 < minZ && z2 < minZ) || (z1 > maxZ && z2 > maxZ)) return false;
+  const dx = x2 - x1, dz = z2 - z1;
+  let t0 = 0, t1 = 1;
+  for (const [p, d, lo, hi] of [[x1, dx, minX, maxX], [z1, dz, minZ, maxZ]]) {
+    if (Math.abs(d) < 1e-9) {
+      if (p < lo || p > hi) return false;   // 平行且在外面
+      continue;
+    }
+    let tA = (lo - p) / d;
+    let tB = (hi - p) / d;
+    if (tA > tB) { const tmp = tA; tA = tB; tB = tmp; }
+    t0 = Math.max(t0, tA);
+    t1 = Math.min(t1, tB);
+    if (t0 > t1) return false;
+  }
+  return true;
 }

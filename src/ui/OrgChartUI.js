@@ -21,7 +21,8 @@ export class OrgChartUI {
     this.factionSystem = deps.factionSystem || null;   // 读玩家帮派数值
     this.worldState = deps.worldState || null;
     this.displayNameOf = deps.displayNameOf || null;   // (npcId) => 显示名（不认识→？？？）
-    this.getGangReps = deps.getGangReps || null;        // () => { black_hoof, law, ... } 各方声望
+    this.getGangReps = deps.getGangReps || null;        // () => { 帮派名: 声望值 }
+    this.getWantedStars = deps.getWantedStars || null;  // () => 通缉星数（警局敌意）
     this.onAppoint = deps.onAppoint || null;   // 任命回调 (npcId, roleId)
     this.getPillars = deps.getPillars || (() => null);
     this.onClose = deps.onClose || (() => {});
@@ -251,17 +252,26 @@ export class OrgChartUI {
         ${stat("🏠 驻地", "Lv." + (pf.hqLevel ?? 1))}
       </div></div>`;
     }
-    // 各方声望（杀帮派/警署的人会掉）
+    // 各方声望（杀帮派/警署的人会掉）。reputation.gangs 的键是中文帮派名（见 GANGS）
     const reps = this.getGangReps ? this.getGangReps() : null;
-    if (reps) {
+    if (reps && Object.keys(reps).length) {
       const repRow = (label, v) => {
         const cls = v <= -15 ? "bad" : v >= 15 ? "good" : "";
         const desc = v <= -30 ? "（视你为敌）" : v <= -15 ? "（提防你）" : v >= 30 ? "（认你这个人）" : v >= 15 ? "（有点交情）" : "（互不相干）";
-        return `<div class="org-stat"><span class="org-stat-label">${label}</span><span class="org-stat-val ${cls}">${v > 0 ? "+" : ""}${v} <em>${desc}</em></span></div>`;
+        return `<div class="org-stat"><span class="org-stat-label">${esc(label)}</span><span class="org-stat-val ${cls}">${v > 0 ? "+" : ""}${v} <em>${desc}</em></span></div>`;
       };
       const rows = [];
-      if (reps.black_hoof != null) rows.push(repRow("🏴 黑蹄会", reps.black_hoof));
-      if (reps.law != null) rows.push(repRow("⭐ 警局", reps.law));
+      for (const [key, v] of Object.entries(reps)) {
+        if (typeof v !== "number") continue;
+        const icon = key.includes("黑蹄") ? "🏴" : key.includes("警") ? "⭐" : "🏴";
+        rows.push(repRow(`${icon} ${key}`, v));
+      }
+      // 警长/法律声望单独来源（law 支柱的 integrity 不是声望，用通缉星数反映敌意）
+      const wanted = this.getWantedStars ? this.getWantedStars() : null;
+      if (wanted != null) {
+        const cls = wanted > 0 ? "bad" : "good";
+        rows.push(`<div class="org-stat"><span class="org-stat-label">⭐ 警局</span><span class="org-stat-val ${cls}">${wanted > 0 ? `通缉 ${wanted} 星` : "清白"}</span></div>`);
+      }
       if (rows.length) {
         statsHtml += `<div class="org-block"><div class="org-block-title">🤝 我在各方的声望</div><div class="org-stats">${rows.join("")}</div>
           <div class="org-note">杀他们的人 / 抢他们的产业会掉声望；行侠仗义、帮他们办事会回升。</div></div>`;

@@ -301,6 +301,7 @@ export class NPC {
     this._exitDoor = exitDoor; // 出去后的街道落点
     this.brain._placeType = placeType;
     this.brain._enter(State.AT_PLACE);
+    this.brain.target = null;   // 已进屋，清掉街上的目的地
     this._roomTarget = null;
     this.walkAmount = 0;
   }
@@ -332,6 +333,17 @@ export class NPC {
   update(dt, ctx) {
     if (this.removed) return { moveTo: null, speedMul: 1 };
     this.time += dt;
+    // 残血自愈：不在战斗/倒地时慢慢回血，避免满街都是残血 NPC。
+    // 约 25 真实秒回满（一天 400 秒 ≈ 游戏内一个多小时），受伤后先等 8 秒才开始恢复。
+    if (this.alive && this.hp > 0 && this.hp < this.maxHp) {
+      const st = this.brain?.state;
+      const inFight = st === "ANGRY" || st === "FLEE" || st === "DOWN";
+      if (inFight) {
+        this._regenDelay = 8;
+      } else if ((this._regenDelay = (this._regenDelay ?? 8) - dt) <= 0) {
+        this.hp = Math.min(this.maxHp, this.hp + (this.maxHp / 25) * dt);
+      }
+    }
     const brainCtx = {
       self: { x: this.pos.x, z: this.pos.z },
       town: this.town,

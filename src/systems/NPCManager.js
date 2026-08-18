@@ -393,38 +393,53 @@ export class NPCManager {
       }
     }
 
-    // 处理帮派叫援：找到同帮派最近的1-2个成员，让他们进入愤怒状态
+    // 处理帮派叫援：只有"看得见/听得见"的同帮派成员才来（原来不限距离，
+    // 整个镇的同帮派都往这儿冲，看着极乱）
+    const GANG_HELP_DIST = 20;
     for (const caller of gangAlerts) {
       const gangMembers = this.npcs.filter(n =>
         n !== caller && n.alive &&
         n.personality.gang === caller.personality.gang &&
-        n.brain.state !== State.DOWN && n.brain.state !== State.ANGRY
+        n.brain.state !== State.DOWN && n.brain.state !== State.ANGRY &&
+        !n.insideHome && !n.insideRoom &&                       // 屋里的听不见
+        distance2D(n.pos.x, n.pos.z, caller.pos.x, caller.pos.z) < GANG_HELP_DIST &&
+        (!this.town?.hasLineOfSight || this.town.hasLineOfSight(n.pos, caller.pos))
       );
-      gangMembers.slice(0, 2).forEach(member => {
+      // 最多 1 个人响应（原来 2 个，加上友方援军就变成群架）
+      gangMembers.slice(0, 1).forEach(member => {
         member.brain.emotion = 0.8;
         member.brain.threat = caller.brain.threat;
         member.brain._enter(State.ANGRY);
-        member.brain.say("敢动我们的人？！", 2);
+        member.brain.say(pickGangHelpLine(), 2.2);
       });
     }
 
-    // 处理叫亲朋好友：附近1-2个NPC来助威（50%愤怒、50%只是围观惊吓）
+    // 处理叫亲朋好友：附近 1 个人响应，且多数只是受惊/逃跑，不参战
+    // （原来 2 个人、50% 直接参战 → 一条街全打起来）
     for (const caller of friendsAlerts) {
       const nearby = this.npcs.filter(n =>
         n !== caller && n.alive &&
         n.brain.state !== State.DOWN && n.brain.state !== State.ANGRY &&
         n.brain.state !== State.FLEE &&
-        Math.hypot(n.pos.x - caller.pos.x, n.pos.z - caller.pos.z) < 15
+        !n.insideHome && !n.insideRoom &&
+        distance2D(n.pos.x, n.pos.z, caller.pos.x, caller.pos.z) < 14 &&
+        (!this.town?.hasLineOfSight || this.town.hasLineOfSight(n.pos, caller.pos))
       );
-      nearby.slice(0, 2).forEach(friend => {
+      nearby.slice(0, 1).forEach(friend => {
         friend.brain.emotion = 0.6;
         friend.brain.threat = caller.brain.threat;
-        if (Math.random() < 0.5) {
+        // 只有胆大的才真上手（bravery>0.6 且 25% 概率），其余受惊或直接跑
+        const brave = (friend.personality?.bravery ?? 0.5) > 0.6;
+        const r = Math.random();
+        if (brave && r < 0.25) {
           friend.brain._enter(State.ANGRY);
           friend.brain.say("别欺负我朋友！", 2);
-        } else {
+        } else if (r < 0.6) {
           friend.brain._enter(State.STARTLED);
-          friend.brain.say("这是怎么回事？！", 2);
+          friend.brain.say(pickBystanderLine(), 2);
+        } else {
+          friend.brain._enter(State.FLEE);   // 大多数人是跑，不是打
+          friend.brain.say(pickFleeLine(), 2);
         }
       });
     }
@@ -713,4 +728,37 @@ export class NPCManager {
     }
     return best;
   }
+}
+
+/** 帮派叫援时的台词 */
+function pickGangHelpLine() {
+  const lines = [
+    "敢动我们的人？！",
+    "谁在闹事？弟兄们上！",
+    "这条街是我们的，找死！",
+    "看来有人不懂规矩。",
+  ];
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+
+/** 围观者受惊的台词 */
+function pickBystanderLine() {
+  const lines = [
+    "这是怎么回事？！",
+    "天哪，出人命了！",
+    "别打了，别打了！",
+    "有人快去叫警长！",
+  ];
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+
+/** 转身就跑的台词 */
+function pickFleeLine() {
+  const lines = [
+    "不关我的事，我先走！",
+    "这地方待不下去了！",
+    "命要紧，快跑！",
+    "我什么都没看见！",
+  ];
+  return lines[Math.floor(Math.random() * lines.length)];
 }

@@ -117,6 +117,9 @@ export class Phone {
   /** 注入故事手机选项 handler（main.js 提供，点击选项推进剧情） */
   setStoryChoiceHandler(fn) { this.onStoryChoice = fn; }
 
+  /** 注入「推进这一环节」handler（重新拉起遭遇/小剧场） */
+  setStoryPushHandler(fn) { this.onStoryPush = fn; }
+
   _sendRecruit() {
     if (!this.activeContactId) return;
     const contact = this.contacts[this.activeContactId];
@@ -520,6 +523,7 @@ export class Phone {
         <div class="phone-story-desc">${s.nodeDescription || ""}${actorNames}</div>
         ${s.needsPlayerChoice ? '<div class="phone-story-choice">✋ 需要你来做决定</div>' : ""}
         ${s.missCount > 0 ? `<div class="phone-story-miss">⚠️ 错过 ${s.missCount} 次机会</div>` : ""}
+        <button class="phone-story-start-btn" data-push="${s.storyId}">▶ 推进这一环节</button>
       </div>`;
     }
     this.storiesBody.innerHTML = html;
@@ -535,7 +539,7 @@ export class Phone {
       });
     }
     // 启动按钮：强制开始未触发的故事
-    for (const btn of this.storiesBody.querySelectorAll(".phone-story-start-btn")) {
+    for (const btn of this.storiesBody.querySelectorAll(".phone-story-start-btn[data-start]")) {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         const sid = btn.dataset.start;
@@ -545,6 +549,16 @@ export class Phone {
           // 启动成功 → 重渲染
           this._renderStoriesView();
         }
+      });
+    }
+    // 推进按钮：把进行中的故事往下推一环节（重新拉起遭遇/小剧场）
+    for (const btn of this.storiesBody.querySelectorAll(".phone-story-start-btn[data-push]")) {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const sid = btn.dataset.push;
+        if (!sid || !this.onStoryPush) return;
+        const res = this.onStoryPush(sid);
+        if (res && res.ok) this._renderStoriesView();
       });
     }
   }

@@ -1684,10 +1684,24 @@ export class AIBrain {
 
       case State.WANDER:
       default: {
-        // 防卡死：去一个点走了很久都没到（被墙/人群挡住），就换个点。
-        // stateTimer 到点即视为"这次没走到"，重新按日程取点；避免一群人挤在
-        // 同一个门口互相推、永远到不了判定距离 → 原地卡死不换目标。
-        if (!this.target || this.stateTimer <= 0) {
+        // 目的地取点：只在"没有目标"或"确实卡住"时重取。
+        //
+        // 原来是 stateTimer(6~14s) 一到就换新目的地 —— 但镇子半径 180m，
+        // 走去铁匠铺/马厩这种远处工作点要几十秒，于是每次没走到就换目标，
+        // NPC 一整天都在街上打折返跑（看起来"盲目走来走去"，也永远不上班）。
+        // 现在按"是否在接近目标"判定：有进展就一直走，卡住 6 秒才换点。
+        let needPick = !this.target;
+        if (!needPick) {
+          const dNow = Math.hypot(ctx.self.x - this.target.x, ctx.self.z - this.target.z);
+          if (this._lastDist == null || dNow < this._lastDist - 0.25) {
+            this._lastDist = dNow;       // 还在靠近 → 继续走
+            this._stuckT = 0;
+          } else {
+            this._stuckT = (this._stuckT || 0) + dt;
+            if (this._stuckT > 6) needPick = true;   // 6 秒没进展 → 换点
+          }
+        }
+        if (needPick) {
           const placeType = placeForSegment(this.p.schedule, this._segment || "noon", this.p);
           if (placeType && ctx.town.placePoint) {
             this.target = ctx.town.placePoint(placeType, this);
@@ -1696,18 +1710,24 @@ export class AIBrain {
           } else {
             this.target = ctx.town.randomInterestPoint();
           }
+          this._lastDist = null;
+          this._stuckT = 0;
           this._enter(State.WANDER);
           break;
         }
         intent.moveTo = this.target;
         const d = Math.hypot(ctx.self.x - this.target.x, ctx.self.z - this.target.z);
         if (this.target._home && d < 2.4) {
-          this.target = null;    // 到达即清空，避免原地往返
+          // 注意：不能在这里清 target —— NPCManager._enterHome/_enterPlace 还要
+          // 读 brain.target 拿房间名。清空交给 enterHome/enterPlace 自己做。
           intent.enterHome = true; // 到达家门口 → NPC 实体传送进屋
+          this._lastDist = null; this._stuckT = 0;
         } else if (this.target._interior && d < 2.4) {
-          this.target = null;    // 到达即清空
           intent.enterPlace = true; // 到达室内场所门口 → 传送进室内（上班/消费）
+          this._lastDist = null; this._stuckT = 0;
         } else if (d < 2) {
+          this.target = null;
+          this._lastDist = null; this._stuckT = 0;
           this._enter(State.IDLE);
           if (!this._ambientMuted && this._ambientCd <= 0 && chance(0.5) && this.p.sociability > 0.35) {
             this.say(this._smallTalk());

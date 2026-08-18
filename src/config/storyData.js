@@ -23,9 +23,9 @@ export const ST01_TRUST_BETRAYAL_JUDGMENT = {
   nodes: {
     encounter: {
       id: "encounter",
-      title: "偶遇",
+      title: "巷子里的求助",
       type: "introduction",
-      description: "NPC遭遇困境，被玩家发现。",
+      description: "一个人被逼在巷口，衣袖磨破、眼神发慌，看见你像看见了救命的稻草。",
       preconditions: [],
       softDeadline: { afterDay: 1, beforeDay: 3 },
       effects: [
@@ -37,8 +37,19 @@ export const ST01_TRUST_BETRAYAL_JUDGMENT = {
       ],
       emotionalIntensity: 1,
       cooldownTags: [],
-      canAutoAdvance: true,
-      nextNode: "re_encounter",
+      canAutoAdvance: false,
+      playerResponses: [
+        { id: "enc_help", label: "上前问他出了什么事", effects: [
+          { type: "modify_relationship", params: { trust: 8, affection: 6 } },
+        ], nextNode: "re_encounter" },
+        { id: "enc_money", label: "先塞给他几块钱", effects: [
+          { type: "steal_money", params: { amount: 10 } },
+          { type: "modify_relationship", params: { trust: 12, affection: 10, debt: 15 } },
+        ], nextNode: "re_encounter" },
+        { id: "enc_pass", label: "看一眼，走开", effects: [
+          { type: "add_event", params: { type: "IGNORED_PLEA", tags: ["minor"] } },
+        ], nextNode: "re_encounter" },
+      ],
     },
     re_encounter: {
       id: "re_encounter",
@@ -293,9 +304,9 @@ export const ST02_LIFE_DEBT = {
   nodes: {
     rescue: {
       id: "rescue",
-      title: "救援",
+      title: "北路上的伤号",
       type: "introduction",
-      description: "玩家救下一个身份不明的NPC。",
+      description: "北边土路旁躺着个人，肩上一道枪伤还在渗血，身上没有任何能证明身份的东西。",
       preconditions: [],
       softDeadline: { afterDay: 1, beforeDay: 4 },
       effects: [
@@ -306,8 +317,19 @@ export const ST02_LIFE_DEBT = {
       candidateDeliveries: [{ channel: "location", venueTags: ["north_road", "warehouse"], priority: 5 }],
       emotionalIntensity: 3,
       cooldownTags: [],
-      canAutoAdvance: true,
-      nextNode: "departure",
+      canAutoAdvance: false,
+      playerResponses: [
+        { id: "res_carry", label: "背他去医馆", effects: [
+          { type: "modify_relationship", params: { trust: 15, debt: 70, respect: 25 } },
+        ], nextNode: "departure" },
+        { id: "res_patch", label: "就地给他包扎", effects: [
+          { type: "modify_relationship", params: { trust: 10, debt: 50 } },
+        ], nextNode: "departure" },
+        { id: "res_search", label: "先翻翻他身上", effects: [
+          { type: "add_money", params: { amount: 15 } },
+          { type: "modify_relationship", params: { trust: -5, resentment: 10 } },
+        ], nextNode: "departure" },
+      ],
     },
     departure: {
       id: "departure",
@@ -406,9 +428,9 @@ export const ST03_KIN_REVENGE = {
   nodes: {
     discovery: {
       id: "discovery",
-      title: "发现",
+      title: "有人在打听死者的事",
       type: "introduction",
-      description: "复仇者通过目击者或证据逐渐发现真相。",
+      description: "报纸角落一则讣告，和一个在酒馆逢人就问「那天谁在场」的陌生面孔——他在找凶手。",
       preconditions: [
         { type: "npc_dead", params: { npcId: "npc_eli" } },
       ],
@@ -423,7 +445,17 @@ export const ST03_KIN_REVENGE = {
       ],
       emotionalIntensity: 2,
       cooldownTags: [],
-      canAutoAdvance: true,
+      canAutoAdvance: false,
+      playerResponses: [
+        { id: "dis_listen", label: "远远听他打听", effects: [], nextNode: "investigation" },
+        { id: "dis_talk", label: "主动跟他搭话", effects: [
+          { type: "modify_relationship", params: { trust: 5, resentment: -5 } },
+        ], nextNode: "investigation" },
+        { id: "dis_mislead", label: "给他一条错的线索", effects: [
+          { type: "modify_relationship", params: { resentment: 15 } },
+          { type: "add_event", params: { type: "MISLED_AVENGER", tags: ["deceit"] } },
+        ], nextNode: "investigation" },
+      ],
       nextNode: "investigation",
     },
     investigation: {
@@ -526,9 +558,9 @@ export const ST11_MISSING_MEMBER = {
   nodes: {
     reported_missing: {
       id: "reported_missing",
-      title: "失踪报告",
+      title: "有个弟兄没回来",
       type: "introduction",
-      description: "派遣行动回报：成员失联。",
+      description: "派出去办事的人一夜没回。副手站在驻地门口，手里捏着他留下的帽子。",
       preconditions: [
         { type: "event_type_occurred", params: { type: "OPERATION_RESULT", outcome: "missing" } },
       ],
@@ -542,7 +574,18 @@ export const ST11_MISSING_MEMBER = {
       ],
       emotionalIntensity: 3,
       cooldownTags: [],
-      canAutoAdvance: true,
+      canAutoAdvance: false,
+      playerResponses: [
+        { id: "miss_ask", label: "问清最后见他是在哪", effects: [
+          { type: "add_knowledge", params: { fact: "member_last_seen", confidence: 0.7 } },
+        ], nextNode: "contradictory_clues" },
+        { id: "miss_search", label: "立刻派人去找", effects: [
+          { type: "faction_morale_change", params: { amount: 5 } },
+        ], nextNode: "contradictory_clues" },
+        { id: "miss_wait", label: "再等一天看看", effects: [
+          { type: "faction_morale_change", params: { amount: -5 } },
+        ], nextNode: "contradictory_clues" },
+      ],
       nextNode: "contradictory_clues",
     },
     contradictory_clues: {

@@ -193,6 +193,7 @@ function boot() {
       return job ? `？？？·${job}` : "？？？";
     },
     getGangReps: () => reputation?.gangs || null,
+    getWantedStars: () => reputation?.wantedStars ?? null,
     onAppoint: (npcId, roleId) => {
       const r = playerOrg.appoint(npcId, roleId);
       if (!r.ok) hud.toast?.(`❌ ${r.error === "not_member" ? "还不是你的人" : "任命失败"}`, { key: "appoint", duration: 3000 });
@@ -437,6 +438,8 @@ function boot() {
   const factions = new CombatFactions({
     npcManager, hud, audio,
     getAffection: (npc) => _affectionOf(npc),
+    // 只有"看得见现场"的人才会赶来帮忙（隔着建筑就当没看见）
+    hasLineOfSight: (from, to) => town.hasLineOfSight(from, to),
   });
   const healthBars = new HealthBars(camera, factions);
   // 路人对街上倒地者的反应：吓一跳 / 绕路 / 跑去报警
@@ -512,6 +515,15 @@ function boot() {
     if (def && choice) {
       hud.toast(`📖 ${def.title} · ${choice.label}`, { key: "story-choice", duration: 3000 });
     }
+  });
+  // 「推进这一环节」：把当前节点重新拉到玩家面前（小剧场/遭遇/手机选项）
+  phone.setStoryPushHandler((storyId) => {
+    const def = storyRuntime.getDefinition(storyId);
+    const inst = worldState.getStoryInstance(storyId);
+    if (!def || !inst || inst.status !== "active") return { ok: false };
+    _pendingStoryDeliver = { storyId };
+    hud.toast(`📖 正在拉起《${def.title}》的当前环节…`, { key: "story-push", duration: 3000 });
+    return { ok: true };
   });
 
   // P4 Director

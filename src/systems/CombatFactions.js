@@ -14,6 +14,7 @@ export class CombatFactions {
     this.getAffection = deps.getAffection || (() => 0);
     this.audio = deps.audio || null;
     this.onAllyJoin = deps.onAllyJoin || null;
+    this.hasLineOfSight = deps.hasLineOfSight || null;  // (from,to)=>bool 中间是否被建筑挡住
 
     this.enemies = new Set();
     this.allies = new Set();
@@ -116,19 +117,24 @@ export class CombatFactions {
     }
   }
 
-  /** 招募援军：附近、好感够、有胆量、不在忙的熟人 */
+  /** 招募援军：必须"看得见现场"（有视线 + 距离近）、够胆、有交情的人才来 */
   _tryRecruitAllies(playerPos) {
     if (!playerPos) return;
-    const MAX_ALLIES = 3;
+    const MAX_ALLIES = 2;                  // 同时最多 2 个援军（原来 3 个太乱）
     if (this.allies.size >= MAX_ALLIES) return;
+    const SEE_DIST = 16;                   // 目击距离（原来 28m 隔半条街也来）
     const pool = (this.npcManager?.all || []).filter((npc) => {
       if (!npc.alive || this.enemies.has(npc) || this.allies.has(npc)) return false;
       const b = npc.brain;
       if (!b || b.state === "DOWN" || b.state === "FLEE" || b._perform) return false;
+      // 屋里的人看不见街上的事
+      if (npc.insideHome || npc.insideRoom) return false;
       const d = Math.hypot(npc.pos.x - playerPos.x, npc.pos.z - playerPos.z);
-      if (d > 28) return false;            // 看不见就不会来
-      if (npc.personality.bravery < 0.4) return false; // 胆小的不敢掺和
-      return this.getAffection(npc) >= 25; // 得是有交情的人
+      if (d > SEE_DIST) return false;      // 看不见就不会来
+      // 视线遮挡：中间隔着建筑就当没看见
+      if (this.hasLineOfSight && !this.hasLineOfSight(npc.pos, playerPos)) return false;
+      if (npc.personality.bravery < 0.55) return false;  // 胆子不够的不掺和（改成更严）
+      return this.getAffection(npc) >= 35; // 得是真有交情的人（原来 25 太松）
     });
     // 好感高的先来
     pool.sort((a, b) => this.getAffection(b) - this.getAffection(a));
@@ -136,7 +142,8 @@ export class CombatFactions {
       this.markAlly(npc);
       const foe = this._nearestEnemy(npc.pos);
       if (foe) npc.brain.attackTarget(foe.pos, { npc: foe, seconds: 12 });
-      npc.brain.say(pickLine(), 2.6);
+      // 赶来时喊一句（点名帮的是谁，观感更像"朋友赶来了"）
+      npc.brain.say(pickLine(), 2.8);
       const name = npc.phone?.owner || "有人";
       this.hud?.toast?.(`🤝 ${name}赶来帮你了！`, { key: "ally-join" });
       this.audio?.npcVoice?.("angry");
@@ -157,7 +164,16 @@ export class CombatFactions {
 }
 
 function pickLine() {
-  const lines = ["住手！他是我朋友！", "别欺负他！", "我来帮你，伙计！", "谁准你在这条街上动手？"];
+  const lines = [
+    "住手！他是我朋友！",
+    "别欺负他！",
+    "我来帮你，伙计！",
+    "谁准你在这条街上动手？",
+    "冲我来啊，别碰他！",
+    "两个打一个？算我一个！",
+    "把手放下，这事我管了！",
+    "他是我的人，动他先问我！",
+  ];
   return lines[Math.floor(Math.random() * lines.length)];
 }
 
