@@ -49,7 +49,10 @@ export class TheaterRuntime {
     for (const c of this.cast || []) {
       const real = c.npc?.phone?.owner || c.stageName || "";
       if (real) this._nameMap[c.roleId] = real;
-      if (c.stageName && c.stageName !== c.roleId) this._nameMap[c.stageName] = real;
+      // 剧本里的虚构角色名（"凯尔·摩根"）→ 真实演员名。
+      // 注意用 roleName 而不是 stageName：stageName 现在就是真人名，
+      // 拿它当 key 只会得到一条自己映射自己的无用规则。
+      if (c.roleName && c.roleName !== c.roleId && real) this._nameMap[c.roleName] = real;
     }
     for (const [alias, roleId] of Object.entries(this.tree?.nameAliases || {})) {
       if (this._nameMap[roleId]) this._nameMap[alias] = this._nameMap[roleId];

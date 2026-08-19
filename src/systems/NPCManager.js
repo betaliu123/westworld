@@ -34,6 +34,11 @@ export class NPCManager {
    * @param {NPCRegistry} registry
    */
   linkRegistry(registry) {
+    // 存一份引用：Casting._npcId 靠 npcManager.npcRegistry 把实体换成注册表 id。
+    // 以前没存这一行，_npcId 永远退到 phone.id（一串随机后缀），于是所有按
+    // registry id 做的选角倾向（玩家帮派成员 +50、好友加分、亲属判定）全部
+    // 静默失效 —— 看起来在跑，实际一次都没命中。
+    this.npcRegistry = registry;
     for (const npc of this.npcs) {
       const owner = npc.phone?.owner;
       if (!owner) continue;
@@ -84,6 +89,47 @@ export class NPCManager {
         home.name = home.occupants.length > 1 ? `${owner}一家` : `${owner}的家`;
       }
     }
+  }
+
+  /**
+   * 为剧情现造一个专属角色。
+   *
+   * 为什么需要：选角原来只能从镇上 28 个人里抓，经常抓不到对的人 ——
+   * 描写是"姑娘"却派来汉子，"红隼帮打手"由平民顶替，"死者的亲弟弟"
+   * 由镇上的铁匠兼任。硬凑的结果玩家一眼就看出矛盾。
+   * 造出来的人**留在镇上**（不散场删除），这样后续环节还能是同一个人。
+   *
+   * @param {object} spec { displayName, job, gang, female, near:{x,z} }
+   * @returns {NPC|null}
+   */
+  spawnStoryActor(spec = {}) {
+    const near = spec.near || this.town.randomInterestPoint();
+    const raw = { x: near.x + randRange(-4, 4), z: near.z + randRange(-4, 4) };
+    const spot = this.town.resolveCollision(raw.x, raw.z, 0.5);
+    let npc;
+    try {
+      npc = new NPC(this.scene, this.town, spot);
+    } catch (e) {
+      console.error("[NPCManager] 造剧情角色失败", e);
+      return null;
+    }
+    // 先定性别（rebuildMesh 会同步 this.female 和模型），再套名字 ——
+    // 顺序反了会出现"女模型配男名字"
+    if (typeof spec.female === "boolean" && npc.female !== spec.female) {
+      npc.rebuildMesh(spec.female);
+    }
+    if (npc.personality) {
+      if (spec.job) npc.personality.job = spec.job;
+      npc.personality.gang = spec.gang || null;
+    }
+    if (npc.phone && spec.displayName) {
+      npc.phone.owner = spec.displayName;
+      npc.phone.id = spec.displayName + "_story_" + Date.now().toString(36);
+    }
+    npc._storySpawned = true;      // 标记：调试/统计用，也避免被当成原生镇民清理
+    this.npcs.push(npc);
+    console.log(`[NPCManager] 为剧情新建角色：${npc.phone?.owner}（${npc.personality?.job}${spec.gang ? "/" + spec.gang : ""}${npc.female ? "/女" : "/男"}）`);
+    return npc;
   }
 
   // 把 NPC 按家庭规模（1~3 口）分配进民居；同住的就是"一家人/情侣"
@@ -462,10 +508,22 @@ export class NPCManager {
   }
 
   // 亲友报复：每日结算时检查有仇恨的 NPC，触发其亲友在大街上主动攻击玩家
+  //
+  // 这是"直接砍你"的粗暴版本，现在只当兜底：RevengeSystem 若已为这个死者
+  // 开出复仇故事线（报信 → 对峙 → 抉择），就不要再让同伙无训冲上来 ——
+  // 否则玩家刚收到报信就被围殴，故事还没开始就打完了。
+  // isRevengeSuppressed 由 main.js 注入（(npcId) => boolean）。
   settleGrudgeRevenge(day, playerPos) {
     for (const npc of this.npcs) {
       if (!npc.alive || !npc._grudgeAgainstPlayer) continue;
       if (npc._revengeSpawned) continue;
+      // 这条血债已经走故事线了 → 交给故事，别动手
+      if (this.isRevengeSuppressed) {
+        const nid = npc.brain?._npcId
+          || this.npcRegistry?.findByDisplayName?.(npc.phone?.owner || "")?.id
+          || null;
+        if (nid && this.isRevengeSuppressed(nid)) continue;
+      }
       const daysSince = day - npc._grudgeAgainstPlayer.day;
       if (daysSince >= 1 && daysSince <= 5 && Math.random() < 0.4) {
         const allies = this._findAllies(npc);

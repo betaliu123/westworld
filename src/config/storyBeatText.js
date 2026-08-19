@@ -6,17 +6,20 @@
  *  - phoneInvite   : 手机来信正文（第一人称口信 + 邀请动作）
  *  - locateLabel   : 定位按钮上的地点名（与口信说法一致）
  *  - venueId       : storyVenues.VENUE_DEFS 的地点 id，决定"📍去看看"去哪
+ *  - indoor        : 这一幕在屋里还是街上。**显式布尔**，不要再用正则读散文猜 ——
+ *                    实测那样在 13 个建筑类地点里判错 6 个（"酒馆角落""警长办公室"
+ *                    都被当成户外，"酒馆门廊"反被当成室内）
  *  - cutsceneTitle / cutscene : 黑幕过场（你没到场、强行推进时补叙）
  *  - stageCast     : 这一幕需要谁在场 { leadFemale, leadHint, leadGang, extras }
- *  - scene         : 可演的一幕
- *      · beats        多人同台对话 [{speaker,to,text,mood,delayMs}]
- *                     speaker/to 用 lead / extraN_M / player；台词里 {roleId}
- *                     占位由 TheaterRuntime._sub 换成真实名字
- *      · choices      过渡节点补的玩家抉择（原来是自动推进、插不上手）
- *      · closingLines 终局节点的收尾旁白
+ *  - scene.beats        : 开场的多人同台对话 [{speaker,to,text,mood,delayMs}]
+ *  - scene.choices      : 过渡节点补的玩家抉择（原来自动推进、插不上手）
+ *  - scene.closingLines : 终局节点的收尾旁白
+ *  - scene.choiceScenes : **每个选项选完之后的戏** { <choiceId>: {beats, lines, fx} }
+ *                    fx = { cash, honor, wanted, affection, trust }
+ *                    以前所有选项共用一句写死的"记住你今天说的话"，选了等于没选
  *
- * 生成时间：2026-08-19T09:49:12.213Z
- * 合格 40 / 降级 0
+ * 生成时间：2026-08-19T11:38:12.931Z
+ * 完整 40 / 部分 0
  */
 export const STORY_BEAT_TEXT = {
   "trust_betrayal_redemption": {
@@ -82,8 +85,133 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "enc_help": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "求你了，别让他们带我走。",
+                "mood": "scared",
+                "delayMs": 2196
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "不关你的事，外乡人。",
+                "mood": "cold",
+                "delayMs": 2105
+              },
+              {
+                "speaker": "extra0_1",
+                "to": "player",
+                "text": "这家伙想逞英雄？",
+                "mood": "smug",
+                "delayMs": 1945
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "放开我！",
+                "mood": "angry",
+                "delayMs": 1803
+              }
+            ],
+            "lines": [
+              "你上前质问，红隼帮两人骂骂咧咧退出巷子。",
+              "姑娘抓着你胳膊，眼里满是感激的泪。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 10,
+              "wanted": 0,
+              "affection": 15,
+              "trust": 15
+            }
+          },
+          "enc_money": {
+            "beats": [
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "哟，想用钱打发我们？",
+                "mood": "smug",
+                "delayMs": 1642
+              },
+              {
+                "speaker": "extra0_1",
+                "to": "player",
+                "text": "这点钱可不够买她的命。",
+                "mood": "cold",
+                "delayMs": 2096
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "别给他们钱，我不欠你的。",
+                "mood": "sad",
+                "delayMs": 1677
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "再拿点，不然我们可不松手。",
+                "mood": "smug",
+                "delayMs": 1654
+              }
+            ],
+            "lines": [
+              "你递出几张钞票，红隼帮汉子一把抓过，却仍不放手。",
+              "姑娘别过脸，不再看你，眼神冷了下去。"
+            ],
+            "fx": {
+              "cash": -40,
+              "honor": -5,
+              "wanted": 0,
+              "affection": -10,
+              "trust": -10
+            }
+          },
+          "enc_pass": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "别走……求你……",
+                "mood": "scared",
+                "delayMs": 1633
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "算你识相。",
+                "mood": "smug",
+                "delayMs": 1745
+              },
+              {
+                "speaker": "extra0_1",
+                "to": "extra0_0",
+                "text": "别管他，带走。",
+                "mood": "cold",
+                "delayMs": 2114
+              }
+            ],
+            "lines": [
+              "你转身离开，身后传来姑娘的哭喊和汉子的哄笑。",
+              "巷口的风卷起尘土，遮住了你的影子。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -10,
+              "wanted": 0,
+              "affection": -20,
+              "trust": -20
+            }
+          }
+        }
+      },
+      "indoor": false
     },
     "re_encounter": {
       "description": "艾达坐在酒馆靠墙角落，就着烛火缝补左袖，见你推门进来，她手一抖，针扎进指头，嘴抿成一条线。",
@@ -94,7 +222,7 @@ export const STORY_BEAT_TEXT = {
         "这几天，她总在日落前到酒馆，向酒保比划着打听一个高个子骑手。",
         "镇上人见她洗了脸、换了件旧裙子，都说像是从哪儿逃出来的。"
       ],
-      "venueId": "saloon_back",
+      "venueId": "saloon",
       "stageCast": {
         "leadFemale": true,
         "leadHint": "坐在角落的艾达",
@@ -136,8 +264,123 @@ export const STORY_BEAT_TEXT = {
             "label": "冷眼旁观，让她自己交代"
           }
         ],
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "gen0": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你来得正好，我正拿不定主意。",
+                "mood": "neutral",
+                "delayMs": 2135
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "红隼帮把我妹妹扣在旧矿场。",
+                "mood": "sad",
+                "delayMs": 1642
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "他们说今晚不去，就撕票。",
+                "mood": "scared",
+                "delayMs": 1817
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你肯信我，我欠你一条命。",
+                "mood": "happy",
+                "delayMs": 1986
+              }
+            ],
+            "lines": [
+              "你信了她，连夜赶往旧矿场，救出妹妹，艾达记下这份情。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 5,
+              "wanted": 0,
+              "affection": 10,
+              "trust": 15
+            }
+          },
+          "gen1": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你疯了吗？把枪放下！",
+                "mood": "scared",
+                "delayMs": 2090
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "什么主使？我不知道！",
+                "mood": "angry",
+                "delayMs": 1834
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你逼我也没用，他们早走了。",
+                "mood": "cold",
+                "delayMs": 1799
+              }
+            ],
+            "lines": [
+              "你拔枪逼供，酒馆里人人侧目，警长随后赶到，你被带走问话。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -5,
+              "wanted": 2,
+              "affection": -15,
+              "trust": -20
+            }
+          },
+          "gen2": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你看什么？我又没做亏心事。",
+                "mood": "cold",
+                "delayMs": 2187
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你连问都不问，就由我自生自灭？",
+                "mood": "sad",
+                "delayMs": 1694
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "算了，我妹妹的事不用你管。",
+                "mood": "angry",
+                "delayMs": 1829
+              }
+            ],
+            "lines": [
+              "你袖手旁观，艾达独自离去，红隼帮的威胁再无人知晓。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -8,
+              "wanted": 0,
+              "affection": -10,
+              "trust": -15
+            }
+          }
+        }
+      },
+      "indoor": true
     },
     "join": {
       "description": "她站在酒馆后门的马槽边，把一柄磨短了的猎刀平放在木桩上，刀柄朝向你，嘴唇上还沾着昨晚咬破的血痂。",
@@ -180,8 +423,119 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "accept": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "猎刀归你。后巷的活儿，今晚就有一桩。",
+                "mood": "smug",
+                "delayMs": 2006
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "别学那些戴警徽的，心软要命。",
+                "mood": "cold",
+                "delayMs": 2076
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "天亮前把马槽里的血擦净，别留印子。",
+                "mood": "neutral",
+                "delayMs": 2169
+              }
+            ],
+            "lines": [
+              "你接过短刀，成了她手里另一把刀。",
+              "酒馆后门的血味，从此沾上你的靴底。"
+            ],
+            "fx": {
+              "cash": 20,
+              "honor": -5,
+              "wanted": 0,
+              "affection": 20,
+              "trust": 15
+            }
+          },
+          "conditionally": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "讲条件？你当这是集市上骡马买卖？",
+                "mood": "cold",
+                "delayMs": 2000
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "说吧，我听着。可别指望我点头。",
+                "mood": "neutral",
+                "delayMs": 2186
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你的条件最好值一条命。",
+                "mood": "cold",
+                "delayMs": 1934
+              }
+            ],
+            "lines": [
+              "你提了条件，她既没应承也没回绝。",
+              "她看你的眼神，像在估一匹没烙印的马。"
+            ],
+            "fx": {
+              "cash": -10,
+              "honor": 0,
+              "wanted": 0,
+              "affection": 5,
+              "trust": -5
+            }
+          },
+          "reject": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "不接刀，就等着接枪子。",
+                "mood": "angry",
+                "delayMs": 2068
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你当后巷是礼拜堂？没人能白听。",
+                "mood": "cold",
+                "delayMs": 2126
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "滚，别让我在矿场再瞧见你。",
+                "mood": "angry",
+                "delayMs": 1829
+              }
+            ],
+            "lines": [
+              "你转身离开，把短刀和血痂留在马槽边。",
+              "她记住了你的背影，像狼记住枪伤。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 10,
+              "wanted": 0,
+              "affection": -20,
+              "trust": -10
+            }
+          }
+        }
+      },
+      "indoor": false
     },
     "honeymoon": {
       "description": "酒馆里煤油灯昏黄，他正伏在桌上给你那把左轮上油，听见门响抬头，眼角笑出褶子。",
@@ -234,8 +588,116 @@ export const STORY_BEAT_TEXT = {
             "label": "我自己的事自己解决"
           }
         ],
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "gen0": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你总算问到点子上了。",
+                "mood": "neutral",
+                "delayMs": 2039
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "红隼帮的人昨儿在矿场打听你的行踪。",
+                "mood": "cold",
+                "delayMs": 1950
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "别声张，这把枪我给你上好了。",
+                "mood": "neutral",
+                "delayMs": 1738
+              }
+            ],
+            "lines": [
+              "他透露了风声，你心里有了方向，决定先查红隼帮。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 0,
+              "wanted": 0,
+              "affection": 8,
+              "trust": 12
+            }
+          },
+          "gen1": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "信不信由你，枪我已经擦好了。",
+                "mood": "smug",
+                "delayMs": 1934
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "门外那匹马可不是我的。",
+                "mood": "cold",
+                "delayMs": 1735
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你不信，大可以自己出去看看。",
+                "mood": "angry",
+                "delayMs": 1613
+              }
+            ],
+            "lines": [
+              "他的态度让你更生疑，但线索仍悬在半空，你感到孤立无援。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 0,
+              "wanted": 0,
+              "affection": -10,
+              "trust": -15
+            }
+          },
+          "gen2": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "随你，枪就搁在桌上。",
+                "mood": "cold",
+                "delayMs": 1685
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "别指望我替你收尸。",
+                "mood": "cold",
+                "delayMs": 2164
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "门就在那边，不送。",
+                "mood": "neutral",
+                "delayMs": 1661
+              }
+            ],
+            "lines": [
+              "你独自离开，他也没有挽留，你们之间的信任更薄了。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 0,
+              "wanted": 0,
+              "affection": -8,
+              "trust": -10
+            }
+          }
+        }
+      },
+      "indoor": true
     },
     "betrayal": {
       "description": "你掀开帐篷帘，钱箱铁锁被撬开，几张银元撒在泥地上，昨夜升的火堆还冒着细烟，他人影全无。",
@@ -289,8 +751,102 @@ export const STORY_BEAT_TEXT = {
             "label": "立刻骑马去追贼人"
           }
         ],
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "gen0": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "看泥地，脚印往北边去了，还新鲜。",
+                "mood": "neutral",
+                "delayMs": 1721
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "别踩乱了，仔细瞧，像有三个人的靴印。",
+                "mood": "cold",
+                "delayMs": 1828
+              }
+            ],
+            "lines": [
+              "你从泥地脚印辨出三人往北逃去，追出半里只捡回几枚银元。"
+            ],
+            "fx": {
+              "cash": 20,
+              "honor": 0,
+              "wanted": 0,
+              "affection": 0,
+              "trust": 10
+            }
+          },
+          "gen1": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你怀疑我？我听见动静才过来，只看见这些。",
+                "mood": "scared",
+                "delayMs": 1657
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "我要是贼，早骑上马跑了，还站在这儿等你？",
+                "mood": "angry",
+                "delayMs": 1771
+              }
+            ],
+            "lines": [
+              "报信人满脸涨红，赌咒发誓与此事无关，你俩之间生了嫌隙。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -5,
+              "wanted": 0,
+              "affection": -15,
+              "trust": -20
+            }
+          },
+          "gen2": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "等等！那帮人可能设了埋伏，你别一个人去。",
+                "mood": "scared",
+                "delayMs": 1942
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "我看见他们往矿场方向跑了，骑快点兴许追得上。",
+                "mood": "neutral",
+                "delayMs": 1822
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "带上这个，路上好用。",
+                "mood": "cold",
+                "delayMs": 2086
+              }
+            ],
+            "lines": [
+              "你策马追出二里，不见贼人踪影，回到营地火堆已熄。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 5,
+              "wanted": 0,
+              "affection": 10,
+              "trust": 5
+            }
+          }
+        }
+      },
+      "indoor": false
     },
     "clues": {
       "description": "酒馆后门的泥地上有一串新脚印，花纹是马蹄铁打的靴跟，吧台上搁着半杯冷掉的咖啡。",
@@ -302,7 +858,7 @@ export const STORY_BEAT_TEXT = {
         "酒馆老板说，那晚上他听见过两次后门响，一次轻一次重，中间隔着约莫一袋烟的工夫。",
         "打猎的老瘸子说，他在北坡看见过一匹灰马，鞍上挂着你那伙计的旧水囊。"
       ],
-      "venueId": "saloon_back",
+      "venueId": "saloon",
       "stageCast": {
         "leadFemale": null,
         "leadHint": "酒馆里的线人",
@@ -344,8 +900,119 @@ export const STORY_BEAT_TEXT = {
             "label": "拔枪抵着他后腰"
           }
         ],
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "gen0": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你轻点儿，这可不是闹着玩的。",
+                "mood": "scared",
+                "delayMs": 1803
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "那靴跟是银矿兄弟会的记号，我见过。",
+                "mood": "scared",
+                "delayMs": 1627
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "他们今晚在后巷交货，别把我扯进去。",
+                "mood": "neutral",
+                "delayMs": 1738
+              }
+            ],
+            "lines": [
+              "你从他嘴里逼出了银矿兄弟会的行踪。",
+              "但他从此见了你就躲，再不肯多吐半个字。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -5,
+              "wanted": 0,
+              "affection": -10,
+              "trust": -15
+            }
+          },
+          "gen1": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你蹲下做什么？那杯咖啡早凉了。",
+                "mood": "neutral",
+                "delayMs": 1862
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "别碰，那是我喝剩的，没什么看头。",
+                "mood": "cold",
+                "delayMs": 1827
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你该不会疑心我在杯里下药吧？",
+                "mood": "smug",
+                "delayMs": 1805
+              }
+            ],
+            "lines": [
+              "你查了咖啡杯，没找到有用线索，只闻见一股苦味。",
+              "线人见你不发火，反倒松了戒备，多说了几句闲话。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 0,
+              "wanted": 0,
+              "affection": 5,
+              "trust": 5
+            }
+          },
+          "gen2": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "老天，别开枪，我什么都说！",
+                "mood": "scared",
+                "delayMs": 1839
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "是红隼帮的人，他们逼我传假消息。",
+                "mood": "scared",
+                "delayMs": 2126
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "枪口挪开，我带你去找他们。",
+                "mood": "scared",
+                "delayMs": 2165
+              }
+            ],
+            "lines": [
+              "你拔枪威逼，线人当场供出红隼帮的藏身点。",
+              "但后厨有人瞧见，小镇很快传开你持枪行凶。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -10,
+              "wanted": 1,
+              "affection": -15,
+              "trust": -20
+            }
+          }
+        }
+      },
+      "indoor": true
     },
     "confrontation": {
       "description": "酒馆后巷，她背贴潮湿的砖墙，两手空空，眼神却直直迎上你，脚边落着那枚被你扯断的银扣子。",
@@ -388,8 +1055,119 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "forgive": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你当真不追究我的事？",
+                "mood": "scared",
+                "delayMs": 1766
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "我原以为你会一枪崩了我。",
+                "mood": "sad",
+                "delayMs": 1673
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "这枚扣子……你拿回去吧。",
+                "mood": "neutral",
+                "delayMs": 2178
+              }
+            ],
+            "lines": [
+              "你放她走了，后巷只剩雨滴敲打砖墙。",
+              "银扣子陷在泥里，像一句没说完的话。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 5,
+              "wanted": 0,
+              "affection": 10,
+              "trust": 10
+            }
+          },
+          "punish": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "动手吧，我早料到有这天。",
+                "mood": "cold",
+                "delayMs": 2053
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你和你那帮人一样，只会用枪说话。",
+                "mood": "angry",
+                "delayMs": 1905
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "别指望我求你，你动手就是。",
+                "mood": "cold",
+                "delayMs": 2142
+              }
+            ],
+            "lines": [
+              "你将她押往警长办公室，后巷恢复死寂。",
+              "银扣子被你踩进泥里，再没人提起。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 3,
+              "wanted": 1,
+              "affection": -15,
+              "trust": -10
+            }
+          },
+          "recruit_back": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你想策反我？胆子不小。",
+                "mood": "smug",
+                "delayMs": 1748
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "我凭什么信你不会背后捅刀？",
+                "mood": "cold",
+                "delayMs": 1794
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "除非……你给得起价码。",
+                "mood": "smug",
+                "delayMs": 2178
+              }
+            ],
+            "lines": [
+              "你递上一小袋银元，她掂了掂收进怀里。",
+              "银扣子成了接头暗号，夜色吞没她的身影。"
+            ],
+            "fx": {
+              "cash": -40,
+              "honor": -5,
+              "wanted": 0,
+              "affection": 5,
+              "trust": 15
+            }
+          }
+        }
+      },
+      "indoor": false
     },
     "redemption": {
       "description": "雨夜教堂台阶上，她浑身湿透，怀里抱着那袋银币，膝盖在石板上磕出淤青，嘴唇冻得发紫。",
@@ -442,8 +1220,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "天亮时，银币被摆上镇长的桌案，教堂外只剩一滩雨水。",
           "镇上人说她冻死在北边矿场，也有人说她上了去东部的驿车。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": false
     },
     "exile": {
       "description": "镇口风滚草擦着地皮滚过，她衣衫单薄，被人用枪托一推，踉跄着踏上北去的土路，一步一回头。",
@@ -517,8 +1297,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "她一步步消失在风沙里，像被风滚草卷走。",
           "镇上的人站在远处，没人说一句挽留的话。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": false
     },
     "double_agent": {
       "description": "他在黑蹄会营帐外围，正用匕首削一根马刺，每削一下，眼睛就飞快扫一眼进出的帮众，风里飘来炖豆子和枪油的气味。",
@@ -592,8 +1374,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "矿场那晚响了七枪，黑蹄会从此散了。镇上的人只说，偷马贼里出了个告密的，死得不冤。",
           "没人给他立碑，风一吹，拴马桩旁只剩半截马刺。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": false
     }
   },
   "life_debt": {
@@ -659,8 +1443,119 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "res_carry": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "别碰我……红隼帮不会放过你的。",
+                "mood": "scared",
+                "delayMs": 2131
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "他血都快流干了，快搭把手。",
+                "mood": "angry",
+                "delayMs": 1967
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "去镇上……找克劳迪娅大夫。",
+                "mood": "sad",
+                "delayMs": 1635
+              }
+            ],
+            "lines": [
+              "你一路小跑，把他送进了诊所的木板床上。",
+              "大夫剪开血衣，说再晚一刻就难救了。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 12,
+              "wanted": 0,
+              "affection": 15,
+              "trust": 15
+            }
+          },
+          "res_patch": {
+            "beats": [
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "我这儿有干净布条，先勒住伤口。",
+                "mood": "neutral",
+                "delayMs": 1662
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "轻点……你这混蛋，想疼死我吗。",
+                "mood": "angry",
+                "delayMs": 2017
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "别管他骂，勒紧能止血。",
+                "mood": "smug",
+                "delayMs": 1724
+              }
+            ],
+            "lines": [
+              "你用烧酒浇了伤口，草草包扎，止了血。",
+              "血是不再涌了，可那子弹还深深嵌在肉里。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 8,
+              "wanted": 0,
+              "affection": 10,
+              "trust": 10
+            }
+          },
+          "res_search": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你……你这是要干什么？",
+                "mood": "scared",
+                "delayMs": 1779
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "他还没死，你别乱翻他口袋。",
+                "mood": "angry",
+                "delayMs": 1897
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "我兜里只有几块鹰洋，拿去……滚。",
+                "mood": "cold",
+                "delayMs": 2075
+              }
+            ],
+            "lines": [
+              "你从他怀里摸出几张皱巴巴的钞票。",
+              "他冷冷瞪着你，那眼神比枪伤还要寒冷。"
+            ],
+            "fx": {
+              "cash": 75,
+              "honor": -12,
+              "wanted": 0,
+              "affection": -20,
+              "trust": -25
+            }
+          }
+        }
+      },
+      "indoor": false
     },
     "departure": {
       "description": "仓库角落的草铺空了，换下的血绷带扔在泥地上，半碗没喝完的汤药还冒着热气，门帘被风掀得一下下拍着。",
@@ -672,7 +1567,7 @@ export const STORY_BEAT_TEXT = {
         "天不亮，他把一件破外套叠好搁在井沿上，就沿着矿渣路往南走了。",
         "等他走后，看门老头才发现他住过的草铺下压着两颗银矿子弹，像是留的买路钱。"
       ],
-      "venueId": "store_back",
+      "venueId": "store",
       "stageCast": {
         "leadFemale": false,
         "leadHint": "看门老头",
@@ -714,8 +1609,95 @@ export const STORY_BEAT_TEXT = {
             "label": "端起那半碗汤药"
           }
         ],
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "gen0": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "后巷出去，往北边走了，别追了。",
+                "mood": "cold",
+                "delayMs": 2155
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你问这个做什么？莫管闲事。",
+                "mood": "angry",
+                "delayMs": 1679
+              }
+            ],
+            "lines": [
+              "你追问那人去了哪儿，老头只冷冷一指北边，再不肯多言。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 0,
+              "wanted": 0,
+              "affection": -5,
+              "trust": -10
+            }
+          },
+          "gen1": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "别碰那绷带，血还没干透。",
+                "mood": "scared",
+                "delayMs": 1894
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你眼尖，看出什么门道了？",
+                "mood": "neutral",
+                "delayMs": 1653
+              }
+            ],
+            "lines": [
+              "你俯身查看草铺与血绷带，发现绷带边角绣着红隼帮的记号。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 0,
+              "wanted": 0,
+              "affection": 5,
+              "trust": 10
+            }
+          },
+          "gen2": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "放下！那药是给伤员吊命的。",
+                "mood": "angry",
+                "delayMs": 1888
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你要想喝，自己去酒馆买去。",
+                "mood": "cold",
+                "delayMs": 1977
+              }
+            ],
+            "lines": [
+              "你端起药碗，老头一把夺了过去，汤药洒了一地，线索就此断了。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 0,
+              "wanted": 0,
+              "affection": -10,
+              "trust": -5
+            }
+          }
+        }
+      },
+      "indoor": true
     },
     "return": {
       "description": "酒馆里闷着一股汗味和劣质威士忌气，角桌边坐了个眼熟的汉子，右掌按着一把黄铜猎枪，朝门口抬了抬下巴。",
@@ -773,8 +1755,140 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "accept_help": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "门口那俩小子盯你半天了。",
+                "mood": "neutral",
+                "delayMs": 2122
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "要动枪出去，别砸我桌子。",
+                "mood": "scared",
+                "delayMs": 2034
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "就借你后门用用。",
+                "mood": "cold",
+                "delayMs": 2176
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "跟紧我，从后巷绕。",
+                "mood": "neutral",
+                "delayMs": 1683
+              }
+            ],
+            "lines": [
+              "你跟着欠药钱的汉子从后门绕出，两枪托就撂倒了找事的枪手。",
+              "他拍了拍你的肩，说这回算两清，往后有事还找他。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 5,
+              "wanted": 0,
+              "affection": 10,
+              "trust": 10
+            }
+          },
+          "decline": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "随你，别死在我眼前。",
+                "mood": "cold",
+                "delayMs": 1639
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "客官，可别在小店闹出人命。",
+                "mood": "scared",
+                "delayMs": 1733
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "给他再倒杯，壮壮胆。",
+                "mood": "neutral",
+                "delayMs": 1793
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "祝你好运。",
+                "mood": "neutral",
+                "delayMs": 2087
+              }
+            ],
+            "lines": [
+              "你独自走出酒馆，门口那两人立刻盯了上来，你只能拔枪硬拼。",
+              "欠药钱的汉子在窗后看着，没有出手，摇了摇头。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 0,
+              "wanted": 1,
+              "affection": -5,
+              "trust": -5
+            }
+          },
+          "call_in_favor": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你还真会挑时候。",
+                "mood": "smug",
+                "delayMs": 1957
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "别闹大，警长常来。",
+                "mood": "scared",
+                "delayMs": 2116
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "行，但事成后你欠我双份。",
+                "mood": "cold",
+                "delayMs": 1948
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "你这是把我也拖下水。",
+                "mood": "angry",
+                "delayMs": 1776
+              }
+            ],
+            "lines": [
+              "你用迟到的救命之恩逼他出手，枪声惊动了半边镇子。",
+              "事情虽了，你被警长盯上，汉子也与你疏远了几分。"
+            ],
+            "fx": {
+              "cash": -50,
+              "honor": -5,
+              "wanted": 2,
+              "affection": -5,
+              "trust": -10
+            }
+          }
+        }
+      },
+      "indoor": true
     },
     "ally": {
       "description": "酒馆角落的桌子旁，那个曾被你救下的人正低头擦着左轮，枪管在油灯下泛着冷光，身旁空着一张椅子。",
@@ -828,8 +1942,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "后来他替你摆平了矿场的债，镇上人见了你都点头。",
           "再没人提起你救枪手的事，只当酒馆多了个朋友。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": true
     }
   },
   "kin_revenge": {
@@ -895,8 +2011,140 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "dis_listen": {
+            "beats": [
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "那天矿场早散工了，就几个夜班工头在。",
+                "mood": "neutral",
+                "delayMs": 1636
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "那几个工头，眼下还在镇上么？",
+                "mood": "cold",
+                "delayMs": 1823
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "这我可不清楚，您去矿上问问吧。",
+                "mood": "scared",
+                "delayMs": 1849
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你站那儿听了半晌，想打听什么？",
+                "mood": "cold",
+                "delayMs": 2067
+              }
+            ],
+            "lines": [
+              "你缩在角落，只听见断续的问答和酒杯磕碰声。",
+              "那外乡人问完便走，你什么也没落着。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 0,
+              "wanted": 0,
+              "affection": 0,
+              "trust": -5
+            }
+          },
+          "dis_talk": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你也在打听矿场的事？",
+                "mood": "neutral",
+                "delayMs": 1787
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "别多嘴，外乡人。",
+                "mood": "scared",
+                "delayMs": 1669
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "让他说，他兴许知道些什么。",
+                "mood": "cold",
+                "delayMs": 1984
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "那晚的事，你看见了什么？",
+                "mood": "neutral",
+                "delayMs": 1761
+              }
+            ],
+            "lines": [
+              "你凑近吧台，把听来的消息挑了几句告诉他。",
+              "他给你塞了几个银元，转身出了酒馆。"
+            ],
+            "fx": {
+              "cash": 20,
+              "honor": 5,
+              "wanted": 0,
+              "affection": 10,
+              "trust": 10
+            }
+          },
+          "dis_mislead": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "听说你在矿场待过？",
+                "mood": "neutral",
+                "delayMs": 1826
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "你可别胡说八道。",
+                "mood": "scared",
+                "delayMs": 1822
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你告诉我那晚谁在，我给你酬劳。",
+                "mood": "smug",
+                "delayMs": 1713
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "闭嘴，让他说。",
+                "mood": "cold",
+                "delayMs": 1958
+              }
+            ],
+            "lines": [
+              "你随口编了个人名，把那外乡人引去了西边废矿。",
+              "酒保看着你，叹了口气，别过脸去。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -10,
+              "wanted": 0,
+              "affection": -10,
+              "trust": -15
+            }
+          }
+        }
+      },
+      "indoor": true
     },
     "investigation": {
       "description": "警长办公室的桌上摊开一叠矿区出勤簿，那个男人用指节一行行划过名字，警长叼着烟靠在枪柜边。",
@@ -963,8 +2211,126 @@ export const STORY_BEAT_TEXT = {
             "label": "接过名册自己查"
           }
         ],
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "gen0": {
+            "beats": [
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "小点声，别在我这撒野。",
+                "mood": "cold",
+                "delayMs": 2012
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "老兄，你替我说话，我记着。",
+                "mood": "happy",
+                "delayMs": 1902
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "管好你的人，不然一起关。",
+                "mood": "angry",
+                "delayMs": 1990
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "警长，你包庇黑蹄会不是一天了。",
+                "mood": "angry",
+                "delayMs": 2032
+              }
+            ],
+            "lines": [
+              "你当众责问警长，他眼神阴冷了下去。",
+              "这梁子算是结下了，往后的路不好走。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 5,
+              "wanted": 1,
+              "affection": 10,
+              "trust": 10
+            }
+          },
+          "gen1": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "冷静？我兄弟的命没了！",
+                "mood": "angry",
+                "delayMs": 1945
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "劝得好，这小子就是头犟牛。",
+                "mood": "smug",
+                "delayMs": 1890
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "你闭嘴，今天非查个明白。",
+                "mood": "angry",
+                "delayMs": 1873
+              }
+            ],
+            "lines": [
+              "你按住外乡人的肩膀，他冷冷甩开了你。",
+              "好心劝架，却落得个两头不讨好的名声。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 5,
+              "wanted": 0,
+              "affection": -5,
+              "trust": -5
+            }
+          },
+          "gen2": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你眼睛利，帮着看看。",
+                "mood": "neutral",
+                "delayMs": 1952
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "别乱碰，那是我镇上的账。",
+                "mood": "cold",
+                "delayMs": 1665
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "他看两眼能怎么着？",
+                "mood": "angry",
+                "delayMs": 2001
+              }
+            ],
+            "lines": [
+              "你一行行比对出勤簿，发现几处涂改。",
+              "警长把烟头一扔，慢慢地坐直了身子。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 5,
+              "wanted": 0,
+              "affection": 10,
+              "trust": 15
+            }
+          }
+        }
+      },
+      "indoor": true
     },
     "revenge_act": {
       "description": "酒馆里的谈话声忽然低下去，那个男人立在吧台前，右手垂在枪柄上，眼睛盯着门，灯影摇晃。",
@@ -1007,8 +2373,155 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "confess": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "原来是你干的，我找了你很久。",
+                "mood": "angry",
+                "delayMs": 1887
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "今晚你别想走出这扇门。",
+                "mood": "cold",
+                "delayMs": 1690
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你欠的血债，该还了。",
+                "mood": "angry",
+                "delayMs": 1733
+              }
+            ],
+            "lines": [
+              "你承认了罪行，他的左轮枪口抵住了你的前额。",
+              "酒馆里没人敢动，只有吊灯在轻轻摇晃。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -10,
+              "wanted": 2,
+              "affection": -20,
+              "trust": -15
+            }
+          },
+          "compensate": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你想用几个钱打发我？",
+                "mood": "cold",
+                "delayMs": 2011
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你的钱沾着血，我不稀罕。",
+                "mood": "angry",
+                "delayMs": 1885
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "滚出这个镇子，别让我再见到你。",
+                "mood": "angry",
+                "delayMs": 1795
+              }
+            ],
+            "lines": [
+              "你把钱袋推过去，他一脚踢开，银币滚了一地。",
+              "你灰溜溜地出了门，身后只留下酒馆里的哄笑声。"
+            ],
+            "fx": {
+              "cash": -80,
+              "honor": -5,
+              "wanted": 0,
+              "affection": -10,
+              "trust": -10
+            }
+          },
+          "blame_others": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你说谁？那个红隼帮的？",
+                "mood": "neutral",
+                "delayMs": 2124
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "想拿我当枪使，你还不够格。",
+                "mood": "cold",
+                "delayMs": 1990
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "拿证据来，否则我当你撒谎。",
+                "mood": "angry",
+                "delayMs": 1849
+              }
+            ],
+            "lines": [
+              "你的谎话让他迟疑了一瞬，但枪柄仍没松开。",
+              "他在心里记下了那个名字，却也对你起了疑心。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -8,
+              "wanted": 0,
+              "affection": -5,
+              "trust": -15
+            }
+          },
+          "eliminate": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你这是在找死，小子。",
+                "mood": "angry",
+                "delayMs": 1807
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "看来你选错了路，小子。",
+                "mood": "cold",
+                "delayMs": 1879
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "今晚你得死在这儿，朋友。",
+                "mood": "angry",
+                "delayMs": 2001
+              }
+            ],
+            "lines": [
+              "你的手刚摸到枪柄，他的子弹已打穿了你的右肩。",
+              "你倒在血泊里，酒馆的灯影染成了红色。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -15,
+              "wanted": 3,
+              "affection": -25,
+              "trust": -25
+            }
+          }
+        }
+      },
+      "indoor": true
     },
     "resolution": {
       "description": "你推门进去，警长正把一支刻了字的左轮锁进抽屉，桌上摊着几张通缉令，油灯把影子钉在墙上。",
@@ -1061,8 +2574,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "天亮时，警长把刻字左轮锁进铁柜，仿佛从未见过。",
           "镇上的人只说矿场又塌了一块，没人追问那支枪的下落。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": true
     }
   },
   "missing_member": {
@@ -1115,8 +2630,116 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "miss_ask": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "最后见他是在北边矿场外头，他说去给马找点水。",
+                "mood": "neutral",
+                "delayMs": 1688
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "那地方常有落石，我早该拦着他。",
+                "mood": "sad",
+                "delayMs": 1701
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "去矿场北边溪沟问问，兴许有人见过。",
+                "mood": "cold",
+                "delayMs": 1647
+              }
+            ],
+            "lines": [
+              "你问清了最后行踪，带着人手直奔溪沟，总算寻到半截断掉的缰绳。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 2,
+              "wanted": 0,
+              "affection": 3,
+              "trust": 8
+            }
+          },
+          "miss_search": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "别慌，我这就把矿场的弟兄都叫上。",
+                "mood": "angry",
+                "delayMs": 1736
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "黑蹄会最近在北边转悠，怕是他撞上了。",
+                "mood": "scared",
+                "delayMs": 1635
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "带上枪，老杰克的马快，让他走前头。",
+                "mood": "cold",
+                "delayMs": 1618
+              }
+            ],
+            "lines": [
+              "你们沿着北边小路追出老远，只找到一顶被撕破的旧帽子，人却不见。"
+            ],
+            "fx": {
+              "cash": -30,
+              "honor": 5,
+              "wanted": 0,
+              "affection": 8,
+              "trust": 10
+            }
+          },
+          "miss_wait": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "他前些天也醉倒在酒馆后头，天亮自己就回来了。",
+                "mood": "smug",
+                "delayMs": 1706
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "北边刮了一整天风，这会儿出门也是白搭。",
+                "mood": "neutral",
+                "delayMs": 2136
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "再等一晚，省得弟兄们夜里踩了兽夹。",
+                "mood": "cold",
+                "delayMs": 1801
+              }
+            ],
+            "lines": [
+              "你按下没动，第二天清晨人们发现他倒毙在北边三里外的沟里，身子都硬了。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -8,
+              "wanted": 0,
+              "affection": -10,
+              "trust": -12
+            }
+          }
+        }
+      },
+      "indoor": false
     },
     "contradictory_clues": {
       "description": "比利蹲在酒馆后巷的烂泥里拨弄半截缰绳，科尔靠墙用刀尖划着砖缝，两人谁也不看谁。",
@@ -1128,7 +2751,7 @@ export const STORY_BEAT_TEXT = {
         "有人给马槽添水，眼睛却总往这边溜，连水瓢都举在半空没放下。",
         "吧女把后门推开条缝，又轻轻关上，只漏出一股酸酒味。"
       ],
-      "venueId": "stables",
+      "venueId": "saloon_back",
       "stageCast": {
         "leadFemale": false,
         "leadHint": "酒馆后巷的比利",
@@ -1198,8 +2821,140 @@ export const STORY_BEAT_TEXT = {
             "label": "觉得其中有蹊跷"
           }
         ],
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "gen0": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你想先听经过？行，我说。",
+                "mood": "neutral",
+                "delayMs": 2006
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "三天前他替帮里送信，再没回来。",
+                "mood": "sad",
+                "delayMs": 1779
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "就送到北边矿场，线人也没露面。",
+                "mood": "cold",
+                "delayMs": 2043
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "{extra0_0}，少提矿场的事。",
+                "mood": "angry",
+                "delayMs": 2022
+              }
+            ],
+            "lines": [
+              "你沉住气问清前后，两人终于吐露了部分实情。",
+              "但线人始终没消息，线索断在矿场入口。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 1,
+              "wanted": 0,
+              "affection": 3,
+              "trust": 5
+            }
+          },
+          "gen1": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "够意思，我这就给你备马。",
+                "mood": "happy",
+                "delayMs": 1860
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "别信矿场那帮人，眼神别软。",
+                "mood": "cold",
+                "delayMs": 1843
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "你别老吓唬他，{extra0_0}。",
+                "mood": "neutral",
+                "delayMs": 1831
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "我这是教他保命的法子。",
+                "mood": "smug",
+                "delayMs": 1920
+              }
+            ],
+            "lines": [
+              "你一口应下，牵马出了镇子，直奔矿场而去。",
+              "身后巷子里，科尔冷冷补了句：别死在外头。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 5,
+              "wanted": 0,
+              "affection": 6,
+              "trust": 8
+            }
+          },
+          "gen2": {
+            "beats": [
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "蹊跷？你怀疑我们哥俩？",
+                "mood": "angry",
+                "delayMs": 1911
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "{extra0_0}，收刀。让他把话说完。",
+                "mood": "cold",
+                "delayMs": 2124
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你倒是说说，哪儿不对？",
+                "mood": "smug",
+                "delayMs": 2059
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "我看他就是不想沾这事。",
+                "mood": "angry",
+                "delayMs": 1967
+              }
+            ],
+            "lines": [
+              "你当面质疑，比利的笑容慢慢冷了下去。",
+              "科尔别过脸，不再搭理你，巷子里只剩雨声。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -2,
+              "wanted": 0,
+              "affection": -5,
+              "trust": -10
+            }
+          }
+        }
+      },
+      "indoor": false
     },
     "decision": {
       "description": "油灯把一圈人脸照得发黄，副手把乔伊那顶帽子平放在木桌上，七八双眼睛都望向门口。",
@@ -1257,8 +3012,183 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "search_personally": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "我跟你去，把乔伊带回来。",
+                "mood": "neutral",
+                "delayMs": 1616
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "外头有埋伏，你去了也危险。",
+                "mood": "scared",
+                "delayMs": 1999
+              },
+              {
+                "speaker": "extra0_1",
+                "to": "lead",
+                "text": "我备马，天亮前动身。",
+                "mood": "happy",
+                "delayMs": 2133
+              },
+              {
+                "speaker": "extra0_2",
+                "to": "player",
+                "text": "多带点人去，别落单。",
+                "mood": "cold",
+                "delayMs": 1651
+              }
+            ],
+            "lines": [
+              "你带着人手追进北边荒路，马灯照亮了乔伊的血迹。",
+              "最终在河滩边找到受伤的乔伊，他朝你点了点头。"
+            ],
+            "fx": {
+              "cash": -30,
+              "honor": 8,
+              "wanted": 0,
+              "affection": 10,
+              "trust": 12
+            }
+          },
+          "send_team": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "我再挑几个好手，让他们去。",
+                "mood": "cold",
+                "delayMs": 1698
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "上回派去的人还没回来，还派？",
+                "mood": "scared",
+                "delayMs": 2118
+              },
+              {
+                "speaker": "extra0_1",
+                "to": "player",
+                "text": "要去你去，我不去送死。",
+                "mood": "angry",
+                "delayMs": 2161
+              },
+              {
+                "speaker": "extra0_2",
+                "to": "lead",
+                "text": "多给点枪，兴许能成。",
+                "mood": "neutral",
+                "delayMs": 1866
+              }
+            ],
+            "lines": [
+              "你派出第二队，两天后只回来一个满身血的人报信。",
+              "乔伊仍无音讯，众人看你的眼神越来越冷，没人再听你调派。"
+            ],
+            "fx": {
+              "cash": -50,
+              "honor": -5,
+              "wanted": 0,
+              "affection": -8,
+              "trust": -10
+            }
+          },
+          "pay_ransom": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "他们要多少？给钱就能放人？",
+                "mood": "cold",
+                "delayMs": 1939
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "咱们哪来这么多现钱？矿上还没结账。",
+                "mood": "sad",
+                "delayMs": 2086
+              },
+              {
+                "speaker": "extra0_1",
+                "to": "player",
+                "text": "给了钱他们也不一定守信用。",
+                "mood": "scared",
+                "delayMs": 1967
+              },
+              {
+                "speaker": "extra0_2",
+                "to": "lead",
+                "text": "把钱给我，我去交赎。",
+                "mood": "smug",
+                "delayMs": 2055
+              }
+            ],
+            "lines": [
+              "你凑了钱交给中间人，乔伊被抬回来，但已没气。",
+              "众人骂你害了弟兄，几个老成员摔门出了议事厅。"
+            ],
+            "fx": {
+              "cash": -80,
+              "honor": -10,
+              "wanted": 0,
+              "affection": -15,
+              "trust": -20
+            }
+          },
+          "abandon_them": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "外头风声紧，不能再赔进人手了。",
+                "mood": "cold",
+                "delayMs": 2129
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "乔伊替我们挡过枪，你就这么放？",
+                "mood": "angry",
+                "delayMs": 1821
+              },
+              {
+                "speaker": "extra0_1",
+                "to": "player",
+                "text": "要放弃你放弃，我和老黑去寻。",
+                "mood": "angry",
+                "delayMs": 2113
+              },
+              {
+                "speaker": "extra0_2",
+                "to": "player",
+                "text": "散了吧，活着的人还得吃饭。",
+                "mood": "sad",
+                "delayMs": 1829
+              }
+            ],
+            "lines": [
+              "你封住了消息，乔伊再也没能回到营地，成了悬案。",
+              "夜里有人在你门前放了朵白花，那是给死人的记号。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -15,
+              "wanted": 0,
+              "affection": -25,
+              "trust": -25
+            }
+          }
+        }
+      },
+      "indoor": true
     },
     "rescued": {
       "description": "尘烟里，两个弟兄架着失踪的家伙从矿洞口走出来，他左肩缠着脏绷带，嘴唇干裂，那顶帽子终于回到他手里。",
@@ -1318,8 +3248,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "后来乔伊在诊所躺了半个月，左臂虽保住了，却再也举不起镐头。",
           "镇上的人都说，那笔派遣债，迟早要血来偿。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": false
     },
     "ransomed": {
       "description": "河风里，银矿兄弟会的人接过钱袋掂了掂，然后松开绳结，失踪的弟兄踉跄着朝这边走来，脸上带着淤青。",
@@ -1386,8 +3318,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "银矿兄弟会收了钱，没再为难人，那弟兄养了半个月伤。",
           "镇上人都说，那笔钱买回条命，算不得亏，但矿场更没人敢去了。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": false
     },
     "abandoned": {
       "description": "夜风里，驻地门口那顶帽子还挂在木桩上，几个弟兄坐在台阶上，没人说话，烟卷头的红光一明一灭。",
@@ -1447,8 +3381,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "三日后，红隼帮的人马踏进银矿镇，逼得对方交出了凶手。",
           "那顶帽子一直挂在木桩上，过路人都知道那里出过人命。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": false
     }
   },
   "market_scale": {
@@ -1527,8 +3463,97 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "rumor_look": {
+            "beats": [
+              {
+                "speaker": "extra1_0",
+                "to": "player",
+                "text": "你可别信{lead}，这秤盘下藏着沙。",
+                "mood": "angry",
+                "delayMs": 2189
+              },
+              {
+                "speaker": "lead",
+                "to": "extra1_0",
+                "text": "我老米洛卖面三十年，从没坑过人。",
+                "mood": "sad",
+                "delayMs": 2111
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "extra0_1",
+                "text": "这老米洛看着老实，怕有误会。",
+                "mood": "neutral",
+                "delayMs": 1757
+              },
+              {
+                "speaker": "extra0_1",
+                "to": "extra0_0",
+                "text": "问问也好，别冤枉了人。",
+                "mood": "neutral",
+                "delayMs": 1986
+              }
+            ],
+            "lines": [
+              "你上前问明，发现秤盘下有块小石子，是孩子顽皮塞的。",
+              "误会解开，众人散去，老米洛拍着你的肩道谢。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 5,
+              "wanted": 0,
+              "affection": 10,
+              "trust": 5
+            }
+          },
+          "rumor_skip": {
+            "beats": [
+              {
+                "speaker": "extra1_0",
+                "to": "lead",
+                "text": "你今儿不给个说法，这摊子别想收！",
+                "mood": "angry",
+                "delayMs": 1785
+              },
+              {
+                "speaker": "lead",
+                "to": "extra1_0",
+                "text": "要多少你说，别砸我饭碗。",
+                "mood": "sad",
+                "delayMs": 2152
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "extra0_1",
+                "text": "这人真是，眼看老汉被欺。",
+                "mood": "cold",
+                "delayMs": 2136
+              },
+              {
+                "speaker": "extra0_1",
+                "to": "player",
+                "text": "你走开，没人管得了。",
+                "mood": "cold",
+                "delayMs": 2095
+              }
+            ],
+            "lines": [
+              "你转身离开，身后争吵越来越凶，老米洛赔了半袋面粉。",
+              "从此你在集市上再难买到公道价，摊主们见你就躲。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -10,
+              "wanted": 0,
+              "affection": -8,
+              "trust": -5
+            }
+          }
+        }
+      },
+      "indoor": false
     },
     "inspect": {
       "description": "酒馆后巷油灯昏黄，老米洛把秤平放在酒桶上，砝码盒半开，几只飞蛾绕着灯罩打转，黄铜秤盘反着冷光。",
@@ -1578,8 +3603,119 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "expose": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你当真要在集市上揭他？",
+                "mood": "scared",
+                "delayMs": 1870
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "那帮人可不是善茬，后巷都听得见。",
+                "mood": "cold",
+                "delayMs": 1951
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "秤砣我给你校好了，话你自己去说。",
+                "mood": "neutral",
+                "delayMs": 1959
+              }
+            ],
+            "lines": [
+              "你当众拆穿了黑心商贩，围观的人替你不平。",
+              "虽然得罪了人，但镇上提起你多了几分敬意。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 12,
+              "wanted": 0,
+              "affection": 15,
+              "trust": 10
+            }
+          },
+          "quiet": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "要我说，别在集市上闹。",
+                "mood": "neutral",
+                "delayMs": 2064
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你把这秤还给他，让他知趣收手。",
+                "mood": "smug",
+                "delayMs": 2083
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "后巷说话，比当街撕破脸强。",
+                "mood": "cold",
+                "delayMs": 1952
+              }
+            ],
+            "lines": [
+              "你托人私下递了话，那商贩悄悄补了亏空。",
+              "事情没闹大，你也落了个明白人的名声。"
+            ],
+            "fx": {
+              "cash": 20,
+              "honor": 5,
+              "wanted": 0,
+              "affection": 10,
+              "trust": 15
+            }
+          },
+          "walk_away": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你当真不追了？",
+                "mood": "sad",
+                "delayMs": 1933
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "这秤我帮你收着，回头再取吧。",
+                "mood": "cold",
+                "delayMs": 2002
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "少管一桩事，也少一桩债。",
+                "mood": "sad",
+                "delayMs": 1715
+              }
+            ],
+            "lines": [
+              "你把秤留在后巷，转身离开了是非。",
+              "那商贩继续做他的买卖，没人再提缺斤少两。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -10,
+              "wanted": 0,
+              "affection": -15,
+              "trust": -10
+            }
+          }
+        }
+      },
+      "indoor": false
     },
     "cleared": {
       "description": "正午阳光下，老米洛把砝码一枚枚码在案板上，那杆秤的指针稳稳停住，他抬起袖口擦擦眼角，几个妇人提着空篮子围过来。",
@@ -1646,8 +3782,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "打那以后，再没人说米洛的秤短斤缺两，他的摊前又排起了长队。",
           "镇上的人都道，老米洛那杆秤，比教堂的钟还准。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": false
     },
     "faded": {
       "description": "斜阳下，集市的烂泥地泛着亮，老亨利摊前没人围看，那杆秤挂在木柱上，秤钩空荡荡地晃。",
@@ -1701,8 +3839,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "斜阳沉下去，老亨利的秤再没晃过，镇上人路过时都道声好。",
           "集市的纠纷就这么了了，没人再提那杆空秤的事。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": false
     }
   },
   "old_feud": {
@@ -1761,8 +3901,88 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "tavern_ask": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "别掺和，这是我跟他的旧账。",
+                "mood": "angry",
+                "delayMs": 1990
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "你算哪根葱？也想管闲事？",
+                "mood": "cold",
+                "delayMs": 2178
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "哈克，今天你必须给我个交代。",
+                "mood": "angry",
+                "delayMs": 2096
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "交代？你欠我的还没还呢！",
+                "mood": "smug",
+                "delayMs": 1951
+              }
+            ],
+            "lines": [
+              "你的劝解让两人暂时收声，但酒馆里的人都记住了你多管闲事。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 5,
+              "wanted": 0,
+              "affection": -5,
+              "trust": -5
+            }
+          },
+          "tavern_watch": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "你再说一遍，信不信我砸了你？",
+                "mood": "angry",
+                "delayMs": 2193
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "来啊，我哈克还没怕过你。",
+                "mood": "smug",
+                "delayMs": 1808
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你就干看着？老伙计，你真行。",
+                "mood": "sad",
+                "delayMs": 2037
+              }
+            ],
+            "lines": [
+              "你站在一旁看着他们差点掀了桌子，老汤姆眼里满是失望。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -5,
+              "wanted": 0,
+              "affection": -10,
+              "trust": -10
+            }
+          }
+        }
+      },
+      "indoor": true
     },
     "backstory": {
       "description": "正午的广场上，一个老矿工坐在木箱上，摊开一本卷了边的账本，褪色字迹引来几个路人伸脖子。",
@@ -1826,8 +4046,140 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "reconcile": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "旧账翻出来，心里不是滋味。",
+                "mood": "sad",
+                "delayMs": 1778
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "老伙计，过去的事就让它过去吧。",
+                "mood": "neutral",
+                "delayMs": 1766
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "你这张嘴，还是那么会劝人。",
+                "mood": "neutral",
+                "delayMs": 1738
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "听你的，今晚我请酒。",
+                "mood": "happy",
+                "delayMs": 1732
+              }
+            ],
+            "lines": [
+              "旧账撕了，两人在酒馆干了一杯，恩怨随风散。",
+              "广场上的人散了，老矿工把账本收进怀里。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 10,
+              "wanted": 0,
+              "affection": 10,
+              "trust": 10
+            }
+          },
+          "pay_debt": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你替他还？这钱可不是小数目。",
+                "mood": "neutral",
+                "delayMs": 2024
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "外乡人，你钱多是好事。",
+                "mood": "smug",
+                "delayMs": 2193
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "这账清了，往后两不相欠。",
+                "mood": "neutral",
+                "delayMs": 1695
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "有人替你出头，你还板着脸。",
+                "mood": "happy",
+                "delayMs": 1860
+              }
+            ],
+            "lines": [
+              "账本上最后一笔划掉，旧债清了，双方松了口气。",
+              "你钱包瘪了，可老矿工看你的眼神多了几分敬重。"
+            ],
+            "fx": {
+              "cash": -80,
+              "honor": 5,
+              "wanted": 0,
+              "affection": 15,
+              "trust": 5
+            }
+          },
+          "let_fight": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "你少管闲事。",
+                "mood": "angry",
+                "delayMs": 1704
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "我偏要管，你又能怎样？",
+                "mood": "cold",
+                "delayMs": 1661
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你站着看戏？",
+                "mood": "cold",
+                "delayMs": 1664
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "player",
+                "text": "别卷进来，小心溅一身血。",
+                "mood": "smug",
+                "delayMs": 1685
+              }
+            ],
+            "lines": [
+              "两人在广场扭打，警长赶来带走一个，镇上议论纷纷。",
+              "你袖手旁观，老矿工眼里全是失望。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -5,
+              "wanted": 0,
+              "affection": -15,
+              "trust": -10
+            }
+          }
+        }
+      },
+      "indoor": false
     },
     "reconciled": {
       "description": "黄昏的门廊长凳上，两个男人并肩坐着，中间只隔一杯推到两人之间的威士忌，肩膀斜斜地靠了一下。",
@@ -1838,7 +4190,7 @@ export const STORY_BEAT_TEXT = {
         "往后几天，酒馆里再没摔过一个杯子，老汤姆和哈克又坐回靠窗那桌。",
         "镇上人说，有些旧账翻过去了，矿上吹来的风都带着松脂气。"
       ],
-      "venueId": "saloon",
+      "venueId": "plaza",
       "stageCast": {
         "leadFemale": false,
         "leadHint": "和好后的老汤姆",
@@ -1887,8 +4239,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "打那以后，酒馆门廊多摆了一条长凳，两个老汉常坐到星子满天。",
           "镇上人说，老汤姆和哈克能把同一杯酒推来让去，比当年动枪体面多了。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": false
     },
     "soured": {
       "description": "科布已经骑上马，马鞍后捆着褪色的铺盖卷，哈特站在马厩门口，手里的缰绳断成两截扔在尘土里。",
@@ -1949,8 +4303,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "科布终究还是催马出了镇子，哈特攥着断缰绳在尘土里站到天黑。",
           "镇上人嚼着舌头说，这俩人的旧怨，怕是比矿洞还深。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": false
     }
   },
   "medicine_shortage": {
@@ -1995,8 +4351,76 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "clinic_help": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你肯帮忙？真是雪中送炭。",
+                "mood": "happy",
+                "delayMs": 1838
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "顶层那格空了，得找些金鸡纳树皮。",
+                "mood": "neutral",
+                "delayMs": 2104
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "去黑蹄会的地盘打听，小心些。",
+                "mood": "neutral",
+                "delayMs": 2087
+              }
+            ],
+            "lines": [
+              "你应下这桩差事，医生紧锁的眉头松了些。",
+              "你转身出门，诊所门在身后吱呀合上。"
+            ],
+            "fx": {
+              "cash": 20,
+              "honor": 10,
+              "wanted": 0,
+              "affection": 15,
+              "trust": 10
+            }
+          },
+          "clinic_decline": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "没空？那就别杵在这儿。",
+                "mood": "cold",
+                "delayMs": 2161
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "药柜空了，病人可等不起。",
+                "mood": "angry",
+                "delayMs": 1814
+              }
+            ],
+            "lines": [
+              "医生没再言语，只把空抽屉重重推了回去。",
+              "你转身离开，身后传来一声叹息。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -10,
+              "wanted": 0,
+              "affection": -15,
+              "trust": -12
+            }
+          }
+        }
+      },
+      "indoor": true
     },
     "find": {
       "description": "北边路口那间石头矮屋里，老猎人把一袋干草根扔在火炉旁，猎枪斜靠着门框，满屋子都是苦腥和硝烟味。",
@@ -2039,8 +4463,119 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "buy": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "这袋子药根，你要就掏二十块。",
+                "mood": "cold",
+                "delayMs": 2125
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "不二价，镇上药铺都断货了。",
+                "mood": "smug",
+                "delayMs": 2070
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "拿钱来，东西你扛走。",
+                "mood": "neutral",
+                "delayMs": 1846
+              }
+            ],
+            "lines": [
+              "你付了二十块钱，老猎人把干草根踢到你脚边。",
+              "药铺断货的窘迫，因你的出手稍有缓解。"
+            ],
+            "fx": {
+              "cash": -20,
+              "honor": 5,
+              "wanted": 0,
+              "affection": 5,
+              "trust": 5
+            }
+          },
+          "persuade": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "我凭啥白给？这年头谁都不易。",
+                "mood": "cold",
+                "delayMs": 1945
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "镇上缺药关我屁事？滚一边去。",
+                "mood": "angry",
+                "delayMs": 1866
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "罢了，拿走吧，算我倒霉。",
+                "mood": "sad",
+                "delayMs": 1701
+              }
+            ],
+            "lines": [
+              "你一番话说动老猎人，他摆摆手让你把干草根拿走。",
+              "诊所因此多了些药材，你的名声在镇上传开。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 10,
+              "wanted": 0,
+              "affection": 10,
+              "trust": 10
+            }
+          },
+          "ignore": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "不买就滚，别挡着我烤火。",
+                "mood": "cold",
+                "delayMs": 2143
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "看什么看？没你的份。",
+                "mood": "angry",
+                "delayMs": 1940
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "杵这儿干啥？想挨枪子儿？",
+                "mood": "cold",
+                "delayMs": 1708
+              }
+            ],
+            "lines": [
+              "你转身离开，老猎人用鼻子哼了一声，继续烤他的火。",
+              "药铺仍然缺药，有病人把你见死不救的事传开了。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -5,
+              "wanted": 0,
+              "affection": -5,
+              "trust": -5
+            }
+          }
+        }
+      },
+      "indoor": false
     },
     "delivered": {
       "description": "诊所后院支着三口铁锅，草药在滚水里翻腾，医生舀起一勺黑汤喂进男孩嘴里，那孩子窝在母亲怀里慢慢不再抽气。",
@@ -2106,8 +4641,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "那孩子挨过当夜，烧退了，只是瘦得脱了形。",
           "镇上人传，是医生在后院支铁锅熬的土方子救回一条命。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": false
     },
     "faded": {
       "description": "药铺门口晾着的湿床单不再滴水，老猎人挂在檐下的那袋草药落满灰，有几只麻雀停在袋口啄食陈年草籽。",
@@ -2160,8 +4697,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "老猎人把那袋陈年草药扔进灶膛，镇上人路过檐下，都朝他点头。",
           "药铺重新挂出干净的布帘，短缺的事再没人提起。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": false
     }
   },
   "orphan_clue": {
@@ -2206,8 +4745,109 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "street_ask": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你是什么人？离我远点。",
+                "mood": "scared",
+                "delayMs": 1898
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "这徽章……是我捡来的。",
+                "mood": "neutral",
+                "delayMs": 2135
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你最好别管我的事。",
+                "mood": "cold",
+                "delayMs": 1925
+              }
+            ],
+            "lines": [
+              "你靠近询问，男孩却转身跑进巷子，只留下铜徽章滚落在地。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 0,
+              "wanted": 0,
+              "affection": -5,
+              "trust": -10
+            }
+          },
+          "street_help": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "你……真的肯帮我？",
+                "mood": "neutral",
+                "delayMs": 1870
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "这徽章是我爹的，他不在了。",
+                "mood": "sad",
+                "delayMs": 1923
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "我只想找到害他的人。",
+                "mood": "angry",
+                "delayMs": 1608
+              }
+            ],
+            "lines": [
+              "你决定帮他追查，男孩眼中重新有了光，把徽章交到你手里。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 10,
+              "wanted": 0,
+              "affection": 15,
+              "trust": 15
+            }
+          },
+          "street_pass": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "又一个装没看见的。",
+                "mood": "sad",
+                "delayMs": 2198
+              },
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "滚开，别站在我跟前。",
+                "mood": "cold",
+                "delayMs": 1925
+              }
+            ],
+            "lines": [
+              "你从旁走过，男孩攥紧徽章，眼里的光暗了下去。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -5,
+              "wanted": 0,
+              "affection": -10,
+              "trust": -10
+            }
+          }
+        }
+      },
+      "indoor": false
     },
     "badge": {
       "description": "酒馆油灯下，那枚铜徽躺在桌角，边角磨损的星星图案和“警长”字样在昏黄光里格外扎眼。",
@@ -2271,8 +4911,140 @@ export const STORY_BEAT_TEXT = {
           }
         ],
         "choices": null,
-        "closingLines": null
-      }
+        "closingLines": null,
+        "choiceScenes": {
+          "help": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "孩子，这警徽是你爹的？",
+                "mood": "neutral",
+                "delayMs": 2085
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "嗯，我爹说他会回来。",
+                "mood": "sad",
+                "delayMs": 1801
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "别怕，我帮你查查他的下落。",
+                "mood": "neutral",
+                "delayMs": 1903
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "谢谢老板，你真是个好人。",
+                "mood": "happy",
+                "delayMs": 2146
+              }
+            ],
+            "lines": [
+              "老板收下警徽，答应天亮就去警长那儿打听。",
+              "孩子眼里有了光，在酒馆角落沉沉睡去。"
+            ],
+            "fx": {
+              "cash": -20,
+              "honor": 8,
+              "wanted": 0,
+              "affection": 12,
+              "trust": 15
+            }
+          },
+          "tell": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "孩子，你爹他...已经没了。",
+                "mood": "sad",
+                "delayMs": 2008
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "不，你骗我！他说过会回来的！",
+                "mood": "angry",
+                "delayMs": 1943
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "矿场塌方，没人活下来。",
+                "mood": "cold",
+                "delayMs": 1890
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "我不信...我不信...",
+                "mood": "sad",
+                "delayMs": 1634
+              }
+            ],
+            "lines": [
+              "孩子攥着警徽跑出酒馆，消失在夜色里。",
+              "老板叹了口气，把一枚银元放在桌上。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": 5,
+              "wanted": 0,
+              "affection": -8,
+              "trust": 10
+            }
+          },
+          "pass": {
+            "beats": [
+              {
+                "speaker": "lead",
+                "to": "player",
+                "text": "我没见过这玩意儿。",
+                "mood": "cold",
+                "delayMs": 1976
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "老板，求您再看看，这警徽是我爹的。",
+                "mood": "sad",
+                "delayMs": 1811
+              },
+              {
+                "speaker": "lead",
+                "to": "extra0_0",
+                "text": "这儿不欢迎找麻烦的人。",
+                "mood": "cold",
+                "delayMs": 1705
+              },
+              {
+                "speaker": "extra0_0",
+                "to": "lead",
+                "text": "求您行行好，再看看吧。",
+                "mood": "sad",
+                "delayMs": 2078
+              }
+            ],
+            "lines": [
+              "孩子抱着警徽蹲在酒馆门口，直到打烊。",
+              "从此他再没来过这条街。"
+            ],
+            "fx": {
+              "cash": 0,
+              "honor": -10,
+              "wanted": 0,
+              "affection": -15,
+              "trust": -15
+            }
+          }
+        }
+      },
+      "indoor": true
     },
     "told": {
       "description": "孩子听完那番话，把徽章按在胸口好一会儿，才小心地收进内兜，抬头用袖子蹭了下眼睛说谢谢。",
@@ -2283,7 +5055,7 @@ export const STORY_BEAT_TEXT = {
         "孩子走后，酒馆里安静了一阵，有人小声说起那位老警长十年前的旧事。",
         "第二天，集市上的人看见孩子背着个小包袱出了镇口，那枚徽章再没在镇上露过面。"
       ],
-      "venueId": "saloon_back",
+      "venueId": "saloon",
       "stageCast": {
         "leadFemale": false,
         "leadHint": "刚收起旧警徽的男孩",
@@ -2318,8 +5090,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "后来镇上的人常看见那孩子在矿场帮工，夜里就守着旧徽章。",
           "有人说，等风沙再起时，他会是个好警长。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": true
     },
     "faded": {
       "description": "空荡荡的街角，风卷着草屑滚过，地上有一个很浅的脚印坑，像是站了一整夜留下的。",
@@ -2366,8 +5140,10 @@ export const STORY_BEAT_TEXT = {
         "closingLines": [
           "几天后，那孤儿被人发现死在河滩边，手里攥着一封没送出的信。",
           "镇上的人从此看见那个脚印坑就绕道走，都说那是冤魂站过的地方。"
-        ]
-      }
+        ],
+        "choiceScenes": {}
+      },
+      "indoor": false
     }
   }
 };

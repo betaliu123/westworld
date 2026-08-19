@@ -8,12 +8,39 @@ import { roleGenderOf } from "../config/theaterRoleGender.js";
 // 这些状态的 NPC 不征召
 const BUSY_STATES = new Set([State.DOWN, State.FLEE, State.ANGRY, State.TALK, State.STARTLED, State.SEEK_LOOT]);
 
+// 帮派名在项目里有**两套并存的写法**，比较时必须归一化：
+//   · 随机镇民走 gameData.GANGS，是中文名（"红隼帮"）
+//   · 17 个重要 NPC 被 _assignImportantNpcs 覆盖成 factionId（"black_hoof"/"player"）
+// 剧本和 stageCast 里写的是中文名，不归一化的话"黑蹄会"永远匹配不到 black_hoof 的人。
+const GANG_ALIAS = {
+  black_hoof: "黑蹄会",
+  red_falcon: "红隼帮",
+  silver_brotherhood: "银矿兄弟会",
+  player: "我的帮派",
+};
+function normGang(g) {
+  if (!g) return null;
+  return GANG_ALIAS[g] || String(g);
+}
+/** 两个帮派标识是不是同一个帮派（跨中文名/factionId） */
+export function gangEquals(a, b) {
+  const na = normGang(a), nb = normGang(b);
+  return !!na && na === nb;
+}
+
 export class Casting {
   constructor(deps = {}) {
     this.npcManager = deps.npcManager;
     this.stage = deps.stage;
     // 选角倾向解析器：返回 { npcId -> 加分 }，用于优先征召"玩家帮派成员 / 好友 / 有关系的人"
     this.priorityResolver = deps.priorityResolver || null;
+    // 关系查询（main.js 注入）：判断亲属 / 对玩家好感 / 对玩家怀恨
+    //   kinOf(npcId, otherNpcId) -> boolean
+    //   affectionToPlayer(npcId) -> number
+    //   grudgeToPlayer(npcId) -> boolean
+    this.relations = deps.relations || null;
+    // 缺角色时现造一个（main.js 注入）：createActor(role, tree) -> npc | null
+    this.actorFactory = deps.actorFactory || null;
   }
   /**
    * 为一棵剧本树选角。
@@ -39,6 +66,13 @@ export class Casting {
           npc = pool.find((n) => this._npcId(n) === preferId) || null;
         }
         if (!npc) npc = this._bestFor(role, pool, used, wantFemale);
+        // 挑不到、或挑出来的人明显不合角色（性别/帮派/亲属对不上）→ 现造一个。
+        // 硬凑的后果是玩家看到"描写说姑娘、来的是汉子"，或者镇上的铁匠
+        // 兼任死者的亲弟弟 —— 宁可新建一个专属角色。
+        if (this.actorFactory && (!npc || !this._roleFits(role, npc, wantFemale))) {
+          const made = this.actorFactory(role, tree, { wantFemale });
+          if (made) npc = made;
+        }
         if (!npc) break;
         used.add(npc);
         picked.push(npc);
@@ -53,7 +87,14 @@ export class Casting {
         result.push({
           roleId: role.roleId,
           npc,
-          stageName: role.name || this.displayName(npc),
+          // 说话人标签**永远用真人名字**。
+          // 以前是 `role.name || displayName(npc)` —— 手写剧本的角色带虚构名
+          // （"凯尔·摩根""得州比利"），于是左下角显示虚构名、头顶名字牌显示
+          // 真实 NPC 名，玩家看到的是两个人。
+          stageName: this.displayName(npc),
+          // 虚构角色名只留两个用途：① 老剧本台词里字面写了这个名字，运行时
+          // 要替换成真人名 ② 选角失败时的提示文案
+          roleName: role.name || null,
           spot: this.stage.spotFor(role.roleId, i, picked.length),
         });
       });
@@ -61,7 +102,27 @@ export class Casting {
     return result;
   }
 
+  /**
+   * 这个人演这个角色"说得过去"吗（只查硬设定，不看软性格）。
+   * 用来决定是否值得现造一个专属角色 —— 软条件不符可以忍，
+   * 性别/帮派/亲属这种观众一眼能看出矛盾的不能忍。
+   */
+  _roleFits(role, npc, wantFemale) {
+    if (!npc) return false;
+    if (wantFemale != null && !!npc.female !== !!wantFemale) return false;
+    if (role.female != null && !!npc.female !== !!role.female) return false;
+    if (role.gang && !gangEquals(npc.personality?.gang, role.gang)) return false;
+    if (role.kinOf && this.relations) {
+      if (!this.relations.kinOf?.(this._npcId(npc), role.kinOf)) return false;
+    }
+    return true;
+  }
+
   _npcId(npc) {
+    // brain 上的注册表 id 最权威（linkRegistry / _assignImportantNpcs 设的）；
+    // 退到按显示名查，最后才用 phone.id —— phone.id 带随机后缀，
+    // 拿它去查关系表/帮派成员一定查不到。
+    if (npc.brain?._npcId) return npc.brain._npcId;
     const reg = this.npcManager?.npcRegistry?.findByDisplayName?.(npc.phone?.owner || "");
     return reg?.id || npc.phone?.id || npc.phone?.owner || null;
   }
@@ -111,6 +172,26 @@ export class Casting {
       const id = this._npcId(npc);
       const bonus = this.priorityResolver(id, npc);
       if (bonus) s += bonus;
+    }
+
+    // 帮派要求：描写说"红隼帮汉子"就该真在红隼帮里挑。
+    // 以前这一项完全没读，合成角色表传了 gang 也白传。
+    if (role.gang) {
+      if (gangEquals(p.gang, role.gang)) s += 50;
+      else if (p.gang) s -= 30;          // 别派敌对帮派的人去演对方的打手
+      else s -= 10;                       // 无帮派平民勉强能演
+    }
+
+    // 关系要求：亲属 / 玩家的朋友 / 对玩家怀恨的人
+    if (this.relations) {
+      const id = this._npcId(npc);
+      if (role.kinOf && this.relations.kinOf?.(id, role.kinOf)) s += 70;   // 亲属是硬设定，权重最高
+      else if (role.kinOf) s -= 45;
+      if (role.friendOfPlayer) {
+        const aff = this.relations.affectionToPlayer?.(id) ?? 0;
+        s += aff >= 40 ? 45 : aff >= 15 ? 20 : -25;
+      }
+      if (role.grudgeToPlayer) s += this.relations.grudgeToPlayer?.(id) ? 55 : -35;
     }
 
     // 职业匹配是最强信号

@@ -40,7 +40,9 @@ export const VENUE_DEFS = {
   casino_back: { label: "赌场后巷",   building: "赌场后门" },
   diner:       { label: "餐馆",       building: "餐馆" },
   tailor:      { label: "裁缝铺",     building: "裁缝铺" },
-  hq:          { label: "帮派驻地",   special: "compound" },
+  // 驻地有室内（Interiors 里的"帮派驻地"），所以显式给出 interior ——
+  // 否则"驻地议事厅"这种明显在屋里的场景会因为"hq 不可进屋"被迫改到别处。
+  hq:          { label: "帮派驻地",   special: "compound", interior: "帮派驻地" },
   plaza:       { label: "镇中广场",   place: "plaza", placeName: "广场" },
   north_road:  { label: "镇北路口",   special: "north_road" },
 };
@@ -112,12 +114,14 @@ function _resolveRaw(town, venueId) {
 
 /**
  * 这个地点对应的可进入建筑名（用于把戏摆到室内）。
- * 后门/广场/路口/驻地大门这些本来就在户外，返回 null。
- * @returns {string|null} town.doors / Interiors 里的建筑名
+ * 后门/广场/路口这些本来就在户外，返回 null。
+ * @returns {string|null} Interiors 里的房间名
  */
 export function interiorNameOf(venueId) {
   const def = VENUE_DEFS[venueId];
-  if (!def?.building) return null;
+  if (!def) return null;
+  if (def.interior) return def.interior;            // 显式声明（驻地）
+  if (!def.building) return null;
   if (def.building.endsWith("后门")) return null;   // 后巷是户外
   return def.building;
 }
@@ -125,26 +129,27 @@ export function interiorNameOf(venueId) {
 /**
  * 这一幕该不该在屋里演。
  *
- * 判据以**画面描写**为主、地点标签为辅。原因：两者会互相矛盾 ——
- * 实测有的节点标签写"酒馆门前"，描写却是"酒馆里的谈话声忽然低下去，
- * 那个男人立在吧台前"。玩家到场看到的是描写，所以描写说在屋里就进屋，
- * 否则会出现台词讲"酒馆里"、人却站在招牌底下的大街上。
+ * **优先读节点自己声明的 `indoor` 布尔值**（storyBeatText 里由生成脚本写死）。
+ * 之前是用正则去读散文猜，实测在 13 个建筑类地点里判错 6 个：
+ * "酒馆角落""警长办公室""镇西诊所"全被当成户外，"酒馆门廊"反被当成室内。
+ * 正则只留给没有该字段的老数据兜底。
  *
  * @param {string} venueId
- * @param {string} description 画面描写（优先）
- * @param {string} label locateLabel（次之）
+ * @param {string} description 画面描写
+ * @param {string} label locateLabel
+ * @param {boolean|undefined} declared 节点声明的 indoor（有就直接用）
  * @returns {boolean}
  */
-export function isIndoorScene(venueId, description = "", label = "") {
-  if (!interiorNameOf(venueId)) return false;   // 后巷/广场/路口本来就在户外
+export function isIndoorScene(venueId, description = "", label = "", declared = undefined) {
+  // 地点本身不是可进入建筑（后巷/广场/路口/驻地大门）→ 无论声明什么都在户外
+  if (!interiorNameOf(venueId)) return false;
+  if (typeof declared === "boolean") return declared;
+  // ---- 以下仅为老数据兜底 ----
   const INDOOR = /屋里|屋内|里的|里头|吧台|柜台|桌前|靠窗桌|角落|炉边|灯影|诊台|长凳|祭坛|忏悔室|厅里|后院/;
   const OUTDOOR = /门前|门口|门外|台阶|廊|巷|街上|檐下|窗外|路口/;
   const d = String(description);
-  // ① 描写里明说在屋里 → 进屋（哪怕标签写"门前"）
   if (INDOOR.test(d)) return true;
-  // ② 描写里明说在户外 → 不进屋
   if (OUTDOOR.test(d)) return false;
-  // ③ 描写看不出来，再看标签
   const s = String(label);
   if (OUTDOOR.test(s)) return false;
   return INDOOR.test(s);

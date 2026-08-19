@@ -88,6 +88,8 @@ import { CombatFactions } from "./systems/CombatFactions.js";
 import { HealthBars } from "./ui/HealthBars.js";
 import { EmojiPops } from "./ui/EmojiPops.js";
 import { Cutscene } from "./ui/Cutscene.js";
+import { RevengeSystem } from "./systems/RevengeSystem.js";
+import { REVENGE_BEATS } from "./config/storyRevenge.js";
 import { getBeatText } from "./config/storyBeatText.js";
 import { resolveVenue, inferVenueId, isIndoorScene, interiorNameOf } from "./config/storyVenues.js";
 import { Pathfinder } from "./world/Pathfinder.js";
@@ -501,6 +503,14 @@ function boot() {
       // 检查任务完成：击败NPC
       const owner = target.phone?.owner || "镇民";
       const registryNpc = npcRegistry.findByDisplayName(owner);
+      // 记一笔血债：隔几天他的亲属会来讨。被打倒也算 —— 倒地的人会被搜身补刀，
+      // 亲属未必分得清"打倒"和"打死"。
+      revenge.recordKill({
+        npcId: registryNpc?.id || null,
+        displayName: owner,
+        lethal: !target.alive,
+        x: target.pos?.x ?? 0, z: target.pos?.z ?? 0,
+      });
       const completed = taskSystem.checkCompletion({
         type: "npc_defeated",
         npcId: registryNpc?.id || owner
@@ -600,7 +610,8 @@ function boot() {
         return p ? player.setAutoNavPath(p) : false;
       },
       onArrive: () => {
-        if (loc.storyId && loc.nodeId) onArriveStoryVenue(loc.storyId, loc.nodeId);
+        if (loc.revengeKin) openRevengeSceneAt(loc);
+        else if (loc.storyId && loc.nodeId) onArriveStoryVenue(loc.storyId, loc.nodeId);
         else hud.toast(`你到了${loc.label}。`, { side: true, key: "nav", duration: 3000 });
       },
       onCancel: (reason) => {
@@ -628,6 +639,99 @@ function boot() {
     phone, newspaper, reputation, hud, storyRuntime, getDay: () => worldClock.day,
     log: (t) => eventLog?.record?.({ type: "CONSEQ_LOG", facts: { text: t }, tags: ["consequence"] }),
   });
+  /**
+   * 亲属推定。项目里没有显式的血缘字段，用三档可信度推：
+   *   ① 同住一栋民居 —— NPCManager._assignHouseholds 就是按"一家人/情侣"分配的，最可靠
+   *   ② 同姓 —— "艾琳·沃德"和"伊莱·沃德"
+   *   ③ INITIAL_RELATIONSHIPS 里 affection ≥ 70 —— 亲密到这个程度按亲属算
+   */
+  function _surnameOf(displayName) {
+    const s = String(displayName || "");
+    const dot = s.search(/[·•.]/);
+    return dot > 0 ? s.slice(dot + 1) : "";
+  }
+  function _liveNpcOf(npcId) {
+    const reg = npcRegistry.get(npcId);
+    if (!reg) return null;
+    return npcManager.all.find((n) => n.alive && n.phone?.owner === reg.displayName) || null;
+  }
+  function _isKin(npcIdA, npcIdB) {
+    if (!npcIdA || !npcIdB || npcIdA === npcIdB) return false;
+    const a = npcRegistry.get(npcIdA), b = npcRegistry.get(npcIdB);
+    if (!a || !b) return false;
+    // ① 同住
+    const la = _liveNpcOf(npcIdA), lb = _liveNpcOf(npcIdB);
+    if (la && lb && la.brain?.home && la.brain.home === lb.brain.home) return true;
+    // ② 同姓（姓要够长，避免单字误判）
+    const sa = _surnameOf(a.displayName), sb = _surnameOf(b.displayName);
+    if (sa && sa.length >= 2 && sa === sb) return true;
+    // ③ 极高好感
+    const rel = worldState.state?.relationships?.[`${npcIdA}->${npcIdB}`];
+    if ((rel?.affection ?? 0) >= 70) return true;
+    return false;
+  }
+  function _affectionToPlayer(npcId) {
+    return worldState.state?.relationships?.[`${npcId}->player`]?.affection ?? 0;
+  }
+  function _hasGrudgeToPlayer(npcId) {
+    const live = _liveNpcOf(npcId);
+    if (live?._grudgeAgainstPlayer) return true;
+    const rel = worldState.state?.relationships?.[`${npcId}->player`];
+    return (rel?.resentment ?? 0) >= 40;
+  }
+
+  /**
+   * 缺角色就现造一个（Casting 在挑不到"说得过去"的人时调用）。
+   * 名字按角色需要生成；要求是某人亲属时**沿用对方的姓**，
+   * 这样"沃德"死了来的是另一个"沃德"，玩家看得懂。
+   */
+  const STORY_ACTOR_CAP = 8;
+  let _storyActorCount = 0;
+  const GIVEN_M = ["卡尔", "杰德", "洛根", "塞斯", "怀特", "科尔", "亚伦", "布莱"];
+  const GIVEN_F = ["莉迪亚", "薇拉", "艾达", "露丝", "梅布", "克拉拉", "珍妮", "萨莉"];
+  const SURNAMES = ["卡特", "霍普", "兰德", "费舍", "格兰特", "唐纳", "布雷", "肖特"];
+  function _makeStoryActor(role, tree, opts = {}) {
+    if (_storyActorCount >= STORY_ACTOR_CAP) return null;
+    const female = opts.wantFemale != null ? !!opts.wantFemale
+      : role.female != null ? !!role.female
+      : Math.random() < 0.4;
+    // 亲属角色沿用对方的姓
+    let surname = SURNAMES[Math.floor(Math.random() * SURNAMES.length)];
+    if (role.kinOf) {
+      const kinReg = npcRegistry.get(role.kinOf);
+      const s = _surnameOf(kinReg?.displayName);
+      if (s) surname = s;
+    }
+    const given = female
+      ? GIVEN_F[Math.floor(Math.random() * GIVEN_F.length)]
+      : GIVEN_M[Math.floor(Math.random() * GIVEN_M.length)];
+    let displayName = `${given}·${surname}`;
+    // 撞名就换一个
+    let guard = 0;
+    while (npcRegistry.findByDisplayName(displayName) && guard++ < 12) {
+      const g2 = female ? GIVEN_F[Math.floor(Math.random() * GIVEN_F.length)] : GIVEN_M[Math.floor(Math.random() * GIVEN_M.length)];
+      displayName = `${g2}·${surname}`;
+    }
+    const npc = npcManager.spawnStoryActor({
+      displayName,
+      job: role.jobs?.[0] || (role.gang ? "帮众" : "镇民"),
+      gang: role.gang || null,
+      female,
+      // 生在舞台附近，省得刚造出来就在镇子另一头
+      near: { x: theater.stage.center.x, z: theater.stage.center.z },
+    });
+    if (!npc) return null;
+    _storyActorCount++;
+    // 登记进 registry，后续环节才能按 id 找回同一个人
+    const { id } = npcRegistry.ensureRecord(displayName, {
+      job: npc.personality?.job, factionId: role.gang || null, female,
+      tags: ["townsfolk", "story_actor"],
+    });
+    npc.brain?.setRegistryId?.(id);
+    hud.toast(`🎭 ${displayName} 来到了镇上`, { side: true, key: "story-actor", duration: 3200 });
+    return npc;
+  }
+
   theater = new TheaterDirector({
     npcManager, town, hud, sky, worldClock, reputation, economy, newspaper, eventLog,
     factionSystem, relationshipSystem, npcRegistry,
@@ -638,7 +742,46 @@ function boot() {
     }),
     // P8 后果包：结构性后果（势力/延迟揭示/延迟回报/解锁）
     consequences,
+    // 选角用的关系查询（亲属/好友/仇怨）
+    relations: {
+      kinOf: (npcId, otherId) => _isKin(npcId, otherId),
+      affectionToPlayer: (npcId) => _affectionToPlayer(npcId),
+      grudgeToPlayer: (npcId) => _hasGrudgeToPlayer(npcId),
+    },
+    // 挑不到"说得过去"的人时现造一个专属角色（比硬凑一个性别/帮派都不对的路人好）
+    actorFactory: (role, tree, opts) => _makeStoryActor(role, tree, opts),
   });
+
+  /**
+   * 复仇线：你杀了人，隔几天他的亲属来讨命。
+   * 亲属优先从关系网里找（同住/同姓/极高好感），实在没有就现造一个**同姓**的。
+   */
+  const revenge = new RevengeSystem({
+    worldState, npcRegistry, npcManager, phone, hud,
+    getDay: () => worldClock.day,
+    isKin: (a, b) => _isKin(a, b),
+    affectionToPlayer: (id) => _affectionToPlayer(id),
+    // 没有亲属时现造一个同姓的（走 spawnStoryActor + registry 登记）
+    makeKinActor: ({ victimNpcId, victimName }) => {
+      const npc = _makeStoryActor(
+        { roleId: "lead", required: true, kinOf: victimNpcId, jobs: ["镇民"] },
+        { id: "revenge" },
+        { wantFemale: Math.random() < 0.35 }
+      );
+      if (!npc) return null;
+      return npc.brain?._npcId || null;
+    },
+    // 讨命发生在街口：用镇中广场附近的可站点
+    resolveVenue: () => {
+      const v = resolveVenue(town, "plaza");
+      if (!v) return null;
+      const w = pathfinder.nearestWalkable(v.x, v.z);
+      return { x: w.x, z: w.z, label: "街口" };
+    },
+    log: (t) => { console.log(t); eventLog?.record?.({ type: "REVENGE", facts: { text: t }, tags: ["revenge"] }); },
+  });
+  // 已走故事线的血债，就别再让"同伙无训冲上来砍你"那套插手
+  npcManager.isRevengeSuppressed = (npcId) => revenge.isSuppressed(npcId);
 
   // ===== 单个 NPC 的自由对话（准心对着谁就是在跟谁说话）=====
   // 配额用 ChatBudget 默认值（20/分钟 + 400ms），别在这里写死覆盖
@@ -790,6 +933,22 @@ function boot() {
     const def = storyRuntime.getDefinition(storyId);
     const node = def?.nodes?.[nodeId];
     const hasOwn = !!node?.playerResponses?.length;
+
+    // 好感/信任的变动在这里施加：剧场的 _applyEffects 只认 cash/honor/wanted，
+    // 而合成出来的选项（gen0/gen1…）在 StoryTree 里并不存在，走不到原生的
+    // modify_relationship。统一在这一处做，两类选项都覆盖到。
+    const fx = getBeatText(storyId, nodeId)?.scene?.choiceScenes?.[outcomeId]?.fx;
+    if (fx && (fx.affection || fx.trust)) {
+      const leadId = _storyLeadNpcId(storyId);
+      if (leadId) {
+        if (fx.trust) relationshipSystem.addPlayerTrust(leadId, fx.trust);
+        if (fx.affection) relationshipSystem.addPlayerAffection(leadId, fx.affection);
+        const who = npcRegistry.get(leadId)?.displayName || "对方";
+        const d = fx.affection || 0;
+        if (d) hud.toast(`${who}对你的看法 ${d > 0 ? "+" : ""}${d}`, { side: true, key: "story-aff", duration: 3000 });
+      }
+    }
+
     if (hasOwn) {
       // 节点自己的抉择：outcomeId 就是 playerResponses 的 id
       storyRuntime.advance(storyId, outcomeId);
@@ -804,6 +963,21 @@ function boot() {
     if (after?.status === "active" && after.currentNode !== nodeId) {
       _pendingStoryDeliver = { storyId };
     }
+    renderTaskBar();
+  };
+
+  // 复仇剧场演完：收线 + 施加好感/信任（现金/名誉/通缉由剧场自己施加）
+  theater.onRevengeOutcome = (tree, outcomeId) => {
+    const line = _activeRevengeLine || revenge.activeLine();
+    if (!line) return;
+    const spec = REVENGE_BEATS.confront.choices.find((c) => c.id === outcomeId);
+    const kinId = line.kinNpcId;
+    if (spec?.fx && kinId) {
+      if (spec.fx.trust) relationshipSystem.addPlayerTrust(kinId, spec.fx.trust);
+      if (spec.fx.affection) relationshipSystem.addPlayerAffection(kinId, spec.fx.affection);
+    }
+    revenge.resolveLine(line, outcomeId);
+    _activeRevengeLine = null;
     renderTaskBar();
   };
 
@@ -854,6 +1028,9 @@ function boot() {
       }
       dailySimulation.playerPos = player.pos;  // 供亲友报复系统用
       const summary = dailySimulation.run(economy, reputation, newspaper, hud);
+      // 血债结算：够天数就找亲属 + 让朋友报信。放在日结之后，
+      // 这样"今天刚打死的人"不会当天就有人来讨命。
+      try { revenge.settleDaily(); } catch (e) { console.error("[Main] 复仇线结算出错", e); }
       // 如果部分步骤失败，给玩家一个提示但不打断流程
       if (summary && summary.errors) {
         console.warn("[Main] 结算部分步骤失败:", summary.errors);
@@ -3931,13 +4108,14 @@ function boot() {
       : buildSceneTreeForNode(storyId, nodeId, def, node, beat);
     if (!tree) return false;
 
-    // 这一幕该在屋里还是街上？按文案判断（"酒馆里的谈话声低下去"要在屋里，
-    // "酒馆门前"就在街上）。要在屋里就把玩家先带进去 —— 否则会出现
-    // 台词说"酒馆里"、人却站在 SALOON 招牌底下的大街上。
+    // 这一幕在屋里还是街上？以节点声明的 indoor 为准（生成时定好的）。
+    // 要在屋里就把玩家先带进去 —— 否则会出现台词说"酒馆里"、
+    // 人却站在 SALOON 招牌底下的大街上。
     const wantIndoor = isIndoorScene(
       beat?.venueId,
       beat?.description || node.description || "",
-      beat?.locateLabel || ""
+      beat?.locateLabel || "",
+      beat?.indoor
     );
     const wantRoomName = wantIndoor ? interiorNameOf(beat?.venueId) : null;
     if (wantRoomName && insideRoom !== wantRoomName && interiors.has(wantRoomName)) {
@@ -4065,11 +4243,26 @@ function boot() {
         })),
       });
       for (const r of responses) {
+        // 每个选项有自己的后续戏（生成的多人反应台词 + 结局旁白）。
+        // 以前这里是所有选项共用一句写死的"记住你今天说的话"、outcome.lines 还是
+        // 空数组 —— 3~4 个选项走向完全一样，选了等于没选。
+        const cs = gen?.choiceScenes?.[r.id] || null;
+        const reactBeats = (cs?.beats || []).filter((b) => roleIds.has(b.speaker));
         sceneNodes.push({
           id: `end_${r.id}`,
           terminal: true,
-          beats: [{ speaker: "lead", to: "player", text: "……记住你今天说的话。", delayMs: 1700, mood: "neutral" }],
-          outcome: { id: r.id, title: `${def.title} · ${r.label}`, lines: [] },
+          beats: reactBeats.length
+            ? reactBeats
+            : [{ speaker: "lead", to: "player", text: "……就这样吧。", delayMs: 1700, mood: "neutral" }],
+          outcome: {
+            id: r.id,
+            title: `${def.title} · ${r.label}`,
+            lines: cs?.lines || [],
+            // 剧场自己能施加的：现金/名誉/通缉
+            cash: cs?.fx?.cash || 0,
+            honor: cs?.fx?.honor || 0,
+            wanted: cs?.fx?.wanted || 0,
+          },
         });
       }
     }
@@ -4092,6 +4285,32 @@ function boot() {
       _genChoiceNext: !node.playerResponses?.length ? (node.nextNode || null) : null,
     };
   }
+
+  /**
+   * 走到街口 → 开复仇剧场。
+   * 台词里是**真实的死者名字**（"李四死了三天，血还没洗干净"），
+   * 主角由 casting 按 kinOf 挑亲属，挑不到会现造一个同姓的。
+   */
+  function openRevengeSceneAt(loc) {
+    const line = revenge.activeLine();
+    if (!line) { hud.toast("这会儿没人来找你。", { side: true, key: "revenge-none", duration: 3000 }); return false; }
+    if (theater.active) { hud.toast("这儿已经有一场戏在演了。", { side: true, key: "revenge-busy", duration: 3000 }); return false; }
+    const tree = revenge.treeFor(line);
+    if (!tree) return false;
+    const w = pathfinder.nearestWalkable(loc.x, loc.z);
+    const ok = theater.startStoryTree(tree, line.kinNpcId || null, {
+      venue: { x: w.x, z: w.z },
+      room: null,     // 讨命发生在街上（当街堵人才有压迫感）
+    });
+    if (ok) {
+      _activeRevengeLine = line;
+      hud.toast(`🎭 ${tree.title}`, { key: "revenge-open", duration: 4200 });
+    } else if (theater.lastFailReason) {
+      hud.toast(`⚠️ ${theater.lastFailReason}`, { duration: 5000, key: "revenge-nocast" });
+    }
+    return ok;
+  }
+  let _activeRevengeLine = null;
 
   function deliverStoryNodeNow(storyId, opts = {}) {
     const def = storyRuntime.getDefinition(storyId);
@@ -4627,6 +4846,20 @@ function boot() {
    */
   function getStorySideQuests() {
     const out = [];
+    // 复仇线也当支线显示：有人在等着找你算账，任务栏得看得见
+    const rl = revenge.activeLine();
+    if (rl) {
+      const v = resolveVenue(town, "plaza");
+      const w = v ? pathfinder.nearestWalkable(v.x, v.z) : { x: 0, z: 0 };
+      out.push({
+        storyId: `__revenge__`,
+        nodeId: "confront",
+        title: `${rl.victimName}的血债`,
+        objective: `去街口 见${npcRegistry.get(rl.kinNpcId)?.displayName || "来讨命的人"}`,
+        venue: { x: w.x, z: w.z, label: "街口" },
+        isRevenge: true,
+      });
+    }
     for (const st of (storyRuntime.getAllStoryStatus?.() || [])) {
       if (st.status !== "active") continue;
       const def = storyRuntime.getDefinition(st.storyId);
@@ -4668,7 +4901,11 @@ function boot() {
         const p = pathfinder.findPath(player.pos.x, player.pos.z, q.venue.x, q.venue.z);
         return p ? player.setAutoNavPath(p) : false;
       },
-      onArrive: () => onArriveStoryVenue(q.storyId, q.nodeId),
+      onArrive: () => {
+        // 复仇线走自己的开场（它不是 StoryTree 的节点）
+        if (q.isRevenge) openRevengeSceneAt({ x: q.venue.x, z: q.venue.z, label: q.venue.label, revengeKin: 1 });
+        else onArriveStoryVenue(q.storyId, q.nodeId);
+      },
       onCancel: (reason) => {
         if (reason) hud.toast(`🧭 自动前往已取消（${reason}）`, { side: true, key: "nav", duration: 2600 });
       },

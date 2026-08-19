@@ -37,8 +37,11 @@ export class TheaterDirector {
     this.casting = new Casting({
       npcManager: this.npcManager,
       stage: this.stage,
-      // 选角倾向：优先玩家帮派成员 / 好友 / 有关系的人（势力剧场要"自己人"，个人剧场要熟人）
+      // 选角倾向：玩家帮派成员 / 好友 / 有关系的人（势力剧场要"自己人"，个人剧场要熟人）
       priorityResolver: (npcId, npc) => this._castPriority(npcId, npc),
+      // 关系查询与"现造角色"由 main.js 注入（它才看得到关系网和造人能力）
+      relations: deps.relations || null,
+      actorFactory: deps.actorFactory || null,
     });
     // 配额用 GlueBudget 的默认值（20/分钟 + 400ms 冷却），别在这里写死覆盖掉
     this.glue = new TheaterGlue({ budget: new GlueBudget(), onReport: deps.onAiReport || null });
@@ -298,6 +301,11 @@ export class TheaterDirector {
     if (storyTree?._storyId && this.onStoryOutcome) {
       try { this.onStoryOutcome(storyTree._storyId, storyTree._nodeId, oc.id, joined); }
       catch (e) { console.error("[Theater] onStoryOutcome 出错", e); }
+    }
+    // 复仇线：单独一条回调，因为它不是 StoryTree 的节点
+    if (storyTree?._revenge && this.onRevengeOutcome) {
+      try { this.onRevengeOutcome(storyTree, oc.id, joined); }
+      catch (e) { console.error("[Theater] onRevengeOutcome 出错", e); }
     }
     // 让这次选择在散场后仍然留下痕迹：报纸 / 来信 / 可摸到的遗留物
     if (this.aftermath) {

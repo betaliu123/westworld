@@ -306,6 +306,8 @@ export class Phone {
       locate: opts.locate || null,
       // 只给了标签没给坐标时，渲染阶段用 venueResolver 现算坐标（坐标存下来会失效）
       locateLabel: opts.locateLabel || null,
+      // 复仇线报信：点定位过去要开的是复仇剧场，不是普通故事节点
+      revengeKin: opts.revengeKin || null,
       isUnread: true,
       // 会话对数：该联系人整个聊天里"轮到 NPC 说"的第几条（me+them 各占半轮，
       // 这里给纯数字展示用，显示"（第N轮）"）
@@ -728,7 +730,7 @@ export class Phone {
       }
       if (loc) {
         const lbl = loc.label || "那个地方";
-        content += `<div class="msg-task-btn msg-locate" data-lx="${loc.x}" data-lz="${loc.z}" data-story="${msg.storyId || ""}" data-node="${msg.storyNodeId || ""}" data-label="${lbl}">📍 去看看（${lbl}）</div>`;
+        content += `<div class="msg-task-btn msg-locate" data-lx="${loc.x}" data-lz="${loc.z}" data-story="${msg.storyId || ""}" data-node="${msg.storyNodeId || ""}" data-revenge="${msg.revengeKin || ""}" data-label="${lbl}">📍 去看看（${lbl}）</div>`;
       }
       if (msg.storyChoices && msg.storyChoices.length) {
         for (const c of msg.storyChoices) {
@@ -751,6 +753,7 @@ export class Phone {
           label: el.dataset.label || "目的地",
           storyId: el.dataset.story || null,
           nodeId: el.dataset.node || null,
+          revengeKin: el.dataset.revenge || null,
         });
         this.close();
       });
