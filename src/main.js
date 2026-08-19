@@ -90,6 +90,7 @@ import { EmojiPops } from "./ui/EmojiPops.js";
 import { Cutscene } from "./ui/Cutscene.js";
 import { getBeatText } from "./config/storyBeatText.js";
 import { resolveVenue, inferVenueId } from "./config/storyVenues.js";
+import { Pathfinder } from "./world/Pathfinder.js";
 import { playMoodFx } from "./npc/MoodFx.js";
 
 function boot() {
@@ -109,6 +110,8 @@ function boot() {
   // 系统 / 实体
   const audio = new AudioManager();
   const player = new Player(scene, town);
+  // 玩家自动赶路用的网格 A*（镇子布局是静态的，建一次就够）
+  const pathfinder = new Pathfinder(town, player.radius ?? 0.5);
   const npcManager = new NPCManager(scene, town, WORLD.npcCount, interiors); // NPC 数量来自配置
   const economy = new Economy();
   const reputation = new Reputation();
@@ -552,18 +555,31 @@ function boot() {
     const boundNpcId = Object.values(inst?.actorBindings || {})[0];
     const beat = getBeatText(storyId, nid);
     const v = resolveStoryVenue(def, node, boundNpcId, beat);
-    return { x: v.x, z: v.z, label: v.label || beat?.locateLabel || "事发地点" };
+    // 同上：显示文案里的说法，坐标用 venueId 解析的
+    return { x: v.x, z: v.z, label: beat?.locateLabel || v.label || "事发地点" };
   });
 
   // 「📍去看看」：关手机，自动走到事发地点，到了让 NPC 现身（❗ → F → 选项）
   phone.setLocateHandler((loc) => {
     if (!loc || !isFinite(loc.x) || !isFinite(loc.z)) return;
     if (minimap?.setQuestMarker) minimap.setQuestMarker(loc.x, loc.z);
+    // 必须真寻路：主街两侧全是矩形楼，直线朝目标走会顶在墙上蹭。
+    const path = pathfinder.findPath(player.pos.x, player.pos.z, loc.x, loc.z);
+    if (!path) {
+      hud.toast(`🧭 从这儿过不去${loc.label}，自己找条路吧`, { key: "nav", duration: 4200 });
+      return;
+    }
     hud.toast(`🧭 正在赶往${loc.label}…（按 WASD 可自己走）`, { key: "nav", duration: 4200 });
     player.startAutoNav(loc.x, loc.z, {
       label: loc.label,
+      path,
       arriveDist: 3.0,
-      timeout: 60,
+      timeout: 90,
+      // 被车/NPC 之类没进网格的东西挡住时重算
+      replan: () => {
+        const p = pathfinder.findPath(player.pos.x, player.pos.z, loc.x, loc.z);
+        return p ? player.setAutoNavPath(p) : false;
+      },
       onArrive: () => {
         if (loc.storyId && loc.nodeId) onArriveStoryVenue(loc.storyId, loc.nodeId);
         else hud.toast(`你到了${loc.label}。`, { side: true, key: "nav", duration: 3000 });
@@ -3942,8 +3958,10 @@ function boot() {
     const venue = resolveStoryVenue(def, node, npcId, beat);
     const female = _genderOf(npcId);
     const invite = _fitGender(beat?.phoneInvite || "你来一趟，有件事得当着面说。", female);
-    // 定位按钮上显示该地点的正式名，跟玩家真正会走到的地方一致
-    const label = venue.label || beat?.locateLabel || "事发地点";
+    // 按钮上的地点名用**文案里的说法**（"集市北口"），不要用登记表的正式名
+    // （"镇中广场"）—— 口信刚说"你上集市北边路口来一趟"，按钮却写"镇中广场"，
+    // 玩家会以为是两个地方。坐标仍由 venueId 决定，所以指的还是同一处。
+    const label = beat?.locateLabel || venue.label || "事发地点";
 
     phone.deliverMessage(npcId || "system", fromName, invite, {
       storyId,

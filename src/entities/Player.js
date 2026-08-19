@@ -114,36 +114,56 @@ export class Player {
     if (this.isWeak) speed *= 0.55; // 复活虚弱期降速
 
     // ---- 自动寻路（手机上点了定位）----
-    // 玩家一按方向键就取消自动寻路（不抢操作权）。
+    // 沿 Pathfinder 算出的拐点走，每段都保证直线可达。
+    // 玩家一按方向键就交还操作权。
     let autoMoving = false;
     if (this.autoNav) {
-      const manual = move.lengthSq() > 0.001;
-      if (manual) {
+      const nav = this.autoNav;
+      if (move.lengthSq() > 0.001) {
         this.cancelAutoNav("你自己走了");
       } else {
-        const dx = this.autoNav.x - this.pos.x;
-        const dz = this.autoNav.z - this.pos.z;
+        // 当前要去的拐点（最后一个才是真目标）
+        const wp = nav.path[nav.idx] || { x: nav.x, z: nav.z };
+        const isLast = nav.idx >= nav.path.length - 1;
+        const dx = wp.x - this.pos.x;
+        const dz = wp.z - this.pos.z;
         const dist = Math.hypot(dx, dz);
-        if (dist <= (this.autoNav.arriveDist ?? 2.5)) {
-          const cb = this.autoNav.onArrive;
-          this.autoNav = null;
-          if (cb) { try { cb(); } catch (e) { console.error("[Player] autoNav onArrive 出错", e); } }
-        } else {
-          // 卡住检测：贴着墙走不动时，绕一点角度
-          this._navLastDist = this._navLastDist ?? dist;
-          if (dist > this._navLastDist - 0.02) {
-            this._navStuck = (this._navStuck || 0) + dt;
+        // 中间拐点放宽到 1.2 米就算过了，免得贴着墙角来回修正
+        const reach = isLast ? (nav.arriveDist ?? 2.5) : 1.2;
+
+        if (dist <= reach) {
+          if (isLast) {
+            const cb = nav.onArrive;
+            this.autoNav = null;
+            if (cb) { try { cb(); } catch (e) { console.error("[Player] autoNav onArrive 出错", e); } }
           } else {
+            nav.idx++;
             this._navStuck = 0;
+            this._navLastDist = null;
           }
-          this._navLastDist = dist;
-          let ang = Math.atan2(dx, dz);
-          if (this._navStuck > 0.6) ang += (Math.sin(this.walkAmount * 3) > 0 ? 1 : -1) * 0.9; // 侧向绕行
+        } else {
+          const ang = Math.atan2(dx, dz);
           move.set(Math.sin(ang), 0, Math.cos(ang));
           speed = 7.2;         // 自动赶路走快些
           autoMoving = true;
-          this.autoNav.timeout = (this.autoNav.timeout ?? 40) - dt;
-          if (this.autoNav.timeout <= 0) this.cancelAutoNav("走了太久，自动导航结束");
+
+          // 卡住兜底：真被什么没进网格的东西挡住（车、NPC）就重算一次路径；
+          // 重算过两次还不动就放弃，别让玩家一直贴在墙上。
+          this._navLastDist = this._navLastDist ?? dist;
+          if (dist > this._navLastDist - 0.02) this._navStuck = (this._navStuck || 0) + dt;
+          else this._navStuck = 0;
+          this._navLastDist = dist;
+          if (this._navStuck > 1.2) {
+            this._navStuck = 0;
+            this._navLastDist = null;
+            nav.replans = (nav.replans || 0) + 1;
+            if (nav.replans > 2 || !nav.replan || !nav.replan()) {
+              this.cancelAutoNav("这条路走不通");
+            }
+          }
+
+          nav.timeout = (nav.timeout ?? 40) - dt;
+          if (nav.timeout <= 0) this.cancelAutoNav("走了太久，自动导航结束");
         }
       }
     }
@@ -336,22 +356,44 @@ export class Player {
 
   /**
    * 开始自动寻路（手机上点了"📍去看看"）。玩家一按 WASD 就会取消。
+   *
+   * 必须传 path —— 一串直线可达的拐点（由 Pathfinder 算）。只给终点会
+   * 一头撞在建筑上：这个镇子主街两侧全是矩形楼，直线朝目标走十次有八次
+   * 要穿墙。
+   *
    * @param {number} x 目标 X
    * @param {number} z 目标 Z
-   * @param {object} opts { label, arriveDist, timeout, onArrive, onCancel }
+   * @param {object} opts { label, path, replan, arriveDist, timeout, onArrive, onCancel }
+   *   - path   : [{x,z}...] 拐点（末点应为目标）；缺省退化为直奔目标
+   *   - replan : () => boolean 卡住时重算路径的回调，返回 false 表示算不出
    */
   startAutoNav(x, z, opts = {}) {
+    const path = (opts.path && opts.path.length) ? opts.path.slice() : [{ x, z }];
     this.autoNav = {
       x, z,
+      path,
+      idx: 0,
+      replans: 0,
       label: opts.label || "目的地",
       arriveDist: opts.arriveDist ?? 2.5,
       timeout: opts.timeout ?? 40,
       onArrive: opts.onArrive || null,
       onCancel: opts.onCancel || null,
+      replan: opts.replan || null,
     };
     this._navLastDist = null;
     this._navStuck = 0;
     return this.autoNav;
+  }
+
+  /** 卡住时换一条新路径继续走（由 replan 回调调用） */
+  setAutoNavPath(path) {
+    if (!this.autoNav || !path || !path.length) return false;
+    this.autoNav.path = path.slice();
+    this.autoNav.idx = 0;
+    this._navLastDist = null;
+    this._navStuck = 0;
+    return true;
   }
 
   cancelAutoNav(reason = "") {
