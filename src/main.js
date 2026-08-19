@@ -89,6 +89,7 @@ import { HealthBars } from "./ui/HealthBars.js";
 import { EmojiPops } from "./ui/EmojiPops.js";
 import { Cutscene } from "./ui/Cutscene.js";
 import { getBeatText } from "./config/storyBeatText.js";
+import { resolveVenue, inferVenueId } from "./config/storyVenues.js";
 import { playMoodFx } from "./npc/MoodFx.js";
 
 function boot() {
@@ -549,9 +550,9 @@ function boot() {
     const node = def?.nodes?.[nid];
     if (!node) return null;
     const boundNpcId = Object.values(inst?.actorBindings || {})[0];
-    const v = resolveStoryVenue(def, node, boundNpcId);
     const beat = getBeatText(storyId, nid);
-    return { x: v.x, z: v.z, label: beat?.locateLabel || "事发地点" };
+    const v = resolveStoryVenue(def, node, boundNpcId, beat);
+    return { x: v.x, z: v.z, label: v.label || beat?.locateLabel || "事发地点" };
   });
 
   // 「📍去看看」：关手机，自动走到事发地点，到了让 NPC 现身（❗ → F → 选项）
@@ -3734,60 +3735,153 @@ function boot() {
    * - 兜底：NPC 发手机消息 + 消息里带决策按钮（当面/手机都能选）
    */
   /**
-   * 解析故事节点该发生在哪儿。
-   * 节点的 venueTags 是抽象标签（saloon/plaza/hq/clinic/warehouse/sheriff_office/north_road），
-   * 这里把它们落到镇上真实坐标：先查 town.places，再按招牌名查 landmarks，
-   * 都不中就用绑定 NPC 现在站的地方，最后兜底玩家前方，
-   * 保证"📍去看看"永远有个能走到的目标。
+   * 查一个 NPC 是男是女。
+   * 重要 NPC 在 npcData 里标了 female；路人升格来的次要 NPC 可能没标，
+   * 那就看场上的实体（模型是按 female 建的，实体上一定有）。
+   * @returns {boolean|null} null = 查不到
    */
-  const VENUE_LANDMARK_NAME = {
-    hq: "帮派驻地",
-    clinic: "医馆",
-    sheriff_office: "警长办公室",
-    warehouse: "杂货店",   // 镇上没有独立仓库，货物都堆在杂货店后院
-  };
-  function resolveStoryVenue(def, node, boundNpcId) {
-    const tags = (node.candidateDeliveries || []).flatMap((c) => c.venueTags || []);
-    for (const tag of tags) {
-      // 1) town.places 直接有这一类（saloon / plaza / shop / church / work / home）
-      const bucket = town.places?.[tag];
-      if (bucket?.length) {
-        const p = bucket[Math.floor(Math.random() * bucket.length)];
-        return { x: p.x, z: p.z, from: `place:${tag}` };
-      }
-      // 2) 按招牌名找地标
-      const wantName = VENUE_LANDMARK_NAME[tag];
-      if (wantName) {
-        const lm = (town.landmarks || []).find((l) => l.name && l.name.includes(wantName));
-        if (lm) return { x: lm.x, z: lm.z, from: `landmark:${tag}` };
-      }
-      // 3) 镇北路口：主街北端
-      if (tag === "north_road") {
-        const safe = town.resolveCollision(0, -(town.bounds ?? 60) + 12, 0.5);
-        return { x: safe.x, z: safe.z, from: "north_road" };
-      }
+  function _genderOf(npcId) {
+    const reg = npcId ? npcRegistry.get(npcId) : null;
+    if (reg && reg.female != null) return !!reg.female;
+    const live = reg && npcManager.all.find((n) => n.alive && n.phone?.owner === reg.displayName);
+    if (live && live.female != null) return !!live.female;
+    return null;
+  }
+
+  /**
+   * 把文案里的第三人称代词改成实际出演者的性别。
+   *
+   * 为什么需要：文案是批量预生成的，写的时候并不知道最终会由谁来演
+   * （选角是运行时按在场情况定的）。于是会出现"她站在酒馆后门的马槽边"
+   * 配上一个男演员的名字。每段文案只描写一个人，所以整段统一成演员的
+   * 性别即可 —— 比让文案与演员公然矛盾好得多。
+   *
+   * 注意"其他"里的"他"不是代词，不能替换（会变成"其她"）。
+   */
+  function _fitGender(text, female) {
+    if (!text || female == null) return text;
+    return female
+      ? text.replace(/他们/g, "她们").replace(/(?<!其)他/g, "她")
+      : text.replace(/她们/g, "他们").replace(/她/g, "他");
+  }
+
+  /** 按 storyId 取当前绑定的主要演员 id */
+  function _storyLeadNpcId(storyId) {
+    const inst = worldState.getStoryInstance(storyId);
+    return Object.values(inst?.actorBindings || {})[0] || null;
+  }
+
+  /**
+   * 确保「文案里描写的那个人」在玩家抵达时就在现场。
+   *
+   * 之前的问题：requestStoryEncounter 只在绑定演员**恰好已在场**时才传
+   * preferNpcId，否则交给按场地+距离筛选的通用选角 —— 玩家专程走到酒馆后门，
+   * 那儿没人就直接"没人露面"，或者随便抓一个路人来演（于是名字和文案
+   * 描写的性别都对不上，就像截图里那样）。
+   *
+   * 现在：把绑定演员**送到**场地。太远就传送到场地外围（玩家视野外），
+   * 再让他自己走进来 —— 玩家看到的是"有人朝你走过来"，不是凭空出现。
+   *
+   * @returns {string|null} 确定能出演的 npcId；null = 实在凑不出人
+   */
+  function ensureActorAtVenue(storyId, venue) {
+    const npcId = _storyLeadNpcId(storyId);
+    if (!npcId) return null;
+    const reg = npcRegistry.get(npcId);
+    if (!reg || reg.alive === false) return null;
+
+    let live = npcManager.all.find((n) => n.alive && n.phone?.owner === reg.displayName);
+    // 绑定的人根本没在场上（只有档案没有实体）→ 换一个在场的人来演，
+    // 并把绑定改过去，这样后续节点的文案/性别都跟着这个人走。
+    if (!live) {
+      const alt = npcManager.all.find(
+        (n) => n.alive && n.phone?.owner && !n.brain?._perform && n.brain?.state !== "DOWN"
+      );
+      if (!alt) return null;
+      const altReg = npcRegistry.findByDisplayName(alt.phone.owner);
+      if (!altReg) return null;
+      const inst = worldState.getStoryInstance(storyId);
+      const slot = Object.keys(inst?.actorBindings || {})[0];
+      if (inst && slot) inst.actorBindings[slot] = altReg.id;
+      live = alt;
+      return altReg.id;
     }
-    // 退到绑定 NPC 现在站的地方
+
+    // 在场但离得远 → 传到场地**背对玩家的那一侧**再走进来。
+    // 落点选在"玩家→场地"延长线的更远处，这样玩家面朝场地时人是从
+    // 前方远处走来的，不会在眼前凭空出现。
+    const dist = Math.hypot(live.pos.x - venue.x, live.pos.z - venue.z);
+    if (dist > 12) {
+      const dx = venue.x - player.pos.x;
+      const dz = venue.z - player.pos.z;
+      const len = Math.hypot(dx, dz) || 1;
+      const r = 10 + Math.random() * 3;
+      // 沿玩家→场地方向再往前 r 米，并随机偏一点角度免得每次都在同一点
+      const jitter = (Math.random() - 0.5) * 0.7;
+      const ux = dx / len, uz = dz / len;
+      const cos = Math.cos(jitter), sin = Math.sin(jitter);
+      const rx = ux * cos - uz * sin;
+      const rz = ux * sin + uz * cos;
+      const spot = town.resolveCollision(venue.x + rx * r, venue.z + rz * r, 0.45);
+      if (live.teleportTo) live.teleportTo(spot.x, spot.z);
+      else live.pos.set(spot.x, live.pos.y, spot.z);
+    }
+    return npcId;
+  }
+
+  /**
+   * 解析故事节点该发生在哪儿。
+   *
+   * 权威来源是节点文案自带的 `venueId`（storyBeatText，由 storyVenues 的关键词
+   * 推断生成）—— 这样"营地破帐篷外"一定落到帮派驻地大门。之前只看 venueTags，
+   * 而 40 个节点里有 23 个一个 tag 都没有，全都掉进"玩家前方 14 米"的兜底，
+   * 于是文案说一个地方、定位指另一个地方。
+   *
+   * venueId 解析出来的是**建筑门口**坐标（town.doors），玩家走得到；
+   * 用 landmark 的建筑中心会卡在碰撞体里。
+   */
+  function resolveStoryVenue(def, node, boundNpcId, beat = null) {
+    // ① 文案声明的地点（最权威，与玩家看到的文字一致）
+    const vid = beat?.venueId;
+    if (vid) {
+      const v = resolveVenue(town, vid);
+      if (v) return { x: v.x, z: v.z, label: v.label, venueId: vid, from: `venue:${vid}` };
+    }
+    // ② 没有 venueId（老存档/新节点）→ 现场推断一次
+    const tags = (node.candidateDeliveries || []).flatMap((c) => c.venueTags || []);
+    const channels = (node.candidateDeliveries || []).map((c) => c.channel);
+    const guess = inferVenueId(
+      beat?.locateLabel || node.title || "", tags, channels,
+      `${beat?.description || node.description || ""} ${beat?.phoneInvite || ""}`
+    );
+    if (guess) {
+      const v = resolveVenue(town, guess);
+      if (v) return { x: v.x, z: v.z, label: v.label, venueId: guess, from: `infer:${guess}` };
+    }
+    // ③ 退到绑定 NPC 现在站的地方
     if (boundNpcId) {
       const reg = npcRegistry.get(boundNpcId);
       const live = reg && npcManager.all.find((n) => n.alive && n.phone?.owner === reg.displayName);
-      if (live) return { x: live.pos.x, z: live.pos.z, from: "npc" };
+      if (live) return { x: live.pos.x, z: live.pos.z, label: "他待的地方", venueId: null, from: "npc" };
     }
-    // 最后兜底：玩家前方 14 米，找个不卡墙的点
-    const ang = player.facing ?? 0;
-    const safe = town.resolveCollision(
-      player.pos.x + Math.sin(ang) * 14,
-      player.pos.z + Math.cos(ang) * 14,
-      0.5
-    );
-    return { x: safe.x, z: safe.z, from: "fallback" };
+    // ④ 最终兜底：镇中广场（永远走得到，而且是个"像样的地方"）
+    const plaza = resolveVenue(town, "plaza");
+    if (plaza) return { x: plaza.x, z: plaza.z, label: plaza.label, venueId: "plaza", from: "fallback" };
+    return { x: 0, z: 0, label: "镇中广场", venueId: null, from: "origin" };
   }
 
   /** 玩家走到事发地点后：让绑定 NPC 过来（❗ → F → 选项） */
   function onArriveStoryVenue(storyId, nodeId) {
     const inst = worldState.getStoryInstance(storyId);
     if (!inst || inst.status !== "active" || inst.currentNode !== nodeId) return;
-    const ok = requestStoryEncounter(storyId, nodeId);
+    // 先保证文案描写的那个人就在这儿（不在就送过来／换个在场的人顶上），
+    // 否则玩家专程走一趟只会看到"没人露面"。
+    const def = storyRuntime.getDefinition(storyId);
+    const node = def?.nodes?.[nodeId];
+    const beat = getBeatText(storyId, nodeId);
+    const venue = resolveStoryVenue(def, node, _storyLeadNpcId(storyId), beat);
+    const actorId = ensureActorAtVenue(storyId, venue);
+    const ok = requestStoryEncounter(storyId, nodeId, actorId);
     if (ok) {
       hud.toast("你到了。有人正朝你走过来。", { side: true, key: "story-arrive", duration: 3600 });
     } else {
@@ -3844,9 +3938,12 @@ function boot() {
     const npcId = boundNpcId;
     const regNpc = npcId && npcRegistry.get ? npcRegistry.get(npcId) : null;
     const fromName = regNpc?.displayName || def.title;
-    const venue = resolveStoryVenue(def, node, npcId);
-    const invite = beat?.phoneInvite || "你来一趟，有件事得当着面说。";
-    const label = beat?.locateLabel || "事发地点";
+    // 地点以文案声明的 venueId 为准（"回营地来"就落到帮派驻地大门）
+    const venue = resolveStoryVenue(def, node, npcId, beat);
+    const female = _genderOf(npcId);
+    const invite = _fitGender(beat?.phoneInvite || "你来一趟，有件事得当着面说。", female);
+    // 定位按钮上显示该地点的正式名，跟玩家真正会走到的地方一致
+    const label = venue.label || beat?.locateLabel || "事发地点";
 
     phone.deliverMessage(npcId || "system", fromName, invite, {
       storyId,
@@ -3882,10 +3979,12 @@ function boot() {
     // 缺席时选哪条分支：优先标了 default 的，否则第一个
     const responses = node.playerResponses || [];
     const fallback = responses.find((r) => r.isDefault) || responses[0];
+    // 旁白里的代词也对齐实际出演者性别
+    const female = _genderOf(_storyLeadNpcId(storyId));
 
     cutscene.play({
       title: beat.cutsceneTitle || "此后",
-      lines: beat.cutscene,
+      lines: beat.cutscene.map((l) => _fitGender(l, female)),
       onDone: () => {
         if (fallback) {
           storyRuntime.advance(storyId, fallback.id);
@@ -3912,7 +4011,7 @@ function boot() {
    * 距离 >8 米时直接降级成手机里一段无法响应的死文本。
    * 现在统一走「NPC 走过来 → ❗ → F → 中央弹窗（暂停）→ 抉择」。
    */
-  function requestStoryEncounter(storyId, nodeId) {
+  function requestStoryEncounter(storyId, nodeId, forcedNpcId = null) {
     if (encounters.busy) return false;
     const def = storyRuntime.getDefinition(storyId);
     const node = def?.nodes?.[nodeId];
@@ -3920,17 +4019,23 @@ function boot() {
 
     const inst = worldState.getStoryInstance(storyId);
     const bindings = inst?.actorBindings || {};
-    // 剧情绑定的角色优先出演；取第一个能在场上找到的
-    let preferNpcId = null;
-    for (const npcId of Object.values(bindings)) {
-      const reg = npcRegistry.get(npcId);
-      if (!reg) continue;
-      const onStage = npcManager.all.some((n) => n.alive && (n.phone?.owner === reg.displayName));
-      if (onStage) { preferNpcId = npcId; break; }
+    // 调用方已经把人安排到场了（ensureActorAtVenue）就直接用，
+    // 否则退回"绑定角色里第一个能在场上找到的"。
+    let preferNpcId = forcedNpcId;
+    if (!preferNpcId) {
+      for (const npcId of Object.values(bindings)) {
+        const reg = npcRegistry.get(npcId);
+        if (!reg) continue;
+        const onStage = npcManager.all.some((n) => n.alive && (n.phone?.owner === reg.displayName));
+        if (onStage) { preferNpcId = npcId; break; }
+      }
     }
 
     const beat = getBeatText(storyId, nodeId);
-    const desc = beat?.description || node.description;
+    // 文案是预生成的，写的时候不知道最终谁来演 —— 把第三人称代词对齐到
+    // 实际出演者的性别，免得出现"她站在马槽边"配一个男演员的名字。
+    const female = _genderOf(preferNpcId);
+    const desc = _fitGender(beat?.description || node.description, female);
     const beats = [];
     if (node.title) beats.push(node.title);
     if (desc) beats.push(desc);
