@@ -113,4 +113,66 @@ export class GangGroupChat {
     }
     return Math.max(0, Math.min(1, best / 100));
   }
+
+  /** 群成员 id（不是显示名）—— 生成回复要用 id 查人设 */
+  _memberIds() {
+    return this.factionSystem?.getOpenMembers?.() || [];
+  }
+
+  /**
+   * 玩家在群里发话，挑 1~2 个成员接茬。
+   *
+   * 群聊跟单聊不一样：一句话进去，可能有人应、有人补刀。所以返回
+   * `[{who, text}]` 让 Phone 依次贴出来（Phone._normalizeReplies 支持）。
+   *
+   * @param {string} raw 玩家发的话
+   * @param {Function} respond async ({npcId, displayName, text}) => string
+   *                  由 main.js 注入，内部走 LLM；抛错/返回空则本地兜底。
+   * @returns {Promise<Array<{who:string,text:string}>>}
+   */
+  async respondToPlayer(raw, respond) {
+    const ids = this._memberIds();
+    if (!ids.length) {
+      // 群里还没人（一个成员都没收服）——别装作有人说话
+      return [{ who: "系统", text: "群里还没别人。先收几个人进来吧。" }];
+    }
+
+    // 挑 1~2 个成员接茬（人多时才可能有第二个补刀）
+    const shuffled = [...ids].sort(() => this.rng() - 0.5);
+    const speakerCount = ids.length > 1 && this.rng() < 0.45 ? 2 : 1;
+    const speakers = shuffled.slice(0, speakerCount);
+
+    const out = [];
+    for (const id of speakers) {
+      const displayName = this.npcRegistry?.get?.(id)?.displayName || id;
+      let text = "";
+      if (respond) {
+        try {
+          text = (await respond({ npcId: id, displayName, text: raw })) || "";
+        } catch {
+          text = "";
+        }
+      }
+      if (!text.trim()) text = this._localGroupReply(raw);
+      out.push({ who: displayName, text: text.trim() });
+    }
+    return out;
+  }
+
+  /** LLM 不可用时的本地兜底：按玩家说的话粗分几类，保持西部口吻 */
+  _localGroupReply(raw) {
+    const s = String(raw || "");
+    if (/[?？]$/.test(s) || /(谁|哪|什么|怎么|为何)/.test(s)) {
+      return ["这我可说不准，得打听打听。", "问老张吧，他天天在街上转。", "不清楚，要不去酒馆问问？"][
+        Math.floor(this.rng() * 3)
+      ];
+    }
+    if (/(干|上|打|杀|抢|办)/.test(s)) {
+      return ["行，什么时候动手？", "算我一个。", "得先摸清楚警长今晚在哪。"][Math.floor(this.rng() * 3)];
+    }
+    if (/(钱|分|买|卖)/.test(s)) {
+      return ["钱的事说清楚就行。", "老规矩分？", "这买卖听着有油水。"][Math.floor(this.rng() * 3)];
+    }
+    return CHATTER[Math.floor(this.rng() * CHATTER.length)];
+  }
 }

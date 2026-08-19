@@ -555,8 +555,8 @@ html, body {
 @keyframes badgePop { from { transform: scale(.4); } to { transform: scale(1); } }
 
 /* Contacts list */
-#phone-contacts-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-#phone-contacts { flex: 1; overflow-y: auto; }
+#phone-contacts-view { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+#phone-contacts { flex: 1; min-height: 0; overflow-y: auto; }
 .phone-contact {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px;
   border-bottom: 1px solid #1c1c24; cursor: pointer; transition: background .15s;
@@ -585,8 +585,12 @@ html, body {
   border-radius: 20px; color: #ccc; font-size: 13px; outline: none;
 }
 
-/* Chat view */
-#phone-chat-view { flex: 1; display: flex; flex-direction: column; }
+/* Chat view
+   min-height:0 是关键：flex 子项默认不会缩到内容高度以下，缺了它
+   聊天视图会被消息顶高、超出固定 640px 的机身，把下面的快捷回复/操作行/
+   输入框整个挤出可视区（.phone-frame 是 overflow:hidden，直接被裁掉）。
+   同级的 #phone-stock-view / #phone-stories-view 本来就带这两条。 */
+#phone-chat-view { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .phone-chat-header {
   padding: 8px 14px; background: #1c1c24; display: flex; align-items: center; gap: 10px;
   border-bottom: 1px solid #2c2c36;

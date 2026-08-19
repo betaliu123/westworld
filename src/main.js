@@ -351,6 +351,12 @@ function boot() {
   // 收服/入伙 交给输入框上方的「收服」按钮（见 onPhoneRecruit），
   // 不靠玩家手输关键词。
   phone.setFreeTextHandler((npcId, raw, contact) => {
+    // 帮派群聊：挑 1~2 个成员接茬（返回多条，每条一个说话人）
+    if (npcId === "gang_group" || contact?.displayName === "帮派群聊") {
+      return gangGroup.respondToPlayer(raw, async ({ npcId: mid, displayName, text }) =>
+        respondPhoneChat(mid, text, { displayName, job: npcRegistry.get(mid)?.job || "帮众" })
+      );
+    }
     // 明确的关键词收服仍兼容（老玩家肌肉记忆），但正常路径走按钮
     if (/^(招|收服|入伙|跟我干|加入|招揽)\b/.test(raw.trim())) {
       return onPhoneRecruit(npcId, contact);

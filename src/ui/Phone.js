@@ -200,13 +200,18 @@ export class Phone {
 
     // 交给 main.js 处理（远程收服 / 招揽 / DS flash 通用回复）。
     // 处理函数可能是 async（手机聊天接真实大模型），所以 await 一下。
+    //
+    // 返回值支持三种形态，群聊要靠第 2/3 种（每句话是不同成员说的）：
+    //   "文本"                        → 当前联系人回一句
+    //   { who, text }                 → 指定说话人回一句
+    //   [{ who, text }, ...]          → 多人依次接茬
     const handler = this.onFreeText;
     if (handler) {
       try {
         const result = await handler(this.activeContactId, raw, contact);
-        if (result && typeof result === "string") {
+        for (const r of this._normalizeReplies(result, contact)) {
           thread.messages.push({
-            from: "them", who: contact.displayName, text: result,
+            from: "them", who: r.who, text: r.text,
             time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
             day: this.worldState.day, isUnread: false,
           });
@@ -220,6 +225,23 @@ export class Phone {
       }
     }
     this._renderChat(this.activeContactId);
+  }
+
+  /** 把 onFreeText 的三种返回形态统一成 [{who, text}] */
+  _normalizeReplies(result, contact) {
+    const fallbackWho = contact.displayName;
+    const one = (r) => {
+      if (!r) return null;
+      if (typeof r === "string") {
+        const t = r.trim();
+        return t ? { who: fallbackWho, text: t } : null;
+      }
+      const t = String(r.text ?? "").trim();
+      return t ? { who: r.who || fallbackWho, text: t } : null;
+    };
+    if (Array.isArray(result)) return result.map(one).filter(Boolean);
+    const single = one(result);
+    return single ? [single] : [];
   }
 
   get contacts() {
@@ -649,14 +671,18 @@ export class Phone {
 
     this.chatHeaderEl.innerHTML = `${portraitHtml}<span>${contact.displayName}</span>`;
 
-    // 帮派群聊：不是单人对聊，收服按钮 + 输入框都没意义，藏起来
+    // 帮派群聊：收服按钮没意义（对象是一群人），藏起来；
+    // 但输入框保留 —— 玩家要能在群里发话，成员会接茬。
     const isGroup = contact.npcId === "gang_group" || contact.displayName === "帮派群聊";
     if (this.recruitBtn) this.recruitBtn.style.display = isGroup ? "none" : "";
     // 召集按钮：只对自己的帮派成员显示
     const isMember = this.isPlayerMember ? this.isPlayerMember(contact.npcId) : false;
     if (this.summonBtn) this.summonBtn.style.display = (isGroup || !isMember) ? "none" : "";
-    if (this.inputEl) this.inputEl.style.display = isGroup ? "none" : "";
-    if (this.sendBtn) this.sendBtn.style.display = isGroup ? "none" : "";
+    if (this.inputEl) {
+      this.inputEl.style.display = "";
+      this.inputEl.placeholder = isGroup ? "在群里说句话…" : "发条消息…";
+    }
+    if (this.sendBtn) this.sendBtn.style.display = "";
 
     // 好感度：聊天页头显示 NPC↔玩家 的关系（与联系人列表同一数据源）
     if (this.affinityEl) {
@@ -754,11 +780,10 @@ export class Phone {
     const lastMsg = thread?.messages?.slice(-1)[0];
     const replies = [];
 
-    // 帮派群聊：不显示单人对聊的快捷选项（知道了/聊点别的/打招呼），
-    // 群聊是看别人说话的地方，不是跟一个人对话
+    // 帮派群聊：不给单人对聊的快捷选项，但**保留自由输入**——
+    // 群里能自己发话，成员会接茬。
     const isGroup = contact.npcId === "gang_group" || contact.displayName === "帮派群聊";
     if (isGroup) {
-      // 群聊只给"看看大家"一个返回按钮式选项
       const btn = document.createElement("button");
       btn.className = "phone-reply-btn";
       btn.textContent = "👥 回联系人列表";
@@ -767,15 +792,16 @@ export class Phone {
       return;
     }
 
+    // 只留**有实际作用**的快捷键：接/拒任务、要任务。
+    // 「打个招呼」「聊点别的」这类写死选项已删除 —— 它们只会换来一句
+    // 罐头回复（"嗯，就这样吧。"），既不推进关系也不推进剧情，
+    // 而下面就是自由输入框，想寒暄直接打字更自然。
     if (lastMsg && lastMsg.from === "them") {
       if (lastMsg.hasTask && this.taskSystem) {
         replies.push({ label: "✅ 接受任务", action: "accept_task", taskId: lastMsg.hasTask });
         replies.push({ label: "❌ 拒绝", action: "reject_task", taskId: lastMsg.hasTask });
       }
-      replies.push({ label: "👍 知道了", action: "ack" });
-      replies.push({ label: "🤝 聊点别的", action: "chat" });
     } else {
-      replies.push({ label: "🤝 打个招呼", action: "greet_sms" });
       replies.push({ label: "📋 有任务吗", action: "ask_task" });
     }
 
