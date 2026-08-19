@@ -89,7 +89,7 @@ import { HealthBars } from "./ui/HealthBars.js";
 import { EmojiPops } from "./ui/EmojiPops.js";
 import { Cutscene } from "./ui/Cutscene.js";
 import { getBeatText } from "./config/storyBeatText.js";
-import { resolveVenue, inferVenueId } from "./config/storyVenues.js";
+import { resolveVenue, inferVenueId, isIndoorScene, interiorNameOf } from "./config/storyVenues.js";
 import { Pathfinder } from "./world/Pathfinder.js";
 import { playMoodFx } from "./npc/MoodFx.js";
 
@@ -3786,7 +3786,16 @@ function boot() {
     for (const trig of deliveryTriggers) {
       deliveryPlanner.deliverToUI(trig);
       if (trig.data && trig.data.needsPlayerChoice) {
-        requestStoryEncounter(trig.data.storyId, trig.data.nodeId);
+        // 玩家走进某个区域触发的故事环节：同样开真剧场（这里也曾漏改，
+        // 还留着旧的单人遭遇弹窗）
+        const sid = trig.data.storyId, nid = trig.data.nodeId;
+        const d = storyRuntime.getDefinition(sid);
+        const n = d?.nodes?.[nid];
+        if (d && n) {
+          const bt = getBeatText(sid, nid);
+          const v = resolveStoryVenue(d, n, _storyLeadNpcId(sid), bt);
+          openStorySceneAt(sid, nid, v);
+        }
       }
     }
   });
@@ -3834,63 +3843,6 @@ function boot() {
     return Object.values(inst?.actorBindings || {})[0] || null;
   }
 
-  /**
-   * 确保「文案里描写的那个人」在玩家抵达时就在现场。
-   *
-   * 之前的问题：requestStoryEncounter 只在绑定演员**恰好已在场**时才传
-   * preferNpcId，否则交给按场地+距离筛选的通用选角 —— 玩家专程走到酒馆后门，
-   * 那儿没人就直接"没人露面"，或者随便抓一个路人来演（于是名字和文案
-   * 描写的性别都对不上，就像截图里那样）。
-   *
-   * 现在：把绑定演员**送到**场地。太远就传送到场地外围（玩家视野外），
-   * 再让他自己走进来 —— 玩家看到的是"有人朝你走过来"，不是凭空出现。
-   *
-   * @returns {string|null} 确定能出演的 npcId；null = 实在凑不出人
-   */
-  function ensureActorAtVenue(storyId, venue) {
-    const npcId = _storyLeadNpcId(storyId);
-    if (!npcId) return null;
-    const reg = npcRegistry.get(npcId);
-    if (!reg || reg.alive === false) return null;
-
-    let live = npcManager.all.find((n) => n.alive && n.phone?.owner === reg.displayName);
-    // 绑定的人根本没在场上（只有档案没有实体）→ 换一个在场的人来演，
-    // 并把绑定改过去，这样后续节点的文案/性别都跟着这个人走。
-    if (!live) {
-      const alt = npcManager.all.find(
-        (n) => n.alive && n.phone?.owner && !n.brain?._perform && n.brain?.state !== "DOWN"
-      );
-      if (!alt) return null;
-      const altReg = npcRegistry.findByDisplayName(alt.phone.owner);
-      if (!altReg) return null;
-      const inst = worldState.getStoryInstance(storyId);
-      const slot = Object.keys(inst?.actorBindings || {})[0];
-      if (inst && slot) inst.actorBindings[slot] = altReg.id;
-      live = alt;
-      return altReg.id;
-    }
-
-    // 在场但离得远 → 传到场地**背对玩家的那一侧**再走进来。
-    // 落点选在"玩家→场地"延长线的更远处，这样玩家面朝场地时人是从
-    // 前方远处走来的，不会在眼前凭空出现。
-    const dist = Math.hypot(live.pos.x - venue.x, live.pos.z - venue.z);
-    if (dist > 12) {
-      const dx = venue.x - player.pos.x;
-      const dz = venue.z - player.pos.z;
-      const len = Math.hypot(dx, dz) || 1;
-      const r = 10 + Math.random() * 3;
-      // 沿玩家→场地方向再往前 r 米，并随机偏一点角度免得每次都在同一点
-      const jitter = (Math.random() - 0.5) * 0.7;
-      const ux = dx / len, uz = dz / len;
-      const cos = Math.cos(jitter), sin = Math.sin(jitter);
-      const rx = ux * cos - uz * sin;
-      const rz = ux * sin + uz * cos;
-      const spot = town.resolveCollision(venue.x + rx * r, venue.z + rz * r, 0.45);
-      if (live.teleportTo) live.teleportTo(spot.x, spot.z);
-      else live.pos.set(spot.x, live.pos.y, spot.z);
-    }
-    return npcId;
-  }
 
   /**
    * 解析故事节点该发生在哪儿。
@@ -3945,20 +3897,18 @@ function boot() {
   function onArriveStoryVenue(storyId, nodeId) {
     const inst = worldState.getStoryInstance(storyId);
     if (!inst || inst.status !== "active" || inst.currentNode !== nodeId) return;
-    // 先保证文案描写的那个人就在这儿（不在就送过来／换个在场的人顶上），
-    // 否则玩家专程走一趟只会看到"没人露面"。
     const def = storyRuntime.getDefinition(storyId);
     const node = def?.nodes?.[nodeId];
     const beat = getBeatText(storyId, nodeId);
     const venue = resolveStoryVenue(def, node, _storyLeadNpcId(storyId), beat);
-    const actorId = ensureActorAtVenue(storyId, venue);
-    // 传 venue 进去：这一幕要摆在事发地点（布景模式），不是把人叫到玩家跟前
-    const ok = requestStoryEncounter(storyId, nodeId, actorId, venue);
-    if (ok) {
+    // 走真剧场（多人同台）。之前这里还留着旧的 requestStoryEncounter 单人布景，
+    // 所以"用手机定位走到警长办公室"永远是"没人露面" —— deliverStoryNodeNow
+    // 换成剧场时漏改了这条路径。
+    if (openStorySceneAt(storyId, nodeId, venue)) {
       hud.toast("你到了。这儿正出着事。", { side: true, key: "story-arrive", duration: 3600 });
-    } else {
-      hud.toast("你到了，可这会儿没人露面。再等等看。", { side: true, key: "story-arrive", duration: 3600 });
+      return;
     }
+    hud.toast("你到了，可这会儿没人露面。再等等看。", { side: true, key: "story-arrive", duration: 3600 });
   }
 
   /**
@@ -3980,11 +3930,27 @@ function boot() {
       ? STORY_TREE_LIST.find((t) => t.id === def.theaterTreeId)
       : buildSceneTreeForNode(storyId, nodeId, def, node, beat);
     if (!tree) return false;
-    // 玩家在屋里就把这一幕摆在这个屋里（Interior 与 Town 同碰撞签名）
+
+    // 这一幕该在屋里还是街上？按文案判断（"酒馆里的谈话声低下去"要在屋里，
+    // "酒馆门前"就在街上）。要在屋里就把玩家先带进去 —— 否则会出现
+    // 台词说"酒馆里"、人却站在 SALOON 招牌底下的大街上。
+    const wantIndoor = isIndoorScene(
+      beat?.venueId,
+      beat?.description || node.description || "",
+      beat?.locateLabel || ""
+    );
+    const wantRoomName = wantIndoor ? interiorNameOf(beat?.venueId) : null;
+    if (wantRoomName && insideRoom !== wantRoomName && interiors.has(wantRoomName)) {
+      enterInterior(wantRoomName);
+    }
     const room = insideRoom ? interiors.get(insideRoom) : null;
+    // 屋里演戏就把无关的人清出去：小房间挤十来个路人会把演员埋掉，
+    // 玩家分不清谁是这一幕的角色。
+    if (room) clearRoomForScene(room, tree);
+
     const leadId = _storyLeadNpcId(storyId);
     const ok = theater.startStoryTree(tree, tree.protagonistId || leadId || null, {
-      venue: { x: venue.x, z: venue.z },
+      venue: room ? { x: room.origin.x, z: room.origin.z } : { x: venue.x, z: venue.z },
       room,
     });
     if (ok) {
@@ -3993,6 +3959,23 @@ function boot() {
       hud.toast(`⚠️ 这场戏演不起来：${theater.lastFailReason}`, { duration: 5000, key: "story-nocast" });
     }
     return ok;
+  }
+
+  /**
+   * 屋里开演前，把与这一幕无关的 NPC 请出去。
+   * 室内空间只有十几米见方，塞着一堆日常来消费的路人时，演员会被埋在人堆里。
+   * 只赶"没被这场戏征召"的人；他们会走到门口自然离开（exitPlace）。
+   */
+  function clearRoomForScene(room, tree) {
+    let moved = 0;
+    for (const npc of npcManager.all) {
+      if (!npc.alive || npc.insideRoom !== room) continue;
+      if (npc.brain?._perform) continue;          // 已被征召的演员留下
+      npc.exitPlace?.();                          // 传回门口街道
+      moved++;
+    }
+    if (moved) console.log(`[Story] ${room.name} 清出 ${moved} 个无关 NPC 给这一幕腾地方`);
+    return moved;
   }
 
   /**
@@ -4207,75 +4190,6 @@ function boot() {
   }
 
 
-  /**
-   * 把一个「需要玩家抉择」的故事节点交给遭遇管线。
-   *
-   * 取代了原来那套猴补丁（临时改写 brain.getRoleActions / hasRoleInteraction
-   * 把选项塞进左侧面板，再手动恢复）—— 那种写法脆弱、难维护，而且当 NPC
-   * 距离 >8 米时直接降级成手机里一段无法响应的死文本。
-   * 现在统一走「NPC 走过来 → ❗ → F → 中央弹窗（暂停）→ 抉择」。
-   */
-  function requestStoryEncounter(storyId, nodeId, forcedNpcId = null, venue = null) {
-    if (encounters.busy) return false;
-    const def = storyRuntime.getDefinition(storyId);
-    const node = def?.nodes?.[nodeId];
-    if (!node?.playerResponses?.length) return false;
-
-    const inst = worldState.getStoryInstance(storyId);
-    const bindings = inst?.actorBindings || {};
-    // 调用方已经把人安排到场了（ensureActorAtVenue）就直接用，
-    // 否则退回"绑定角色里第一个能在场上找到的"。
-    let preferNpcId = forcedNpcId;
-    if (!preferNpcId) {
-      for (const npcId of Object.values(bindings)) {
-        const reg = npcRegistry.get(npcId);
-        if (!reg) continue;
-        const onStage = npcManager.all.some((n) => n.alive && (n.phone?.owner === reg.displayName));
-        if (onStage) { preferNpcId = npcId; break; }
-      }
-    }
-
-    const beat = getBeatText(storyId, nodeId);
-    const castSpec = beat?.stageCast || null;
-    // 文案是预生成的，写的时候不知道最终谁来演 —— 把第三人称代词对齐到
-    // 实际出演者的性别，免得出现"她站在马槽边"配一个男演员的名字。
-    // （选角本身会优先照 stageCast.leadFemale 挑人，这里是挑不到时的兜底）
-    const female = _genderOf(preferNpcId) ?? castSpec?.leadFemale ?? null;
-    const desc = _fitGender(beat?.description || node.description, female);
-    const beats = [];
-    if (node.title) beats.push(node.title);
-    if (desc) beats.push(desc);
-
-    return encounters.request({
-      id: `story:${storyId}:${nodeId}`,
-      title: `📖 ${def.title || storyId}`,
-      intent: `${node.title || ""}：${desc || ""}`.slice(0, 120),
-      preferNpcId,
-      beats,
-      // ---- 布景：把描写里的那一幕摆在事发地点 ----
-      // 不再"随便叫个路人走到玩家跟前传话"：玩家专程走到广场东巷口，
-      // 就该在那儿看到两个汉子堵着一个姑娘，姑娘头顶 ❗ 可以搭话。
-      stageAt: venue ? { x: venue.x, z: venue.z } : null,
-      requireFemale: castSpec?.leadFemale ?? null,
-      extraSpec: castSpec?.extras || [],
-      choices: node.playerResponses.map((r) => ({
-        id: r.id,
-        label: r.label,
-        risk: r.risk || "medium",
-      })),
-      // 抉择完把结果交回 StoryTree 推进节点
-      onResolved: (choiceId) => {
-        if (!choiceId) return;              // 稍后再说 → 节点不推进，之后还会再来
-        storyRuntime.advance(storyId, choiceId);
-      },
-      // 主角定下来后写回绑定：后续节点都由同一个人来演
-      onCast: (npcId) => {
-        if (!npcId || !inst) return;
-        const slot = Object.keys(inst.actorBindings || {})[0];
-        if (slot) inst.actorBindings[slot] = npcId;
-      },
-    });
-  }
 
   // 引擎声跟随当前车辆
   let engineHandle = null;
@@ -4761,6 +4675,16 @@ function boot() {
     });
   }
 
+  /**
+   * 渲染任务栏。
+   *
+   * 注意：这个函数在主循环里**每帧**都会被调用。以前它无条件 innerHTML=，
+   * 于是任务栏的 DOM 每 16ms 被销毁重建一次 —— click 事件要求 mousedown 和
+   * mouseup 落在同一个元素上，元素一直被换掉，所以任务栏上任何东西都点不动
+   * （不只是故事的"点击前往"，原有的任务项也一样）。
+   * 现在只在内容真的变了才写 DOM。
+   */
+  let _taskBarCache = { tracked: null, list: null };
   function renderTaskBar() {
     const tracked = document.getElementById("task-bar-tracked");
     const list = document.getElementById("task-bar-list");
@@ -4768,11 +4692,12 @@ function boot() {
     const activeTasks = taskSystem.getActiveTasks();
     const trackedTask = taskSystem.getTrackedTask();
     const stories = getStorySideQuests();
+    let trackedHtml = "";
 
     if (trackedTask) {
       const daysLeft = trackedTask.deadline > 0 ? '⏳' + (trackedTask.deadline - (worldState.day - trackedTask.assignedDay)) + '天' : '主线';
       const tIcon = taskIcon(trackedTask);
-      tracked.innerHTML = '<div class="task-bar-current" onclick="__ww.showTaskDetail(\'' + trackedTask.id + '\')">'
+      trackedHtml = '<div class="task-bar-current" onclick="__ww.showTaskDetail(\'' + trackedTask.id + '\')">'
         + '<span class="tbi-type">' + tIcon + '</span>'
         + '<span class="tbi-title">' + trackedTask.title + '</span>'
         + '<span class="tbi-deadline">' + daysLeft + '</span>'
@@ -4780,7 +4705,7 @@ function boot() {
     } else if (stories.length > 0) {
       // 没有普通任务被追踪时，把第一条故事顶上来当当前目标
       const s = stories[0];
-      tracked.innerHTML = '<div class="task-bar-current" onclick="__ww.navigateToStory(\'' + s.storyId + '\')">'
+      trackedHtml = '<div class="task-bar-current" onclick="__ww.navigateToStory(\'' + s.storyId + '\')">'
         + '<span class="tbi-type">📖</span>'
         + '<span class="tbi-title">' + s.title + '</span>'
         + '<span class="tbi-deadline">支线</span>'
@@ -4790,9 +4715,9 @@ function boot() {
         + '<div class="task-bar-objective" onclick="__ww.navigateToStory(\'' + s.storyId + '\')">'
         + s.objective + ' · 点击前往</div>';
     } else if (activeTasks.length > 0) {
-      tracked.innerHTML = '<div class="task-bar-current" style="opacity:0.6">📋 ' + activeTasks.length + ' 个任务进行中</div>';
+      trackedHtml = '<div class="task-bar-current" style="opacity:0.6">📋 ' + activeTasks.length + ' 个任务进行中</div>';
     } else {
-      tracked.innerHTML = '<div class="task-bar-current" style="opacity:0.5">📭 暂无任务</div>';
+      trackedHtml = '<div class="task-bar-current" style="opacity:0.5">📭 暂无任务</div>';
     }
 
     let listHtml = "";
@@ -4817,9 +4742,16 @@ function boot() {
       listHtml += '</div>';
       listHtml += '<div class="task-bar-objective" onclick="__ww.navigateToStory(\'' + s.storyId + '\')">' + s.objective + ' · 点击前往</div>';
     });
-    list.innerHTML = listHtml;
+    // 只在内容变了才写 DOM —— 每帧重建会让 click 永远无法完成
+    if (trackedHtml !== _taskBarCache.tracked) {
+      tracked.innerHTML = trackedHtml;
+      _taskBarCache.tracked = trackedHtml;
+    }
+    if (listHtml !== _taskBarCache.list) {
+      list.innerHTML = listHtml;
+      _taskBarCache.list = listHtml;
+    }
   }
-
   /** 任务图标：击败类用叉号，跟"去某地/找某人"区分开 */
   function taskIcon(t) {
     if (t.objective?.type === "defeat") return "❌";

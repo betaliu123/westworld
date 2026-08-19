@@ -125,7 +125,23 @@ export class StageMap {
       x = this.center.x + Math.cos(a) * THEATER_CONFIG.stageRadius;
       z = this.center.z + Math.sin(a) * THEATER_CONFIG.stageRadius;
     }
-    return this._safe(x, z);
+    const first = this._safe(x, z);
+    // 场地常常紧贴某栋楼（门口），固定偏移可能落进建筑里，吸附会把点推到
+    // 楼的另一侧、离场地十几米 —— 演员就散得玩家看不全。
+    // 这时把偏移绕中心转一圈，挑离场地最近的那个可站点。
+    const dist = (p) => Math.hypot(p.x - this.center.x, p.z - this.center.z);
+    if (dist(first) <= 6) return first;
+    const dx = x - this.center.x, dz = z - this.center.z;
+    let best = first;
+    for (let i = 1; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const rx = dx * Math.cos(a) - dz * Math.sin(a);
+      const rz = dx * Math.sin(a) + dz * Math.cos(a);
+      const cand = this._safe(this.center.x + rx, this.center.z + rz);
+      if (dist(cand) < dist(best)) best = cand;
+      if (dist(best) <= 3) break;
+    }
+    return best;
   }
 
   /** 把一个落点做碰撞校验（给"来不及走过来就直接站位"用） */

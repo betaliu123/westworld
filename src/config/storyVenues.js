@@ -111,6 +111,46 @@ function _resolveRaw(town, venueId) {
 }
 
 /**
+ * 这个地点对应的可进入建筑名（用于把戏摆到室内）。
+ * 后门/广场/路口/驻地大门这些本来就在户外，返回 null。
+ * @returns {string|null} town.doors / Interiors 里的建筑名
+ */
+export function interiorNameOf(venueId) {
+  const def = VENUE_DEFS[venueId];
+  if (!def?.building) return null;
+  if (def.building.endsWith("后门")) return null;   // 后巷是户外
+  return def.building;
+}
+
+/**
+ * 这一幕该不该在屋里演。
+ *
+ * 判据以**画面描写**为主、地点标签为辅。原因：两者会互相矛盾 ——
+ * 实测有的节点标签写"酒馆门前"，描写却是"酒馆里的谈话声忽然低下去，
+ * 那个男人立在吧台前"。玩家到场看到的是描写，所以描写说在屋里就进屋，
+ * 否则会出现台词讲"酒馆里"、人却站在招牌底下的大街上。
+ *
+ * @param {string} venueId
+ * @param {string} description 画面描写（优先）
+ * @param {string} label locateLabel（次之）
+ * @returns {boolean}
+ */
+export function isIndoorScene(venueId, description = "", label = "") {
+  if (!interiorNameOf(venueId)) return false;   // 后巷/广场/路口本来就在户外
+  const INDOOR = /屋里|屋内|里的|里头|吧台|柜台|桌前|靠窗桌|角落|炉边|灯影|诊台|长凳|祭坛|忏悔室|厅里|后院/;
+  const OUTDOOR = /门前|门口|门外|台阶|廊|巷|街上|檐下|窗外|路口/;
+  const d = String(description);
+  // ① 描写里明说在屋里 → 进屋（哪怕标签写"门前"）
+  if (INDOOR.test(d)) return true;
+  // ② 描写里明说在户外 → 不进屋
+  if (OUTDOOR.test(d)) return false;
+  // ③ 描写看不出来，再看标签
+  const s = String(label);
+  if (OUTDOOR.test(s)) return false;
+  return INDOOR.test(s);
+}
+
+/**
  * 建筑类关键词 —— 能独立确定一个地点。
  * 顺序即优先级（同一段文字里出现多个时取靠前的）。
  * @param {boolean} isBack 是否是"后门/后巷"侧

@@ -117,33 +117,53 @@ export class TheaterRuntime {
         // 这个镇子半径 180 米，随机选中的人可能在 100 米开外 —— 按 3.5 m/s 走
         // 要半分钟以上，玩家专程赶到只会看到空地（就是"到了没人露面"的根因）。
         //
-        // 落点必须与站位之间**没有建筑挡着**：NPC 是直线朝 moveTo 走的（没有
-        // 寻路），落在楼后面就会顶着墙停在十米开外，等于白挪。
-        // 所以从"背对玩家的方向"开始试若干角度，取第一个视线通畅的。
+        // 落点以**他自己的站位**为圆心（不是舞台中心）：站位分布在中心周围，
+        // 若绕着中心找落点，可能落在站位的正对面，两点相距二十多米，照样走不到。
+        // 而且落点与站位之间必须没有建筑挡着 —— NPC 是直线朝 moveTo 走的
+        // （没有寻路），落在楼后面会顶着墙停在十米开外，等于白挪。
+        // 决定要不要先把他"挪"过来。
+        // 判据不能只看距离：NPC 是直线朝 moveTo 走的（没有寻路），所以
+        // 二十米开外但隔着一栏楼的人，会顶着墙停在原地 —— 实测就是这种情况
+        // 漏过了阈值，于是玩家赶到还是没人。
+        // 所以：太远 **或** 直线被挡，都先挪。
+        const los = this.stage.outdoor?.hasLineOfSight?.bind(this.stage.outdoor) || null;
         const far = Math.hypot(npc.pos.x - m.spot.x, npc.pos.z - m.spot.z);
-        if (far > TELEPORT_IN_DIST) {
+        const blocked = los ? !los(npc.pos, m.spot) : false;
+        if (far > TELEPORT_IN_DIST || blocked) {
           const base = pp
-            ? Math.atan2(center.x - pp.x, center.z - pp.z)      // 玩家→场地方向
+            ? Math.atan2(m.spot.x - pp.x, m.spot.z - pp.z)   // 玩家→站位方向（背对玩家那侧）
             : Math.random() * Math.PI * 2;
-          const los = this.stage.outdoor?.hasLineOfSight?.bind(this.stage.outdoor) || null;
+          const distToSpot = (p) => Math.hypot(p.x - m.spot.x, p.z - m.spot.z);
+          // 分档退让：先求"远一点且视线通畅"（观感最好：人从远处走过来），
+          // 求不到就退到"近一点但保证能到"。宁可近，也不能远到走不过来 ——
+          // 有些场地三面是楼，八米开外根本没有通畅的落点。
+          const tiers = [
+            { radii: [8, 11, 14], needLos: true },
+            { radii: [6, 8, 11], needLos: false },
+            { radii: [3, 4.5], needLos: false },
+          ];
           let best = null;
-          for (let i = 0; i < 12 && !best; i++) {
-            // 以 base 为中心左右交替试探
-            const k = Math.ceil(i / 2) * (i % 2 ? 1 : -1);
-            const ang = base + k * 0.5;
-            for (const r of [8, 11, 14]) {
-              const cand = this.stage.snapTo({
-                x: center.x + Math.sin(ang) * r,
-                z: center.z + Math.cos(ang) * r,
-              });
-              const clear = !los || los(cand, m.spot);
-              if (clear) { best = cand; break; }
+          for (const tier of tiers) {
+            for (let i = 0; i < 12 && !best; i++) {
+              const k = Math.ceil(i / 2) * (i % 2 ? 1 : -1);  // 以 base 为中心左右交替
+              const ang = base + k * 0.5;
+              for (const r of tier.radii) {
+                const cand = this.stage.snapTo({
+                  x: m.spot.x + Math.sin(ang) * r,
+                  z: m.spot.z + Math.cos(ang) * r,
+                });
+                if (distToSpot(cand) > 16) continue;          // 吸附推太远，不算
+                if (tier.needLos && los && !los(cand, m.spot)) continue;
+                best = cand;
+                break;
+              }
             }
+            if (best) break;
           }
-          const safe = best || this.stage.snapTo({
-            x: center.x + Math.sin(base) * 9,
-            z: center.z + Math.cos(base) * 9,
-          });
+          // 全都不成：直接放到站位上。观感差一点（没有"走过来"的过程），
+          // 但这一幕总得演起来。不能再走 snapTo —— 它内部的 resolveCollision
+          // 遇到大建筑会把点推到十几米外的墙边，反而更远。
+          const safe = best || { x: m.spot.x, z: m.spot.z };
           if (npc.teleportTo) npc.teleportTo(safe.x, safe.z);
           else npc.pos.set(safe.x, npc.pos.y ?? 0, safe.z);
         }
