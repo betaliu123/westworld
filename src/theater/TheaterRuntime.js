@@ -12,6 +12,13 @@ function pickOne(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+/**
+ * 超过这个距离的演员，开演前先挪到场地外围再走进来。
+ * 这个镇子半径约 180 米，选中的人可能在 100 米开外；按 3.5 m/s 走要半分钟
+ * 以上，玩家专程赶到只会看到一片空地。
+ */
+const TELEPORT_IN_DIST = 25;
+
 const Phase = {
   GATHERING: "gathering", // 演员正在赶来
   PLAYING: "playing",     // 正常演出
@@ -88,13 +95,59 @@ export class TheaterRuntime {
     return this.cast.find((c) => c.roleId === roleId) || null;
   }
 
-  /** 让演员离开室内、走向舞台站位 */
+  /** 让演员就位：室外走到街上站位；室内则先进屋再走到屋内站位 */
   _takeStage() {
+    const room = this.stage.room || null;
+    const center = this.stage.center;
+    const pp = this.hooks.playerPos?.() || null;
     for (const m of this.cast) {
       const npc = m.npc;
-      // 先把人弄到室外，否则 NPC.update 会强制覆写 moveTo 为出口
-      if (npc.insideHome && npc.exitHome) npc.exitHome();
-      else if (npc.insideRoom && npc.exitPlace) npc.exitPlace();
+      if (room) {
+        // 室内演出：把人搬进这个房间。用 enterRoomForScene 而不是 enterPlace ——
+        // 后者会强制进 AT_PLACE（屋内随机游走）并覆盖 _perform，演员就不去站位了。
+        // 先离开别的室内空间，免得两处身份冲突。
+        if (npc.insideHome && npc.exitHome) npc.exitHome();
+        if (npc.insideRoom && npc.insideRoom !== room && npc.exitPlace) npc.exitPlace();
+        if (npc.insideRoom !== room) npc.enterRoomForScene?.(room, m.spot);
+      } else {
+        // 室外演出：先把人弄到室外，否则 NPC.update 会强制覆写 moveTo 为出口
+        if (npc.insideHome && npc.exitHome) npc.exitHome();
+        else if (npc.insideRoom && npc.exitPlace) npc.exitPlace();
+        // 太远的演员先"挪"到场地外围，再让他走进来。
+        // 这个镇子半径 180 米，随机选中的人可能在 100 米开外 —— 按 3.5 m/s 走
+        // 要半分钟以上，玩家专程赶到只会看到空地（就是"到了没人露面"的根因）。
+        //
+        // 落点必须与站位之间**没有建筑挡着**：NPC 是直线朝 moveTo 走的（没有
+        // 寻路），落在楼后面就会顶着墙停在十米开外，等于白挪。
+        // 所以从"背对玩家的方向"开始试若干角度，取第一个视线通畅的。
+        const far = Math.hypot(npc.pos.x - m.spot.x, npc.pos.z - m.spot.z);
+        if (far > TELEPORT_IN_DIST) {
+          const base = pp
+            ? Math.atan2(center.x - pp.x, center.z - pp.z)      // 玩家→场地方向
+            : Math.random() * Math.PI * 2;
+          const los = this.stage.outdoor?.hasLineOfSight?.bind(this.stage.outdoor) || null;
+          let best = null;
+          for (let i = 0; i < 12 && !best; i++) {
+            // 以 base 为中心左右交替试探
+            const k = Math.ceil(i / 2) * (i % 2 ? 1 : -1);
+            const ang = base + k * 0.5;
+            for (const r of [8, 11, 14]) {
+              const cand = this.stage.snapTo({
+                x: center.x + Math.sin(ang) * r,
+                z: center.z + Math.cos(ang) * r,
+              });
+              const clear = !los || los(cand, m.spot);
+              if (clear) { best = cand; break; }
+            }
+          }
+          const safe = best || this.stage.snapTo({
+            x: center.x + Math.sin(base) * 9,
+            z: center.z + Math.cos(base) * 9,
+          });
+          if (npc.teleportTo) npc.teleportTo(safe.x, safe.z);
+          else npc.pos.set(safe.x, npc.pos.y ?? 0, safe.z);
+        }
+      }
       // 被征召上台就别惦记报官了：一边演戏一边往警局跑很荒谬，
       // 而且会带着 🚨 图标站在舞台上
       npc.brain.cancelReport?.();
@@ -108,7 +161,7 @@ export class TheaterRuntime {
         sceneToken: this.token, // 场次令牌：防止上一场的延迟放人误伤这一场的演员
       });
     }
-    this.hooks.log?.(`【${this.tree.title}】开演：${this.cast.map((c) => `${c.stageName}(${c.roleId})`).join("、")}`);
+    this.hooks.log?.(`【${this.tree.title}】开演${room ? `（${room.name} 屋内）` : ""}：${this.cast.map((c) => `${c.stageName}(${c.roleId})`).join("、")}`);
   }
 
   /** 演出结束：把演员放回日程 */

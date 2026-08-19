@@ -666,6 +666,9 @@ function boot() {
     onPickChoice: (id) => theater.submitChoice(id),
   });
   theater.ui = theaterUI;
+  // 舞台站位要吸附到"能站的格子"：场地常是某栋楼的门口，固定偏移可能把演员
+  // 摆进楼里，resolveCollision 又可能把他推到楼的另一侧（离场地十几米）。
+  theater.stage.setWalkableSnap?.((x, z) => pathfinder.nearestWalkable(x, z));
   // 聊天条展开时，所有游戏输入都让给输入框。
   // 注意：不能用 addTypingGuard（它会让 Input.typing 返回 true，而 TheaterUI
   // 自己的 _onKeyDown 也检查 input.typing → 于是"展开但没人打字"的状态下，
@@ -778,6 +781,31 @@ function boot() {
     if (!emoji && !shake) playMoodFx(npc, mood);
   };
   interaction.theaterDirector = theater;
+
+  // 故事节点合成的场次演完后，把玩家的抉择交回 StoryTree 推进到下一环节，
+  // 并立刻把新环节投递出去（手机口信 + 定位，或玩家还在原地就直接接着演）
+  theater.onStoryOutcome = (storyId, nodeId, outcomeId) => {
+    const inst = worldState.getStoryInstance(storyId);
+    if (!inst || inst.status !== "active" || inst.currentNode !== nodeId) return;
+    const def = storyRuntime.getDefinition(storyId);
+    const node = def?.nodes?.[nodeId];
+    const hasOwn = !!node?.playerResponses?.length;
+    if (hasOwn) {
+      // 节点自己的抉择：outcomeId 就是 playerResponses 的 id
+      storyRuntime.advance(storyId, outcomeId);
+    } else {
+      // 两种情况都传 null：
+      //  · 过渡节点补出来的抉择（gen0/gen1/…）在 StoryTree 里并不存在，
+      //    推进走这个节点原本的 nextNode
+      //  · 终局节点没有 nextNode，advance 会把故事收掉
+      storyRuntime.advance(storyId, null);
+    }
+    const after = worldState.getStoryInstance(storyId);
+    if (after?.status === "active" && after.currentNode !== nodeId) {
+      _pendingStoryDeliver = { storyId };
+    }
+    renderTaskBar();
+  };
 
   // P3 消息治理：手机消息限流 + 去名字前缀 + 分类（挂在 DailySimulation 投递时）
   const messageGovernor = new MessageGovernor({ worldState });
@@ -3933,52 +3961,180 @@ function boot() {
     }
   }
 
+  /**
+   * 在事发地点开一场真剧场（故事节点的正路）。
+   *
+   * 为什么走剧场而不是遭遇弹窗：剧场支持多角色同台、逐句演出、1/2/3/4 选项
+   * **和**回车自由输入 —— 这才是"酒馆争风"那种一幕。之前我用遭遇管线做的
+   * "单人 ❗ + 弹窗"只能有一个说话人，描写里的姑娘和两个混混根本立不起来。
+   *
+   * @returns {boolean} 是否开演
+   */
+  function openStorySceneAt(storyId, nodeId, venue) {
+    const def = storyRuntime.getDefinition(storyId);
+    const node = def?.nodes?.[nodeId];
+    if (!def || !node || theater.active) return false;
+    const beat = getBeatText(storyId, nodeId);
+    // 剧本：故事显式声明的优先，否则用节点自动合成的一幕
+    const tree = def.theaterTreeId
+      ? STORY_TREE_LIST.find((t) => t.id === def.theaterTreeId)
+      : buildSceneTreeForNode(storyId, nodeId, def, node, beat);
+    if (!tree) return false;
+    // 玩家在屋里就把这一幕摆在这个屋里（Interior 与 Town 同碰撞签名）
+    const room = insideRoom ? interiors.get(insideRoom) : null;
+    const leadId = _storyLeadNpcId(storyId);
+    const ok = theater.startStoryTree(tree, tree.protagonistId || leadId || null, {
+      venue: { x: venue.x, z: venue.z },
+      room,
+    });
+    if (ok) {
+      hud.toast(`🎭 ${def.title} · ${tree.title}`, { key: "story-theater", duration: 4200 });
+    } else if (theater.lastFailReason) {
+      hud.toast(`⚠️ 这场戏演不起来：${theater.lastFailReason}`, { duration: 5000, key: "story-nocast" });
+    }
+    return ok;
+  }
+
+  /**
+   * 把一个故事节点合成成一棵可演的剧场树。
+   *
+   * 剧场树的真实形状（照 theaterStoryTrees.js）：
+   *   { id, title, entryNode, roles:[{roleId,required,jobs,female}],
+   *     nodes:[{ id, title, hint, beats:[{speaker,to,text,delayMs,mood}],
+   *              choices:[{id,label,icon,risk,next,line}], terminal, outcome }] }
+   * 注意 nodes 是**数组**、beats 用 speaker/to/text。
+   *
+   * 这里按节点的 stageCast 生成角色表（主角 + 配角，带性别/帮派挑人条件），
+   * 用 description 当开场提示、playerResponses 当选项，选完交回 StoryTree 推进。
+   *
+   * 为什么要合成而不是手写：8 棵故事树原本是"节点 + playerResponses"的形状，
+   * 合成层让两边不用互相迁就；将来想给某个故事写更精致的手写剧本，
+   * 只要设 def.theaterTreeId 就会优先用手写的。
+   */
+  function buildSceneTreeForNode(storyId, nodeId, def, node, beat) {
+    const sc = beat?.stageCast || {};
+    const female = sc.leadFemale ?? null;
+    const gen = beat?.scene || null;
+    // 抉择来源：节点自带的 playerResponses 优先；过渡节点用生成的 choices 补
+    // （那些节点原本 canAutoAdvance，玩家完全插不上手）
+    let responses = node.playerResponses || [];
+    if (!responses.length && gen?.choices?.length) {
+      // 补出来的抉择都推进到这个节点原本的下一站
+      const next = node.nextNode || null;
+      responses = gen.choices.map((c, i) => ({ id: `gen${i}`, label: c.label, nextNode: next }));
+    }
+    const isTerminal = !responses.length;
+    // 终局节点也要能演：没抉择，但把戏演完 + 收尾旁白
+    if (isTerminal && !gen?.beats?.length) return null;
+
+    // 角色表：lead 必需；extras 按 stageCast 展开（总数生成时已限到 3）
+    const roles = [{
+      roleId: "lead",
+      required: true,
+      ...(female == null ? {} : { female }),
+    }];
+    (sc.extras || []).forEach((e, gi) => {
+      for (let k = 0; k < (e.n || 1); k++) {
+        roles.push({
+          roleId: `extra${gi}_${k}`,
+          required: false,            // 配角凑不齐也要能开演
+          ...(e.female == null ? {} : { female: e.female }),
+          ...(e.gang ? { gang: e.gang } : {}),
+        });
+      }
+    });
+    const roleIds = new Set(roles.map((r) => r.roleId));
+
+    const desc = _fitGender(beat?.description || node.description || "", female);
+    // 台词：优先用生成的多人同台对话；没有就退化成一句主角开场
+    let beats = (gen?.beats || []).filter((b) => roleIds.has(b.speaker));
+    if (!beats.length) {
+      beats = [{ speaker: "lead", to: "player", text: "你来得正好——帮我一把，行不行？", delayMs: 1900, mood: "scared" }];
+    }
+
+    const sceneNodes = [];
+    if (isTerminal) {
+      // 终局：演完就收，outcome 的旁白用生成的 closingLines
+      sceneNodes.push({
+        id: "open",
+        title: node.title || def.title,
+        hint: desc,
+        beats,
+        terminal: true,
+        outcome: {
+          id: "close",
+          title: `${def.title} · ${node.title || "落幕"}`,
+          lines: gen?.closingLines || [],
+        },
+      });
+    } else {
+      sceneNodes.push({
+        id: "open",
+        title: node.title || def.title,
+        hint: desc,
+        beats,
+        choices: responses.map((r) => ({
+          id: r.id,
+          label: r.label,
+          risk: r.risk || "medium",
+          next: `end_${r.id}`,
+          line: r.label,
+        })),
+      });
+      for (const r of responses) {
+        sceneNodes.push({
+          id: `end_${r.id}`,
+          terminal: true,
+          beats: [{ speaker: "lead", to: "player", text: "……记住你今天说的话。", delayMs: 1700, mood: "neutral" }],
+          outcome: { id: r.id, title: `${def.title} · ${r.label}`, lines: [] },
+        });
+      }
+    }
+
+    return {
+      id: `story_scene:${storyId}:${nodeId}`,
+      title: node.title || def.title,
+      hintOnEnter: desc,
+      protagonistRole: "lead",
+      kind: "story",
+      roles,
+      entryNode: "open",
+      unattendedMs: 90000,
+      timeoutNode: isTerminal ? "open" : `end_${responses[0].id}`,
+      nodes: sceneNodes,
+      // 供 TheaterDirector 在散场时把抉择交回故事树
+      _storyId: storyId,
+      _nodeId: nodeId,
+      // 补出来的抉择需要显式 nextNode（StoryTree 里原节点没有 playerResponses）
+      _genChoiceNext: !node.playerResponses?.length ? (node.nextNode || null) : null,
+    };
+  }
+
   function deliverStoryNodeNow(storyId, opts = {}) {
     const def = storyRuntime.getDefinition(storyId);
     const inst = worldState.getStoryInstance(storyId);
     if (!def || !inst || !inst.currentNode) return false;
     const node = def.nodes[inst.currentNode];
     if (!node) return false;
-    const responses = node.playerResponses || [];
     const force = !!opts.force;   // 手机"立即开始"：一定要拉起一场戏
     const beat = getBeatText(storyId, inst.currentNode);
-
-    // 只有故事**显式声明**了要用哪棵剧场树时才开戏（theaterTreeId）。
-    // 以前是"绑定 NPC 恰好是某棵个人剧场的主角就顶替上去"，甚至强制模式下
-    // 随机挑一棵 —— 于是推进《巷子里的求助》永远弹出《账本疑云》，
-    // 故事自己的台词和选项反而永远看不到。
     const bindings = inst.actorBindings || {};
     const boundNpcId = Object.values(bindings)[0];
-    const tree = def.theaterTreeId
-      ? STORY_TREE_LIST.find((t) => t.id === def.theaterTreeId)
-      : null;
-    if (tree && !theater.active) {
-      const started = theater.startStoryTree(tree, tree.protagonistId || boundNpcId || null);
-      if (started) {
-        hud.toast(`🎭 ${def.title} · ${tree.title}`, { key: "story-theater", duration: 4200 });
-        if (force) {
-          const c = theater.stage.center;
-          const safe = town.resolveCollision(c.x + 3.5, c.z + 3.5, 0.45);
-          player.pos.set(safe.x, player.pos.y, safe.z);
-          hud.toast("已把你带到事发地点", { side: true, key: "story-tp", duration: 3000 });
-        }
-        return true;
-      }
-      if (force && theater.lastFailReason) {
-        hud.toast(`⚠️ 这场戏演不起来：${theater.lastFailReason}`, { duration: 5000, key: "story-nocast" });
-      }
-    }
 
     // 地点以文案声明的 venueId 为准（"回营地来"就落到帮派驻地大门）
     const npcId = boundNpcId;
     const venue = resolveStoryVenue(def, node, npcId, beat);
 
-    // 玩家**已经站在事发地点**了 → 直接把这一幕摆起来（布景），别再多此一举
-    // 发条手机消息叫他"来一趟"。
+    // 玩家**已经站在事发地点**了 → 直接开这一幕，别再多此一举发条手机消息
+    // 叫他"来一趟"。force（手机点"立即开始"）时把玩家带过去再开。
     const atVenue = Math.hypot(venue.x - player.pos.x, venue.z - player.pos.z) < 10;
-    if (!theater.active && atVenue) {
-      const actorId = ensureActorAtVenue(storyId, venue);
-      if (requestStoryEncounter(storyId, inst.currentNode, actorId, venue)) return true;
+    if (!theater.active && (atVenue || force)) {
+      if (force && !atVenue) {
+        const w = pathfinder.nearestWalkable(venue.x + 3.0, venue.z + 3.0);
+        player.pos.set(w.x, player.pos.y, w.z);
+        hud.toast("已把你带到事发地点", { side: true, key: "story-tp", duration: 3000 });
+      }
+      if (openStorySceneAt(storyId, inst.currentNode, venue)) return true;
     }
 
     // ---- 手机来信 ----
@@ -4149,11 +4305,19 @@ function boot() {
   // AI 剧场：独立注册，避免被室内/载具/弹窗分支提前 return 掉
   engine.onUpdate((dt) => {
     theater.playerPos = player.pos;
+    // 进屋不再一律算"离场"：如果这场戏本来就演在玩家所在的这个屋里
+    // （故事节点的地点在室内），玩家当然在场 —— 否则剧场会判定观众走了、
+    // 直接散场，玩家进屋只看到描写没有人。
+    const sceneRoom = theater.stage?.room || null;
+    const sceneHere = sceneRoom && interiors.get(insideRoom) === sceneRoom;
     theater.update(dt, {
-      playerPos: insideRoom ? null : player.pos, // 进屋就算离场
+      playerPos: (!insideRoom || sceneHere) ? player.pos : null,
       hour: sky.hour,
       day: worldClock.day,
     });
+    // 遭遇的状态机也要在室内推进（原来只在室外分支里跑，进屋后
+    // ❗ 永远不会亮、按 F 没反应）
+    if (insideRoom) encounters.update();
   });
 
   engine.onLateUpdate(() => {

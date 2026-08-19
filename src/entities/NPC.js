@@ -320,6 +320,32 @@ export class NPC {
     this.brain.target = null;
   }
 
+  /**
+   * 为演出进入室内：把人放进房间但**不接管他的状态机**。
+   *
+   * 跟 enterPlace 的区别：enterPlace 会强制进 AT_PLACE（屋内随机游走），
+   * 那会把剧场的 _perform 征召覆盖掉，演员就不会走去自己的站位了。
+   * 这里只换碰撞上下文和位置，brain._perform 保持不动。
+   *
+   * @param {object} room  Interior 实例
+   * @param {object} spot  房间内的落点（世界坐标）
+   * @param {object} exitDoor 散场后回到的街道落点
+   */
+  enterRoomForScene(room, spot, exitDoor = null) {
+    if (this.insideHome) this.exitHome?.();
+    this.insideRoom = room;
+    this.collider = room;
+    this.indoorExit = { x: room.exit.x, z: room.exit.z };
+    this._exitDoor = exitDoor || this._exitDoor || { x: room.exit.x, z: room.exit.z };
+    this._roomTarget = null;
+    if (spot) {
+      const safe = room.resolveCollision(spot.x, spot.z, this.radius);
+      this.pos.set(safe.x, 0, safe.z);
+      this.mesh.position.set(safe.x, 0, safe.z);
+    }
+    this.walkAmount = 0;
+  }
+
   /** 直接传送到指定坐标（同步逻辑 pos + 表现 mesh，先退出室内） */
   teleportTo(x, z) {
     if (this.insideHome) this.exitHome?.();
@@ -394,9 +420,14 @@ export class NPC {
 
     // 醒着但还在屋里（被行窃惊醒等）：非愤怒时走向门口离开；
     // 愤怒但玩家已经跑远（离开室内）时也先出门再追
+    //
+    // 注意排除"正在演出"（brain._perform）：剧场/故事把演员征召到屋内站位后，
+    // 他的状态是 WANDER 而不是 AT_PLACE，会掉进这个分支直接走出门去 ——
+    // 于是玩家进屋只看到描写、看不到人。
     const angryWithPlayerHere = this.brain.state === State.ANGRY && brainCtx.playerDist < 18;
     const indoor = this.insideHome || this.insideRoom;
-    if (indoor && this.brain.state !== State.DOWN && !angryWithPlayerHere) {
+    const performing = !!this.brain._perform;
+    if (indoor && !performing && this.brain.state !== State.DOWN && !angryWithPlayerHere) {
       intent.moveTo = this.indoorExit;
       intent.speedMul = Math.max(intent.speedMul, 1.2);
       const dExit = Math.hypot(this.pos.x - this.indoorExit.x, this.pos.z - this.indoorExit.z);

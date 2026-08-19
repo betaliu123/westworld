@@ -135,12 +135,24 @@ export class TheaterDirector {
     return this._begin(tree, preferNpcId, day);
   }
 
-  /** 开一场个人/势力小剧场（不在每日随机池里，由故事投递/调试面板触发） */
-  startStoryTree(tree, preferNpcId = null) {
+  /**
+   * 开一场个人/势力小剧场（不在每日随机池里，由故事投递/调试面板触发）
+   * @param {object} tree 剧本
+   * @param {string|null} preferNpcId 优先出演的 NPC
+   * @param {object} opts { venue:{x,z}, room }
+   *   venue 非空 = 把这一幕摆在指定地点（故事节点的事发地点），
+   *   room 非空 = 摆在这个室内空间里（玩家在屋里时）。
+   */
+  startStoryTree(tree, preferNpcId = null, opts = {}) {
     if (this.active) { this.lastFailReason = "已经有剧场在演了"; return false; }
     if (!tree || !tree.nodes || !tree.entryNode) { this.lastFailReason = "剧本数据不完整"; return false; }
+    // 先把舞台搬到事发地点，_begin 里算站位时才会落在那儿
+    if (opts.venue) this.stage.setVenue(opts.venue.x, opts.venue.z, opts.room || null);
     const ok = this._begin(tree, preferNpcId, this.worldClock?.day ?? 1);
-    if (!ok && !this.lastFailReason) this.lastFailReason = this.casting.lastFailReason || "凑不齐角色";
+    if (!ok) {
+      if (opts.venue) this.stage.resetVenue();
+      if (!this.lastFailReason) this.lastFailReason = this.casting.lastFailReason || "凑不齐角色";
+    }
     return ok;
   }
 
@@ -178,6 +190,7 @@ export class TheaterDirector {
           this.ui?.setChoices?.([], "");
           this.ui?.setEventActive?.(false);
           this._unmuteAll(); // 散场后恢复围观群众的日常寒暄
+          this.stage.resetVenue?.(); // 舞台还原成室外默认位置/碰撞上下文
         },
       },
     });
@@ -279,6 +292,13 @@ export class TheaterDirector {
     const lines = (oc.lines || []).join("；");
     this._addLog(`【结局】${oc.title}${lines ? " —— " + lines : ""}${joined ? "" : "（你当时不在场）"}`);
     if (!joined) return;   // 没参与 → 后续的一切后果都与你无关
+    // 故事节点合成的场次：把玩家的抉择交回 StoryTree 推进剧情。
+    // 只在玩家真的选了才推进 —— 没参与就让节点留在原地，之后还能再来。
+    const storyTree = meta.tree || this.currentTree;
+    if (storyTree?._storyId && this.onStoryOutcome) {
+      try { this.onStoryOutcome(storyTree._storyId, storyTree._nodeId, oc.id, joined); }
+      catch (e) { console.error("[Theater] onStoryOutcome 出错", e); }
+    }
     // 让这次选择在散场后仍然留下痕迹：报纸 / 来信 / 可摸到的遗留物
     if (this.aftermath) {
       const done = this.aftermath.apply(oc, {

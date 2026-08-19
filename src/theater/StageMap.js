@@ -65,6 +65,8 @@ const ROLE_OFFSET = {
 export class StageMap {
   constructor(town) {
     this.town = town;
+    this.outdoor = town;          // 室外碰撞上下文（永久保存，散场要还回去）
+    this.room = null;             // 非空 = 这场戏在室内演
     this.center = { ...THEATER_CONFIG.stage };
   }
 
@@ -72,6 +74,41 @@ export class StageMap {
   setCenter(x, z) {
     this.center = { x, z };
   }
+
+  /**
+   * 把舞台搬到指定地点。
+   *
+   * room 非空时连碰撞上下文一起换成房间 —— Interior 与 Town 的
+   * resolveCollision 同签名，所以 _safe 不用改就能把站位夹在屋内墙线内。
+   * 不换的话室内演出的落点会按室外碰撞算，人会被摆进墙里或屋外。
+   *
+   * @param {number} x 中心 X
+   * @param {number} z 中心 Z
+   * @param {object|null} room Interior 实例；null = 室外
+   */
+  setVenue(x, z, room = null) {
+    this.center = { x, z };
+    this.room = room || null;
+    this.town = room || this.outdoor;
+  }
+
+  /** 散场：把舞台还原成室外默认位置 */
+  resetVenue() {
+    this.room = null;
+    this.town = this.outdoor;
+    this.center = { ...THEATER_CONFIG.stage };
+  }
+
+  get isIndoor() { return !!this.room; }
+
+  /**
+   * 注入"把点吸附到可走格"的函数（由 main.js 提供，内部用 Pathfinder）。
+   *
+   * 为什么需要：站位是按中心加固定偏移算的，而场地常常是某栋楼的门口 ——
+   * 偏移可能把演员摆进建筑里。resolveCollision 只会把他推到最近的墙边，
+   * 可能推到楼的另一侧（离场地十几米），玩家就看不到人了。
+   */
+  setWalkableSnap(fn) { this._snapWalkable = fn || null; }
 
   /** 某角色的落点（已过碰撞校验）；同角色多人时用 index 摊开 */
   spotFor(roleId, index = 0, total = 1) {
@@ -117,10 +154,18 @@ export class StageMap {
   }
 
   _safe(x, z) {
+    let nx = x, nz = z;
     if (this.town && this.town.resolveCollision) {
-      const r = this.town.resolveCollision(x, z, 0.6);
-      return { x: r.x, z: r.z };
+      const r = this.town.resolveCollision(nx, nz, 0.6);
+      nx = r.x; nz = r.z;
     }
-    return { x, z };
+    // 室外再过一遍"可走格"吸附：resolveCollision 只保证不重叠墙体，
+    // 但可能把点推到楼的另一侧；吸附会拉回离场地最近的能站的格子。
+    // 室内不需要（房间本身就是个开阔矩形，resolveCollision 已经夹在墙线内）。
+    if (!this.room && this._snapWalkable) {
+      const w = this._snapWalkable(nx, nz);
+      if (w && isFinite(w.x) && isFinite(w.z)) { nx = w.x; nz = w.z; }
+    }
+    return { x: nx, z: nz };
   }
 }
