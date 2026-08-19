@@ -659,7 +659,14 @@ export class DailySimulation {
         const admit = this.messageGovernor?.admit?.(m);
         if (admit && admit.send === false) continue;   // 被限流，静默丢弃
         const cleaned = admit?.cleaned ?? m.text;
-        phone.deliverMessage(npcId, m.from, cleaned, { taskId: m.taskId || null });
+        // 把 storyId/nodeId 一路带到手机上：Phone 会据此挂"📍去看看"按钮
+        // （坐标不存进队列 —— 存了会随世界变化而失效，改由 Phone 渲染时现算）
+        phone.deliverMessage(npcId, m.from, cleaned, {
+          taskId: m.taskId || null,
+          storyId: m.storyId || null,
+          storyNodeId: m.storyNodeId || null,
+          locateLabel: m.locateLabel || null,
+        });
       }
     }
   }

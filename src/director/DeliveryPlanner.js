@@ -16,6 +16,8 @@
 //   1-2 次错过：尝试备用通道
 //   3 次错过：后台自动推进（backgroundResolve）
 
+import { getBeatText } from "../config/storyBeatText.js";
+
 export class DeliveryPlanner {
   constructor(deps = {}) {
     this.worldState = deps.worldState;
@@ -168,9 +170,12 @@ export class DeliveryPlanner {
       case "hq":
       case "location":
       default:
-        // location 和 hq 通过显示提示/HUD toast
+        // location / hq：玩家人已经在现场了，就报**看到的画面**，
+        // 不报 `标题: 描述` —— 那种元描述是调试面板的格式，不该进玩家视野。
         if (this.hud) {
-          this.hud.toast(`📜 ${beat.title}: ${beat.description || ""}`, { key: beat.storyId });
+          const bt = beat.storyId ? getBeatText(beat.storyId, beat.nodeId) : null;
+          const scene = bt?.description || beat.description || beat.title || "这儿有点不对劲";
+          this.hud.toast(`📜 ${scene}`, { key: beat.storyId, duration: 5200 });
         }
         break;
     }
@@ -185,9 +190,12 @@ export class DeliveryPlanner {
 
   _deliverNewspaper(beat) {
     const ws = this.worldState;
+    // 报纸正文用包装过的画面描述（原始 description 常是"某某追查凶手"这类元描述，
+    // 印在报纸上像占位文本）
+    const bt = beat.storyId ? getBeatText(beat.storyId, beat.nodeId) : null;
     ws.queueNewspaper({
       title: beat.title,
-      body: beat.description || "",
+      body: bt?.description || beat.description || "",
       beatId: beat.storyId ? `${beat.storyId}:${beat.nodeId}` : beat.title,
     });
   }
@@ -197,21 +205,32 @@ export class DeliveryPlanner {
     const npcId = beat.npcId || "system";
     const fromName = beat.npcName || beat.fromName || "线人";
     const slots = ["morning", "noon", "evening"];
+    // 手机上只发**包装过的口信**，绝不推 `标题: 描述` 这种模板文本 ——
+    // 那种元描述（"复仇者追查杀害亲人的凶手"）读起来像调试输出，
+    // 玩家看了既不知道要去哪也不知道该干什么。
+    // 有包装文案就用它，并带上 storyId/nodeId 让手机渲染时挂"📍去看看"。
+    const beatText = beat.storyId ? getBeatText(beat.storyId, beat.nodeId) : null;
+    const text = beatText?.phoneInvite || beat.phoneInvite || "你来一趟，有件事得当着面说。";
     ws.queuePhoneMessage({
       from: fromName,
       npcId: npcId,
-      text: `${beat.title}: ${beat.description || "有新情报"}`,
+      text,
+      storyId: beat.storyId || null,
+      storyNodeId: beat.nodeId || null,
+      locateLabel: beatText?.locateLabel || null,
       beatId: beat.storyId ? `${beat.storyId}:${beat.nodeId}` : beat.title,
       deliverSlot: slots[Math.floor(Math.random() * slots.length)],
     });
   }
 
   _deliverRumor(beat) {
-    // 传闻：不直接显示，而是存入一个 rumor bank，NPC 对话时可以引用
+    // 传闻：不直接显示，而是存入一个 rumor bank，NPC 对话时可以引用。
+    // 用包装过的画面描述 —— NPC 嘴里说出来的传闻不能是元描述。
     if (!this.worldState.state.rumors) this.worldState.state.rumors = [];
+    const bt = beat.storyId ? getBeatText(beat.storyId, beat.nodeId) : null;
     this.worldState.state.rumors.push({
       title: beat.title,
-      text: beat.description || "",
+      text: bt?.description || beat.description || "",
       day: this.worldState.day,
       beatId: beat.storyId ? `${beat.storyId}:${beat.nodeId}` : beat.title,
     });

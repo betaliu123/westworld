@@ -120,6 +120,16 @@ export class Phone {
   /** 注入「推进这一环节」handler（重新拉起遭遇/小剧场） */
   setStoryPushHandler(fn) { this.onStoryPush = fn; }
 
+  /** 注入「📍去看看」handler（关手机 + 自动寻路到事发地点） */
+  setLocateHandler(fn) { this.onLocate = fn; }
+
+  /**
+   * 注入地点解析器：(storyId, nodeId) => { x, z, label }
+   * 用于每日投放队列里的消息 —— 那些消息只带 storyId，坐标在渲染时才算，
+   * 免得把会过期的坐标写进存档。
+   */
+  setVenueResolver(fn) { this.venueResolver = fn; }
+
   _sendRecruit() {
     if (!this.activeContactId) return;
     const contact = this.contacts[this.activeContactId];
@@ -270,6 +280,10 @@ export class Phone {
       storyId: opts.storyId || null,
       storyNodeId: opts.storyNodeId || null,
       storyChoices: opts.storyChoices || null,
+      // 定位：{ x, z, label } —— 渲染成"📍去看看"按钮，点了自动寻路过去
+      locate: opts.locate || null,
+      // 只给了标签没给坐标时，渲染阶段用 venueResolver 现算坐标（坐标存下来会失效）
+      locateLabel: opts.locateLabel || null,
       isUnread: true,
       // 会话对数：该联系人整个聊天里"轮到 NPC 说"的第几条（me+them 各占半轮，
       // 这里给纯数字展示用，显示"（第N轮）"）
@@ -677,6 +691,19 @@ export class Phone {
       if (msg.hasTask) {
         content += `<div class="msg-task-btn" data-task-id="${msg.hasTask}">📋 查看任务</div>`;
       }
+      // 定位按钮：让玩家自己走过去看，而不是在手机上隔空做决定。
+      // 没存坐标的（来自每日投放队列）在这里现算 —— 存下来的坐标会随世界变化失效。
+      let loc = msg.locate;
+      if (!loc && msg.storyId && this.venueResolver) {
+        const r = this.venueResolver(msg.storyId, msg.storyNodeId);
+        if (r && isFinite(r.x) && isFinite(r.z)) {
+          loc = { x: r.x, z: r.z, label: msg.locateLabel || r.label || "事发地点" };
+        }
+      }
+      if (loc) {
+        const lbl = loc.label || "那个地方";
+        content += `<div class="msg-task-btn msg-locate" data-lx="${loc.x}" data-lz="${loc.z}" data-story="${msg.storyId || ""}" data-node="${msg.storyNodeId || ""}" data-label="${lbl}">📍 去看看（${lbl}）</div>`;
+      }
       if (msg.storyChoices && msg.storyChoices.length) {
         for (const c of msg.storyChoices) {
           content += `<div class="msg-task-btn msg-story-choice" data-story="${msg.storyId}" data-node="${msg.storyNodeId || ""}" data-choice="${c.id}">▶ ${c.label}</div>`;
@@ -687,6 +714,21 @@ export class Phone {
     }
 
     this._renderQuickReplies(thread, contact);
+    // 定位按钮：关手机 + 自动寻路过去
+    for (const el of this.chatEl.querySelectorAll(".msg-locate")) {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!this.onLocate) return;
+        this.onLocate({
+          x: parseFloat(el.dataset.lx),
+          z: parseFloat(el.dataset.lz),
+          label: el.dataset.label || "目的地",
+          storyId: el.dataset.story || null,
+          nodeId: el.dataset.node || null,
+        });
+        this.close();
+      });
+    }
     // 故事决策按钮：点了推进剧情
     for (const el of this.chatEl.querySelectorAll(".msg-story-choice")) {
       el.addEventListener("click", (e) => {

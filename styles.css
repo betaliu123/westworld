@@ -1711,3 +1711,38 @@ body.headshot-flash::after {
   0%, 100% { transform: translate(-50%, -100%) scale(1); opacity: 1; }
   50%      { transform: translate(-50%, -100%) scale(1.25); opacity: .75; }
 }
+
+/* ---------- 黑幕过场（故事节点缺席补叙） ---------- */
+#cutscene {
+  position: fixed; inset: 0; z-index: 400;
+  background: #000;
+  opacity: 0; transition: opacity .6s ease;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+#cutscene.cutscene-on { opacity: 1; }
+#cutscene.hidden { display: none; }
+#cutscene-inner {
+  max-width: 720px; padding: 0 48px; text-align: center;
+}
+#cutscene-title {
+  font-size: 15px; letter-spacing: 8px; color: #8a7550;
+  text-transform: uppercase; margin-bottom: 34px;
+  font-weight: 700;
+}
+#cutscene-lines {
+  display: flex; flex-direction: column; gap: 22px;
+}
+.cutscene-line {
+  font-size: 21px; line-height: 1.85; color: #e8dcc2;
+  font-weight: 400; letter-spacing: 1.2px;
+  opacity: 0; transform: translateY(10px);
+  transition: opacity 1.3s ease, transform 1.3s ease;
+  text-shadow: 0 0 26px rgba(255, 220, 150, .18);
+}
+.cutscene-line.cutscene-line-on { opacity: 1; transform: translateY(0); }
+#cutscene-skip {
+  margin-top: 46px; font-size: 12px; color: #6b5c40;
+  opacity: 0; transition: opacity .8s ease; letter-spacing: 1px;
+}
+#cutscene-skip b { color: #a08a5e; }

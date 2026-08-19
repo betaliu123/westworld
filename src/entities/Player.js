@@ -113,6 +113,41 @@ export class Player {
     if (this.aiming) speed *= 0.45; // 瞄准时挪步慢
     if (this.isWeak) speed *= 0.55; // 复活虚弱期降速
 
+    // ---- 自动寻路（手机上点了定位）----
+    // 玩家一按方向键就取消自动寻路（不抢操作权）。
+    let autoMoving = false;
+    if (this.autoNav) {
+      const manual = move.lengthSq() > 0.001;
+      if (manual) {
+        this.cancelAutoNav("你自己走了");
+      } else {
+        const dx = this.autoNav.x - this.pos.x;
+        const dz = this.autoNav.z - this.pos.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist <= (this.autoNav.arriveDist ?? 2.5)) {
+          const cb = this.autoNav.onArrive;
+          this.autoNav = null;
+          if (cb) { try { cb(); } catch (e) { console.error("[Player] autoNav onArrive 出错", e); } }
+        } else {
+          // 卡住检测：贴着墙走不动时，绕一点角度
+          this._navLastDist = this._navLastDist ?? dist;
+          if (dist > this._navLastDist - 0.02) {
+            this._navStuck = (this._navStuck || 0) + dt;
+          } else {
+            this._navStuck = 0;
+          }
+          this._navLastDist = dist;
+          let ang = Math.atan2(dx, dz);
+          if (this._navStuck > 0.6) ang += (Math.sin(this.walkAmount * 3) > 0 ? 1 : -1) * 0.9; // 侧向绕行
+          move.set(Math.sin(ang), 0, Math.cos(ang));
+          speed = 7.2;         // 自动赶路走快些
+          autoMoving = true;
+          this.autoNav.timeout = (this.autoNav.timeout ?? 40) - dt;
+          if (this.autoNav.timeout <= 0) this.cancelAutoNav("走了太久，自动导航结束");
+        }
+      }
+    }
+
     let moving = move.lengthSq() > 0.001;
     if (moving) {
       move.normalize();
@@ -120,7 +155,7 @@ export class Player {
       this.pos.x += move.x * speed * dt;
       this.pos.z += move.z * speed * dt;
     }
-    this.walkAmount += ((moving ? (running ? 1.4 : 1) : 0) - this.walkAmount) * Math.min(1, dt * 10);
+    this.walkAmount += ((moving ? (running || autoMoving ? 1.4 : 1) : 0) - this.walkAmount) * Math.min(1, dt * 10);
 
     // 跳跃 & 重力
     if (input.isDown("Space") && this.onGround) {
@@ -297,5 +332,35 @@ export class Player {
     this.onGround = true;
     if (collider) this.collider = collider;
     this.mesh.position.copy(this.pos);
+  }
+
+  /**
+   * 开始自动寻路（手机上点了"📍去看看"）。玩家一按 WASD 就会取消。
+   * @param {number} x 目标 X
+   * @param {number} z 目标 Z
+   * @param {object} opts { label, arriveDist, timeout, onArrive, onCancel }
+   */
+  startAutoNav(x, z, opts = {}) {
+    this.autoNav = {
+      x, z,
+      label: opts.label || "目的地",
+      arriveDist: opts.arriveDist ?? 2.5,
+      timeout: opts.timeout ?? 40,
+      onArrive: opts.onArrive || null,
+      onCancel: opts.onCancel || null,
+    };
+    this._navLastDist = null;
+    this._navStuck = 0;
+    return this.autoNav;
+  }
+
+  cancelAutoNav(reason = "") {
+    if (!this.autoNav) return false;
+    const cb = this.autoNav.onCancel;
+    this.autoNav = null;
+    this._navLastDist = null;
+    this._navStuck = 0;
+    if (cb) { try { cb(reason); } catch (e) { console.error("[Player] autoNav onCancel 出错", e); } }
+    return true;
   }
 }

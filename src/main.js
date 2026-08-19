@@ -87,6 +87,8 @@ import { CorpseReactions } from "./systems/CorpseReactions.js";
 import { CombatFactions } from "./systems/CombatFactions.js";
 import { HealthBars } from "./ui/HealthBars.js";
 import { EmojiPops } from "./ui/EmojiPops.js";
+import { Cutscene } from "./ui/Cutscene.js";
+import { getBeatText } from "./config/storyBeatText.js";
 import { playMoodFx } from "./npc/MoodFx.js";
 
 function boot() {
@@ -450,6 +452,7 @@ function boot() {
     getPlayerPos: () => player.pos,
   });
   const emojiPops = new EmojiPops(camera);
+  const cutscene = new Cutscene();
 
   const combat = new Combat(npcManager, loot, hud, { audio, reputation, newspaper,
     playerRef: player,   // 调试面板可调 player.damage（伤害倍率）
@@ -516,14 +519,52 @@ function boot() {
       hud.toast(`📖 ${def.title} · ${choice.label}`, { key: "story-choice", duration: 3000 });
     }
   });
-  // 「推进这一环节」：把当前节点重新拉到玩家面前（小剧场/遭遇/手机选项）
+  // 「推进这一环节」：先看这个节点能不能"缺席补叙"。
+  // 能 → 黑幕过场（电影旁白交代你没到场的这段时间，世界照样往前走）。
+  // 不能 → 照旧把当前节点拉到玩家面前。
   phone.setStoryPushHandler((storyId) => {
     const def = storyRuntime.getDefinition(storyId);
     const inst = worldState.getStoryInstance(storyId);
     if (!def || !inst || inst.status !== "active") return { ok: false };
+    phone.close();
+    if (forceAdvanceWithCutscene(storyId)) {
+      return { ok: true, cutscene: true };
+    }
     _pendingStoryDeliver = { storyId };
     hud.toast(`📖 正在拉起《${def.title}》的当前环节…`, { key: "story-push", duration: 3000 });
     return { ok: true };
+  });
+
+  // 每日投放队列里的故事消息只带 storyId，渲染时现算坐标（不进存档，免得过期）
+  phone.setVenueResolver((storyId, nodeId) => {
+    const def = storyRuntime.getDefinition(storyId);
+    const inst = worldState.getStoryInstance(storyId);
+    const nid = nodeId || inst?.currentNode;
+    const node = def?.nodes?.[nid];
+    if (!node) return null;
+    const boundNpcId = Object.values(inst?.actorBindings || {})[0];
+    const v = resolveStoryVenue(def, node, boundNpcId);
+    const beat = getBeatText(storyId, nid);
+    return { x: v.x, z: v.z, label: beat?.locateLabel || "事发地点" };
+  });
+
+  // 「📍去看看」：关手机，自动走到事发地点，到了让 NPC 现身（❗ → F → 选项）
+  phone.setLocateHandler((loc) => {
+    if (!loc || !isFinite(loc.x) || !isFinite(loc.z)) return;
+    if (minimap?.setQuestMarker) minimap.setQuestMarker(loc.x, loc.z);
+    hud.toast(`🧭 正在赶往${loc.label}…（按 WASD 可自己走）`, { key: "nav", duration: 4200 });
+    player.startAutoNav(loc.x, loc.z, {
+      label: loc.label,
+      arriveDist: 3.0,
+      timeout: 60,
+      onArrive: () => {
+        if (loc.storyId && loc.nodeId) onArriveStoryVenue(loc.storyId, loc.nodeId);
+        else hud.toast(`你到了${loc.label}。`, { side: true, key: "nav", duration: 3000 });
+      },
+      onCancel: (reason) => {
+        if (reason) hud.toast(`🧭 自动前往已取消（${reason}）`, { side: true, key: "nav", duration: 2600 });
+      },
+    });
   });
 
   // P4 Director
@@ -1080,7 +1121,7 @@ function boot() {
   });
 
   function anyModalOpen() {
-    return hud.shopOpen || phone.isOpen || newspaper.isOpen || conversation.isOpen || gangs.isOpen || slots.isOpen || baccarat.isOpen || stockMarket.isOpen || (encounterUI && encounterUI.isOpen) || !document.getElementById("task-detail").classList.contains("hidden");
+    return hud.shopOpen || phone.isOpen || newspaper.isOpen || conversation.isOpen || gangs.isOpen || slots.isOpen || baccarat.isOpen || stockMarket.isOpen || (encounterUI && encounterUI.isOpen) || (cutscene && cutscene.isPlaying()) || !document.getElementById("task-detail").classList.contains("hidden");
   }
 
   // ---- 右侧图标按钮栏 ----
@@ -3686,6 +3727,68 @@ function boot() {
    * - 其次：NPC 主动走过来（遭遇管线，当面弹窗抉择）
    * - 兜底：NPC 发手机消息 + 消息里带决策按钮（当面/手机都能选）
    */
+  /**
+   * 解析故事节点该发生在哪儿。
+   * 节点的 venueTags 是抽象标签（saloon/plaza/hq/clinic/warehouse/sheriff_office/north_road），
+   * 这里把它们落到镇上真实坐标：先查 town.places，再按招牌名查 landmarks，
+   * 都不中就用绑定 NPC 现在站的地方，最后兜底玩家前方，
+   * 保证"📍去看看"永远有个能走到的目标。
+   */
+  const VENUE_LANDMARK_NAME = {
+    hq: "帮派驻地",
+    clinic: "医馆",
+    sheriff_office: "警长办公室",
+    warehouse: "杂货店",   // 镇上没有独立仓库，货物都堆在杂货店后院
+  };
+  function resolveStoryVenue(def, node, boundNpcId) {
+    const tags = (node.candidateDeliveries || []).flatMap((c) => c.venueTags || []);
+    for (const tag of tags) {
+      // 1) town.places 直接有这一类（saloon / plaza / shop / church / work / home）
+      const bucket = town.places?.[tag];
+      if (bucket?.length) {
+        const p = bucket[Math.floor(Math.random() * bucket.length)];
+        return { x: p.x, z: p.z, from: `place:${tag}` };
+      }
+      // 2) 按招牌名找地标
+      const wantName = VENUE_LANDMARK_NAME[tag];
+      if (wantName) {
+        const lm = (town.landmarks || []).find((l) => l.name && l.name.includes(wantName));
+        if (lm) return { x: lm.x, z: lm.z, from: `landmark:${tag}` };
+      }
+      // 3) 镇北路口：主街北端
+      if (tag === "north_road") {
+        const safe = town.resolveCollision(0, -(town.bounds ?? 60) + 12, 0.5);
+        return { x: safe.x, z: safe.z, from: "north_road" };
+      }
+    }
+    // 退到绑定 NPC 现在站的地方
+    if (boundNpcId) {
+      const reg = npcRegistry.get(boundNpcId);
+      const live = reg && npcManager.all.find((n) => n.alive && n.phone?.owner === reg.displayName);
+      if (live) return { x: live.pos.x, z: live.pos.z, from: "npc" };
+    }
+    // 最后兜底：玩家前方 14 米，找个不卡墙的点
+    const ang = player.facing ?? 0;
+    const safe = town.resolveCollision(
+      player.pos.x + Math.sin(ang) * 14,
+      player.pos.z + Math.cos(ang) * 14,
+      0.5
+    );
+    return { x: safe.x, z: safe.z, from: "fallback" };
+  }
+
+  /** 玩家走到事发地点后：让绑定 NPC 过来（❗ → F → 选项） */
+  function onArriveStoryVenue(storyId, nodeId) {
+    const inst = worldState.getStoryInstance(storyId);
+    if (!inst || inst.status !== "active" || inst.currentNode !== nodeId) return;
+    const ok = requestStoryEncounter(storyId, nodeId);
+    if (ok) {
+      hud.toast("你到了。有人正朝你走过来。", { side: true, key: "story-arrive", duration: 3600 });
+    } else {
+      hud.toast("你到了，可这会儿没人露面。再等等看。", { side: true, key: "story-arrive", duration: 3600 });
+    }
+  }
+
   function deliverStoryNodeNow(storyId, opts = {}) {
     const def = storyRuntime.getDefinition(storyId);
     const inst = worldState.getStoryInstance(storyId);
@@ -3694,6 +3797,7 @@ function boot() {
     if (!node) return false;
     const responses = node.playerResponses || [];
     const force = !!opts.force;   // 手机"立即开始"：一定要拉起一场戏
+    const beat = getBeatText(storyId, inst.currentNode);
 
     // 只有故事**显式声明**了要用哪棵剧场树时才开戏（theaterTreeId）。
     // 以前是"绑定 NPC 恰好是某棵个人剧场的主角就顶替上去"，甚至强制模式下
@@ -3728,24 +3832,71 @@ function boot() {
       // 遭遇忙/没合适的人 → 落到手机
     }
 
-    // 手机来信：有选项带决策按钮；没选项也不发死文本，而是以"来当面说"的方式
+    // ---- 手机来信 ----
+    // 只发"包装过的口信 + 一个能走过去的定位"。
+    // 绝不再把 `标题：描述` 这种模板文本推到玩家手机上 —— 那是调试面板的活儿。
     const npcId = boundNpcId;
     const regNpc = npcId && npcRegistry.get ? npcRegistry.get(npcId) : null;
     const fromName = regNpc?.displayName || def.title;
-    if (responses.length) {
-      const text = `${node.title}：${node.description || "有新动静"}`;
-      phone.deliverMessage(npcId || "system", fromName, text, {
-        storyId, storyNodeId: inst.currentNode,
-        storyChoices: responses.map((r) => ({ id: r.id, label: r.label })),
-      });
-      return true;
-    }
-    // 无选项的引言节点：不发死文本，直接让 NPC 来当面说（用遭遇管线，若可用）
-    // 若遭遇也开不了，才退化成一段"来信"（比标题+描述更像话）
-    const text = `${node.title}：${node.description || "有件事想当面跟你说。"}\n——找个机会来见我。`;
-    phone.deliverMessage(npcId || "system", fromName, text, { storyId });
+    const venue = resolveStoryVenue(def, node, npcId);
+    const invite = beat?.phoneInvite || "你来一趟，有件事得当着面说。";
+    const label = beat?.locateLabel || "事发地点";
+
+    phone.deliverMessage(npcId || "system", fromName, invite, {
+      storyId,
+      storyNodeId: inst.currentNode,
+      locate: { x: venue.x, z: venue.z, label },
+      // 手机上不再直接给抉择按钮：抉择要到现场当面做。
+      // 只有玩家已经在附近（<12m，说明人就在眼前）才允许隔空回话。
+      storyChoices:
+        responses.length && Math.hypot(venue.x - player.pos.x, venue.z - player.pos.z) < 12
+          ? responses.map((r) => ({ id: r.id, label: r.label }))
+          : null,
+    });
+    if (minimap?.setQuestMarker) minimap.setQuestMarker(venue.x, venue.z);
     return true;
   }
+
+  /**
+   * 玩家在手机上点了"推进这一环节"，但这个节点本该他亲自到场。
+   * 不生硬跳过，也不假装他去了 —— 黑幕拉下来，用旁白补叙这段缺席的时间，
+   * 黑幕散开时世界已经变了，接着投递下一节点。
+   * @returns {boolean} 是否走了过场（false = 该节点不需要缺席补叙，照常投递）
+   */
+  function forceAdvanceWithCutscene(storyId) {
+    const def = storyRuntime.getDefinition(storyId);
+    const inst = worldState.getStoryInstance(storyId);
+    if (!def || !inst || inst.status !== "active") return false;
+    const nodeId = inst.currentNode;
+    const node = def.nodes[nodeId];
+    if (!node) return false;
+    const beat = getBeatText(storyId, nodeId);
+    if (!beat?.cutscene?.length) return false;
+
+    // 缺席时选哪条分支：优先标了 default 的，否则第一个
+    const responses = node.playerResponses || [];
+    const fallback = responses.find((r) => r.isDefault) || responses[0];
+
+    cutscene.play({
+      title: beat.cutsceneTitle || "此后",
+      lines: beat.cutscene,
+      onDone: () => {
+        if (fallback) {
+          storyRuntime.advance(storyId, fallback.id);
+        } else if (node.nextNode) {
+          storyRuntime.advance(storyId, null);
+        }
+        const after = worldState.getStoryInstance(storyId);
+        if (after?.status === "active" && after.currentNode !== nodeId) {
+          // 世界已经往前走了一格，把新节点送到玩家面前
+          _pendingStoryDeliver = { storyId };
+        }
+        hud.toast(`📖 《${def.title}》有了新的动静`, { key: "story-cut", duration: 4000 });
+      },
+    });
+    return true;
+  }
+
 
   /**
    * 把一个「需要玩家抉择」的故事节点交给遭遇管线。
@@ -3772,14 +3923,16 @@ function boot() {
       if (onStage) { preferNpcId = npcId; break; }
     }
 
+    const beat = getBeatText(storyId, nodeId);
+    const desc = beat?.description || node.description;
     const beats = [];
     if (node.title) beats.push(node.title);
-    if (node.description) beats.push(node.description);
+    if (desc) beats.push(desc);
 
     return encounters.request({
       id: `story:${storyId}:${nodeId}`,
       title: `📖 ${def.title || storyId}`,
-      intent: `${node.title || ""}：${node.description || ""}`.slice(0, 120),
+      intent: `${node.title || ""}：${desc || ""}`.slice(0, 120),
       preferNpcId,
       beats,
       choices: node.playerResponses.map((r) => ({
