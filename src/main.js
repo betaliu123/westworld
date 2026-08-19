@@ -296,6 +296,25 @@ function boot() {
   // Phase 4 新系统
   const taskSystem = new TaskSystem(worldState);
   newspaper.setTaskSystem(taskSystem);
+  // 「打倒某人」类任务的目标挑选：TaskSystem 看不到场上有谁，由这里注入。
+  // 优先挑玩家还不认识、且不是自己帮派成员的人（打自己人不合理），
+  // 名字要能显示出来，否则任务栏只会写一串 id。
+  taskSystem.pickDefeatTarget = () => {
+    const pool = npcManager.all.filter((n) => {
+      if (!n.alive || n.brain?.state === "DOWN") return false;
+      const name = n.phone?.owner;
+      if (!name) return false;
+      const reg = npcRegistry.findByDisplayName(name);
+      if (!reg) return false;
+      // 别让玩家去打自己帮派的人
+      if (factionSystem?.getOpenMembers?.().includes(reg.id)) return false;
+      return true;
+    });
+    if (!pool.length) return null;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    const reg = npcRegistry.findByDisplayName(pick.phone.owner);
+    return { npcId: reg.id, displayName: reg.displayName };
+  };
   // 新任务自动发布到报纸
   taskSystem.on("taskCreated", (task) => {
     newspaper.publishTask(task);
@@ -3897,9 +3916,10 @@ function boot() {
     const beat = getBeatText(storyId, nodeId);
     const venue = resolveStoryVenue(def, node, _storyLeadNpcId(storyId), beat);
     const actorId = ensureActorAtVenue(storyId, venue);
-    const ok = requestStoryEncounter(storyId, nodeId, actorId);
+    // 传 venue 进去：这一幕要摆在事发地点（布景模式），不是把人叫到玩家跟前
+    const ok = requestStoryEncounter(storyId, nodeId, actorId, venue);
     if (ok) {
-      hud.toast("你到了。有人正朝你走过来。", { side: true, key: "story-arrive", duration: 3600 });
+      hud.toast("你到了。这儿正出着事。", { side: true, key: "story-arrive", duration: 3600 });
     } else {
       hud.toast("你到了，可这会儿没人露面。再等等看。", { side: true, key: "story-arrive", duration: 3600 });
     }
@@ -3941,22 +3961,28 @@ function boot() {
       }
     }
 
-    // 主路径：让绑定的 NPC 当面来，用**这个故事自己的**台词和选项开弹窗
-    if (!theater.active) {
-      const ok = requestStoryEncounter(storyId, inst.currentNode);
-      if (ok) return true;
-      // 遭遇忙/没合适的人 → 落到手机
+    // 地点以文案声明的 venueId 为准（"回营地来"就落到帮派驻地大门）
+    const npcId = boundNpcId;
+    const venue = resolveStoryVenue(def, node, npcId, beat);
+
+    // 玩家**已经站在事发地点**了 → 直接把这一幕摆起来（布景），别再多此一举
+    // 发条手机消息叫他"来一趟"。
+    const atVenue = Math.hypot(venue.x - player.pos.x, venue.z - player.pos.z) < 10;
+    if (!theater.active && atVenue) {
+      const actorId = ensureActorAtVenue(storyId, venue);
+      if (requestStoryEncounter(storyId, inst.currentNode, actorId, venue)) return true;
     }
 
     // ---- 手机来信 ----
-    // 只发"包装过的口信 + 一个能走过去的定位"。
-    // 绝不再把 `标题：描述` 这种模板文本推到玩家手机上 —— 那是调试面板的活儿。
-    const npcId = boundNpcId;
+    // 只发"包装过的口信 + 一个能走过去的定位"，**不再叫人跑到玩家跟前传话**。
+    //
+    // 之前这里优先走 requestStoryEncounter（不带地点），效果是随便抓一个可用
+    // NPC 走到玩家面前念台词 —— 于是每个故事都是同两个下属来"传达"，
+    // 而描写里的姑娘和混混根本没出现。现在统一成：
+    //   手机收到口信 → 📍去看看 → 到场看到那一幕（主角 ❗ 可搭话）
     const regNpc = npcId && npcRegistry.get ? npcRegistry.get(npcId) : null;
     const fromName = regNpc?.displayName || def.title;
-    // 地点以文案声明的 venueId 为准（"回营地来"就落到帮派驻地大门）
-    const venue = resolveStoryVenue(def, node, npcId, beat);
-    const female = _genderOf(npcId);
+    const female = _genderOf(npcId) ?? beat?.stageCast?.leadFemale ?? null;
     const invite = _fitGender(beat?.phoneInvite || "你来一趟，有件事得当着面说。", female);
     // 按钮上的地点名用**文案里的说法**（"集市北口"），不要用登记表的正式名
     // （"镇中广场"）—— 口信刚说"你上集市北边路口来一趟"，按钮却写"镇中广场"，
@@ -3967,12 +3993,8 @@ function boot() {
       storyId,
       storyNodeId: inst.currentNode,
       locate: { x: venue.x, z: venue.z, label },
-      // 手机上不再直接给抉择按钮：抉择要到现场当面做。
-      // 只有玩家已经在附近（<12m，说明人就在眼前）才允许隔空回话。
-      storyChoices:
-        responses.length && Math.hypot(venue.x - player.pos.x, venue.z - player.pos.z) < 12
-          ? responses.map((r) => ({ id: r.id, label: r.label }))
-          : null,
+      // 手机上不给抉择按钮：抉择要到现场当面做（人就在那儿等着）
+      storyChoices: null,
     });
     if (minimap?.setQuestMarker) minimap.setQuestMarker(venue.x, venue.z);
     return true;
@@ -4029,7 +4051,7 @@ function boot() {
    * 距离 >8 米时直接降级成手机里一段无法响应的死文本。
    * 现在统一走「NPC 走过来 → ❗ → F → 中央弹窗（暂停）→ 抉择」。
    */
-  function requestStoryEncounter(storyId, nodeId, forcedNpcId = null) {
+  function requestStoryEncounter(storyId, nodeId, forcedNpcId = null, venue = null) {
     if (encounters.busy) return false;
     const def = storyRuntime.getDefinition(storyId);
     const node = def?.nodes?.[nodeId];
@@ -4050,9 +4072,11 @@ function boot() {
     }
 
     const beat = getBeatText(storyId, nodeId);
+    const castSpec = beat?.stageCast || null;
     // 文案是预生成的，写的时候不知道最终谁来演 —— 把第三人称代词对齐到
     // 实际出演者的性别，免得出现"她站在马槽边"配一个男演员的名字。
-    const female = _genderOf(preferNpcId);
+    // （选角本身会优先照 stageCast.leadFemale 挑人，这里是挑不到时的兜底）
+    const female = _genderOf(preferNpcId) ?? castSpec?.leadFemale ?? null;
     const desc = _fitGender(beat?.description || node.description, female);
     const beats = [];
     if (node.title) beats.push(node.title);
@@ -4064,6 +4088,12 @@ function boot() {
       intent: `${node.title || ""}：${desc || ""}`.slice(0, 120),
       preferNpcId,
       beats,
+      // ---- 布景：把描写里的那一幕摆在事发地点 ----
+      // 不再"随便叫个路人走到玩家跟前传话"：玩家专程走到广场东巷口，
+      // 就该在那儿看到两个汉子堵着一个姑娘，姑娘头顶 ❗ 可以搭话。
+      stageAt: venue ? { x: venue.x, z: venue.z } : null,
+      requireFemale: castSpec?.leadFemale ?? null,
+      extraSpec: castSpec?.extras || [],
       choices: node.playerResponses.map((r) => ({
         id: r.id,
         label: r.label,
@@ -4073,6 +4103,12 @@ function boot() {
       onResolved: (choiceId) => {
         if (!choiceId) return;              // 稍后再说 → 节点不推进，之后还会再来
         storyRuntime.advance(storyId, choiceId);
+      },
+      // 主角定下来后写回绑定：后续节点都由同一个人来演
+      onCast: (npcId) => {
+        if (!npcId || !inst) return;
+        const slot = Object.keys(inst.actorBindings || {})[0];
+        if (slot) inst.actorBindings[slot] = npcId;
       },
     });
   }
@@ -4161,7 +4197,12 @@ function boot() {
     const trackedTask = taskSystem.getTrackedTask();
     if (!trackedTask) return markers;
 
-    const marker = { x: 0, z: 0, type: trackedTask.type, taskId: trackedTask.id, title: trackedTask.title, label: trackedTask.title };
+    const marker = {
+      x: 0, z: 0, type: trackedTask.type, taskId: trackedTask.id,
+      title: trackedTask.title, label: trackedTask.title,
+      // 「打倒某人」在小地图上画叉号，跟"去某地"的星号区分开
+      kind: trackedTask.objective?.type === "defeat" ? "defeat" : "goto",
+    };
     let placed = false;
 
     // bounty 任务：在目标 NPC 位置
@@ -4493,21 +4534,86 @@ function boot() {
     }
   }
 
+  /**
+   * 进行中的故事在任务栏里当支线任务显示。
+   * 每条给出「下一步要去哪 / 找谁」，点一下就自动寻路过去 —— 故事不该只活在
+   * 手机消息里，玩家关掉手机就不知道该干什么了。
+   */
+  function getStorySideQuests() {
+    const out = [];
+    for (const st of (storyRuntime.getAllStoryStatus?.() || [])) {
+      if (st.status !== "active") continue;
+      const def = storyRuntime.getDefinition(st.storyId);
+      const inst = worldState.getStoryInstance(st.storyId);
+      const node = def?.nodes?.[inst?.currentNode];
+      if (!def || !node) continue;
+      const beat = getBeatText(st.storyId, inst.currentNode);
+      const venue = resolveStoryVenue(def, node, _storyLeadNpcId(st.storyId), beat);
+      const where = beat?.locateLabel || venue.label || "镇上";
+      out.push({
+        storyId: st.storyId,
+        nodeId: inst.currentNode,
+        title: def.title,
+        // 「下一步」= 去哪儿 + 那儿有谁
+        objective: `去${where}${beat?.stageCast?.leadHint ? ` 找${beat.stageCast.leadHint}` : ""}`,
+        venue,
+      });
+    }
+    return out;
+  }
+
+  /** 点任务栏里的故事条：自动寻路到该节点的事发地点 */
+  function navigateToStory(storyId) {
+    const q = getStorySideQuests().find((s) => s.storyId === storyId);
+    if (!q) return;
+    if (minimap?.setQuestMarker) minimap.setQuestMarker(q.venue.x, q.venue.z);
+    const path = pathfinder.findPath(player.pos.x, player.pos.z, q.venue.x, q.venue.z);
+    if (!path) {
+      hud.toast(`🧭 从这儿过不去${q.objective}`, { key: "nav", duration: 4000 });
+      return;
+    }
+    hud.toast(`🧭 ${q.objective}…（按 WASD 可自己走）`, { key: "nav", duration: 4200 });
+    player.startAutoNav(q.venue.x, q.venue.z, {
+      label: q.objective,
+      path,
+      arriveDist: 3.0,
+      timeout: 90,
+      replan: () => {
+        const p = pathfinder.findPath(player.pos.x, player.pos.z, q.venue.x, q.venue.z);
+        return p ? player.setAutoNavPath(p) : false;
+      },
+      onArrive: () => onArriveStoryVenue(q.storyId, q.nodeId),
+      onCancel: (reason) => {
+        if (reason) hud.toast(`🧭 自动前往已取消（${reason}）`, { side: true, key: "nav", duration: 2600 });
+      },
+    });
+  }
+
   function renderTaskBar() {
     const tracked = document.getElementById("task-bar-tracked");
     const list = document.getElementById("task-bar-list");
     if (!tracked || !list) return;
     const activeTasks = taskSystem.getActiveTasks();
     const trackedTask = taskSystem.getTrackedTask();
+    const stories = getStorySideQuests();
 
     if (trackedTask) {
       const daysLeft = trackedTask.deadline > 0 ? '⏳' + (trackedTask.deadline - (worldState.day - trackedTask.assignedDay)) + '天' : '主线';
-      const tIcon = trackedTask.type === "bounty" ? "🔫" : trackedTask.type === "delivery" ? "📦" : trackedTask.type === "main" ? "⭐" : "🔍";
+      const tIcon = taskIcon(trackedTask);
       tracked.innerHTML = '<div class="task-bar-current" onclick="__ww.showTaskDetail(\'' + trackedTask.id + '\')">'
         + '<span class="tbi-type">' + tIcon + '</span>'
         + '<span class="tbi-title">' + trackedTask.title + '</span>'
         + '<span class="tbi-deadline">' + daysLeft + '</span>'
         + '</div>';
+    } else if (stories.length > 0) {
+      // 没有普通任务被追踪时，把第一条故事顶上来当当前目标
+      const s = stories[0];
+      tracked.innerHTML = '<div class="task-bar-current" onclick="__ww.navigateToStory(\'' + s.storyId + '\')">'
+        + '<span class="tbi-type">📖</span>'
+        + '<span class="tbi-title">' + s.title + '</span>'
+        + '<span class="tbi-deadline">支线</span>'
+        + '</div>'
+        + '<div class="task-bar-objective">' + s.objective + ' · 点击前往</div>';
     } else if (activeTasks.length > 0) {
       tracked.innerHTML = '<div class="task-bar-current" style="opacity:0.6">📋 ' + activeTasks.length + ' 个任务进行中</div>';
     } else {
@@ -4517,7 +4623,7 @@ function boot() {
     let listHtml = "";
     for (const t of activeTasks) {
       if (t === trackedTask) continue;
-      const tIcon = t.type === "bounty" ? "🔫" : t.type === "delivery" ? "📦" : t.type === "main" ? "⭐" : "🔍";
+      const tIcon = taskIcon(t);
       const tDL = t.deadline > 0 ? '⏳' + (t.deadline - (worldState.day - t.assignedDay)) + '天' : '主线';
       listHtml += '<div class="task-bar-item" onclick="__ww.taskSystem.trackTask(\'' + t.id + '\');__ww.renderTaskBar();__ww.showTaskDetail(\'' + t.id + '\')">';
       listHtml += '<span class="tbi-type">' + tIcon + '</span>';
@@ -4525,7 +4631,24 @@ function boot() {
       listHtml += '<span class="tbi-deadline">' + tDL + '</span>';
       listHtml += '</div>';
     }
+    // 故事支线：点一下自动寻路到下一环节的地点
+    const skipFirst = !trackedTask && stories.length > 0;
+    stories.forEach((s, i) => {
+      if (skipFirst && i === 0) return;   // 已经顶在上面了
+      listHtml += '<div class="task-bar-item" onclick="__ww.navigateToStory(\'' + s.storyId + '\')">';
+      listHtml += '<span class="tbi-type">📖</span>';
+      listHtml += '<span class="tbi-title">' + s.title + '</span>';
+      listHtml += '<span class="tbi-deadline">支线</span>';
+      listHtml += '</div>';
+      listHtml += '<div class="task-bar-objective">' + s.objective + '</div>';
+    });
     list.innerHTML = listHtml;
+  }
+
+  /** 任务图标：击败类用叉号，跟"去某地/找某人"区分开 */
+  function taskIcon(t) {
+    if (t.objective?.type === "defeat") return "❌";
+    return t.type === "bounty" ? "🔫" : t.type === "delivery" ? "📦" : t.type === "main" ? "⭐" : "🔍";
   }
 
   function showTaskDetail(taskId) {
@@ -4687,6 +4810,8 @@ function boot() {
     },
     // Phase 4 新系统
     taskSystem, stockMarket, showTaskDetail, renderTaskBar,
+    // 任务栏里的故事支线：点一下自动寻路到下一环节
+    navigateToStory,
     // 快捷调试
     debugAdvanceDay() { worldClock.debugAdvanceDay(); hud.setDay(worldClock.day); },
     setPlayerDamage(v) {

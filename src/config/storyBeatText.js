@@ -4,15 +4,17 @@
  * 每个节点的字段：
  *  - description   : 到场时看到的画面（覆盖 storyData 里的占位描述）
  *  - phoneInvite   : 手机来信正文。第一人称口信 + 邀请动作，配合"📍去看看"按钮
- *  - locateLabel   : 定位按钮上显示的地点名
+ *  - locateLabel   : 定位按钮上显示的地点名（与口信里的说法一致）
  *  - venueId       : 对应 storyVenues.VENUE_DEFS 的地点 id —— 决定"📍去看看"
- *                    实际把玩家带到镇上哪栋建筑的门口。由 patch 脚本按 locateLabel
- *                    关键词 + venueTags + channel 推断，保证文案与落点是同一个地方。
+ *                    把玩家带到镇上哪栋建筑的门口
  *  - cutsceneTitle : 黑幕过场小标题
  *  - cutscene      : 黑幕过场旁白（你没亲自到场、强行推进时补叙这段时间）
+ *  - stageCast     : 这一幕需要谁在场 —— StoryStage 据此把 NPC 征召到场地，
+ *                    立起描写里的那一幕（主角头顶 ❗ 可交互，配角在旁边站位），
+ *                    而不是随便找个路人跑来传话。
+ *                    { leadFemale, leadHint, leadGang, extras:[{n,hint,female,gang}] }
  *
- * 注意：description / phoneInvite / cutscene 里的第三人称代词会在运行时按
- * 实际出演的 NPC 性别改写（见 main.js _fitGender），所以这里写"她"或"他"都不影响。
+ * 生成时间：2026-08-19T08:18:53.880Z
  */
 export const STORY_BEAT_TEXT = {
   "trust_betrayal_redemption": {
@@ -25,7 +27,20 @@ export const STORY_BEAT_TEXT = {
         "那晚之后，巡夜的更夫看见红隼帮在广场周边转了三圈，气得踢翻了水桶。",
         "第二天酒馆里都在说，巷口那姑娘不见了影，镇长老莫在告示板上贴了张寻人启事。"
       ],
-      "venueId": "plaza"
+      "venueId": "plaza",
+      "stageCast": {
+        "leadFemale": true,
+        "leadHint": "被红隼帮堵住的姑娘",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 2,
+            "hint": "红隼帮的汉子",
+            "female": false,
+            "gang": "红隼帮"
+          }
+        ]
+      }
     },
     "re_encounter": {
       "description": "艾达坐在酒馆靠墙角落，就着烛火缝补左袖，见你推门进来，她手一抖，针扎进指头，嘴抿成一条线。",
@@ -36,7 +51,13 @@ export const STORY_BEAT_TEXT = {
         "这几天，她总在日落前到酒馆，向酒保比划着打听一个高个子骑手。",
         "镇上人见她洗了脸、换了件旧裙子，都说像是从哪儿逃出来的。"
       ],
-      "venueId": "saloon_back"
+      "venueId": "saloon_back",
+      "stageCast": {
+        "leadFemale": true,
+        "leadHint": "坐在角落的艾达",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "join": {
       "description": "她站在酒馆后门的马槽边，把一柄磨短了的猎刀平放在木桩上，刀柄朝向你，嘴唇上还沾着昨晚咬破的血痂。",
@@ -47,7 +68,13 @@ export const STORY_BEAT_TEXT = {
         "打那天起，她白日替你跑腿送信，夜里蹲在营地外头擦那柄短刀，刀柄上缠了新布条。",
         "镇上人慢慢不再叫她巷口姑娘，改口喊你身边的小尾巴。"
       ],
-      "venueId": "saloon_back"
+      "venueId": "saloon_back",
+      "stageCast": {
+        "leadFemale": true,
+        "leadHint": "持短刀的姑娘",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "honeymoon": {
       "description": "酒馆里煤油灯昏黄，他正伏在桌上给你那把左轮上油，听见门响抬头，眼角笑出褶子。",
@@ -58,7 +85,13 @@ export const STORY_BEAT_TEXT = {
         "接下来的日子，他替你饮马、擦枪、补衣裳，酒馆里人人都说你多了条影子。",
         "红隼帮的人也收敛了许多，镇上难得过了几天不听见夜半枪声的安生日子。"
       ],
-      "venueId": "saloon"
+      "venueId": "saloon",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "伏案擦枪的他",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "betrayal": {
       "description": "你掀开帐篷帘，钱箱铁锁被撬开，几张银元撒在泥地上，昨夜升的火堆还冒着细烟，他人影全无。",
@@ -70,7 +103,13 @@ export const STORY_BEAT_TEXT = {
         "天蒙蒙亮，杂货铺老板看见一匹灰马驮着个人影，顺着北边小路跑得没影了。",
         "镇上的人开始交头接耳，说红隼帮的人昨夜里在酒馆喝到半夜。"
       ],
-      "venueId": "hq"
+      "venueId": "hq",
+      "stageCast": {
+        "leadFemale": null,
+        "leadHint": "营地的报信人",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "clues": {
       "description": "酒馆后门的泥地上有一串新脚印，花纹是马蹄铁打的靴跟，吧台上搁着半杯冷掉的咖啡。",
@@ -82,7 +121,13 @@ export const STORY_BEAT_TEXT = {
         "酒馆老板说，那晚上他听见过两次后门响，一次轻一次重，中间隔着约莫一袋烟的工夫。",
         "打猎的老瘸子说，他在北坡看见过一匹灰马，鞍上挂着你那伙计的旧水囊。"
       ],
-      "venueId": "saloon_back"
+      "venueId": "saloon_back",
+      "stageCast": {
+        "leadFemale": null,
+        "leadHint": "酒馆里的线人",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "confrontation": {
       "description": "酒馆后巷，她背贴潮湿的砖墙，两手空空，眼神却直直迎上你，脚边落着那枚被你扯断的银扣子。",
@@ -93,7 +138,13 @@ export const STORY_BEAT_TEXT = {
         "日头从酒馆招牌滑到巷口，又落进西边山脊，看热闹的人嚼着烟草散了。",
         "她仍站在那扇吱呀响的木门边，手心的汗把信纸浸出两个指印。"
       ],
-      "venueId": "saloon_back"
+      "venueId": "saloon_back",
+      "stageCast": {
+        "leadFemale": true,
+        "leadHint": "后巷对峙的女子",
+        "leadGang": "黑蹄会",
+        "extras": []
+      }
     },
     "redemption": {
       "description": "雨夜教堂台阶上，她浑身湿透，怀里抱着那袋银币，膝盖在石板上磕出淤青，嘴唇冻得发紫。",
@@ -104,7 +155,13 @@ export const STORY_BEAT_TEXT = {
         "那夜雨没停过，教堂的烛火被风扑灭三回，又被人重新点亮。",
         "天亮时，几个去早祷的妇人看见台阶上摆着你的银袋，袋口系着一根沾血的麻绳。"
       ],
-      "venueId": "church"
+      "venueId": "church",
+      "stageCast": {
+        "leadFemale": true,
+        "leadHint": "雨夜忏悔的女子",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "exile": {
       "description": "镇口风滚草擦着地皮滚过，她衣衫单薄，被人用枪托一推，踉跄着踏上北去的土路，一步一回头。",
@@ -115,7 +172,20 @@ export const STORY_BEAT_TEXT = {
         "她走后第三日，北边的旅商捎回话，说看见一个女人在废弃的驿站啃冷掉的豆子。",
         "镇上的人渐渐不再提她的名字，只有酒馆墙上的悬赏令边角被风掀起，露出半张脸。"
       ],
-      "venueId": "north_road"
+      "venueId": "north_road",
+      "stageCast": {
+        "leadFemale": true,
+        "leadHint": "被驱逐的姑娘",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "持枪推她的人",
+            "female": null,
+            "gang": null
+          }
+        ]
+      }
     },
     "double_agent": {
       "description": "他在黑蹄会营帐外围，正用匕首削一根马刺，每削一下，眼睛就飞快扫一眼进出的帮众，风里飘来炖豆子和枪油的气味。",
@@ -126,7 +196,20 @@ export const STORY_BEAT_TEXT = {
         "他走后，有人半夜听见枪托砸门，天亮门槛下多了银圆和半根红隼羽。",
         "黑蹄会的货队接连在断颈谷遭伏，可镇上警长收到的线报永远比枪声早半个钟点。"
       ],
-      "venueId": "stables"
+      "venueId": "stables",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "黑蹄会外围的眼线",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "黑蹄会的帮众",
+            "female": null,
+            "gang": "黑蹄会"
+          }
+        ]
+      }
     }
   },
   "life_debt": {
@@ -139,7 +222,20 @@ export const STORY_BEAT_TEXT = {
         "两记枪响过后，北边林子里的乌鸦全惊了起来，在天上旋了老半天。",
         "过路的人不敢近前，只远远瞧见那伤号的马跑了，鞍袋上系着半截银矿镐柄。"
       ],
-      "venueId": "north_road"
+      "venueId": "north_road",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "中枪的男人",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "铁匠铺小子",
+            "female": false,
+            "gang": null
+          }
+        ]
+      }
     },
     "departure": {
       "description": "仓库角落的草铺空了，换下的血绷带扔在泥地上，半碗没喝完的汤药还冒着热气，门帘被风掀得一下下拍着。",
@@ -151,7 +247,13 @@ export const STORY_BEAT_TEXT = {
         "天不亮，他把一件破外套叠好搁在井沿上，就沿着矿渣路往南走了。",
         "等他走后，看门老头才发现他住过的草铺下压着两颗银矿子弹，像是留的买路钱。"
       ],
-      "venueId": "store_back"
+      "venueId": "store_back",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "看门老头",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "return": {
       "description": "酒馆里闷着一股汗味和劣质威士忌气，角桌边坐了个眼熟的汉子，右掌按着一把黄铜猎枪，朝门口抬了抬下巴。",
@@ -163,7 +265,20 @@ export const STORY_BEAT_TEXT = {
         "直到红隼帮的枪手在牌桌边围住你，枪管戳到后腰上，那角桌的汉子才慢慢站起来。",
         "他把猎枪往桌上一磕，满屋子的人就都听见了退膛的铜响，连风琴都停了。"
       ],
-      "venueId": "saloon"
+      "venueId": "saloon",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "欠药钱的汉子",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "酒保",
+            "female": null,
+            "gang": null
+          }
+        ]
+      }
     },
     "ally": {
       "description": "酒馆角落的桌子旁，那个曾被你救下的人正低头擦着左轮，枪管在油灯下泛着冷光，身旁空着一张椅子。",
@@ -175,7 +290,13 @@ export const STORY_BEAT_TEXT = {
         "每逢集市或矿场发薪的日子，那人总在你的桌角放一杯黑麦酒，什么也不多说。",
         "北边来的人说，红隼帮曾想找你麻烦，可那人在巷口一亮枪，对方就缩了回去。"
       ],
-      "venueId": "saloon"
+      "venueId": "saloon",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "擦枪的人",
+        "leadGang": null,
+        "extras": []
+      }
     }
   },
   "kin_revenge": {
@@ -188,7 +309,20 @@ export const STORY_BEAT_TEXT = {
         "讣告在镇上公报夹缝里登了三天，起初没人留意，直到那个男人牵着马进了镇子。",
         "他住进旅店阁楼，天亮前就坐在酒馆角落，眼睛盯着每一个推门进来的人。"
       ],
-      "venueId": "saloon"
+      "venueId": "saloon",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "生面孔外乡人",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "吧台后的酒保",
+            "female": null,
+            "gang": null
+          }
+        ]
+      }
     },
     "investigation": {
       "description": "警长办公室的桌上摊开一叠矿区出勤簿，那个男人用指节一行行划过名字，警长叼着烟靠在枪柜边。",
@@ -199,7 +333,20 @@ export const STORY_BEAT_TEXT = {
         "那人把酒馆问了个遍，又去矿场找到工头要了那晚的矿工名册。",
         "警长找他谈过，他却只问一句：那天谁开的枪，子弹从哪个方向来。"
       ],
-      "venueId": "sheriff"
+      "venueId": "sheriff",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "翻名册的外乡人",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "枪柜边的警长",
+            "female": null,
+            "gang": null
+          }
+        ]
+      }
     },
     "revenge_act": {
       "description": "酒馆里的谈话声忽然低下去，那个男人立在吧台前，右手垂在枪柄上，眼睛盯着门，灯影摇晃。",
@@ -210,7 +357,13 @@ export const STORY_BEAT_TEXT = {
         "他买通了一个红隼帮的小子，打听到你日落前会去酒馆。",
         "酒馆老板把猎枪藏到柜台下，让女仆和弹琴的都提前回家了。"
       ],
-      "venueId": "saloon"
+      "venueId": "saloon",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "持枪等待的外乡人",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "resolution": {
       "description": "你推门进去，警长正把一支刻了字的左轮锁进抽屉，桌上摊着几张通缉令，油灯把影子钉在墙上。",
@@ -221,7 +374,13 @@ export const STORY_BEAT_TEXT = {
         "镇上的人不再议论那晚的酒馆枪声，只偶尔在月光下听见马蹄踏过碎石。",
         "复仇者的通缉令在布告栏上被风撕去半边，再也没有人补上。"
       ],
-      "venueId": "sheriff"
+      "venueId": "sheriff",
+      "stageCast": {
+        "leadFemale": null,
+        "leadHint": "锁起左轮的警长",
+        "leadGang": null,
+        "extras": []
+      }
     }
   },
   "missing_member": {
@@ -235,7 +394,13 @@ export const STORY_BEAT_TEXT = {
         "镇上的人看见红隼帮驻地门口一直有人站着，地上丢着半截抽剩的烟。",
         "乔伊没回来，野狗把路口那摊蹄印舔得干干净净。"
       ],
-      "venueId": "hq"
+      "venueId": "hq",
+      "stageCast": {
+        "leadFemale": null,
+        "leadHint": "驻地门口的副手",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "contradictory_clues": {
       "description": "比利蹲在酒馆后巷的烂泥里拨弄半截缰绳，科尔靠墙用刀尖划着砖缝，两人谁也不看谁。",
@@ -247,7 +412,20 @@ export const STORY_BEAT_TEXT = {
         "有人给马槽添水，眼睛却总往这边溜，连水瓢都举在半空没放下。",
         "吧女把后门推开条缝，又轻轻关上，只漏出一股酸酒味。"
       ],
-      "venueId": "stables"
+      "venueId": "stables",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "酒馆后巷的比利",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "靠墙划砖缝的科尔",
+            "female": false,
+            "gang": null
+          }
+        ]
+      }
     },
     "decision": {
       "description": "油灯把一圈人脸照得发黄，副手把乔伊那顶帽子平放在木桌上，七八双眼睛都望向门口。",
@@ -259,7 +437,20 @@ export const STORY_BEAT_TEXT = {
         "银矿的几个矿工提前收了工，蹲在路边一边嚼烟叶一边朝这边望。",
         "教堂钟敲过九下，镇上还有人没睡，全在等那扇门开。"
       ],
-      "venueId": "hq"
+      "venueId": "hq",
+      "stageCast": {
+        "leadFemale": null,
+        "leadHint": "主持局面的副手",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 3,
+            "hint": "屋里的帮派成员",
+            "female": false,
+            "gang": null
+          }
+        ]
+      }
     },
     "rescued": {
       "description": "尘烟里，两个弟兄架着失踪的家伙从矿洞口走出来，他左肩缠着脏绷带，嘴唇干裂，那顶帽子终于回到他手里。",
@@ -270,7 +461,20 @@ export const STORY_BEAT_TEXT = {
         "消息传回镇上，酒馆里那几天总有人举杯朝你点头。",
         "那顶帽子被重新挂在驻地门口，风吹过时帽檐轻轻晃。"
       ],
-      "venueId": "north_road"
+      "venueId": "north_road",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "获救的失踪者乔伊",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 2,
+            "hint": "架着他的弟兄",
+            "female": false,
+            "gang": null
+          }
+        ]
+      }
     },
     "ransomed": {
       "description": "河风里，银矿兄弟会的人接过钱袋掂了掂，然后松开绳结，失踪的弟兄踉跄着朝这边走来，脸上带着淤青。",
@@ -281,7 +485,20 @@ export const STORY_BEAT_TEXT = {
         "第二天，镇上都在传红隼帮花了钱赎人，说那笔钱够买三匹好马。",
         "驻地里没人多提这事，但弟兄们看你时眼神里多了点东西。"
       ],
-      "venueId": "north_road"
+      "venueId": "north_road",
+      "stageCast": {
+        "leadFemale": null,
+        "leadHint": "银矿兄弟会接头人",
+        "leadGang": "银矿兄弟会",
+        "extras": [
+          {
+            "n": 1,
+            "hint": "被绑票的弟兄",
+            "female": null,
+            "gang": null
+          }
+        ]
+      }
     },
     "abandoned": {
       "description": "夜风里，驻地门口那顶帽子还挂在木桩上，几个弟兄坐在台阶上，没人说话，烟卷头的红光一明一灭。",
@@ -292,7 +509,20 @@ export const STORY_BEAT_TEXT = {
         "接下来的几天，驻地里少了往日的动静，有人开始收拾铺盖悄悄离开。",
         "酒馆里再没人提起那个失踪的名字，好像他从没来过。"
       ],
-      "venueId": "hq"
+      "venueId": "hq",
+      "stageCast": {
+        "leadFemale": null,
+        "leadHint": "驻地门口抽烟的弟兄",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "坐在台阶上的弟兄",
+            "female": null,
+            "gang": null
+          }
+        ]
+      }
     }
   },
   "market_scale": {
@@ -305,7 +535,26 @@ export const STORY_BEAT_TEXT = {
         "那天日头偏西时，缺斤少两的闲话已经传遍每间铺子和矿工棚屋。",
         "老米洛的面粉摊前再没人停下，连野狗都绕着他空荡荡的摊位走。"
       ],
-      "venueId": "plaza"
+      "venueId": "plaza",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "面粉摊主被指吞斤两",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 2,
+            "hint": "围住面粉摊的妇人",
+            "female": true,
+            "gang": null
+          },
+          {
+            "n": 1,
+            "hint": "拍秤盘嚷吞斤两的红脸汉子",
+            "female": false,
+            "gang": null
+          }
+        ]
+      }
     },
     "inspect": {
       "description": "酒馆后巷油灯昏黄，老米洛把秤平放在酒桶上，砝码盒半开，几只飞蛾绕着灯罩打转，黄铜秤盘反着冷光。",
@@ -316,7 +565,13 @@ export const STORY_BEAT_TEXT = {
         "那杆秤在酒馆后头的油灯下摆了一夜，露水凝在秤盘上。",
         "第二天清早，老米洛发现砝码盒的扣子被人掰开了，他更不敢去集市。"
       ],
-      "venueId": "saloon_back"
+      "venueId": "saloon_back",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "在酒馆后巷等你看秤的老米洛",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "cleared": {
       "description": "正午阳光下，老米洛把砝码一枚枚码在案板上，那杆秤的指针稳稳停住，他抬起袖口擦擦眼角，几个妇人提着空篮子围过来。",
@@ -327,7 +582,20 @@ export const STORY_BEAT_TEXT = {
         "那杆被洗清冤屈的秤重新挂回摊前，秤钩上的铜锈被磨得发亮。",
         "之后几天，镇上的妇人们又肯在老米洛的摊子前停下脚步，连警长都来称了一袋豆子。"
       ],
-      "venueId": "plaza"
+      "venueId": "plaza",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "洗清冤屈的老米洛",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 3,
+            "hint": "提空篮子围过来的妇人",
+            "female": true,
+            "gang": null
+          }
+        ]
+      }
     },
     "faded": {
       "description": "斜阳下，集市的烂泥地泛着亮，老亨利摊前没人围看，那杆秤挂在木柱上，秤钩空荡荡地晃。",
@@ -339,7 +607,13 @@ export const STORY_BEAT_TEXT = {
         "老亨利照旧出摊，只是秤盘里总搁着几颗干豆子，像是给自己提个醒。",
         "风卷着尘土从摊前滚过，缺斤少两的话头再没被人捡起来。"
       ],
-      "venueId": "plaza"
+      "venueId": "plaza",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "煮豆子等你的老亨利",
+        "leadGang": null,
+        "extras": []
+      }
     }
   },
   "old_feud": {
@@ -352,7 +626,20 @@ export const STORY_BEAT_TEXT = {
         "油灯慢慢暗下去，酒馆里只剩翻倒的木椅和地上的碎玻璃。",
         "第二天井台边打水的人都在学，两个老友为旧账扯破了嗓子。"
       ],
-      "venueId": "saloon"
+      "venueId": "saloon",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "老汤姆吵架的老矿工",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "哈克与老汤姆争吵",
+            "female": false,
+            "gang": null
+          }
+        ]
+      }
     },
     "backstory": {
       "description": "正午的广场上，一个老矿工坐在木箱上，摊开一本卷了边的账本，褪色字迹引来几个路人伸脖子。",
@@ -363,7 +650,20 @@ export const STORY_BEAT_TEXT = {
         "几天之后，矿场边再没人敢高声提起那口废弃的竖井。",
         "风把账本的事吹进每顶帐篷，有人开始绕着那个被指名字的人走路。"
       ],
-      "venueId": "plaza"
+      "venueId": "plaza",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "银矿老会计翻旧账",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "围观账本的路人",
+            "female": null,
+            "gang": null
+          }
+        ]
+      }
     },
     "reconciled": {
       "description": "黄昏的门廊长凳上，两个男人并肩坐着，中间只隔一杯推到两人之间的威士忌，肩膀斜斜地靠了一下。",
@@ -374,7 +674,20 @@ export const STORY_BEAT_TEXT = {
         "往后几天，酒馆里再没摔过一个杯子，老汤姆和哈克又坐回靠窗那桌。",
         "镇上人说，有些旧账翻过去了，矿上吹来的风都带着松脂气。"
       ],
-      "venueId": "saloon"
+      "venueId": "saloon",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "和好后的老汤姆",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "与老汤姆和好的哈克",
+            "female": false,
+            "gang": null
+          }
+        ]
+      }
     },
     "soured": {
       "description": "科布已经骑上马，马鞍后捆着褪色的铺盖卷，哈特站在马厩门口，手里的缰绳断成两截扔在尘土里。",
@@ -386,7 +699,20 @@ export const STORY_BEAT_TEXT = {
         "哈特没来送，只把两人当年合影的锡版照片塞进炉膛，看着它卷成黑灰。",
         "镇上的人起初还议论，后来连酒保都懒得再提那笔账，只在账本上把两个名字用铅笔一道划掉。"
       ],
-      "venueId": "stables"
+      "venueId": "stables",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "骑马要走的科布",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "气急败坏的哈特",
+            "female": false,
+            "gang": null
+          }
+        ]
+      }
     }
   },
   "medicine_shortage": {
@@ -399,7 +725,13 @@ export const STORY_BEAT_TEXT = {
         "那股子热病借着秋燥在镇子里传开，先是矿营，后来连酒馆的女佣也起不了床。",
         "药铺门前的地上落满黄叶，没人有心思去扫。"
       ],
-      "venueId": "clinic"
+      "venueId": "clinic",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "诊所里的大夫",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "find": {
       "description": "北边路口那间石头矮屋里，老猎人把一袋干草根扔在火炉旁，猎枪斜靠着门框，满屋子都是苦腥和硝烟味。",
@@ -410,7 +742,13 @@ export const STORY_BEAT_TEXT = {
         "太阳往西偏去，北道上又扬起一蓬黄灰，几个骑马的人远远望了望，掉头走了。",
         "镇上有人传言，老猎人把那袋药看得比银矿还紧。"
       ],
-      "venueId": "north_road"
+      "venueId": "north_road",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "北道口老猎人",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "delivered": {
       "description": "诊所后院支着三口铁锅，草药在滚水里翻腾，医生舀起一勺黑汤喂进男孩嘴里，那孩子窝在母亲怀里慢慢不再抽气。",
@@ -421,7 +759,26 @@ export const STORY_BEAT_TEXT = {
         "一昼夜过去，原本烫手的额头一个个退了温，咳嗽声从巷子里稀了下去。",
         "酒馆里重新有人压着嗓子讲笑话，伙计给每张桌子添了热咖啡。"
       ],
-      "venueId": "clinic"
+      "venueId": "clinic",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "后院煮药的医生",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "母亲怀里的病孩",
+            "female": false,
+            "gang": null
+          },
+          {
+            "n": 1,
+            "hint": "抱着男孩的母亲",
+            "female": true,
+            "gang": null
+          }
+        ]
+      }
     },
     "faded": {
       "description": "药铺门口晾着的湿床单不再滴水，老猎人挂在檐下的那袋草药落满灰，有几只麻雀停在袋口啄食陈年草籽。",
@@ -432,7 +789,13 @@ export const STORY_BEAT_TEXT = {
         "半个月过去，药铺里晾着的湿床单不再滴水，咳嗽声也一天比一天稀。",
         "镇上人把艾草挂回门框，那包草药仍吊在老猎人檐下，袋口被麻雀啄开，草籽撒了一地。"
       ],
-      "venueId": "north_road"
+      "venueId": "north_road",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "镇口的老猎人",
+        "leadGang": null,
+        "extras": []
+      }
     }
   },
   "orphan_clue": {
@@ -445,7 +808,13 @@ export const STORY_BEAT_TEXT = {
         "那孩子已经在街角站了半个钟头，路过的妇人拉他袖子，他甩开手，眼睛没离开那枚徽章。",
         "几个赶集的人回头张望，有个老头叹口气说，那徽章上的星星都磨亮了。"
       ],
-      "venueId": "plaza"
+      "venueId": "plaza",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "攥着旧警徽的瘦小男孩",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "badge": {
       "description": "酒馆油灯下，那枚铜徽躺在桌角，边角磨损的星星图案和“警长”字样在昏黄光里格外扎眼。",
@@ -456,7 +825,20 @@ export const STORY_BEAT_TEXT = {
         "酒馆里几个常客凑过来，看清那徽章后低声议论，有人摘下帽子不说话了。",
         "孩子把徽章贴在胸口，直到老板娘端来一杯温水才松开一点。"
       ],
-      "venueId": "saloon"
+      "venueId": "saloon",
+      "stageCast": {
+        "leadFemale": null,
+        "leadHint": "认出旧警徽的酒馆老板",
+        "leadGang": null,
+        "extras": [
+          {
+            "n": 1,
+            "hint": "攥旧警徽的男娃",
+            "female": false,
+            "gang": null
+          }
+        ]
+      }
     },
     "told": {
       "description": "孩子听完那番话，把徽章按在胸口好一会儿，才小心地收进内兜，抬头用袖子蹭了下眼睛说谢谢。",
@@ -467,7 +849,13 @@ export const STORY_BEAT_TEXT = {
         "孩子走后，酒馆里安静了一阵，有人小声说起那位老警长十年前的旧事。",
         "第二天，集市上的人看见孩子背着个小包袱出了镇口，那枚徽章再没在镇上露过面。"
       ],
-      "venueId": "saloon_back"
+      "venueId": "saloon_back",
+      "stageCast": {
+        "leadFemale": false,
+        "leadHint": "刚收起旧警徽的男孩",
+        "leadGang": null,
+        "extras": []
+      }
     },
     "faded": {
       "description": "空荡荡的街角，风卷着草屑滚过，地上有一个很浅的脚印坑，像是站了一整夜留下的。",
@@ -479,7 +867,13 @@ export const STORY_BEAT_TEXT = {
         "酒馆里有人问起那枚旧徽章，老板擦着杯子说不知道，再没人接话。",
         "如今墙角只剩野猫偶尔停下，舔舔爪子，再慢悠悠走开。"
       ],
-      "venueId": "north_road"
+      "venueId": "north_road",
+      "stageCast": {
+        "leadFemale": null,
+        "leadHint": "当事人",
+        "leadGang": null,
+        "extras": []
+      }
     }
   }
 };

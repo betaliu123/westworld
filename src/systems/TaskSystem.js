@@ -42,9 +42,28 @@ export class TaskSystem {
     if (overrides.targetNpcId) task.objective.targetNpcId = overrides.targetNpcId;
     if (overrides.targetBuilding) task.objective.targetBuilding = overrides.targetBuilding;
 
+    // 「打倒某人」类任务必须在**发出 taskCreated 之前**绑定真实目标：
+    // 报纸的 publishTask 是在这个事件里把标题/描述抄进文章的，绑晚了报纸上
+    // 就只有"悬赏：教训混混"而看不到打谁。
+    if (task.objective.type === "defeat" && !task.objective.targetNpcId && this.pickDefeatTarget) {
+      const t = this.pickDefeatTarget(task);
+      if (t) this._applyDefeatTarget(task, t);
+    }
+
     this.tasks.push(task);
     this._emit("taskCreated", task);
     return task;
+  }
+
+  /** 把目标写进 objective 和文案（不发事件，供 createTask 内部用） */
+  _applyDefeatTarget(task, target) {
+    if (!target?.npcId) return false;
+    task.objective.targetNpcId = target.npcId;
+    task.objective.targetName = target.displayName || target.npcId;
+    const nm = task.objective.targetName;
+    task.title = `${task.title}：${nm}`;
+    task.description = `${task.description}目标是「${nm}」——把他打倒即可，不必取命。`;
+    return true;
   }
 
   createTaskForType(type, overrides = {}) {
@@ -52,6 +71,20 @@ export class TaskSystem {
     if (pool.length === 0) return null;
     const [id] = pool[Math.floor(Math.random() * pool.length)];
     return this.createTask(id, overrides);
+  }
+
+  /**
+   * 给"击败某人"类任务指定一个真实目标（外部补绑用；正常路径由 createTask 自动完成）。
+   *
+   * TASK_DEFS 里的 bounty 模板 targetNpcId 全是 null，从来没人填 —— 于是这类
+   * 任务既没有可追踪的对象，也永不可能完成（objective 判定要比对 targetNpcId）。
+   * 挑人函数由外部注入（main.js 提供，能看到场上有谁）。
+   */
+  assignDefeatTarget(task, target) {
+    if (!task || task.objective?.type !== "defeat") return false;
+    if (!this._applyDefeatTarget(task, target)) return false;
+    this._emit("taskUpdated", task);
+    return true;
   }
 
   acceptTask(taskId) {
@@ -175,7 +208,12 @@ export class TaskSystem {
       const types = ["bounty", "delivery", "fetch"];
       for (let i = 0; i < count; i++) {
         const type = types[Math.floor(Math.random() * types.length)];
-        this.createTaskForType(type, { from: "newspaper" });
+        const task = this.createTaskForType(type, { from: "newspaper" });
+        // createTask 会自动绑定 defeat 目标；绑不到（场上没合适的人）就别挂
+        // 一个永远做不完的任务出来
+        if (task?.objective?.type === "defeat" && !task.objective.targetNpcId) {
+          this.rejectTask(task.id);
+        }
       }
     }
   }

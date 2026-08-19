@@ -367,6 +367,13 @@ html, body {
 .task-bar-item .tbi-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .task-bar-item .tbi-deadline { font-size: 10px; color: #9ab8d4; flex-shrink: 0; }
 .task-bar-item .tbi-deadline.urgent { color: var(--danger); }
+/* 故事支线的「下一步做什么」——任务栏里直接看得见，不用开手机 */
+.task-bar-objective {
+  padding: 0 12px 8px 34px; font-size: 11px; color: #8fa88f;
+  cursor: pointer; line-height: 1.5;
+  border-bottom: 1px solid rgba(200,151,58,.15);
+}
+.task-bar-objective:hover { color: #b8d0b8; }
 
 /* ---------- 任务详情弹窗 ---------- */
 .task-detail-frame {

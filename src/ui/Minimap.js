@@ -148,16 +148,39 @@ export class Minimap {
     ctx.stroke();
     ctx.restore();
 
-    // 任务标记（红色五角星，闪烁）
+    // 任务标记（闪烁）。「打倒某人」用叉号，其余用五角星 ——
+    // 追杀目标和"去某地/找某人"必须一眼能区分开。
     if (state.questMarkers) {
       const blink = 0.5 + Math.sin(this._pulse * 1.3) * 0.5;
       for (const qm of state.questMarkers) {
         const p = this._w2m(qm.x, qm.z);
-        // 红色五角星
         ctx.fillStyle = `rgba(255,40,20,${0.4 + blink * 0.6})`;
         ctx.strokeStyle = `rgba(255,60,40,${0.6 + blink * 0.4})`;
         ctx.lineWidth = 1.5;
         const r = 6 + blink * 2;
+
+        if (qm.kind === "defeat") {
+          // 叉号：黑描边打底再叠红色，小地图上底色再乱也看得清
+          const k = r * 0.85;
+          ctx.save();
+          ctx.lineCap = "round";
+          ctx.lineWidth = 3.4;
+          ctx.strokeStyle = `rgba(0,0,0,${0.5 + blink * 0.3})`;
+          ctx.beginPath();
+          ctx.moveTo(p.mx - k, p.my - k); ctx.lineTo(p.mx + k, p.my + k);
+          ctx.moveTo(p.mx + k, p.my - k); ctx.lineTo(p.mx - k, p.my + k);
+          ctx.stroke();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = `rgba(255,70,50,${0.75 + blink * 0.25})`;
+          ctx.beginPath();
+          ctx.moveTo(p.mx - k, p.my - k); ctx.lineTo(p.mx + k, p.my + k);
+          ctx.moveTo(p.mx + k, p.my - k); ctx.lineTo(p.mx - k, p.my + k);
+          ctx.stroke();
+          ctx.restore();
+          continue;
+        }
+
+        // 五角星（默认）
         ctx.beginPath();
         const spikes = 5;
         const outerR = r;

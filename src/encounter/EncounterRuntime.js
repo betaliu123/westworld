@@ -61,15 +61,25 @@ export class EncounterRuntime {
    *   choices: [{id,label,risk,hint}]
    *   preferNpcId         优先指定的 NPC（剧情绑定的角色）
    *   requireRole/jobs    选角约束（可选）
+   *   requireFemale       true/false 强制主角性别（描写里是"姑娘"就不能派个汉子）
    *   allowDefer          是否允许"稍后再说"
    *   intent              一句话说明这次遭遇的意图，给 LLM 选角用
+   *
+   *   ---- 布景模式（故事节点用）----
+   *   stageAt: {x,z}      把这一幕**摆在指定地点**，而不是把人叫到玩家跟前。
+   *                       玩家专程走到医馆门口，就该在医馆门口看到这一幕。
+   *   extraCast: number   除主角外还要几个人在场（围住主角的混混之类）
+   *   extraSpec: [{n,hint,female,gang}]  配角要求，用于挑人
    * }
    * @returns {boolean} 是否成功发起
    */
   async request(spec = {}) {
     if (this.busy) return false;
     const venue = this.getVenue();
-    const venuePos = { ...this.getPlayerPos() };
+    // 布景模式下"锚点"是场地，不是玩家当前位置
+    const venuePos = spec.stageAt
+      ? { x: spec.stageAt.x, z: spec.stageAt.z }
+      : { ...this.getPlayerPos() };
     const cast = await this._cast(spec, venue);
     if (!cast) {
       this.log(`（${spec.title || spec.id}：眼下没有合适的人来找你）`);
@@ -84,14 +94,104 @@ export class EncounterRuntime {
       venue,
       beats: (spec.beats && spec.beats.length) ? spec.beats.slice() : [cast.opener || "……有件事得跟你说。"],
       startedAt: this.now(),
+      extras: [],
       // 发起时玩家站在哪。放弃判定用「玩家离开这个锚点多远」，
       // 不能用「NPC 离玩家多远」—— 召唤阶段 NPC 本来就在远处，
       // 那样会在发起的同一帧就把遭遇取消掉。
       anchor: { x: venuePos.x, z: venuePos.z },
     };
     this.phase = Phase.SUMMONING;
-    this._summon(cast.npc);
+    if (spec.stageAt) this._stage(cast.npc, spec);
+    else this._summon(cast.npc);
+    // 告诉调用方主角是谁：故事要把绑定改到这个人身上，后续节点才是同一个人
+    if (spec.onCast) {
+      try { spec.onCast(cast.npcId, cast.name); } catch (e) { console.error("[Encounter] onCast 出错", e); }
+    }
     return true;
+  }
+
+  /**
+   * 布景：把主角和配角摆到场地上，立起描写里的那一幕。
+   *
+   * 跟 _summon 的区别：_summon 是"某人走到玩家跟前找你说话"，适合随机遭遇；
+   * 布景是"你走到事发地点，看到那一幕正在发生"，主角站在场地中心朝着玩家，
+   * 配角围在他周围（比如两个混混堵着姑娘）。
+   */
+  _stage(lead, spec) {
+    const at = spec.stageAt;
+    const p = this.getPlayerPos();
+    const safe = (x, z) => (this.town?.resolveCollision ? this.town.resolveCollision(x, z, 0.6) : { x, z });
+
+    // 主角站在场地中心稍偏玩家一侧，脸朝玩家
+    const toP = Math.atan2(p.x - at.x, p.z - at.z);
+    const ls = safe(at.x + Math.sin(toP) * 1.2, at.z + Math.cos(toP) * 1.2);
+    lead.brain.takeOver?.({
+      moveTo: { x: ls.x, z: ls.z },
+      faceTarget: p,
+      speedMul: 1.3,
+      arriveDist: 0.9,
+      immune: true,
+    });
+    if (lead.insideHome) lead.exitHome?.();
+    else if (lead.insideRoom) lead.exitPlace?.();
+
+    // 配角：围在主角两侧、背对玩家一点（"把人堵在墙角"的样子）
+    const extras = this._pickExtras(spec, lead);
+    const n = extras.length;
+    extras.forEach((npc, i) => {
+      // 在主角周围 1.6~2.2 米的弧上分布，偏向远离玩家的一侧
+      const spread = n === 1 ? 0 : (i / (n - 1) - 0.5) * 1.5;
+      const ang = toP + Math.PI + spread;
+      const r = 1.7 + (i % 2) * 0.4;
+      const es = safe(ls.x + Math.sin(ang) * r, ls.z + Math.cos(ang) * r);
+      npc.brain.takeOver?.({
+        moveTo: { x: es.x, z: es.z },
+        faceTarget: { x: ls.x, z: ls.z },   // 配角看着主角，不是看玩家
+        speedMul: 1.3,
+        arriveDist: 1.0,
+        immune: true,
+      });
+      if (npc.insideHome) npc.exitHome?.();
+      else if (npc.insideRoom) npc.exitPlace?.();
+      this.active.extras.push(npc);
+    });
+  }
+
+  /** 按 extraSpec 挑配角：优先同帮派 + 性别匹配，够不到就放宽 */
+  _pickExtras(spec, lead) {
+    const want = [];
+    for (const e of (spec.extraSpec || [])) {
+      for (let k = 0; k < (e.n || 1); k++) want.push(e);
+    }
+    if (!want.length) return [];
+    const pool = (this.npcManager?.all || []).filter(
+      (n) => n !== lead && this._available(n) && !n.brain?._perform
+    );
+    // 离场地近的优先（免得从镇子另一头飞过来）
+    const at = spec.stageAt;
+    pool.sort((a, b) =>
+      Math.hypot(a.pos.x - at.x, a.pos.z - at.z) - Math.hypot(b.pos.x - at.x, b.pos.z - at.z)
+    );
+    const out = [];
+    const used = new Set();
+    for (const req of want) {
+      // 三档放宽：帮派+性别 → 性别 → 任意
+      let pick = pool.find((n) => !used.has(n) && this._matchGang(n, req.gang) && this._matchFemale(n, req.female));
+      if (!pick) pick = pool.find((n) => !used.has(n) && this._matchFemale(n, req.female));
+      if (!pick) pick = pool.find((n) => !used.has(n));
+      if (!pick) break;
+      used.add(pick);
+      out.push(pick);
+    }
+    return out;
+  }
+  _matchGang(npc, gang) {
+    if (!gang) return true;
+    return (npc.personality?.gang || null) === gang;
+  }
+  _matchFemale(npc, female) {
+    if (female == null) return true;
+    return !!npc.female === !!female;
   }
 
   // ---- 阶段 1：选角 ----
@@ -103,13 +203,33 @@ export class EncounterRuntime {
   async _cast(spec, venue) {
     // spec.jobs 可选：限制候选的职业（微型事件常用，避免牧师来谈送花）
     const jobs = spec.jobs && spec.jobs.length ? spec.jobs : null;
-    const all = (this.npcManager?.all || []).filter((n) => this._available(n) && (!jobs || jobs.includes(n.personality?.job)));
+    let all = (this.npcManager?.all || []).filter((n) => this._available(n) && (!jobs || jobs.includes(n.personality?.job)));
     if (!all.length) return null;
+
+    // 描写里写明了性别（"把个姑娘堵在巷口"）就必须照着选，
+    // 否则会出现"描述是姑娘、来的是汉子"。真挑不出来再放宽。
+    if (spec.requireFemale != null) {
+      const matched = all.filter((n) => !!n.female === !!spec.requireFemale);
+      if (matched.length) all = matched;
+    }
 
     // 剧情指定的人优先（但仍要求他可用且不太远）
     if (spec.preferNpcId) {
       const want = all.find((n) => this._idOf(n) === spec.preferNpcId);
       if (want) return { npc: want, npcId: spec.preferNpcId, name: this._nameOf(want), opener: null };
+    }
+
+    // 布景模式：按"离场地近"挑，而不是按"离玩家近"（玩家就站在场地上，
+    // 但 pickVenueCandidates 的场地判定依赖 venue 字符串，未必覆盖门口）
+    if (spec.stageAt) {
+      const at = spec.stageAt;
+      const near = all
+        .map((n) => ({ npc: n, d: Math.hypot(n.pos.x - at.x, n.pos.z - at.z) }))
+        .sort((a, b) => a.d - b.d);
+      if (near.length) {
+        const n = near[0].npc;
+        return { npc: n, npcId: this._idOf(n), name: this._nameOf(n), opener: null };
+      }
     }
 
     const pool = pickVenueCandidates(all, venue, {
@@ -217,8 +337,12 @@ export class EncounterRuntime {
       if (d <= ARRIVE_DIST || a.npc.brain?.performArrived || timeout) {
         this.phase = Phase.READY;
         a.npc.brain.perform?.({ moveTo: null, faceTarget: p });
-        this.hud?.toast?.(`❗ ${a.name}想跟你说件事（按 F）`, { key: "enc-ready", duration: 4000 });
-        this.log(`${a.name}朝你走了过来`);
+        // 布景模式：这一幕本来就在这儿发生，措辞不该是"走过来找你"
+        this.hud?.toast?.(
+          a.stageAt ? `❗ ${a.name}就在跟前（按 F）` : `❗ ${a.name}想跟你说件事（按 F）`,
+          { key: "enc-ready", duration: 4000 }
+        );
+        this.log(a.stageAt ? `你看清了：${a.name}` : `${a.name}朝你走了过来`);
         return;
       }
       // 玩家自己走开了 → 放弃（注意判的是 drift 而非 d）
@@ -310,6 +434,10 @@ export class EncounterRuntime {
     // 没走到 resolve 就被打断的，直接归还日程
     if (this.active?.npc?.brain?._perform && this.phase !== Phase.DONE) {
       this.active.npc.brain.release?.();
+    }
+    // 布景的配角一律归还（他们没有"演完"的概念，散场就该各回各处）
+    for (const npc of (this.active?.extras || [])) {
+      if (npc?.brain?._perform) npc.brain.release?.();
     }
     this.active = null;
     this.phase = Phase.IDLE;
