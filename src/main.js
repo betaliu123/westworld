@@ -3876,11 +3876,19 @@ function boot() {
    * 用 landmark 的建筑中心会卡在碰撞体里。
    */
   function resolveStoryVenue(def, node, boundNpcId, beat = null) {
+    // 语义地点解析出来后，一律吸附到"真正站得住"的格子。
+    // 登记表给的是"某栋楼门口"这类语义位置，实测帮派驻地大门和几个后门
+    // 正好压在碰撞体边缘/被道具挡住 —— 不吸附的话玩家看着像卡在墙上，
+    // 摆上去的 NPC 也会被塞进墙里。
+    const snap = (v, extra) => {
+      const w = pathfinder.nearestWalkable(v.x, v.z);
+      return { ...v, x: w.x, z: w.z, ...extra };
+    };
     // ① 文案声明的地点（最权威，与玩家看到的文字一致）
     const vid = beat?.venueId;
     if (vid) {
       const v = resolveVenue(town, vid);
-      if (v) return { x: v.x, z: v.z, label: v.label, venueId: vid, from: `venue:${vid}` };
+      if (v) return snap(v, { venueId: vid, from: `venue:${vid}` });
     }
     // ② 没有 venueId（老存档/新节点）→ 现场推断一次
     const tags = (node.candidateDeliveries || []).flatMap((c) => c.venueTags || []);
@@ -3891,17 +3899,17 @@ function boot() {
     );
     if (guess) {
       const v = resolveVenue(town, guess);
-      if (v) return { x: v.x, z: v.z, label: v.label, venueId: guess, from: `infer:${guess}` };
+      if (v) return snap(v, { venueId: guess, from: `infer:${guess}` });
     }
     // ③ 退到绑定 NPC 现在站的地方
     if (boundNpcId) {
       const reg = npcRegistry.get(boundNpcId);
       const live = reg && npcManager.all.find((n) => n.alive && n.phone?.owner === reg.displayName);
-      if (live) return { x: live.pos.x, z: live.pos.z, label: "他待的地方", venueId: null, from: "npc" };
+      if (live) return snap({ x: live.pos.x, z: live.pos.z, label: "他待的地方" }, { venueId: null, from: "npc" });
     }
     // ④ 最终兜底：镇中广场（永远走得到，而且是个"像样的地方"）
     const plaza = resolveVenue(town, "plaza");
-    if (plaza) return { x: plaza.x, z: plaza.z, label: plaza.label, venueId: "plaza", from: "fallback" };
+    if (plaza) return snap(plaza, { venueId: "plaza", from: "fallback" });
     return { x: 0, z: 0, label: "镇中广场", venueId: null, from: "origin" };
   }
 
@@ -4613,7 +4621,10 @@ function boot() {
         + '<span class="tbi-title">' + s.title + '</span>'
         + '<span class="tbi-deadline">支线</span>'
         + '</div>'
-        + '<div class="task-bar-objective">' + s.objective + ' · 点击前往</div>';
+        // 目标行也要可点：之前只在上面那行挂了 onclick，这行却写着"点击前往"，
+        // 点了没反应
+        + '<div class="task-bar-objective" onclick="__ww.navigateToStory(\'' + s.storyId + '\')">'
+        + s.objective + ' · 点击前往</div>';
     } else if (activeTasks.length > 0) {
       tracked.innerHTML = '<div class="task-bar-current" style="opacity:0.6">📋 ' + activeTasks.length + ' 个任务进行中</div>';
     } else {
@@ -4640,7 +4651,7 @@ function boot() {
       listHtml += '<span class="tbi-title">' + s.title + '</span>';
       listHtml += '<span class="tbi-deadline">支线</span>';
       listHtml += '</div>';
-      listHtml += '<div class="task-bar-objective">' + s.objective + '</div>';
+      listHtml += '<div class="task-bar-objective" onclick="__ww.navigateToStory(\'' + s.storyId + '\')">' + s.objective + ' · 点击前往</div>';
     });
     list.innerHTML = listHtml;
   }

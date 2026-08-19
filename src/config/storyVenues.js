@@ -41,15 +41,30 @@ export const VENUE_DEFS = {
   diner:       { label: "餐馆",       building: "餐馆" },
   tailor:      { label: "裁缝铺",     building: "裁缝铺" },
   hq:          { label: "帮派驻地",   special: "compound" },
-  plaza:       { label: "镇中广场",   place: "plaza" },
+  plaza:       { label: "镇中广场",   place: "plaza", placeName: "广场" },
   north_road:  { label: "镇北路口",   special: "north_road" },
 };
 
 /**
  * 把 venueId 解析成世界坐标。
+ *
+ * 返回的点保证**站得住**：最后一律过一遍 town.resolveCollision。
+ * 不这样做会出现"目标点在碰撞体里"——实测帮派驻地的院落大门就压在围院
+ * 矩形里（推移 0.95m），寻路只能退到附近格子，玩家看着像卡在墙上。
+ *
  * @returns {{x:number,z:number,label:string,venueId:string}|null}
  */
 export function resolveVenue(town, venueId) {
+  const raw = _resolveRaw(town, venueId);
+  if (!raw) return null;
+  if (town.resolveCollision) {
+    const safe = town.resolveCollision(raw.x, raw.z, 0.5);
+    return { ...raw, x: safe.x, z: safe.z };
+  }
+  return raw;
+}
+
+function _resolveRaw(town, venueId) {
   const def = VENUE_DEFS[venueId];
   if (!def || !town) return null;
 
@@ -65,11 +80,15 @@ export function resolveVenue(town, venueId) {
     }
   }
 
-  // 2) 场所池
+  // 2) 场所池。注意不能直接取 [0]：places.plaza 的第一项是 _buildNature 塞进去的
+  //    "公园"（在镇子最北边 z≈138），而不是镇中心广场 —— 于是"集市北口"会把
+  //    玩家指到镇北的公园去。按名字优先挑，再退到离镇中心最近的一个。
   if (def.place) {
     const bucket = town.places?.[def.place];
     if (bucket?.length) {
-      const p = bucket[0];
+      const preferred = def.placeName ? bucket.find((p) => p.name === def.placeName) : null;
+      const p = preferred
+        || bucket.slice().sort((a, b) => (a.x * a.x + a.z * a.z) - (b.x * b.x + b.z * b.z))[0];
       return { x: p.x, z: p.z, label: def.label, venueId };
     }
   }
@@ -83,8 +102,10 @@ export function resolveVenue(town, venueId) {
     if (hq) return { x: hq.x, z: hq.z, label: def.label, venueId };
   }
   if (def.special === "north_road") {
-    const bound = town.bounds ?? 60;
-    return { x: 0, z: -bound + 12, label: def.label, venueId };
+    // 主街北端。town.bounds 是整张图的半径（180），不是主街长度，
+    // 用 core 附近更靠谱；取不到就退到 bounds 的一半。
+    const z = -((town.core ?? (town.bounds ?? 60) / 2) - 12);
+    return { x: 0, z, label: def.label, venueId };
   }
   return null;
 }

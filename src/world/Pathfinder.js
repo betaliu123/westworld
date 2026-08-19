@@ -36,14 +36,24 @@ export class Pathfinder {
     // Uint8Array：0 = 可走，1 = 障碍
     this.grid = new Uint8Array(n * n);
 
-    // 膨胀量只比行走半径多一点点。不能更大：建筑门口距碰撞体仅 0.8 米，
+    // 膨胀量只比行走半径多一点点。不能更大：建筑门口距碰撞体仅 0.8 米
+    // （矩形碰撞体本身已经带了 +0.4 余量，而门放在建筑面外 1.2 米），
     // 膨胀过头会把门口整格标成障碍，"走到某栋楼门口"就永远无解。
     const pad = this.radius + 0.1;
     for (const c of t.colliders || []) {
+      // 只遍历包围盒覆盖的格，但**逐格判定格心是否真在膨胀框内**。
+      // 早先直接把 _ci(min)..._ci(max) 整段标成障碍 —— Math.round 会向外取整，
+      // 等于凭空多膨胀半格（0.5m），实测把 20 个门里的 19 个都吞掉了。
       const x0 = this._ci(c.x - c.halfW - pad), x1 = this._ci(c.x + c.halfW + pad);
       const z0 = this._ci(c.z - c.halfD - pad), z1 = this._ci(c.z + c.halfD + pad);
       for (let ix = x0; ix <= x1; ix++) {
-        for (let iz = z0; iz <= z1; iz++) this._set(ix, iz, 1);
+        const wx = this._cw(ix);
+        if (Math.abs(wx - c.x) >= c.halfW + pad) continue;
+        for (let iz = z0; iz <= z1; iz++) {
+          const wz = this._cw(iz);
+          if (Math.abs(wz - c.z) >= c.halfD + pad) continue;
+          this._set(ix, iz, 1);
+        }
       }
     }
     for (const c of t.circleColliders || []) {
@@ -85,6 +95,27 @@ export class Pathfinder {
       }
     }
     return null;
+  }
+
+  /**
+   * 把一个语义坐标吸附到最近的可走点。
+   *
+   * 用途：地点登记表给出的是"某栋楼的门口"这类语义位置，但它可能正好压在
+   * 碰撞体边缘或被道具挡住（实测帮派驻地大门、几个后门都是）。要在那儿摆
+   * NPC 或让玩家走过去，必须先吸附到真正站得住的格子，否则演员会被塞进墙里。
+   *
+   * @returns {{x:number,z:number,moved:number}} moved = 吸附移动了多远
+   */
+  nearestWalkable(x, z, maxR = 10) {
+    const c = this._nearestFree(this._ci(x), this._ci(z), maxR);
+    if (!c) return { x, z, moved: 0 };
+    const nx = this._cw(c[0]), nz = this._cw(c[1]);
+    return { x: nx, z: nz, moved: Math.hypot(nx - x, nz - z) };
+  }
+
+  /** 这个点现在能站人吗 */
+  isWalkable(x, z) {
+    return !this._blocked(this._ci(x), this._ci(z));
   }
 
   /** 两点之间是否直线无阻（用于把 A* 的格路径压成拐点） */
