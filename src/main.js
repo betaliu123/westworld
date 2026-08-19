@@ -3695,25 +3695,19 @@ function boot() {
     const responses = node.playerResponses || [];
     const force = !!opts.force;   // 手机"立即开始"：一定要拉起一场戏
 
-    // 个人小剧场：故事绑定的 NPC 有专属剧本 → 让他亲身上台开演
+    // 只有故事**显式声明**了要用哪棵剧场树时才开戏（theaterTreeId）。
+    // 以前是"绑定 NPC 恰好是某棵个人剧场的主角就顶替上去"，甚至强制模式下
+    // 随机挑一棵 —— 于是推进《巷子里的求助》永远弹出《账本疑云》，
+    // 故事自己的台词和选项反而永远看不到。
     const bindings = inst.actorBindings || {};
     const boundNpcId = Object.values(bindings)[0];
-    let tree = boundNpcId
-      ? STORY_TREE_LIST.find((t) => t.protagonistId === boundNpcId)
+    const tree = def.theaterTreeId
+      ? STORY_TREE_LIST.find((t) => t.id === def.theaterTreeId)
       : null;
-    // 强制启动且没有专属剧本 → 挑一棵能演的（优先势力剧场，其次任意个人剧场）
-    if (!tree && force) {
-      const cands = [
-        ...STORY_TREE_LIST.filter((t) => t.kind === "faction"),
-        ...STORY_TREE_LIST.filter((t) => t.kind === "personal"),
-      ];
-      tree = cands[Math.floor(Math.random() * cands.length)] || null;
-    }
     if (tree && !theater.active) {
       const started = theater.startStoryTree(tree, tree.protagonistId || boundNpcId || null);
       if (started) {
-        hud.toast(`🎭 ${def.title} · ${tree.title}`, { key: "story-personal", duration: 4200 });
-        // 传送到舞台边（省去跑过去），玩家马上能看到戏
+        hud.toast(`🎭 ${def.title} · ${tree.title}`, { key: "story-theater", duration: 4200 });
         if (force) {
           const c = theater.stage.center;
           const safe = town.resolveCollision(c.x + 3.5, c.z + 3.5, 0.45);
@@ -3722,13 +3716,12 @@ function boot() {
         }
         return true;
       }
-      // 开不了戏（凑不齐角色）→ 告诉玩家原因，再落到遭遇/手机
       if (force && theater.lastFailReason) {
         hud.toast(`⚠️ 这场戏演不起来：${theater.lastFailReason}`, { duration: 5000, key: "story-nocast" });
       }
     }
 
-    // 让 NPC 当面来：有决策走遭遇抉择；没有决策（引言节点）也来当面说
+    // 主路径：让绑定的 NPC 当面来，用**这个故事自己的**台词和选项开弹窗
     if (!theater.active) {
       const ok = requestStoryEncounter(storyId, inst.currentNode);
       if (ok) return true;

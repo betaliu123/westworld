@@ -338,13 +338,27 @@ export class TheaterRuntime {
     this.nodeEndAt = last + 1200;
   }
 
-  /** 把台词里的别名/角色占位替换成真实 NPC 名（"狡狐"→"杰克·莫罗"等） */
+  /**
+   * 把台词/选项里的角色占位替换成真实 NPC 名。
+   * 支持两种写法：
+   *   {roleId}  —— v2 剧本用的花括号占位（推荐，绝不会误伤正常文字）
+   *   别名/绰号 —— 旧剧本的 nameAliases 映射（"狡狐"→实际演员名）
+   * 没绑到演员的占位用"那个人"兜底，避免屏幕上出现 {member_b}。
+   */
   _sub(text) {
-    if (!text || !this._subKeys?.length) return text;
+    if (!text) return text;
     let out = String(text);
-    for (const key of this._subKeys) {
-      const re = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
-      out = out.replace(re, this._nameMap[key]);
+    // ① 花括号占位
+    if (out.includes("{")) {
+      out = out.replace(/\{(\w+)\}/g, (_, roleId) => this._nameMap[roleId] || "那个人");
+    }
+    // ② 别名/绰号（长的先替换，避免"艾琳"吃掉"艾琳·沃德"）
+    if (this._subKeys?.length) {
+      for (const key of this._subKeys) {
+        if (!key || /^\w+$/.test(key)) continue;   // 纯 roleId 已由 ① 处理
+        const re = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g");
+        out = out.replace(re, this._nameMap[key]);
+      }
     }
     return out;
   }
@@ -416,7 +430,7 @@ export class TheaterRuntime {
       })),
       // 只用当前节点自己的提示；开场那句 hintOnEnter 已经在开演时提示过了，
       // 进了事件区域还一直挂在输入框上方很占地方
-      this.node.hint || ""
+      this._sub(this.node.hint || "")
     );
   }
 
@@ -431,7 +445,7 @@ export class TheaterRuntime {
     this._clearChoices();
     this.playerEverJoined = true;   // 真的选了才算参与（结算才有你一份）
     // 玩家自己也要开口，说的是情景台词而不是按钮上的干巴巴标签
-    const spoken = choice.line || choice.label;
+    const spoken = this._sub(choice.line || choice.label);
     this.hooks.playerSay?.(spoken);
     this.hooks.log?.(`你：${spoken}`);
     // 记下玩家在关键节点的选择，供结局的报纸/来信写出"你做了什么"
@@ -793,8 +807,14 @@ export class TheaterRuntime {
     this.phase = Phase.RESOLVING;
     const oc = node.outcome;
     if (oc) {
-      this.hooks.onOutcome?.(oc, { playerJoined: this.playerEverJoined, tree: this.tree });
-      this.hooks.log?.(`【结局】${oc.title}`);
+      // 结局旁白里的 {roleId} 占位也要换成真实 NPC 名
+      const subbed = {
+        ...oc,
+        title: this._sub(oc.title),
+        lines: (oc.lines || []).map((l) => this._sub(l)),
+      };
+      this.hooks.onOutcome?.(subbed, { playerJoined: this.playerEverJoined, tree: this.tree });
+      this.hooks.log?.(`【结局】${subbed.title}`);
     }
     setTimeout(() => this.disband("演完"), 3200);
   }
