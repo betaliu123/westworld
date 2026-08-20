@@ -142,15 +142,16 @@ export class TheaterDirector {
    * 开一场个人/势力小剧场（不在每日随机池里，由故事投递/调试面板触发）
    * @param {object} tree 剧本
    * @param {string|null} preferNpcId 优先出演的 NPC
-   * @param {object} opts { venue:{x,z}, room }
+   * @param {object} opts { venue:{x,z}, room, anchor:{x,z} }
    *   venue 非空 = 把这一幕摆在指定地点（故事节点的事发地点），
-   *   room 非空 = 摆在这个室内空间里（玩家在屋里时）。
+   *   room 非空 = 摆在这个室内空间里（玩家在屋里时），
+   *   anchor = 世界坐标参照点（选角按它量"谁离得近"；室内必须给，见 StageMap.setVenue）。
    */
   startStoryTree(tree, preferNpcId = null, opts = {}) {
     if (this.active) { this.lastFailReason = "已经有剧场在演了"; return false; }
     if (!tree || !tree.nodes || !tree.entryNode) { this.lastFailReason = "剧本数据不完整"; return false; }
     // 先把舞台搬到事发地点，_begin 里算站位时才会落在那儿
-    if (opts.venue) this.stage.setVenue(opts.venue.x, opts.venue.z, opts.room || null);
+    if (opts.venue) this.stage.setVenue(opts.venue.x, opts.venue.z, opts.room || null, opts.anchor || null);
     const ok = this._begin(tree, preferNpcId, this.worldClock?.day ?? 1);
     if (!ok) {
       if (opts.venue) this.stage.resetVenue();
@@ -299,7 +300,8 @@ export class TheaterDirector {
     // 只在玩家真的选了才推进 —— 没参与就让节点留在原地，之后还能再来。
     const storyTree = meta.tree || this.currentTree;
     if (storyTree?._storyId && this.onStoryOutcome) {
-      try { this.onStoryOutcome(storyTree._storyId, storyTree._nodeId, oc.id, joined); }
+      // followUpId：多轮抉择时的第二轮选择（好感/信任要把两轮相加）
+      try { this.onStoryOutcome(storyTree._storyId, storyTree._nodeId, oc.id, joined, oc.followUpId || null); }
       catch (e) { console.error("[Theater] onStoryOutcome 出错", e); }
     }
     // 复仇线：单独一条回调，因为它不是 StoryTree 的节点

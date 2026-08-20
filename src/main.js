@@ -927,7 +927,7 @@ function boot() {
 
   // 故事节点合成的场次演完后，把玩家的抉择交回 StoryTree 推进到下一环节，
   // 并立刻把新环节投递出去（手机口信 + 定位，或玩家还在原地就直接接着演）
-  theater.onStoryOutcome = (storyId, nodeId, outcomeId) => {
+  theater.onStoryOutcome = (storyId, nodeId, outcomeId, joined, followUpId) => {
     const inst = worldState.getStoryInstance(storyId);
     if (!inst || inst.status !== "active" || inst.currentNode !== nodeId) return;
     const def = storyRuntime.getDefinition(storyId);
@@ -937,15 +937,18 @@ function boot() {
     // 好感/信任的变动在这里施加：剧场的 _applyEffects 只认 cash/honor/wanted，
     // 而合成出来的选项（gen0/gen1…）在 StoryTree 里并不存在，走不到原生的
     // modify_relationship。统一在这一处做，两类选项都覆盖到。
-    const fx = getBeatText(storyId, nodeId)?.scene?.choiceScenes?.[outcomeId]?.fx;
-    if (fx && (fx.affection || fx.trust)) {
+    // 多轮时首轮与次轮的好感变动要**相加**（两次选择都算数）。
+    const cs = getBeatText(storyId, nodeId)?.scene?.choiceScenes?.[outcomeId];
+    const fu = followUpId ? (cs?.followUps || []).find((f) => f.id === followUpId) : null;
+    const aff = (cs?.fx?.affection || 0) + (fu?.fx?.affection || 0);
+    const tru = (cs?.fx?.trust || 0) + (fu?.fx?.trust || 0);
+    if (aff || tru) {
       const leadId = _storyLeadNpcId(storyId);
       if (leadId) {
-        if (fx.trust) relationshipSystem.addPlayerTrust(leadId, fx.trust);
-        if (fx.affection) relationshipSystem.addPlayerAffection(leadId, fx.affection);
+        if (tru) relationshipSystem.addPlayerTrust(leadId, tru);
+        if (aff) relationshipSystem.addPlayerAffection(leadId, aff);
         const who = npcRegistry.get(leadId)?.displayName || "对方";
-        const d = fx.affection || 0;
-        if (d) hud.toast(`${who}对你的看法 ${d > 0 ? "+" : ""}${d}`, { side: true, key: "story-aff", duration: 3000 });
+        if (aff) hud.toast(`${who}对你的看法 ${aff > 0 ? "+" : ""}${aff}`, { side: true, key: "story-aff", duration: 3000 });
       }
     }
 
@@ -4130,6 +4133,9 @@ function boot() {
     const ok = theater.startStoryTree(tree, tree.protagonistId || leadId || null, {
       venue: room ? { x: room.origin.x, z: room.origin.z } : { x: venue.x, z: venue.z },
       room,
+      // 选角按**世界坐标**的事发地点量距离。室内房间在 (1000,1000) 的独立坐标
+      // 空间，拿它当参照会把选角池清空（镇上所有人都在一千多米外）。
+      anchor: { x: venue.x, z: venue.z },
     });
     if (ok) {
       hud.toast(`🎭 ${def.title} · ${tree.title}`, { key: "story-theater", duration: 4200 });
@@ -4238,7 +4244,8 @@ function boot() {
           id: r.id,
           label: r.label,
           risk: r.risk || "medium",
-          next: `end_${r.id}`,
+          // 有第二轮就先走"对方反应"节点，没有就直接收场
+          next: (gen?.choiceScenes?.[r.id]?.followUps?.length >= 1) ? `react_${r.id}` : `end_${r.id}`,
           line: r.label,
         })),
       });
@@ -4248,22 +4255,61 @@ function boot() {
         // 空数组 —— 3~4 个选项走向完全一样，选了等于没选。
         const cs = gen?.choiceScenes?.[r.id] || null;
         const reactBeats = (cs?.beats || []).filter((b) => roleIds.has(b.speaker));
-        sceneNodes.push({
-          id: `end_${r.id}`,
-          terminal: true,
-          beats: reactBeats.length
-            ? reactBeats
-            : [{ speaker: "lead", to: "player", text: "……就这样吧。", delayMs: 1700, mood: "neutral" }],
-          outcome: {
-            id: r.id,
-            title: `${def.title} · ${r.label}`,
-            lines: cs?.lines || [],
-            // 剧场自己能施加的：现金/名誉/通缉
-            cash: cs?.fx?.cash || 0,
-            honor: cs?.fx?.honor || 0,
-            wanted: cs?.fx?.wanted || 0,
-          },
-        });
+        const followUps = (cs?.followUps || []).filter((f) => f?.beats?.length);
+
+        if (followUps.length) {
+          // ---- 多轮：open → react_<首轮> → end_<首轮>_<次轮> ----
+          // 一幕只有一轮抉择太单薄（选完就散），像"酒馆争风"那样多演一轮
+          // 才有来回。react 节点不是终局，所以首轮的数值后果并到终局里一起算。
+          sceneNodes.push({
+            id: `react_${r.id}`,
+            title: node.title || def.title,
+            hint: desc,
+            beats: reactBeats.length ? reactBeats : [{ speaker: "lead", to: "player", text: "……你还想怎么样？", delayMs: 1700, mood: "cold" }],
+            choices: followUps.map((f) => ({
+              id: `${r.id}__${f.id}`,
+              label: f.label,
+              risk: r.risk || "medium",
+              next: `end_${r.id}_${f.id}`,
+              line: f.label,
+            })),
+          });
+          for (const f of followUps) {
+            const sum = (k) => (cs?.fx?.[k] || 0) + (f.fx?.[k] || 0);
+            sceneNodes.push({
+              id: `end_${r.id}_${f.id}`,
+              terminal: true,
+              beats: f.beats.filter((b) => roleIds.has(b.speaker)),
+              outcome: {
+                // outcome.id 要能让 onStoryOutcome 认出首轮选了什么（推进 StoryTree 用）
+                id: r.id,
+                followUpId: f.id,
+                title: `${def.title} · ${r.label} → ${f.label}`,
+                lines: f.lines || [],
+                cash: sum("cash"),
+                honor: sum("honor"),
+                wanted: sum("wanted"),
+              },
+            });
+          }
+        } else {
+          // ---- 单轮兜底（没生成到第二轮时）----
+          sceneNodes.push({
+            id: `end_${r.id}`,
+            terminal: true,
+            beats: reactBeats.length
+              ? reactBeats
+              : [{ speaker: "lead", to: "player", text: "……就这样吧。", delayMs: 1700, mood: "neutral" }],
+            outcome: {
+              id: r.id,
+              title: `${def.title} · ${r.label}`,
+              lines: cs?.lines || [],
+              cash: cs?.fx?.cash || 0,
+              honor: cs?.fx?.honor || 0,
+              wanted: cs?.fx?.wanted || 0,
+            },
+          });
+        }
       }
     }
 
@@ -4276,7 +4322,15 @@ function boot() {
       roles,
       entryNode: "open",
       unattendedMs: 90000,
-      timeoutNode: isTerminal ? "open" : `end_${responses[0].id}`,
+      // 玩家跑掉时的落点：首轮第一个选项的分支。有第二轮就落在它的第一个次轮结局，
+      // 否则落在单轮结局（timeoutNode 指向不存在的节点会让剧场卡住）
+      timeoutNode: isTerminal
+        ? "open"
+        : (() => {
+            const r0 = responses[0];
+            const f0 = gen?.choiceScenes?.[r0.id]?.followUps?.[0];
+            return f0 ? `end_${r0.id}_${f0.id}` : `end_${r0.id}`;
+          })(),
       nodes: sceneNodes,
       // 供 TheaterDirector 在散场时把抉择交回故事树
       _storyId: storyId,

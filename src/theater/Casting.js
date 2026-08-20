@@ -55,6 +55,12 @@ export class Casting {
     const preferId = opts.preferNpcId;
     // 记录为什么选不齐（供"前置要求不符"提示）
     this.lastFailReason = null;
+    // 全场演员总数：没有固定站位的角色靠"全场第几个"散开，
+    // 只用角色内部的 index 会让所有单人角色都拿到 0，站位全叠在一起。
+    const slotTotal = (tree.roles || []).reduce((n, r) => n + (r.count || 1), 0);
+    let slot = 0;
+    // 新一场戏：清掉上一场占用的站位
+    this.stage.beginCast?.();
 
     for (const role of tree.roles) {
       const count = role.count || 1;
@@ -95,7 +101,7 @@ export class Casting {
           // 虚构角色名只留两个用途：① 老剧本台词里字面写了这个名字，运行时
           // 要替换成真人名 ② 选角失败时的提示文案
           roleName: role.name || null,
-          spot: this.stage.spotFor(role.roleId, i, picked.length),
+          spot: this.stage.spotFor(role.roleId, i, picked.length, slot++, slotTotal),
         });
       });
     }
@@ -132,7 +138,7 @@ export class Casting {
     return npc.phone?.owner || npc.personality?.job || "镇民";
   }
 
-  /** 可征召池：活着、不忙、在室外、离舞台够近 */
+  /** 可征召池：活着、不忙、在室外、离事发地点够近 */
   _pool() {
     const all = this.npcManager?.all || [];
     return all.filter((npc) => {
@@ -140,8 +146,14 @@ export class Casting {
       if (npc.brain?._perform) return false;
       if (BUSY_STATES.has(npc.brain?.state)) return false;
       // 30 米内才征召：以前放到 60 米，演员要跑很久才到位，
-      // 戏已经开演了主角还在街对面走路
-      if (this.stage.distanceToCenter(npc.pos) > 30) return false;
+      // 戏已经开演了主角还在街对面走路。
+      // 必须用**世界坐标锚点**而不是舞台中心：室内房间在 (1000,1000) 这种
+      // 独立坐标空间里，用中心量距离的话镇上所有人都在一千多米外，
+      // 池子会被清空 —— 室内戏一个演员都凑不出来。
+      const d = this.stage.distanceToAnchor
+        ? this.stage.distanceToAnchor(npc.pos)
+        : this.stage.distanceToCenter(npc.pos);
+      if (d > 30) return false;
       return true;
     });
   }
@@ -212,8 +224,10 @@ export class Casting {
     // 性别要求（歌女等）
     if (role.female != null) s += npc.female === role.female ? 24 : -40;
 
-    // 离舞台近的优先（少让人跑长途）
-    const d = this.stage.distanceToCenter(npc.pos);
+    // 离事发地点近的优先（少让人跑长途）。同样必须用世界坐标锚点。
+    const d = this.stage.distanceToAnchor
+      ? this.stage.distanceToAnchor(npc.pos)
+      : this.stage.distanceToCenter(npc.pos);
     s += Math.max(0, 20 - d * 0.4);
 
     // 打散同分，避免每天都是同一批人

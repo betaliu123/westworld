@@ -60,7 +60,23 @@ const ROLE_OFFSET = {
   jack: { x: 0, z: -1.2 },
   debtor: { x: 2.2, z: 1.4 },
   friend: { x: -2.8, z: 0.6 },
+
+  // ---- 故事节点合成的角色（buildSceneTreeForNode / 复仇树用）----
+  // 必须显式给站位：这些 roleId 以前不在表里，会掉进圆周兜底公式，
+  // 而单人角色的 index/total 都是 0/1 → 角度恒为 0 → 所有演员叠在同一个点上。
+  // 构图：主角靠玩家这侧居中，配角在他左右后方（"两个汉子堵着姑娘"的样子）。
+  lead: { x: 0, z: 1.6 },
+  extra0_0: { x: -2.3, z: -0.6 },
+  extra0_1: { x: 2.3, z: -0.6 },
+  extra0_2: { x: 0, z: -2.6 },
+  extra1_0: { x: -3.4, z: 1.4 },
+  extra1_1: { x: 3.4, z: 1.4 },
+  extra1_2: { x: -1.2, z: -3.2 },
+  extra2_0: { x: 1.2, z: -3.2 },
 };
+
+/** 站位之间的最小间距（米）—— 小于这个就算叠在一起了 */
+const MIN_SEPARATION = 1.5;
 
 export class StageMap {
   constructor(town) {
@@ -68,6 +84,8 @@ export class StageMap {
     this.outdoor = town;          // 室外碰撞上下文（永久保存，散场要还回去）
     this.room = null;             // 非空 = 这场戏在室内演
     this.center = { ...THEATER_CONFIG.stage };
+    this.anchor = { ...THEATER_CONFIG.stage };   // 世界坐标锚点（选角按它量距离）
+    this._taken = [];
   }
 
   /** 舞台中心（可按需换到别的空地） */
@@ -82,14 +100,20 @@ export class StageMap {
    * resolveCollision 同签名，所以 _safe 不用改就能把站位夹在屋内墙线内。
    * 不换的话室内演出的落点会按室外碰撞算，人会被摆进墙里或屋外。
    *
-   * @param {number} x 中心 X
+   * @param {number} x 中心 X（室内时是房间坐标系）
    * @param {number} z 中心 Z
    * @param {object|null} room Interior 实例；null = 室外
+   * @param {object|null} anchor **世界坐标**参照点（选角按它算"谁离得近"）。
+   *   室内房间在 (1000,1000) 这种独立坐标空间里，用中心去量距离的话
+   *   镇上所有人都在一千多米外 —— 选角池会被清空，室内戏一个演员都凑不出来。
+   *   所以室内要传玩家走到的那个门口坐标。
    */
-  setVenue(x, z, room = null) {
+  setVenue(x, z, room = null, anchor = null) {
     this.center = { x, z };
     this.room = room || null;
     this.town = room || this.outdoor;
+    this.anchor = anchor || { x, z };
+    this._taken = [];          // 本场已占用的站位（防重叠）
   }
 
   /** 散场：把舞台还原成室外默认位置 */
@@ -97,9 +121,24 @@ export class StageMap {
     this.room = null;
     this.town = this.outdoor;
     this.center = { ...THEATER_CONFIG.stage };
+    this.anchor = { ...this.center };
+    this._taken = [];
+  }
+
+  /**
+   * 到"世界坐标锚点"的距离 —— 选角用这个。
+   * 与 distanceToCenter 的区别：后者量的是到舞台中心（室内时在房间坐标系里），
+   * 用于判断玩家是否在场；选角要的是"这个镇民离事发地点多远"，必须用世界坐标。
+   */
+  distanceToAnchor(pos) {
+    const a = this.anchor || this.center;
+    return Math.hypot(pos.x - a.x, pos.z - a.z);
   }
 
   get isIndoor() { return !!this.room; }
+
+  /** 开始新一场选角：清掉上一场占用的站位（否则会跟已散场的人"错开"，越挤越偏） */
+  beginCast() { this._taken = []; }
 
   /**
    * 注入"把点吸附到可走格"的函数（由 main.js 提供，内部用 Pathfinder）。
@@ -110,8 +149,16 @@ export class StageMap {
    */
   setWalkableSnap(fn) { this._snapWalkable = fn || null; }
 
-  /** 某角色的落点（已过碰撞校验）；同角色多人时用 index 摊开 */
-  spotFor(roleId, index = 0, total = 1) {
+  /**
+   * 某角色的落点（已过碰撞校验 + 防重叠）。
+   * @param {string} roleId 角色 id
+   * @param {number} index  同 roleId 多人时的序号
+   * @param {number} total  同 roleId 的人数
+   * @param {number} slot   **全场**第几个演员（没有 ROLE_OFFSET 的角色靠它散开，
+   *                        否则单人角色 index/total 恒为 0/1、角度全是 0，会叠在一起）
+   * @param {number} slotTotal 全场演员总数
+   */
+  spotFor(roleId, index = 0, total = 1, slot = 0, slotTotal = 1) {
     const off = ROLE_OFFSET[roleId];
     let x, z;
     if (off) {
@@ -120,26 +167,48 @@ export class StageMap {
       x = this.center.x + off.x + spread;
       z = this.center.z + off.z;
     } else {
-      // 未定义角色：围成圈
-      const a = (index / Math.max(total, 1)) * Math.PI * 2;
+      // 未定义角色：按**全场序号**围成圈，保证彼此错开
+      const a = (slot / Math.max(slotTotal, 1)) * Math.PI * 2;
       x = this.center.x + Math.cos(a) * THEATER_CONFIG.stageRadius;
       z = this.center.z + Math.sin(a) * THEATER_CONFIG.stageRadius;
     }
+    const spot = this._resolveSpot(x, z);
+    (this._taken || (this._taken = [])).push(spot);
+    return spot;
+  }
+
+  /** 碰撞校验 + 可走吸附 + 与已占站位保持间距 */
+  _resolveSpot(x, z) {
     const first = this._safe(x, z);
+    const dist = (p) => Math.hypot(p.x - this.center.x, p.z - this.center.z);
+    const clashes = (p) => (this._taken || []).some(
+      (q) => Math.hypot(p.x - q.x, p.z - q.z) < MIN_SEPARATION
+    );
+    if (dist(first) <= 6 && !clashes(first)) return first;
+
     // 场地常常紧贴某栋楼（门口），固定偏移可能落进建筑里，吸附会把点推到
     // 楼的另一侧、离场地十几米 —— 演员就散得玩家看不全。
-    // 这时把偏移绕中心转一圈，挑离场地最近的那个可站点。
-    const dist = (p) => Math.hypot(p.x - this.center.x, p.z - this.center.z);
-    if (dist(first) <= 6) return first;
+    // 而吸附还会把多个角色推到**同一个**最近可走格 → 全叠在一起。
+    // 所以绕中心转一圈，挑"离场地近且不与人重叠"的点。
     const dx = x - this.center.x, dz = z - this.center.z;
-    let best = first;
-    for (let i = 1; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
-      const rx = dx * Math.cos(a) - dz * Math.sin(a);
-      const rz = dx * Math.sin(a) + dz * Math.cos(a);
-      const cand = this._safe(this.center.x + rx, this.center.z + rz);
-      if (dist(cand) < dist(best)) best = cand;
-      if (dist(best) <= 3) break;
+    const r0 = Math.hypot(dx, dz) || THEATER_CONFIG.stageRadius;
+    let best = null, bestScore = Infinity;
+    for (let ring = 0; ring < 3; ring++) {
+      const r = r0 + ring * 1.3;
+      for (let i = 0; i < 16; i++) {
+        const a = Math.atan2(dz, dx) + (i / 16) * Math.PI * 2;
+        const cand = this._safe(this.center.x + Math.cos(a) * r, this.center.z + Math.sin(a) * r);
+        if (clashes(cand)) continue;
+        const score = dist(cand);
+        if (score < bestScore) { bestScore = score; best = cand; }
+        if (bestScore <= 3.2) break;
+      }
+      if (best && bestScore <= 4.5) break;
+    }
+    // 实在找不到不重叠的点，就在首选点上加一点随机偏移（宁可略挤也别完全重合）
+    if (!best) {
+      const jx = (Math.random() - 0.5) * 2.2, jz = (Math.random() - 0.5) * 2.2;
+      best = this._safe(first.x + jx, first.z + jz);
     }
     return best;
   }
