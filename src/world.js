@@ -30,7 +30,7 @@ export class World{
  this.actionFlute=box(this.hero.userData.rig,.64,.035,.035,0xb99c61,0,1.72,.3);this.actionFlute.visible=false;this.actionCoins=new T.Group();for(let i=0;i<3;i++)cyl(this.actionCoins,.045,.045,.018,0xe5bc60,i*.07,-.58,0);this.hero.userData.arms[0].add(this.actionCoins);this.actionCoins.visible=false;
  this.actionStool=new T.Group();box(this.actionStool,.7,.08,.55,0x806047,0,.5,0);for(const x of [-.25,.25])box(this.actionStool,.08,.5,.4,0x604c3b,x,.25,0);this.scene.add(this.actionStool);this.actionStool.visible=false;
 
- for(const person of PEOPLE){const actor=character(person.color,false,['su','tea','inn'].includes(person.id));actor.position.set(person.x,0,person.z);this.scene.add(actor);const label=textSprite(person.name);label.position.y=2.7;actor.add(label);this.npcs.set(person.id,{actor,person,label,base:new T.Vector3(person.x,0,person.z),phase:Math.random()*10});}
+ for(const person of PEOPLE){const actor=character(person.color,false,['su','tea','inn','mei','matchmaker'].includes(person.id));actor.position.set(person.x,0,person.z);this.scene.add(actor);const label=textSprite(person.name);label.position.y=2.7;actor.add(label);this.npcs.set(person.id,{actor,person,label,base:new T.Vector3(person.x,0,person.z),phase:Math.random()*10});}
  this.eventGroup=new T.Group();this.scene.add(this.eventGroup);this.syncEvent();this.resize();window.addEventListener('resize',()=>this.resize());
  this.camera.position.set(0,11,26);this.camera.lookAt(this.hero.position);
  canvas.addEventListener('contextmenu',e=>e.preventDefault());canvas.addEventListener('pointerdown',e=>{if(e.button===2){if(this.performance)this.performance.camera=false;this.drag=true;canvas.setPointerCapture(e.pointerId);}else if(e.button===0)this.primaryAction(e);});canvas.addEventListener('pointerup',()=>this.drag=false);canvas.addEventListener('pointermove',e=>{if(this.drag){this.yaw-=e.movementX*.006;this.pitch=Math.max(.28,Math.min(1.05,this.pitch+e.movementY*.004));}});canvas.addEventListener('wheel',e=>{e.preventDefault();if(this.performance)this.performance.camera=false;this.distance=Math.max(7,Math.min(22,this.distance+e.deltaY*.01));},{passive:false});
@@ -85,9 +85,9 @@ export class World{
  move(actor,dx,dz){if(!this.collides(actor.position.x+dx,actor.position.z,actor.position.y))actor.position.x+=dx;if(!this.collides(actor.position.x,actor.position.z+dz,actor.position.y))actor.position.z+=dz;}
  nearest(){let nearest=null,d=3.3;for(const [id,n]of this.npcs){const dist=n.actor.position.distanceTo(this.hero.position);if(dist<d){nearest={id,npc:n,distance:dist};d=dist;}}return nearest;}
  nearbyEvent(){const e=this.sim.event;if(!e)return false;const [x,z]=SCENES[e.type].point;return Math.hypot(x-this.hero.position.x,z-this.hero.position.z)<4.3;}
- routeTo(point){
+ routeTo(point,arrivalRadius=2.7){
  const start=[Math.round(this.hero.position.x),Math.round(this.hero.position.z)],end=point.map(Math.round),q=[start],seen=new Map([[start.join(','),null]]);let goal;
- for(let i=0;i<q.length&&i<4000;i++){const p=q[i];if(Math.hypot(p[0]-end[0],p[1]-end[1])<2.7){goal=p;break;}for(const [dx,dz]of [[1,0],[-1,0],[0,1],[0,-1]]){const n=[p[0]+dx,p[1]+dz],key=n.join(',');if(!seen.has(key)&&!this.collides(...n)){seen.set(key,p);q.push(n);}}}
+ for(let i=0;i<q.length&&i<4000;i++){const p=q[i];if(Math.hypot(p[0]-end[0],p[1]-end[1])<arrivalRadius){goal=p;break;}for(const [dx,dz]of [[1,0],[-1,0],[0,1],[0,-1]]){const n=[p[0]+dx,p[1]+dz],key=n.join(',');if(!seen.has(key)&&!this.collides(...n)){seen.set(key,p);q.push(n);}}}
  if(!goal)return false;const route=[];for(let p=goal;p;p=seen.get(p.join(',')))route.unshift(p);this.auto=route.slice(1);return true;
  }
  jump(){if(this.hero.position.y<.02&&!this.locked){this.jumpV=7;this.onSound?.('jump');}}

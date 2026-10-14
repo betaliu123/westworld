@@ -1,4 +1,5 @@
 import {mountParty} from './party.js';
+import {icon,iconButton} from './ui-icons.js';
 import {mountEnvironment} from './environment-ui.js';
 import {createJournal} from './journal.js';
 import {Simulation,newGame} from './simulation.js';
@@ -13,6 +14,7 @@ let role='wanderer',sim=new Simulation(saved||newGame()),world=new World($('worl
 const journal=createJournal(()=>sim.s,esc);
 const environment=mountEnvironment(world,()=>sim,toast,esc);
 const party=mountParty(world,()=>sim,environment,toast,journal,closePanel);
+iconButton($('rest'),'Moon','歇息与重开');iconButton($('sound'),'VolumeX','开启声音');iconButton($('letters'),'Mail','飞鸽传书 · Tab');iconButton($('profile'),'UserRound','人物属性 · C');
 const historyLog=[];let bubbleGroup=null,bubblePage=0,bubbleEvent=null,visualResult=null;let speechQueue=[];let reactionTicket=0;
 
 function toast(text){if(started&&!text.startsWith('你：'))journal.add('system','提示',text);const el=document.createElement('div');el.className='toast';el.textContent=text;$('toast').append(el);setTimeout(()=>el.remove(),4800);}
@@ -37,16 +39,16 @@ bind();
 function roleCards(){$('roles').innerHTML=Object.entries(ROLES).map(([id,r])=>`<button class="role ${role===id?'active':''}" data-role="${id}"><b>${r.name}</b><small>${r.desc}</small></button>`).join('');}
 roleCards();$('roles').onclick=e=>{const b=e.target.closest('[data-role]');if(b){role=b.dataset.role;roleCards();}};
 $('continue').hidden=!saved;if(saved)$('continue').textContent=`续上前缘 · 第 ${saved.day} 日`;
-function begin(resume){
+function begin(resume,fresh=false){
  if(!resume&&saved&&!restartConfirmed){restartConfirmed=true;$('start').textContent='确认重开 · 替换这个原型的进度';return;}
  if(!resume){sim=new Simulation(newGame(role));world.sim=sim;world.hero.position.set(0,0,14);world.syncEvent();bind();}
- started=true;journal.restore();$('welcome').hidden=true;for(const id of ['hud','vitals','controls','minimap','conversation'])$(id).hidden=false;save();toast(resume?'旧日的人情与风波都还在。继续你的江湖。':'你来到临溪。桥头传来起哄声……按 E 与身边人交互。');
+ started=true;journal.restore();$('welcome').hidden=true;for(const id of ['hud','vitals','controls','minimap'])$(id).hidden=false;save();toast(resume&&!fresh?'旧日的人情与风波都还在。继续你的江湖。':'你来到临溪。桥头传来起哄声……按 E 与身边人交互。');
 }
 $('start').onclick=()=>begin(false);$('continue').onclick=()=>begin(true);
-$('sound').onclick=()=>{sound=!sound;$('sound').textContent='声音 · '+(sound?'开':'关');if(sound){tone('mail');toast('已开启动作提示音；系统有中文语音时，将读出人物对白。');}else window.speechSynthesis?.cancel();};
+$('sound').onclick=()=>{sound=!sound;iconButton($('sound'),sound?'Volume2':'VolumeX',sound?'关闭声音':'开启声音');$('sound').setAttribute('aria-pressed',String(sound));if(sound){tone('mail');toast('已开启动作提示音；系统有中文语音时，将读出人物对白。');}else window.speechSynthesis?.cancel();};
 function closePanel(){world.clearReady();epoch++;panelTarget=null;$('panel').hidden=true;world.locked=!$('drawer').hidden;document.body.classList.toggle('panel-open',!$('drawer').hidden);}
 function closeDrawer(){world.clearReady();$('drawer').hidden=true;world.locked=false;world.keys.clear();document.body.classList.remove('panel-open');}
-function drawer(title,content){closePanel();$('drawer').hidden=false;world.locked=true;world.keys.clear();document.body.classList.add('panel-open');$('drawer').innerHTML=`<header>临溪 · 随身记事<button data-close aria-label="关闭记录">×</button></header><h2>${title}</h2>${content}`;$('drawer').querySelector('[data-close]').onclick=closeDrawer;}
+function drawer(title,content){collapseConversation();closePanel();$('environment-panel').hidden=true;$('street-panel').hidden=true;$('drawer').dataset.view='record';$('drawer').hidden=false;world.locked=true;world.keys.clear();document.body.classList.add('panel-open');$('drawer').innerHTML=`<header>临溪 · 随身记事<button data-close aria-label="关闭记录"></button></header><h2>${title}</h2>${content}`;const close=$('drawer').querySelector('[data-close]');iconButton(close,'X','关闭记录');close.onclick=closeDrawer;$('drawer').scrollTop=0;close.focus();}
 function inbox(){const s=sim.s;drawer('飞鸽传书',s.mail.length?[...s.mail].reverse().map(m=>`<article class="letter"><small>${esc(PEOPLE.find(n=>n.id===m.sender).name)} · 第 ${m.day} 日</small><p>${esc(m.text)}</p><button data-route="${m.id}">⌖ ${esc(m.place)} · 前往附近</button></article>`).join(''):'<p>尚无来信。街坊的消息，会在这里留下。</p><p>你也可以自己去桥头看看，不必等待别人邀请。</p>');for(const m of s.mail)m.read=true;save();for(const b of $('drawer').querySelectorAll('[data-route]'))b.onclick=()=>{const m=s.mail.find(m=>m.id===Number(b.dataset.route));closeDrawer();if(m.id!==sim.event?.id){toast('这是以前的来信。人和事也许已经变了。');return;}if(world.routeTo(m.point))toast('沿街前往 · 按 WASD 可随时中止');else toast('前路不通，请绕行。');};}
 $('letters').onclick=()=>!$('drawer').hidden?closeDrawer():inbox();
 const MOODS={calm:'平和',wary:'戒备',angry:'恼怒',afraid:'惊惧',down:'倒地'};
@@ -92,30 +94,49 @@ async function decideSearch(context){const owner=sim;try{const response=await fe
 let replySignature='',replyTargetManual=false,draftTarget=null;
 function nearbySpeakers(){return [...world.npcs].filter(([id,n])=>sim.s.people[id].hp>0&&Math.hypot(n.actor.position.x-world.hero.position.x,n.actor.position.z-world.hero.position.z)<8).map(([id])=>id);}
 function updateConversation(){
- const ids=nearbySpeakers(),select=$('reply-target'),selected=select.value;
- if([...select.options].map(o=>o.value).join()!==ids.join()){select.innerHTML=ids.map(id=>`<option value="${id}">${esc(PEOPLE.find(n=>n.id===id).name)}</option>`).join('');if(ids.includes(selected))select.value=selected;}
- if(!replyTargetManual&&world.speaking&&ids.includes(world.speaking))select.value=world.speaking;
+ const ids=['companion',...nearbySpeakers()],select=$('reply-target'),selected=select.value;
+ if([...select.options].map(o=>o.value).join()!==ids.join()){select.innerHTML=ids.map(id=>`<option value="${id}">${esc(id==='companion'?party.recipient():PEOPLE.find(n=>n.id===id).name)}</option>`).join('');if(ids.includes(selected))select.value=selected;}
+ select.options[0].textContent=party.recipient()+' · 同伴';
+ if(!$('conversation').hidden&&!replyTargetManual&&world.speaking&&ids.includes(world.speaking))select.value=world.speaking;
  const disabled=!ids.length||sim.s.player.hp<=0;$('reply-input').disabled=disabled;$('reply-form').querySelector('[type="submit"]').disabled=disabled;
- $('weapon-toggle').textContent=world.combatReady?'/ 收刀':'/ 拔刀';
- $('reply-status').textContent=disabled?'走近人物后，可以直接回应。':'与'+PEOPLE.find(n=>n.id===select.value)?.name+'交谈 · 输入时暂停移动，Esc 返回游玩';
+ iconButton($('weapon-toggle'),'Swords',world.combatReady?'收刀 · /':'拔刀 · /');$('weapon-toggle').setAttribute('aria-pressed',String(world.combatReady));
+ $('reply-status').textContent=disabled?'受伤倒地，暂时无法交谈。':'与'+(select.value==='companion'?party.recipient():PEOPLE.find(n=>n.id===select.value)?.name)+'交谈';
  const signature=[select.value,sim.s.facts.missing,sim.s.player.inventory.includes('ring'),sim.event?.type].join(':');if(signature===replySignature)return;replySignature=signature;
- const replies=!ids.length?[]:sim.s.facts.missing?['我没看见那枚戒指。','我帮你一起找找。',...(sim.s.player.inventory.includes('ring')?['戒指是我拿走的。','我把银戒还给你。']:[]),'别吵，先冷静一下。']:['刚才的事，你怎么看？','别着急，慢慢说。','近来可有什么消息？'];
+ const replies=select.value==='companion'?['跟着我','原地等我','吹笛引人','收笛休息']:sim.s.facts.missing?['我没看见那枚戒指。','我帮你一起找找。',...(sim.s.player.inventory.includes('ring')?['戒指是我拿走的。','我把银戒还给你。']:[]),'别吵，先冷静一下。']:['刚才的事，你怎么看？','别着急，慢慢说。','近来可有什么消息？'];
  $('reply-suggestions').innerHTML=replies.slice(0,4).map(t=>`<button type="button">${esc(t)}</button>`).join('');
  for(const b of $('reply-suggestions').children)b.onclick=()=>sendReply(b.textContent);
 }
 function sendReply(text,target=null){
+ if((target||$('reply-target').value)==='companion'){
+  if(!started||world.locked||sim.s.player.hp<=0)return;
+  if(!text.trim())return;world.keys.clear();party.command(text);$('reply-input').value='';collapseConversation();return;
+ }
  const id=target||$('reply-target').value;if(!started||world.locked||!nearbySpeakers().includes(id)||world.performance||sim.s.player.hp<=0){toast('等当前动作做完，走近对方再说。');return;}
  text=text.trim();if(!text)return;closePanel();world.clearReady();world.keys.clear();$('reply-input').blur();const r=sim.reply(id,text);if(r.error){toast(r.error);return;}world.perform({id:r.actionId,kind:r.kind},id);world.performance.motion=r.motion;$('reply-input').value='';replyTargetManual=false;
 }
-$('reply-target').onchange=()=>{replyTargetManual=true;};
+function collapseConversation(){$('reply-input').blur();$('conversation').hidden=true;document.body.classList.remove('conversation-open');world.keys.clear();draftTarget=null;}
+function openConversation(){if(!started||world.locked)return;$('conversation').hidden=false;document.body.classList.add('conversation-open');updateConversation();$('reply-input').focus();}
+$('reply-target').onchange=()=>{replyTargetManual=true;draftTarget=$('reply-target').value;updateConversation();};
 $('reply-input').onfocus=()=>{draftTarget=$('reply-target').value;replyTargetManual=true;world.keys.clear();world.auto=null;world.clearReady();};
 $('reply-input').onblur=()=>world.keys.clear();
-$('reply-input').onkeydown=e=>{if(e.key==='Enter'&&(e.isComposing||e.keyCode===229))e.preventDefault();};
+$('reply-input').onkeydown=e=>{if(e.code==='Escape'){e.preventDefault();collapseConversation();}if(e.key==='Enter'&&(e.isComposing||e.keyCode===229))e.preventDefault();};
 $('reply-form').onsubmit=e=>{e.preventDefault();sendReply($('reply-input').value,draftTarget);};
 $('weapon-toggle').onclick=()=>{document.activeElement?.blur();world.toggleWeapon();};
 
 function rest(){if(sim.s.player.hp>0&&[...world.npcs].some(([id,n])=>sim.isPursuing(id,n.actor.position.distanceTo(world.hero.position)))){toast('有人正在追赶你，先离开冲突再歇息。');return;}closePanel();closeDrawer();world.auto=null;world.keys.clear();$('result').hidden=true;const revived=sim.respawn();if(!revived)sim.advanceDay();world.resetAfterRest();if(revived)toast('你已调息醒来。这场争斗已散，旧日的人情仍在。');save();}
-$('rest').onclick=rest;
+function restMenu(){
+ drawer('歇息与重开',`<div class="rest-options"><button data-night>${icon('Moon')}歇一夜</button><button data-restart>${icon('RotateCcw')}重开 · 回到第一天</button></div>`);$('drawer').dataset.view='rest';
+ $('drawer').querySelector('[data-night]').onclick=()=>{closeDrawer();rest();};
+ $('drawer').querySelector('[data-restart]').onclick=()=>{
+  drawer('重新开始？','<p>本局的物品、人情和江湖见闻将被清空，以当前出身从第一天重新开始。</p><div class="rest-options"><button data-confirm-restart>确认重开</button><button data-cancel-restart>返回</button></div>');$('drawer').dataset.view='rest';
+  $('drawer').querySelector('[data-cancel-restart]').onclick=restMenu;
+  $('drawer').querySelector('[data-confirm-restart]').onclick=()=>{
+   try{sessionStorage.setItem('jianghu-restart','1');localStorage.setItem(SAVE,JSON.stringify(newGame(sim.s.role)));}catch{sessionStorage.removeItem('jianghu-restart');toast('无法保存新进度，暂时没有重开。');return;}
+   started=false;location.reload();
+  };
+ };
+}
+$('rest').onclick=()=>!$('drawer').hidden&&$('drawer').dataset.view==='rest'?closeDrawer():restMenu();
 function showResult(r){$('result').hidden=false;$('result').innerHTML=`<div class="check">${r.roll??'✓'}<small>${r.roll===null?'直接行动':`D100 · 需 ≤ ${r.check.chance}`}</small></div><small class="result-action">${esc(r.label)}</small><h3>${r.roll===null?'这一刻，留下了回声':r.success?'此举得手':'未能如愿'}</h3><p>${esc(r.text)}</p>${r.changes.map(x=>`<span class="pill ${/\+/.test(x)?'gain':''}">${esc(x)}</span>`).join('')}<p class="hint">${esc(r.hint)}</p>`;clearTimeout(resultTimer);resultTimer=setTimeout(()=>$('result').hidden=true,8500);tone(r.success?'mail':'attack');speak(r.text);}
 function choice(a){const p=sim.preview(a);return `<button class="choice" data-choice="${a.id}" ${p.blocked?'disabled':''}><span><b>${esc(a.label)}</b><small>${a.stat?`${ATTR[a.stat]} ${p.score} · 难度 ${a.difficulty}`:'无需检定'}${a.cost?` · ${a.cost} 文`:''}</small></span><em>${p.blocked?'不足':p.certain?'必成':p.chance+'%'}<small>${p.certain?'':'+关系修正'}</small></em></button>`;}
 function sceneOptions(){
@@ -190,9 +211,18 @@ function interact(){
  if(!panelTarget)return;bubbleEvent=sim.event?.id;$('panel').hidden=false;renderBubbles();if(panelTarget==='scene')rank();
 }
 $('interact').onclick=interact;
+window.addEventListener('keydown',e=>{
+ if(!started||e.isComposing||e.repeat)return;
+ if(e.code==='Escape'&&!$('conversation').hidden){e.preventDefault();e.stopImmediatePropagation();collapseConversation();return;}
+ if(e.code==='Enter'&&!e.target.closest?.('input,textarea,select,button')){e.preventDefault();e.stopImmediatePropagation();openConversation();}
+},true);
 window.addEventListener('keydown',e=>{if(!started)return;if(e.target.closest?.('input,textarea,select')||e.isComposing){if(e.code==='Escape')e.target.blur();return;}if(['Space','Tab','KeyW','KeyA','KeyS','KeyD'].includes(e.code))e.preventDefault();if(e.repeat)return;environment.key(e);party.key(e);if(e.code==='Escape'){closePanel();closeDrawer();return;}if(e.code==='KeyC'){$('profile').click();return;}if(e.code==='Tab'){!$('drawer').hidden?closeDrawer():inbox();return;}if(world.locked)return;world.keys.add(e.code);if(e.code==='Space')world.jump();if(e.code==='Slash'){e.preventDefault();world.toggleWeapon();}if(e.code==='KeyE')interact();if(e.code==='KeyR'&&sim.s.player.hp<=0)rest();});window.addEventListener('keyup',e=>world.keys.delete(e.code));
 fetch('/api/status').then(r=>r.json()).then(r=>aiStatus=r.configured?'AI 随时待命':'本地画像推荐').catch(()=>aiStatus='本地画像推荐');
-function mini(){const ctx=$('minimap').querySelector('canvas').getContext('2d'),p=world.hero.position;ctx.clearRect(0,0,164,164);ctx.save();ctx.beginPath();ctx.arc(82,82,80,0,Math.PI*2);ctx.clip();ctx.strokeStyle='#8ca78b35';ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(82,0);ctx.lineTo(82,164);ctx.stroke();ctx.fillStyle='#618b83';ctx.fillRect(13,0,14,164);for(const o of world.obstacles){ctx.fillStyle='#9da88a77';ctx.fillRect(82+o.x*2.5-o.w,82+o.z*2.5-o.d,o.w*2,o.d*2);}for(const [id,n]of world.npcs){ctx.fillStyle=id==='guard'?'#bc9673':'#c3c9a3';ctx.beginPath();ctx.arc(82+n.actor.position.x*2.5,82+n.actor.position.z*2.5,2,0,7);ctx.fill();}ctx.fillStyle='#ffe0a0';ctx.beginPath();ctx.arc(82+p.x*2.5,82+p.z*2.5,3.5,0,7);ctx.fill();if(world.auto?.length){const q=world.auto.at(-1);ctx.strokeStyle='#f0c788';ctx.beginPath();ctx.arc(82+q[0]*2.5,82+q[1]*2.5,5,0,7);ctx.stroke();}ctx.restore();}
+function mini(){const canvas=$('minimap').querySelector('canvas'),ctx=canvas.getContext('2d'),p=world.hero.position;ctx.clearRect(0,0,164,164);ctx.save();ctx.beginPath();ctx.arc(82,82,80,0,Math.PI*2);ctx.clip();ctx.strokeStyle='#8ca78b35';ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(82,0);ctx.lineTo(82,164);ctx.stroke();ctx.fillStyle='#618b83';ctx.fillRect(13,0,14,164);for(const o of world.obstacles){ctx.fillStyle='#9da88a77';ctx.fillRect(82+o.x*2.5-o.w,82+o.z*2.5-o.d,o.w*2,o.d*2);}
+ const hot=environment.streetHotspot();canvas.title=hot?hot.name:'';canvas.setAttribute('aria-label',hot?'临溪镇小地图 · '+hot.name:'临溪镇小地图');
+ if(hot){const x=82+hot.point[0]*2.5,y=82+hot.point[1]*2.5,r=15+Math.sin(world.t*2)*2,color=hot.mode==='fight'?'235,108,90':'244,193,92',gradient=ctx.createRadialGradient(x,y,0,x,y,r);gradient.addColorStop(0,`rgba(${color},.8)`);gradient.addColorStop(1,`rgba(${color},0)`);ctx.fillStyle=gradient;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.strokeStyle=`rgba(${color},.85)`;ctx.lineWidth=1;ctx.beginPath();ctx.arc(x,y,9,0,Math.PI*2);ctx.stroke();}
+ for(const [id,n]of world.npcs){ctx.fillStyle=id==='guard'?'#bc9673':'#c3c9a3';ctx.beginPath();ctx.arc(82+n.actor.position.x*2.5,82+n.actor.position.z*2.5,2,0,7);ctx.fill();}ctx.fillStyle='#ffe0a0';ctx.beginPath();ctx.arc(82+p.x*2.5,82+p.z*2.5,3.5,0,7);ctx.fill();if(world.auto?.length){const q=world.auto.at(-1);ctx.strokeStyle='#f0c788';ctx.beginPath();ctx.arc(82+q[0]*2.5,82+q[1]*2.5,5,0,7);ctx.stroke();}ctx.restore();}
+$('minimap').querySelector('canvas').onclick=e=>{const hot=environment.streetHotspot();if(!hot||world.locked)return;const r=e.currentTarget.getBoundingClientRect(),x=(e.clientX-r.left)*164/r.width,y=(e.clientY-r.top)*164/r.height;if(Math.hypot(x-82-hot.point[0]*2.5,y-82-hot.point[1]*2.5)<20)environment.openStreet();};
 let prev=performance.now(),lastUI=0,lastSave=0;
 function frame(now){requestAnimationFrame(frame);const dt=Math.min(.045,(now-prev)/1000);prev=now;if(document.hidden)return;
  if(started)sim.tick(dt);world.playing=started;world.locked=!started||!$('drawer').hidden;world.update(dt);environment.update(dt,started);party.update(dt,started);positionBubbles();updateSpeech();
@@ -201,3 +231,4 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.045,(now-pre
  if(started&&now-lastSave>6000){lastSave=now;save();}
 }
 requestAnimationFrame(frame);window.addEventListener('beforeunload',save);
+if(sessionStorage.getItem('jianghu-restart')==='1'){sessionStorage.removeItem('jianghu-restart');begin(true,true);}

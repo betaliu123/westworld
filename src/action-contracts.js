@@ -46,6 +46,7 @@ farewell:['bow','你向旧识拱手道别，把这一段经历收入行囊，继
 };
 export const PERSONALITIES={qing:'青竹会护路弟子，重公道和同门义气，吃软不吃硬；讲清事实后愿意让步。',chi:'赤砂帮镖手，急性子、爱面子，担心误了运货差事；会记住替自己解围的人。',shen:'重承诺、好面子，真诚会让他让步，当众羞辱使他记仇；青竹会弟子。',su:'独立、敏感、重自主权；反感被安排、被当成奖品；希望游历江南。',gao:'爱热闹、讲义气、嘴贫但有分寸；看重旧交，常愿意做和事佬。',guard:'谨慎守法，先问事实；厌恶暴力与栽赃。',inn:'务实好客，重信誉与账目。',tea:'爽朗敏锐，喜欢善意，怕横行霸道。',porter:'直爽勤恳，重实在帮助。',elder:'温和好奇，爱听故事，重是非。'};
 export const BONUS={bet:30,music:16,dance:18,poem:12};
+Object.assign(PERSONALITIES,{mei:'独立爽快，招亲只愿先相识；接球或比武获胜都不能替她决定婚事。',matchmaker:'热心而有分寸的招亲主持，尊重姑娘意愿，切磋必须点到为止。',merchant:'谨慎务实的行商，关心货款与失物，记得提醒自己或帮助追赃的人。',thief:'善于观察人群，下手后优先逃跑；被抓后须面对失主和捕头，不能凭对白取消既定失窃事实。'});
 export function actionBeat(a,success){const b=ACTION_BEATS[a.id];if(!b)throw Error('Missing action contract: '+a.id);return {motion:b[0],text:b[success?1:2],dialogue:[{id:b[3],text:b[success?4:5]}]};}
 export function followupOptions(a,success,next,missing,depth){
  if(depth>=4)return ['ending'];

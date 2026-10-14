@@ -10,6 +10,12 @@ export class Simulation{
  constructor(state=newGame(),rng=Math.random){this.s=state;ensureParty(state);this.rng=rng;this.listeners=[];for(const p of PEOPLE)state.people[p.id]??={relation:p.relation,mood:'calm',fear:0,hp:100,memories:[]};if(state.facts.missing&&state.event?.status==='active'&&state.event.type==='banquet'){state.event.type='inquiry';state.event.elapsed=0;state.facts.couple=false;}}
  emit(type,data){for(const fn of this.listeners)fn(type,data);}
  save(){this.emit('save',this.s);}
+ banquetOccurred(){return !!this.s.facts.couple||this.s.facts.banquetDay!=null||this.s.history.some(h=>h.type==='banquet');}
+ normalizeFollowup(){
+  const p=this.s.pending;if(!p||!this.banquetOccurred())return;
+  const next=type=>type==='banquet'?'favor':type;
+  p.type=next(p.type);p.allowed=[...new Set((p.allowed||[p.type]).map(next))];
+ }
  get event(){return this.s.event?.status==='active'?this.s.event:null;}
  actions(){return this.event?actionsFor(this.event.type,this.s.player.inventory.includes('ring')):[];}
  preview(a){const p=this.s.player,score=p.stats[a.stat]||0,relation=Math.round((this.s.people.su.relation+this.s.people.shen.relation)/10),chance=a.stat?clamp(score+40-a.difficulty+relation,5,95):100;return {chance,score,relation,blocked:p.money<a.cost,certain:!a.stat};}
@@ -56,6 +62,7 @@ export class Simulation{
  if(a.id==='bet')hint=success?'钱袋重了，当事人的脸色却冷了。高小楼像是有话要劝你。':'没有人愿意接赌，沈砚等着你为这番话作个解释。';
  else hint=success?'这番举动已被在场的人记住。':'事情没有照你的打算发展，但这次尝试也留下了经历。';
  if(s.facts.missing&&next==='banquet')next='inquiry';
+ else if(next==='banquet'&&this.banquetOccurred())next='favor';
 
  p.xp+=success?12:5;changes.push(`阅历 +${success?12:5}`);
  for(const t of a.tags||[])s.style[t]=(s.style[t]||0)+1;
@@ -66,7 +73,7 @@ export class Simulation{
  if(e.type==='inquiry'&&s.facts.missing){e.status='active';s.event=e;s.pending=null;}
  else if(s.facts.missing&&next==='inquiry'){s.event={id:++s.sequence,type:'inquiry',depth:e.depth+1,status:'active',elapsed:0,round:0};s.pending=null;this.emit('scene',s.event);}
  if(!s.facts.missing&&s.searchClosed)s.searchClosed=false;
- result.nextId=s.pending?.id;this.prepareReaction(result,['shen','su','gao'],before);
+ this.normalizeFollowup();result.nextId=s.pending?.id;this.prepareReaction(result,['shen','su','gao'],before);
  this.emit('result',result);this.save();return result;
  }
  prepareReaction(result,ids,before={}){
@@ -86,19 +93,20 @@ export class Simulation{
  dialogue.push({id:line.id,text:line.text});
  }
  if(context.allowed.length&&!context.allowed.includes(data.template))return false;
+ if(data.template==='banquet'&&this.banquetOccurred())return false;
  r.dialogue=dialogue;r.reactionSource='nlp';
  for(const line of dialogue){const n=this.s.people[line.id];n.memories.push(`我在「${r.label}」之后说：${line.text}`);n.memories=n.memories.slice(-12);}
  // A late response can enrich memory, but cannot replace an event already delivered.
  if(this.s.pending?.id===r.nextId&&context.allowed.includes(data.template)){this.s.pending.type=data.template;this.s.pending.directorReason=String(data.reason||'').slice(0,180);r.directedNext=data.template;}
  this.save();return true;
  }
- direct(id,type,reason){const p=this.s.pending;if(!p||p.id!==id||!p.allowed?.includes(type))return false;p.type=type;p.directorReason=String(reason||'').slice(0,180);this.save();return true;}
+ direct(id,type,reason){const p=this.s.pending;if(!p||p.id!==id||!p.allowed?.includes(type)||(type==='banquet'&&this.banquetOccurred()))return false;p.type=type;p.directorReason=String(reason||'').slice(0,180);this.save();return true;}
  advanceDay(){
  const s=this.s;s.day++;s.time=0;s.player.energy=100;if(s.player.hp>0)s.player.hp=Math.min(100,s.player.hp+30);s.wanted=Math.max(0,s.wanted-1);
  for(const n of Object.values(s.people)){n.fear=0;n.hp=Math.max(n.hp,60);n.mood=n.relation< -10?'wary':'calm';}
  s.broken=[];
  if(s.pending&&s.pending.due<=s.day){
-  s.event={...s.pending,status:'active'};s.pending=null;if(s.event.type==='banquet')s.facts.couple=true;
+  this.normalizeFollowup();s.event={...s.pending,status:'active'};s.pending=null;if(s.event.type==='banquet'){s.facts.couple=true;s.facts.banquetDay=s.day;}
   const ids=['gao','shen','su'],sender=ids.sort((a,b)=>s.people[b].relation-s.people[a].relation)[0];
   const scene=SCENES[s.event.type],mail={id:s.event.id,sender,day:s.day,text:s.event.causeAction==='bet'?'桥头拿求亲开赌的事还没过去。沈砚和苏晚想当面把话说清，你有空来一趟吗？':sender==='su'&&s.event.type==='confidence'?'有些话，当着人群不方便说。我在河畔柳树下，你有空来陪我聊聊吗？':LETTERS[s.event.type],place:scene.place,point:scene.point,read:false};s.mail.push(mail);this.emit('mail',mail);this.emit('scene',s.event);
  }

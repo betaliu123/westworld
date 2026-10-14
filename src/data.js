@@ -1,6 +1,10 @@
 export const ATTR={might:'膂力',agility:'身法',charm:'风仪',wit:'机敏'};
 export const ROLES={wanderer:{name:'江湖游侠',desc:'身法见长，敢走险路',stats:{might:48,agility:68,charm:40,wit:48},style:'rogue'},scholar:{name:'风流书生',desc:'善察人心，以言解围',stats:{might:32,agility:42,charm:72,wit:64},style:'social'},guardian:{name:'仗义刀客',desc:'膂力过人，护弱扶危',stats:{might:74,agility:46,charm:46,wit:38},style:'kind'}};
 export const PEOPLE=[
+ {id:'mei',name:'梅知意',title:'梅家姑娘 · 招亲由她自己决定',color:0xb44e7b,x:0,z:16,relation:0},
+ {id:'matchmaker',name:'花婶',title:'招亲主持',color:0x6e5486,x:3,z:16,relation:0},
+ {id:'merchant',name:'许行商',title:'走街行商',color:0x4b8490,x:2,z:12,relation:0},
+ {id:'thief',name:'燕七',title:'游手闲汉',color:0x535260,x:-3,z:14,relation:0},
  {id:'qing',name:'林青舟',title:'青竹会 · 护路弟子',color:0x3e7566,x:-4,z:7,faction:'青竹会',relation:0},
  {id:'chi',name:'段赤川',title:'赤砂帮 · 镖手',color:0x994939,x:3,z:7,faction:'赤砂帮',relation:0},
  {id:'shen',name:'沈砚',title:'青竹会 · 外堂弟子',color:0x48736b,x:-2,z:2,faction:'青竹会',relation:0},
