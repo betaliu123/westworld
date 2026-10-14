@@ -1,18 +1,1 @@
-{
-  "name": "westworld-demo",
-  "private": true,
-  "version": "1.0.0",
-  "description": "西部世界互动 Demo（Three.js 网页版）",
-  "type": "module",
-  "scripts": {
-    "dev": "vite --host --port 3000",
-    "build": "vite build",
-    "preview": "vite preview --host --port 3000"
-  },
-  "dependencies": {
-    "three": "0.160.0"
-  },
-  "devDependencies": {
-    "vite": "^5.4.0"
-  }
-}
+{"name":"jianghu-echoes","version":"0.1.0","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.js","check":"node --check src/main.js && node --check src/world.js && node --check src/simulation.js"}}
