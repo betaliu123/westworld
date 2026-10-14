@@ -1,6 +1,19 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {Simulation,newGame} from '../src/simulation.js';import {PROPOSAL,SCENES,actionsFor} from '../src/data.js';
+import {Simulation,newGame} from '../src/simulation.js';import {PROPOSAL,SCENES,actionsFor,LETTERS} from '../src/data.js';
 const setup=(r=0)=>new Simulation(newGame(),()=>r);
+test('a wedding cannot recur after reconciliation on day four',()=>{
+ const s=setup();s.resolve(1,'cheer');s.advanceDay();assert.equal(s.event.type,'banquet');assert.equal(s.s.facts.banquetDay,2);
+ s.rng=()=>.999;s.resolve(s.event.id,'toast');s.advanceDay();assert.equal(s.event.type,'truce');
+ s.rng=()=>0;s.resolve(s.event.id,'toast');assert.equal(s.s.pending.type,'favor');assert.equal(s.s.pending.allowed.includes('banquet'),false);
+ assert.equal(s.direct(s.s.pending.id,'banquet','celebrate again'),false);
+ const r=s.s.history.at(-1);assert.equal(s.applyReaction(r.reactionId,{dialogue:[{id:'shen',text:'多谢你来喝喜酒。'}],template:'banquet'}),false);
+ s.advanceDay();assert.equal(s.s.day,4);assert.equal(s.event.type,'favor');assert.equal(s.s.mail.filter(m=>m.text===LETTERS.banquet).length,1);assert.equal(s.s.facts.banquetDay,2);
+});
+test('an older save with a repeat wedding queued delivers a favor instead',()=>{
+ const s=setup();s.resolve(1,'cheer');s.advanceDay();s.resolve(s.event.id,'eat');
+ delete s.s.facts.banquetDay;s.s.pending.type='banquet';s.s.pending.allowed=['banquet','favor'];
+ const restored=new Simulation(JSON.parse(JSON.stringify(s.s)));restored.advanceDay();assert.equal(restored.event.type,'favor');assert.equal(restored.s.facts.couple,true);
+});
 test('32 unique choices with actual attribute checks',()=>{assert.equal(PROPOSAL.length,32);assert.equal(new Set(PROPOSAL.map(a=>a.id)).size,32);const s=setup();assert.equal(s.preview(PROPOSAL[0]).chance,40);assert.equal(s.preview(PROPOSAL[2]).chance,100);});
 test('successful unseen theft preserves secret and leads to inquiry',()=>{const s=setup();const r=s.resolve(1,'steal');assert.equal(r.success,true);assert.deepEqual(s.s.player.inventory,['ring']);assert.equal(s.s.people.shen.relation,0);assert.match(s.s.people.shen.memories[0],/无人知道/);assert.equal(s.event.type,'inquiry');assert.equal(s.s.pending,null);assert.equal(s.event.elapsed,0);});
 test('failed theft creates visible suspicion, no ring',()=>{const s=setup(.999);assert.equal(s.resolve(1,'steal').success,false);assert.equal(s.s.player.inventory.length,0);assert.equal(s.s.wanted,1);assert.equal(s.s.pending.type,'dispute');});
