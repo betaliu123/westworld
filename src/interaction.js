@@ -10,6 +10,8 @@ export function actionGroup(a){
 }
 export function groupActions(actions){return Object.entries(GROUPS).map(([id,g])=>({id,...g,actions:actions.filter(a=>actionGroup(a)===id)})).filter(g=>g.actions.length);}
 export function motionFor(a){
+ if(a.motion)return a.motion;
+ if(a.kind==='combat')return 'guard';
  if(ACTION_BEATS[a.id])return ACTION_BEATS[a.id][0];
  if(a.kind==='eat')return 'eat';
  if(['tea','wine','toast','gift-tea'].includes(a.id))return 'drink';

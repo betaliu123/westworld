@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {createFeedbackQueue} from '../src/progress-feedback.js';
+import {Simulation,newArrival} from '../src/simulation.js';
+import {Ecosystem} from '../src/ecosystem.js';
+import {contactResolve} from '../src/gate-society.js';
+test('relationship feedback survives recovery in same frame and queues later actions',()=>{const q=createFeedbackQueue(),s={consequences:[]};q.update(s,0);const care={id:1,reason:'递水照看',changes:[{key:'relation:traveler',delta:4}]};s.consequences.push(care,{id:2,reason:'行动与身体状态变化',changes:[{key:'energy',delta:4}]});assert.equal(q.update(s,1),care);s.consequences.push({id:3,reason:'得到物品',changes:[{key:'item:茶',delta:1}]});assert.equal(q.update(s,200),care);assert.equal(q.update(s,6502).id,3);assert.equal(q.update(s,14000),null);});
+test('loading a different save never replays old consequences',()=>{const q=createFeedbackQueue();assert.equal(q.update({consequences:[{id:9}]},0),null);assert.equal(q.update({consequences:[{id:1}]},1),null);});
+test('care gives actual favor once, records it, and rejects repeated care',()=>{const sim=new Simulation(newArrival()),eco=new Ecosystem(sim,[]),n=sim.s.people.traveler;eco.positions.traveler={x:sim.s.player.x,z:sim.s.player.z};n.sickUntil=eco.s.time+100;n.hp=60;const before=n.relation;const result=contactResolve(sim,eco,'traveler','care');assert.equal(result.error,undefined);assert.equal(n.relation,before+4);assert.ok(result.changes.includes('好感 +4'));assert.ok(sim.s.consequences.some(e=>e.changes.some(c=>c.key==='relation:traveler'&&c.delta===4)));assert.ok(contactResolve(sim,eco,'traveler','care').error);assert.equal(n.relation,before+4);});

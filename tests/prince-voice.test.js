@@ -1,0 +1,4 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {character} from '../src/world.js';import {princeGreeting,princeSocial} from '../src/prince-voice.js';
+test('prince gear follows rig and hand rather than world root',()=>{const a=character(0x657f89,false,false,'prince');assert.equal(a.userData.princeGear.fan.parent,a.userData.arms[0]);assert.equal(a.userData.princeGear.jade.parent,a.userData.rig);assert.equal(a.userData.sword.visible,false);});
+test('prince remembers conversation without revealing his hidden title',()=>{const s={people:{traveler:{}},facts:{},ecosystem:{time:1}};const first=princeGreeting(s),again=princeGreeting(s);assert.notEqual(first,again);assert.match(again,/上回/);assert.doesNotMatch(first+again,/王爷|宗室|本王/);s.people.traveler.sickUntil=10;assert.match(princeGreeting(s),/不适/);assert.match(princeSocial('apology',true,0,true),/交代/);});

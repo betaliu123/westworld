@@ -1,0 +1,29 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {Simulation,newArrival} from '../src/simulation.js';
+import {Ecosystem} from '../src/ecosystem.js';
+import {teaStep,TEA_CUPS,TEAPOT} from '../src/tea-service.js';
+import {inspectFood,consumeFood,SEATS} from '../src/npc-life.js';
+import {giveItem} from '../src/npc-actions.js';
+import {routinePath} from '../src/npc-navigation.js';
+const assets=[{...TEAPOT,kind:'teapot',owner:'tea_host',material:'stone'},...TEA_CUPS.map(c=>({...c,kind:'teacup',material:'stone',owner:'tea_host'}))];
+const setup=()=>{const sim=new Simulation(newArrival(),()=>0),eco=new Ecosystem(sim,assets);return {sim,eco};};
+test('poisoned batch is physically collected and poured, drunk later, and survives saves',()=>{
+ const {sim,eco}=setup(),pos={tea_host:{x:TEAPOT.x,z:TEAPOT.z+1},gate_relief:SEATS.gate_relief};eco.s.time=1;teaStep(sim,eco,pos);
+ const batch=eco.items('object:tea-pot')[0],toxin=eco.items('player').find(i=>i.type==='poison');sim.s.player.x=TEAPOT.x;sim.s.player.z=TEAPOT.z+1;
+ assert.equal(eco.poisonItem(toxin.id,batch.id),null);assert.equal(toxin.location,'consumed');
+ eco.s.time=10;teaStep(sim,eco,pos);const carried=eco.items('npc:tea_host').find(i=>i.drink);assert.ok(carried.poisoned);assert.equal(eco.items('object:tea-cup-0').length,0);
+ eco.s.time=12;pos.tea_host={x:-6.5,z:28.35};teaStep(sim,eco,pos);assert.equal(carried.location,'object:tea-cup-0');assert.equal(sim.s.people.gate_relief.hp,100);
+ const restored=new Simulation(JSON.parse(JSON.stringify(sim.s)),()=>.99),next=new Ecosystem(restored,assets);next.s.time=17;teaStep(restored,next,pos);
+ assert.equal(next.s.items.find(i=>i.id===carried.id).location,'consumed');assert.equal(restored.s.people.gate_relief.hp,75);assert.ok(restored.s.people.gate_relief.drinkingUntil>17);
+ teaStep(restored,next,pos);assert.equal(restored.s.people.gate_relief.hp,75);
+});
+test('gifted poisoned food remains in pack until eligible consumption, takes precedence over old rations',()=>{const {sim,eco}=setup(),food=eco.items('player')[0];food.poisoned=true;eco.s.hunger.gate_relief=90;assert.ok(!giveItem(sim,eco,'gate_relief',food.id).error);assert.equal(sim.s.people.gate_relief.hp,100);sim.rng=()=>.99;eco.tick(1,{gate_relief:SEATS.gate_relief});assert.equal(food.location,'consumed');assert.equal(sim.s.people.gate_relief.hp,75);});
+test('wit raises detection chance, inspection cannot reroll, detected poison stays uneaten',()=>{const {sim,eco}=setup(),food=eco.items('player')[0];food.poisoned=true;sim.rng=()=>.3;sim.s.people.gate_relief.stats.wit=80;assert.equal(inspectFood(sim,'gate_relief',food),false);sim.s.people.traveler.stats.wit=10;assert.equal(inspectFood(sim,'traveler',food),true);sim.rng=()=>{throw Error('no reroll');};assert.equal(inspectFood(sim,'traveler',food),true);assert.equal(food.location,'player');});
+test('unavailable server never pours remotely; obstruction and stale poison drag preserve items',()=>{const {sim,eco}=setup();eco.s.time=1;teaStep(sim,eco,{tea_host:{x:20,z:20}});const batch=eco.items('object:tea-pot')[0],toxin=eco.items('player').find(i=>i.type==='poison');assert.ok(eco.poisonItem(toxin.id,batch.id));assert.equal(toxin.location,'player');sim.s.player.x=TEAPOT.x;sim.s.player.z=TEAPOT.z+1;eco.obstacles=[{x:TEAPOT.x,z:TEAPOT.z+.5,w:3,d:.5}];assert.ok(eco.poisonItem(toxin.id,batch.id));assert.equal(toxin.location,'player');sim.s.people.tea_host.hp=0;eco.s.time=20;teaStep(sim,eco,{tea_host:{x:TEAPOT.x,z:TEAPOT.z+1}});assert.equal(eco.s.teaService.carried,undefined);});
+test('daily route goes around solid table rather than crossing or stopping against it',()=>{const blocked=(x,z)=>Math.abs(x+6.5)<1.15&&Math.abs(z-27.2)<.8,start={x:-9,z:27.2},goal={x:-4.2,z:27.2},route=routinePath(start,goal,blocked);assert.ok(route.length>2);let prev=start;for(const q of route){assert.equal(blocked(q.x,q.z),false);assert.ok(Math.hypot(q.x-prev.x,q.z-prev.z)<.8);prev=q;}assert.ok(Math.hypot(prev.x-goal.x,prev.z-goal.z)<.5);});
+
+
+test('player drinking uses the same poison rule, and an empty cup cannot be drunk twice',()=>{const {sim,eco}=setup(),cup=TEA_CUPS[0];sim.s.player.x=cup.x;sim.s.player.z=cup.z;const tea=eco.create('热茶','food','object:'+cup.id,{drink:true,poisoned:true});assert.equal(eco.act('drink',cup.id,tea.id),undefined);assert.equal(sim.s.player.hp,75);assert.ok(eco.act('drink',cup.id,tea.id));assert.equal(sim.s.player.hp,75);});
+test('host does not knowingly serve a witnessed poisoned batch',()=>{const {sim,eco}=setup(),pos={tea_host:{x:TEAPOT.x,z:TEAPOT.z+1}};eco.s.time=1;teaStep(sim,eco,pos);const batch=eco.items('object:tea-pot')[0];batch.poisoned=true;batch.knownPoisonBy=['tea_host'];eco.s.time=12;teaStep(sim,eco,pos);assert.equal(eco.s.teaService.carried,undefined);assert.equal(batch.servings,6);});
+test('tea hostess completes a physical round around tables and serves multiple guests',()=>{const {sim,eco}=setup();sim.rng=()=>.99;const pos={tea_host:{x:-11.9,z:27},gate_relief:SEATS.gate_relief,old_constable:SEATS.old_constable,traveler:SEATS.traveler};const blocked=(x,z)=>(Math.abs(x+10)<1.7&&Math.abs(z-27)<1.05)||[27.2,30].some(t=>Math.abs(x+6.5)<1.15&&Math.abs(z-t)<.8);let route=[],routeKey='';for(let step=0;step<1200;step++){eco.tick(.1,pos);const target=sim.s.people.tea_host.life?.target;if(!target)continue;const q=pos.tea_host,key=target.x+':'+target.z;if(key!==routeKey||!route.length){route=routinePath(q,target,blocked);routeKey=key;}while(route.length&&Math.hypot(route[0].x-q.x,route[0].z-q.z)<.1)route.shift();if(route.length){const next=route[0],d=Math.hypot(next.x-q.x,next.z-q.z),amount=Math.min(.135,d);q.x+=(next.x-q.x)/d*amount;q.z+=(next.z-q.z)/d*amount;assert.equal(blocked(q.x,q.z),false);}}assert.ok(eco.s.items.filter(i=>i.drink&&i.location==='consumed').length>=2);});

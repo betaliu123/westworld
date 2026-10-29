@@ -1,0 +1,21 @@
+import {icon} from './ui-icons.js';
+import {checkGrade} from './growth.js';
+export function mountCheckReveal(enabled){
+ const el=document.createElement('section');el.id='check-reveal';el.hidden=true;el.setAttribute('role','status');el.setAttribute('aria-live','polite');
+ el.innerHTML='<div class="check-emblem"><div class="check-orbit"></div><div class="check-symbol"></div><strong class="check-seal"></strong></div><p class="check-label"></p><small class="check-odds"></small><button aria-label="跳过检定演出">跳过 · Esc</button>';const card=document.createElement('div');card.className='check-card';while(el.firstChild)card.append(el.firstChild);el.append(card);document.body.append(el);
+ const seen=new WeakSet();let active=false,finish=null,timers=[],audio=null,nodes=[];let pending=false,skipped=false;
+ function sound(kind){if(!enabled())return;try{audio??=new AudioContext();audio.resume();const notes=kind==='win'?[660,990,1320]:kind==='lose'?[130,87]:[280];for(const [i,f] of notes.entries()){const o=audio.createOscillator(),g=audio.createGain(),t=audio.currentTime+i*.035;o.type=kind==='lose'?'triangle':'sine';o.frequency.setValueAtTime(f,t);o.frequency.exponentialRampToValueAtTime(kind==='tick'?f*.6:f*.98,t+.18);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.035/notes.length,t+.008);g.gain.exponentialRampToValueAtTime(.0001,t+(kind==='tick'?.13:.65));o.connect(g);g.connect(audio.destination);o.start(t);o.stop(t+.7);nodes.push(o);o.onended=()=>{o.disconnect();g.disconnect();nodes=nodes.filter(n=>n!==o);};}}catch{}}
+ function stop(){if(!active)return;timers.forEach(clearTimeout);timers=[];for(const n of nodes)try{n.stop();}catch{}nodes=[];active=false;el.hidden=true;document.body.classList.remove('checking');const cb=finish;finish=null;cb?.();}
+ const skip=()=>{skipped=pending;stop();};el.querySelector('button').onclick=skip;
+ window.addEventListener('keydown',e=>{if(!active)return;if(['Escape','Space','Enter'].includes(e.code)){e.preventDefault();e.stopImmediatePropagation();skip();}else if(!['AltLeft','AltRight'].includes(e.code)){e.preventDefault();e.stopImmediatePropagation();}},true);
+ function start(a,check){if(!a.stat)return;stop();pending=true;skipped=false;active=true;el.className='gathering';el.hidden=false;document.body.classList.add('checking');el.querySelector('.check-symbol').innerHTML=icon(a.stat==='agility'?'Hand':a.stat==='might'?'Swords':'MessageCircle');el.querySelector('.check-seal').textContent='';el.querySelector('.check-label').textContent=a.label;el.querySelector('.check-odds').textContent=`成功率 ${check.chance}%`;if(!matchMedia('(prefers-reduced-motion: reduce)').matches)for(const ms of [0,230,440,620,760])timers.push(setTimeout(()=>sound('tick'),ms));}
+ function play(r,next,hold=false){if(pending&&r.roll!=null){pending=false;seen.add(r);if(skipped){next();return;}finish=next;el.className='revealed '+(r.success?'passed':'failed');el.querySelector('.check-seal').textContent=r.grade||checkGrade(r.roll,r.check.chance);el.querySelector('.check-odds').textContent=`掷出 ${r.roll} · 成功范围 1～${r.check.chance}`;sound(r.success?'win':'lose');if(!hold)timers.push(setTimeout(stop,800));return;}if(r.roll==null||!r.check||seen.has(r)){next();return;}if(active)stop();seen.add(r);active=true;finish=next;el.className='gathering';el.hidden=false;document.body.classList.add('checking');
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ el.querySelector('.check-symbol').innerHTML=icon(/steal|lift|pocket/.test(r.actionId||r.kind||'')?'Hand':/fight|force/.test(r.kind||'')?'Swords':'MessageCircle');
+ el.querySelector('.check-seal').textContent='';el.querySelector('.check-label').textContent=r.label||'检定';el.querySelector('.check-odds').textContent=`成功率 ${r.check.chance}%`;
+ const later=(fn,ms)=>timers.push(setTimeout(fn,ms));if(!reduced)for(const ms of [0,230,440,620,760])later(()=>sound('tick'),ms);
+ later(()=>{el.className='revealed '+(r.success?'passed':'failed');el.querySelector('.check-seal').textContent=r.grade||checkGrade(r.roll,r.check.chance);el.querySelector('.check-odds').textContent=`掷出 ${r.roll} · 成功范围 1～${r.check.chance}`;sound(r.success?'win':'lose');},reduced?0:950);
+ if(!hold)later(stop,reduced?900:2100);
+ }
+ return {play,start,stop,cancel(){pending=false;skipped=false;stop();},get active(){return active;}};
+}

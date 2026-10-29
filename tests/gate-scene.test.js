@@ -1,0 +1,46 @@
+import {OBJECTS,OBJECT_ACTIONS,physicalReady} from '../src/object-contracts.js';
+import test from 'node:test';import assert from 'node:assert/strict';
+import {Simulation,newArrival,newGame} from '../src/simulation.js';
+import {World} from '../src/world.js';
+const setup=(rng=0)=>new Simulation(newArrival(),()=>rng);
+function act(s,id){s.s.player.x=s.event.point[0];s.s.player.z=s.event.point[1];const o=OBJECTS[OBJECT_ACTIONS[id]];if(o){[s.s.player.x,s.s.player.z]=o.stand;if(id==='g_pocket')s.s.player.crouched=true;}const r=s.resolve(s.event.id,id);assert.equal(r.error,undefined,id);return r;}
+test('arrival is a new opening with twelve coins and three suspicion, old saves stay where they are',()=>{const s=setup();assert.equal(s.s.player.money,12);assert.equal(s.s.wanted,3);assert.equal(s.event.type,'gate');assert.equal(new Simulation(newGame()).event.type,'proposal');});
+test('talking without credentials never admits; preparation and disguise do',()=>{const s=setup();act(s,'g_plead');assert.equal(s.event.gate.phase,'relay');act(s,'g_clothes');act(s,'g_buy');assert.equal(s.s.player.money,6);const r=act(s,'g_order');assert.equal(r.success,true);assert.equal(s.s.facts.entryRoute,'uniform');assert.equal(s.s.player.money,8);assert.equal(s.event.type,'proposal');assert.equal(s.s.facts.guardKnowsAlias,true);});
+test('stolen pass has another name, is rewritten and keeps a risk after entry',()=>{const s=setup();act(s,'g_find');act(s,'g_crouch');act(s,'g_pocket');assert.ok(s.s.player.inventory.includes('他人的路引'));act(s,'g_rewrite');assert.equal(s.s.player.money,8);act(s,'g_present');assert.equal(s.s.facts.falsePassRisk,true);assert.equal(s.s.facts.entryRoute,'papers');});
+test('failed theft raises suspicion and leads to prison, testimony and three day release',()=>{const s=setup(.999);act(s,'g_find');act(s,'g_steal');assert.equal(s.s.wanted,4);act(s,'g_surrender');assert.equal(s.event.gate.phase,'prison');act(s,'g_hear');act(s,'g_record');assert.equal(s.s.day,4);assert.equal(s.s.reputation,-10);assert.ok(s.s.player.inventory.includes('狱友口供：东街副账'));assert.equal(s.s.facts.taxLedgerLead,true);assert.equal(s.event.type,'proposal');});
+test('real gate attacks only scratch armour; counterattacks imprison rather than kill',()=>{const s=setup();act(s,'g_charge');s.attack('gate_guard');assert.equal(s.s.people.gate_guard.hp,99);for(let i=0;i<3;i++)s.tick(1.5);assert.equal(s.event.gate.phase,'prison');assert.ok(s.s.player.hp>0);assert.equal(s.s.facts.enteredCity,undefined);});
+test('retreat stops remote damage and rest does not bypass the gate',()=>{const s=setup();act(s,'g_charge');s.s.player.x=12;const hp=s.s.player.hp;s.tick(2);assert.equal(s.event.gate.phase,'refusal');assert.equal(s.s.player.hp,hp);const day=s.s.day;s.advanceDay();assert.equal(s.s.day,day);assert.equal(s.s.wanted,3);});
+test('failed preparation can change route, checks cannot farm rewards and save restores location',()=>{const s=setup(.999);act(s,'g_plead');act(s,'g_clothes');act(s,'g_lift');assert.equal(s.event.gate.phase,'merchant');act(s,'g_tip');act(s,'g_clothes');assert.ok(!s.actions().some(a=>a.id==='g_lift'));const restored=new Simulation(JSON.parse(JSON.stringify(s.s)),()=>0);assert.deepEqual(restored.event.point,[-11,24]);act(restored,'g_buy');act(restored,'g_order');assert.equal(restored.event.type,'proposal');});
+test('normal question does not roll; theft really transfers a ring without public omniscience',()=>{let s=new Simulation(newGame(),()=>.999),r=s.resolve(1,'p_listen');assert.equal(r.roll,null);assert.equal(s.event.proposal.phase,'talk');s=new Simulation(newGame(),()=>0);r=s.resolve(1,'p_watch');assert.equal(s.event.proposal.phase,'stolen');assert.ok(s.s.player.inventory.includes('ring'));assert.equal(s.s.wanted,0);s.resolve(1,'p_keep_ring');assert.equal(s.s.pending.type,'inquiry');assert.ok(!s.s.people.su.memories.some(m=>m.includes('你偷')));});
+test('failed ring theft and a returned ring have distinct consequences',()=>{const s=new Simulation(newGame(),()=>.999);s.resolve(1,'p_watch');assert.equal(s.event.proposal.phase,'caught_ring');assert.equal(s.s.player.inventory.includes('ring'),false);assert.equal(s.s.wanted,1);const t=new Simulation(newGame(),()=>0);t.resolve(1,'p_watch');t.resolve(1,'p_give_ring');assert.equal(t.s.player.inventory.includes('ring'),false);assert.equal(t.s.facts.missing,false);assert.ok(t.s.people.shen.relation<0);});
+
+test('paper inspection can expose a forgery and cannot be rerolled on the same day',()=>{const s=setup();act(s,'g_find');act(s,'g_crouch');act(s,'g_pocket');act(s,'g_rewrite');act(s,'g_present');s.rng=()=>.999;const before=s.s.wanted,r=s.inspectPass();assert.equal(r.success,false);assert.equal(s.s.wanted,before+1);assert.ok(!s.s.player.inventory.includes('改名路引'));assert.ok(s.inspectPass().error);});
+test('unseen theft does not enter other peoples memories as player guilt',()=>{const s=new Simulation(newGame(),()=>0);const before=s.s.people.shen.memories.length;s.resolve(1,'p_watch');s.resolve(1,'p_keep_ring');assert.equal(s.s.people.shen.memories.length,before);});
+
+test('gate collision blocks bypass and prison confines the player until release',()=>{const sim=setup(),world={sim,props:[],obstacles:[]};assert.equal(World.prototype.collides.call(world,0,20),true);act(sim,'g_charge');act(sim,'g_surrender');assert.equal(World.prototype.collides.call(world,22,-22),false);assert.equal(World.prototype.collides.call(world,0,10),true);act(sim,'g_serve');assert.equal(World.prototype.collides.call(world,0,20),false);});
+
+test('remote physical actions cannot award pass, growth or spend coins',()=>{const s=setup();act(s,'g_find');const before=JSON.stringify(s.s);assert.ok(s.resolve(s.event.id,'g_steal').error);assert.equal(JSON.stringify(s.s),before);act(s,'g_crouch');[s.s.player.x,s.s.player.z]=OBJECTS['merchant-pass'].stand;s.s.player.crouched=false;assert.ok(s.resolve(s.event.id,'g_pocket').error);s.s.player.crouched=true;assert.equal(s.resolve(s.event.id,'g_pocket').success,true);const coins=s.s.player.money;assert.ok(s.resolve(s.event.id,'g_rewrite').error);assert.equal(s.s.player.money,coins);});
+test('object readiness requires approach and crouching for covered theft',()=>{assert.equal(physicalReady({x:0,z:0},'g_buy'),false);const [x,z]=OBJECTS['merchant-pass'].stand;assert.equal(physicalReady({x,z},'g_pocket'),false);assert.equal(physicalReady({x,z,crouched:true},'g_pocket'),true);assert.equal(physicalReady({x,z},'g_steal'),true);});
+
+import {visitGate,tickGate} from '../src/gate-scene.js';
+test('plain gate question has no roll and reveals a practical lead',()=>{const s=setup(.999),r=act(s,'g_plead');assert.equal(r.roll,null);assert.equal(s.event.gate.phase,'relay');assert.equal(s.event.gate.facts.dispatchKnown,true);});
+test('unmodified papers require returning to guard and keep the borrowed name',()=>{const s=setup();act(s,'g_find');act(s,'g_crouch');act(s,'g_pocket');const r=act(s,'g_memory');assert.equal(r.roll,null);assert.equal(s.event.type,'gate');assert.equal(s.event.gate.phase,'papers');assert.equal(s.s.facts.enteredCity,undefined);act(s,'g_present');assert.equal(s.s.facts.falseName,'赵成');assert.equal(s.s.player.money,12);});
+test('world contact discovers theft without menu prerequisites and cannot erase confrontation',()=>{const s=setup();s.s.player.x=4.4;s.s.player.z=26.8;assert.equal(visitGate(s,'cargo-cover'),true);assert.equal(s.event.gate.phase,'merchant');act(s,'g_crouch');tickGate(s,15);assert.equal(s.event.gate.phase,'merchant');act(s,'g_crouch');s.rng=()=>.999;act(s,'g_pocket');assert.equal(visitGate(s,'relay'),false);assert.equal(s.event.gate.phase,'exposed');});
+test('uniform route gives usable handoff evidence and records its consequence',()=>{const s=setup();act(s,'g_plead');act(s,'g_clothes');act(s,'g_buy');act(s,'g_order');assert.ok(s.s.player.inventory.includes('待交接公文：东街税课'));assert.equal(s.s.facts.entryReceipt.route,'uniform');});
+test('dispatch knowledge materially improves disguise and world visits do not reroll resolved checks',()=>{const s=setup();s.s.player.x=-11;s.s.player.z=25.5;visitGate(s,'runner-clothes');act(s,'g_buy');const blind=s.preview(s.actions().find(a=>a.id==='g_order')).chance;s.event.gate.facts.dispatchKnown=true;assert.ok(s.preview(s.actions().find(a=>a.id==='g_order')).chance>blind);});
+
+import {isDirectReply} from '../src/dialogue.js';
+test('jail question immediately uses prisoner dialogue and retains testimony choices',()=>{
+ const s=setup();act(s,'g_charge');const detained=act(s,'g_surrender');
+ assert.equal(isDirectReply(detained),false);
+ const day=s.s.day,r=act(s,'g_hear');
+ assert.equal(isDirectReply(r),true);assert.equal(r.dialogue[0].id,'prisoner');assert.equal(r.dialogue[0].narration,false);
+ assert.equal(s.s.day,day);assert.equal(s.event.gate.phase,'testimony');assert.equal(r.ongoing,true);
+ assert.ok(s.actions().some(a=>a.id==='g_record'));assert.ok(s.actions().some(a=>a.id==='g_serve'));
+ assert.equal(isDirectReply(act(s,'g_record')),false);assert.equal(s.s.day,day+3);
+});
+test('gate questions are direct dialogue but disguise and physical actions retain performance',()=>{
+ const s=setup();assert.equal(isDirectReply(act(s,'g_plead')),true);
+ act(s,'g_clothes');assert.equal(isDirectReply(act(s,'g_buy')),false);
+ assert.equal(isDirectReply(act(s,'g_order')),false);
+});

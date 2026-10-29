@@ -1,3 +1,9 @@
+import {migrateLocations} from './locations.js';
+import {syncQuests,progressSnapshot,observeProgress} from './progress.js';
+import {isGate,gateState,gateView,gateActions,resolveGate,tickGate} from './gate-scene.js';
+import {hasContinuation,continuationActions,continuationView,resolveContinuation} from './scene-continuations.js';
+import {isProposal,proposalState,proposalActions,proposalView,resolveProposal,finishProposalDuel} from './proposal-scene.js';
+import {earnGrowth,growthBonus,combatDamage} from './growth.js';
 import {ensureParty} from './party-state.js';
 import {actionBeat,BONUS,PERSONALITIES,followupOptions} from './action-contracts.js';
 import {ROLES,PEOPLE,SCENES,actionsFor,LETTERS} from './data.js';
@@ -6,9 +12,10 @@ export function newGame(role='wanderer'){
  const r=ROLES[role]||ROLES.wanderer;
  return {version:1,role,day:1,time:0,player:{x:0,z:14,hp:100,energy:100,money:80,stats:{...r.stats},xp:0,inventory:[]},people:Object.fromEntries(PEOPLE.map(n=>[n.id,{relation:n.relation,mood:'calm',fear:0,hp:100,memories:[]}])),reputation:0,wanted:0,style:{[r.style]:3},event:{id:1,type:'proposal',depth:0,status:'active'},pending:null,history:[],mail:[],facts:{},sequence:1,broken:[],attacks:0};
 }
+export function newArrival(role='wanderer'){const s=newGame(role);s.player.x=0;s.player.z=27;s.player.money=12;s.wanted=3;s.facts.entryStarted=true;s.event={id:1,type:'gate',status:'active',depth:0,point:[0,24],cast:['gate_guard']};return s;}
 export class Simulation{
- constructor(state=newGame(),rng=Math.random){this.s=state;ensureParty(state);this.rng=rng;this.listeners=[];for(const p of PEOPLE)state.people[p.id]??={relation:p.relation,mood:'calm',fear:0,hp:100,memories:[]};if(state.facts.missing&&state.event?.status==='active'&&state.event.type==='banquet'){state.event.type='inquiry';state.event.elapsed=0;state.facts.couple=false;}}
- emit(type,data){for(const fn of this.listeners)fn(type,data);}
+ constructor(state=newGame(),rng=Math.random){this.s=state;ensureParty(state);migrateLocations(state);this.rng=rng;this.listeners=[];syncQuests(state);this.progressBaseline=progressSnapshot(state);for(const p of PEOPLE)state.people[p.id]??={relation:p.relation,mood:'calm',fear:0,hp:100,memories:[]};if(state.facts.missing&&state.event?.status==='active'&&state.event.type==='banquet'){state.event.type='inquiry';state.event.elapsed=0;state.facts.couple=false;}}
+ emit(type,data){if(['result','streetResult','npc','sandbox','entry','day','violence','save','actionWitnessed','fieldCheck'].includes(type))observeProgress(this,type==='entry'?(data==='prison'?'刑满出狱：三日刑期结算':'进入城内'):type==='day'?'休息与日程推进':type==='violence'?'发生交战':type==='save'?'行动与身体状态变化':data?.label||data?.text||'大世界行动');for(const fn of this.listeners)fn(type,data);}
  save(){this.emit('save',this.s);}
  banquetOccurred(){return !!this.s.facts.couple||this.s.facts.banquetDay!=null||this.s.history.some(h=>h.type==='banquet');}
  normalizeFollowup(){
@@ -17,12 +24,16 @@ export class Simulation{
   p.type=next(p.type);p.allowed=[...new Set((p.allowed||[p.type]).map(next))];
  }
  get event(){return this.s.event?.status==='active'?this.s.event:null;}
- actions(){return this.event?actionsFor(this.event.type,this.s.player.inventory.includes('ring')):[];}
- preview(a){const p=this.s.player,score=p.stats[a.stat]||0,relation=Math.round((this.s.people.su.relation+this.s.people.shen.relation)/10),chance=a.stat?clamp(score+40-a.difficulty+relation,5,95):100;return {chance,score,relation,blocked:p.money<a.cost,certain:!a.stat};}
+ actions(){return isGate(this.event)?gateActions(this):isProposal(this.event)?proposalActions(this):hasContinuation(this)?continuationActions(this):this.event?actionsFor(this.event.type,this.s.player.inventory.includes('ring')):[];}
+ sceneView(){return isGate(this.event)?gateView(this):isProposal(this.event)?proposalView(this):hasContinuation(this)?continuationView(this):null;}
+ preview(a){const p=this.s.player,score=p.stats[a.stat]||0,relation=isGate(this.event)?Math.round((this.s.people[this.event.cast[0]]?.relation||0)/10):Math.round((this.s.people.su.relation+this.s.people.shen.relation)/10),chance=a.stat?clamp(score+40-a.difficulty+relation+growthBonus(p,a.stat)+(this.event?.type==='favor'&&this.s.facts.extortionLead?12:0)+(isProposal(this.event)&&a.id==='p_take_ready'&&growthBonus(p,'agility')?8:0),5,95):100;return {chance,score,relation,bonus:growthBonus(p,a.stat),blocked:p.money<(a.cost||0),certain:!a.stat};}
  recommend(){return this.actions().map(a=>({...a,weight:(a.tags||[]).reduce((n,t)=>n+(this.s.style[t]||0)*5,0)+(a.stat?(this.s.player.stats[a.stat]-a.difficulty)*.25:0)})).sort((a,b)=>b.weight-a.weight).filter((a,i,all)=>i===all.findIndex(b=>b.kind===a.kind)).slice(0,5);}
  relation(id,delta){const p=this.s.people[id];p.relation=clamp(p.relation+delta,-100,100);}
  resolve(id,actionId,evidence=null){
- const e=this.event,a=this.actions().find(a=>a.id===actionId);if(!e||id!==e.id||!a)return {error:'这一刻已经过去。'};
+ if(isGate(this.event))return resolveGate(this,id,actionId);
+ if(isProposal(this.event)&&!evidence)return resolveProposal(this,id,actionId);
+ if(hasContinuation(this)&&!evidence)return resolveContinuation(this,id,actionId);
+ const e=this.event,a=(evidence&&e?actionsFor(e.type,this.s.player.inventory.includes('ring')):this.actions()).find(a=>a.id===actionId);if(!e||id!==e.id||!a)return {error:'这一刻已经过去。'};
  const before=Object.fromEntries(Object.entries(this.s.people).map(([id,n])=>[id,{relation:n.relation,memories:n.memories.slice(-4)}]));
  const check=evidence?{chance:100,certain:true,blocked:false}:this.preview(a);if(check.blocked)return {error:'盘缠不足。'};
  const s=this.s,p=s.player,roll=a.stat&&!evidence?1+Math.floor(this.rng()*100):null,success=roll===null||roll<=check.chance,changes=[];
@@ -64,6 +75,7 @@ export class Simulation{
  if(s.facts.missing&&next==='banquet')next='inquiry';
  else if(next==='banquet'&&this.banquetOccurred())next='favor';
 
+ if(a.stat)changes.push(...earnGrowth(p,a.stat,success?12:6,`event:${e.id}:${a.id}`));
  p.xp+=success?12:5;changes.push(`阅历 +${success?12:5}`);
  for(const t of a.tags||[])s.style[t]=(s.style[t]||0)+1;
  const result={day:s.day,eventId:e.id,type:e.type,label:evidence||a.label,actionId:a.id,dialogue:beat.dialogue,motion:beat.motion,reactionSource:'local',kind:a.kind,check,roll,success,text,hint,changes};s.history.push(result);
@@ -102,6 +114,8 @@ export class Simulation{
  }
  direct(id,type,reason){const p=this.s.pending;if(!p||p.id!==id||!p.allowed?.includes(type)||(type==='banquet'&&this.banquetOccurred()))return false;p.type=type;p.directorReason=String(reason||'').slice(0,180);this.save();return true;}
  advanceDay(){
+ if(isGate(this.event))return;
+ if(isProposal(this.event)&&proposalState(this.event).phase==='duel')finishProposalDuel(this,false);
  const s=this.s;s.day++;s.time=0;s.player.energy=100;if(s.player.hp>0)s.player.hp=Math.min(100,s.player.hp+30);s.wanted=Math.max(0,s.wanted-1);
  for(const n of Object.values(s.people)){n.fear=0;n.hp=Math.max(n.hp,60);n.mood=n.relation< -10?'wary':'calm';}
  s.broken=[];
@@ -114,7 +128,9 @@ export class Simulation{
  }
 
  tickStory(dt){
- const s=this.s,e=this.event;if(!e)return;e.elapsed=(e.elapsed||0)+dt;
+ const s=this.s,e=this.event;if(!e)return;if(isGate(e)){tickGate(this,dt);return;}
+ if(isProposal(e)){const q=proposalState(e);q.idle=(q.idle||0)+dt;if(q.phase==='duel'){q.duelElapsed=(q.duelElapsed||0)+dt;if(s.player.hp<=25||Math.hypot(s.player.x+1,s.player.z-2)>7||q.duelElapsed>60)finishProposalDuel(this,false);}if(q.idle>150&&Math.hypot(s.player.x+1,s.player.z-2)>8){e.status='resolved';s.pending={id:++s.sequence,type:'confidence',depth:e.depth+1,due:s.day+1,allowed:['confidence']};s.people.shen.mood='calm';this.emit('scene',null);this.save();}return;}
+ e.elapsed=(e.elapsed||0)+dt;
  if(e.type==='inquiry'&&s.facts.missing){
   if(e.elapsed>=75){this.endSearch(e.id);return;}
   const round=Math.floor(e.elapsed/25);
@@ -152,6 +168,7 @@ export class Simulation{
  else if(intent==='search'){check=this.preview({stat:'wit',difficulty:45,cost:0});roll=1+Math.floor(this.rng()*100);success=roll<=check.chance;line=success?'那边已经找过了，多谢帮忙，我去另一侧看看。':'摊子底下也没有……还得再找。';outcome=success?'你检查了桥边的痕迹，排除一处位置。银戒仍未寻回。':'你查看了脚下和摊边，没有找到有效线索。';}
  else if(intent==='calm'){check=this.preview({stat:'charm',difficulty:48,cost:0});roll=1+Math.floor(this.rng()*100);success=roll<=check.chance;line=success?'你说得对，先别把话说重了。':'我现在实在静不下来，先让我缓缓。';outcome=success?'你的劝说让对方放缓了语气。':'这番劝说暂时没有奏效。';if(success){if(!s.replyRewards?.[`${s.day}:${id}:${intent}`]){this.relation(id,2);changes.push(PEOPLE.find(p=>p.id===id).name+' +2');}if(this.event?.type==='ring_quarrel'){this.event.status='resolved';s.pending={id:++s.sequence,type:'confidence',depth:this.s.event.depth+1,due:s.day+1,allowed:['confidence','truce']};this.emit('scene',null);}}}
  else{line=n.relation<0?'你的话我听见了，但我还需要想想。':'我听着呢，少侠。你慢慢说。';outcome='你向'+PEOPLE.find(p=>p.id===id).name+'说：“'+text+'”';}
+ if(roll!==null)changes.push(...earnGrowth(s.player,intent==='search'?'wit':'charm',success?10:5,`reply:${s.day}:${id}:${intent}`));
  const repeatKey=`${s.day}:${id}:${intent}`;s.replyRewards??={};s.replyRewards[repeatKey]=true;
  const r={day:s.day,type:'conversation',actionId:'reply-'+intent,label:text,kind:intent==='return'?'return':'listen',motion:intent==='return'?'reach':intent==='search'?'observe':'talk',roll,check,success,text:outcome,changes,hint:'对方会记得这番话。',dialogue:[{id,text:line}],reactionSource:'local',nextId:['return','calm'].includes(intent)?s.pending?.id:undefined};
  s.history.push(r);this.prepareReaction(r,[id]);r.reactionContext.knowledge='玩家的发言只是其主张，不代表客观真相。只有 settled 是已验证事实。NPC不知道未被承认的偷窃者；不得泄露隐瞒的物品。';r.reactionContext.recentEvents=[];
@@ -160,6 +177,8 @@ export class Simulation{
 
  isPursuing(id,distance){
  const s=this.s,n=s.people[id];
+ if(n?.awareness)return false;
+ if(isGate(this.event))return false;
  return s.player.hp>0&&!!n&&n.hp>0&&((id==='guard'&&s.wanted>0&&distance<14)||(n.mood==='angry'&&distance<7));
  }
  respawn(){
@@ -168,14 +187,19 @@ export class Simulation{
  this.s.wanted=0;this.advanceDay();this.s.player.hp=60;this.s.player.x=0;this.s.player.z=14;
  this.save();return true;
  }
- tick(dt){const s=this.s;this.tickStory(dt);s.time+=dt;if(s.time>=240)this.advanceDay();for(const n of Object.values(s.people))n.fear=Math.max(0,n.fear-dt);}
+ tick(dt){const s=this.s;this.tickStory(dt);s.time+=dt;if(s.time>=240&&!isGate(this.event))this.advanceDay();for(const n of Object.values(s.people))n.fear=Math.max(0,n.fear-dt);}
  attack(id,witnesses=[]){
  const s=this.s,n=s.people[id];if(!n||n.hp<=0)return;
- n.hp=Math.max(0,n.hp-22);n.fear=18;n.mood=n.hp<=0?'down':'angry';this.relation(id,-6);s.wanted=clamp(s.wanted+1,0,9);s.attacks++;
+ this.emit('worldIncident',{type:'assault',target:id,x:s.player.x,z:s.player.z});
+ if(isGate(this.event)&&id==='gate_guard'){if(!n.awareness&&gateState(this.event).phase!=='fight')resolveGate(this,this.event.id,'g_charge');n.hp=Math.max(1,n.hp-1);this.save();return;}
+ if(id==='shen'&&isProposal(this.event)&&proposalState(this.event).phase==='duel'){n.hp=Math.max(1,n.hp-combatDamage(s.player));if(n.hp<=50)finishProposalDuel(this,true);this.save();return;}
+ const first=n.hp>0; n.hp=Math.max(0,n.hp-combatDamage(s.player));
+ if(first&&n.hp===0)earnGrowth(s.player,'might',12,`combat:${s.day}:${id}`);n.fear=18;n.mood=n.hp<=0?'down':'angry';if(!n.awareness){this.relation(id,-6);s.wanted=clamp(s.wanted+1,0,9);}s.attacks++;
  for(const w of witnesses){if(w!==id&&s.people[w]){s.people[w].fear=12;s.people[w].mood=w==='guard'?'angry':'afraid';}}
  n.memories.push('你曾在街上对我动手。');this.emit('violence',{id,down:n.hp<=0});
- if(['shen','su'].includes(id)&&this.event&&this.event.type!=='ending'){
-  const e=this.event,a=this.actions().find(a=>a.kind==='disrupt');if(a)this.resolve(e.id,a.id,'出手攻击当事人');
+ if(['shen','su'].includes(id)&&isProposal(this.event)){const e=this.event;e.status='resolved';s.pending={id:++s.sequence,type:'dispute',depth:e.depth+1,due:s.day+1,allowed:['dispute']};this.emit('scene',null);}
+ else if(['shen','su'].includes(id)&&this.event&&this.event.type!=='ending'){
+  const e=this.event,a=actionsFor(e.type).find(a=>a.kind==='disrupt');if(a)this.resolve(e.id,a.id,'出手攻击当事人');
  }
  this.save();
  }
@@ -184,11 +208,18 @@ export class Simulation{
  npcCheck(id,kind){
  const n=this.s.people[id];if(!n||n.hp<=0)return {error:'对方暂时无法应答。'};
  const stamp=this.s.day+':'+kind;n.socialToday??={};if(n.socialToday[stamp])return {error:'今日已经试过，不必一再纠缠。'};
- const stat=kind==='befriend'?'charm':'might',score=this.s.player.stats[stat],chance=clamp(score+40-55+Math.round(n.relation/10),5,95),roll=1+Math.floor(this.rng()*100),success=roll<=chance,delta=kind==='befriend'?(success?8:-2):-6;
+ const stat=kind==='befriend'?'charm':'might',score=this.s.player.stats[stat],chance=clamp(score+40-55+Math.round(n.relation/10)+growthBonus(this.s.player,stat),5,95),roll=1+Math.floor(this.rng()*100),success=roll<=chance,delta=kind==='befriend'?(success?8:-2):-6;
+ const growthChanges=earnGrowth(this.s.player,stat,success?12:6,`npc:${stamp}:${id}`);
  this.relation(id,delta);n.socialToday[stamp]=true;
  if(kind==='intimidate'){n.fear=success?12:0;n.mood=success?'afraid':'angry';this.s.wanted=Math.min(9,this.s.wanted+1);}
  const text=kind==='befriend'?(success?'一番攀谈后，对方愿意把你当作朋友。':'话不投机，对方礼貌地岔开了话题。'):(success?'对方退后几步，惊惧地看着你。旁人记住了你的蛮横。':'对方不为所动，反而握紧了拳头。');
- n.memories.push(text);const r={day:this.s.day,type:'npc',dialogue:[{id,text:kind==='befriend'?(success?'与你聊得投缘，往后常来坐坐。':'这事咱们改日再说吧。'):(success?'你……别过来！':'少拿这套吓唬人！')}],label:kind==='befriend'?'攀谈结交':'出言威吓',kind,check:{chance,score},roll,success,text,hint:'这一面，已经留在对方的记忆里。',changes:[PEOPLE.find(p=>p.id===id).name+' '+(delta>0?'+':'')+delta]};this.s.history.push(r);r.motion=kind==='befriend'?'talk':'guard';this.prepareReaction(r,[id]);this.emit('result',r);this.save();return r;
+ n.memories.push(text);const r={day:this.s.day,type:'npc',dialogue:[{id,text:kind==='befriend'?(success?'与你聊得投缘，往后常来坐坐。':'这事咱们改日再说吧。'):(success?'你……别过来！':'少拿这套吓唬人！')}],label:kind==='befriend'?'攀谈结交':'出言威吓',kind,check:{chance,score},roll,success,text,hint:'这一面，已经留在对方的记忆里。',changes:[PEOPLE.find(p=>p.id===id).name+' '+(delta>0?'+':'')+delta,...growthChanges]};this.s.history.push(r);r.motion=kind==='befriend'?'talk':'guard';this.prepareReaction(r,[id]);this.emit('result',r);this.save();return r;
+ }
+ inspectPass(){
+ const s=this.s,p=s.player;if(!s.facts.falsePassRisk)return {error:'没有需要查验的可疑路引。'};if(s.facts.passCheckDay===s.day)return {error:'今天已经查过这张路引。'};s.facts.passCheckDay=s.day;
+ const score=p.stats.wit,chance=clamp(score-15+Math.round(s.people.guard.relation/10)+growthBonus(p,'wit'),5,95),roll=1+Math.floor(this.rng()*100),success=roll<=chance;
+ const changes=earnGrowth(p,'wit',success?12:6,`pass-check:${s.day}`);if(!success){s.wanted++;s.facts.falsePassRisk=false;p.inventory=p.inventory.filter(i=>!['他人的路引','改名路引'].includes(i));changes.push('路引被没收','嫌疑 +1');}else {s.wanted=Math.max(0,s.wanted-1);changes.push('嫌疑 −1');}
+ const text=success?'你按原籍贯答清来历，陆捕头暂且放行。这张路引仍经不起细验。':'陆捕头发现名字下的旧笔画，收走路引，开始追查你的身份。';const r={day:s.day,type:'npc',eventId:'papers:'+s.day,label:'应对路引抽查',kind:'listen',motion:'talk',check:{score,chance},roll,success,text,changes,authored:true,dialogue:[{id:'guard',text}],hint:'这次查验结果已记下。'};s.history.push(r);this.emit('result',r);this.save();return r;
  }
  npcAction(id,kind){
  const n=this.s.people[id],p=this.s.player;if(!n)return {text:'那人已经离开。'};
