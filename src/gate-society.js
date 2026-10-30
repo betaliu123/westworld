@@ -19,7 +19,7 @@ export function contactOptions(sim,id){const n=sim.s.people[id],k=knowledge(sim)
  ...(['gate_guard','gate_relief'].includes(id)?[option('watch','打听换班与关口的规矩')]:[]),
  ...(id==='relay'?[option('tax','打听这趟公文交给谁')]:[]),
  ...(id==='tea_host'?[option('tea_news','问问茶棚近日的客人')]:[]),
- ...(id==='traveler'?[option('prince_answer','说说自己被拦在关外的遭遇'),...((sim.s.people[id].probed||sim.s.facts.princeLetter)&&!sim.s.facts.princeAlias?[option('prince_identity','你佩的玉、随行的人，都不像寻常旅客','charm',45)]:[]),...(sim.s.facts.princeLetter||sim.s.facts.taxLedgerLead||k.clues.tax||k.clues.ledger?[option('prince_evidence','提起东街税课的线索')]:[]),option('prince_leave',sim.s.facts.princeDeparture?.arrived?'茶凉了。':'你等的人还没来？')]:[]),
+ ...(id==='traveler'?[option('prince_answer','说说自己被拦在关外的遭遇'),...((sim.s.people[id].probed||sim.s.facts.princeLetter)&&!sim.s.facts.princeAlias?[option('prince_identity','你的衣料和佩玉，都不像寻常旅客','charm',45)]:[]),...(sim.s.facts.princeLetter||sim.s.facts.taxLedgerLead||k.clues.tax||k.clues.ledger?[option('prince_evidence','提起东街税课的线索')]:[]),option('prince_leave',sim.s.facts.princeDeparture?.arrived?'茶凉了。':'你等的人还没来？')]:[]),
  ...(id==='old_constable'?[learnedFootwork(sim,id)?option('training_review','聊聊上次学的身法'):option('training','请教避开视线的身法','agility',45),...(k.clues.patron?[option('apex','请他辨认梁中丞的来路')]:[])]:[]),
  ...(id==='gate_merchant'&&sim.event?.type==='gate'?[option('escort','商量做一趟帮工，随货入城','charm',48)]:[]),
  ...(id==='scribe'?[option('seal','请教如何辨别税课官印')]:[]),
@@ -52,9 +52,9 @@ export function contactResolve(sim,eco,id,action){if(action==='training'&&learne
  const r={type:'npc',eventId:'contact:'+sim.s.day+':'+id+':'+action,actionId:action,label:a.label,kind:'listen',motion:['training','court_arrest'].includes(action)?'reach':'talk',check,roll,success,text,changes,dialogue:[{id,text}],authored:true};sim.s.history.push(r);sim.emit('result',r);sim.save();return r;
 }
 const RUMORS=[
- {id:'watch',a:'traveler',b:'old_constable',line:'韩校尉手下的周伍长又来接班了。两个人倒着值，饭都吃不安生。'},
+ {id:'watch',a:'old_constable',b:'traveler',line:'关口是韩校尉管着，周伍长替他轮值。我从前当差，也得等接班的人到了，才顾得上吃饭。'},
  {id:'tax',a:'old_constable',b:'traveler',line:'东街郑税使又在催关口的公文。守军是守军，税课是税课，偏偏搅在一起。'},
- {id:'patron',a:'traveler',b:'old_constable',line:'税银若真全入了官库，何必另外找京中接引？姓梁的那位，倒值得查查。'}
+ {id:'patron',a:'old_constable',b:'traveler',line:'我还当差时，就听过一个姓梁的京中接引。税银的事总绕着他走，可惜没见过实账。'}
 ];
 export function societyStep(sim,eco,world,dt){const s=sim.s;s.gateSociety??={nextTalk:eco.s.time+12,index:0};const state=s.gateSociety,positions=eco.positions;
  if(s.facts.taxLedgerLead)learn(sim,'ledger','旧账房证言');

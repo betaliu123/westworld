@@ -1,3 +1,4 @@
+import {privacySpot} from './locations.js';
 import {custodyStep} from './faction-career.js';
 import {ensurePrince,princeStep} from './prince.js';
 import {environmentStep} from './world-rules.js';
@@ -27,7 +28,7 @@ export function canReceiveFood(sim,eco,id,item){const n=sim.s.people[id];
 export function inspectFood(sim,id,item){
  if(!item.poisoned)return true;item.examinedBy??={};
  if(item.knownPoisonBy?.includes(id))return false;
- if(!(id in item.examinedBy)){const wit=sim.s.people[id]?.stats?.wit??35;item.examinedBy[id]=sim.rng()*100<Math.min(85,Math.max(0,wit*.6));}
+ if(!(id in item.examinedBy)){const wit=sim.s.people[id]?.stats?.wit??35;item.examinedBy[id]=sim.rng()*100<Math.min(85,Math.max(0,wit*.6));sim.emit('npcCheck',{id,label:'识毒',success:item.examinedBy[id]});}
  if(item.examinedBy[id]){item.knownPoisonBy??=[];if(!item.knownPoisonBy.includes(id))item.knownPoisonBy.push(id);return false;}return true;
 }
 export function consumeFood(actor,item,now=0){if(item.type!=='food'||item.hp<=0||item.location==='consumed')return false;item.location='consumed';actor.energy=Math.min(100,(actor.energy??100)+18);actor.eatingUntil=now+3;if(item.poisoned){actor.hp=Math.max(0,actor.hp-25);actor.sickUntil=now+90;}else actor.hp=Math.min(100,actor.hp+20);return true;}
@@ -40,7 +41,7 @@ export function lifeStep(sim,eco,dt,positions){ensureLife(sim,eco);const now=eco
   if(body.drowning){n.life={activity:'escape',target:{x:q.x< -22?-27:-17,z:q.z}};continue;}
   if(flames){n.life={activity:'escape',target:{x:q.x+3,z:q.z+3}};continue;}
   if(n.stunnedUntil>(sim.s.npcClock||0)||n.awareness&&['fight','warn','flee','investigate','search'].includes(n.awareness.state))continue;
-  if(n.sickUntil>now){const index=PEOPLE.findIndex(p=>p.id===id),target={x:-12.8-(index%4)*1.15,z:27.8+Math.floor(index/4)*.85};if(n.life.activity!=='privacy')sim.emit('npcRoutine',{id,text:'肚子怎么闹起来了……得找个僻静处。'});n.life={activity:'privacy',target};continue;}
+  if(n.sickUntil>now){const index=PEOPLE.findIndex(p=>p.id===id),target=privacySpot(index);if(n.life.activity!=='privacy')sim.emit('npcRoutine',{id,text:'肚子怎么闹起来了……得找个僻静处。'});n.life={activity:'privacy',target};continue;}
   if(['inspector','gang_boss'].includes(id)){const home=PEOPLE.find(p=>p.id===id);n.life={activity:'duty',target:{x:home.x,z:home.z}};continue;}
   if(!GATE_PEOPLE.includes(id))continue;
   if(id===watch.holder){n.life={activity:'duty',target:POST};continue;}

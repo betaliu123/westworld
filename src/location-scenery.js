@@ -1,7 +1,8 @@
+import {PRIVACY_GROVE} from './locations.js';
 import * as T from '../vendor/three.module.js';
 export function buildLocationScenery(world,{box,cyl,textSprite}){
- for(let j=0;j<8;j++)for(let k=0;k<4;k++){const shrub=new T.Mesh(new T.IcosahedronGeometry(.8,1),new T.MeshStandardMaterial({color:(j+k)%2?0x4e6940:0x637b47}));shrub.scale.set(1,.85,1);shrub.position.set(-12.5-k*1.35+Math.sin(j*3+k)*.18,.55+Math.sin(j+k)*.1,27.2+j*.85+Math.cos(j+k)*.16);world.scene.add(shrub);}
- world.obstacles.push({id:'privacy-hedge',x:-11.7,z:29.7,w:.2,d:5});
+ for(let j=0;j<8;j++)for(let k=0;k<4;k++){const shrub=new T.Mesh(new T.IcosahedronGeometry(.8,1),new T.MeshStandardMaterial({color:(j+k)%2?0x4e6940:0x637b47}));shrub.scale.set(1,.85,1);shrub.position.set(PRIVACY_GROVE.x+k*1.35+Math.sin(j*3+k)*.18,.55+Math.sin(j+k)*.1,PRIVACY_GROVE.z-.6+j*.85+Math.cos(j+k)*.16);world.scene.add(shrub);}
+ world.obstacles.push({id:'privacy-hedge',x:PRIVACY_GROVE.x-.8,z:PRIVACY_GROVE.z+1.9,w:.2,d:5});
  // Open-front halls keep entrances and indoor NPCs physically reachable.
  for(const site of [{id:'court-hall',name:'官府大堂 · 六扇门',x:10,z:-23,wall:0x7c6556,trim:0x334a50},{id:'gang-den',name:'赤砂堂 · 赤砂帮巢穴',x:23,z:-5,wall:0x61483e,trim:0x6b2928}]){
   const g=new T.Group();g.position.set(site.x,0,site.z);world.scene.add(g);

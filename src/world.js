@@ -62,6 +62,13 @@ export class World{
  canvas.addEventListener('contextmenu',e=>e.preventDefault());canvas.addEventListener('pointerdown',e=>{if(e.button===2){if(this.performance)this.performance.camera=false;this.drag=true;canvas.setPointerCapture(e.pointerId);}else if(e.button===0)this.primaryAction(e);});canvas.addEventListener('pointerup',()=>this.drag=false);canvas.addEventListener('pointermove',e=>{if(this.drag){this.yaw-=e.movementX*.006;this.pitch=Math.max(.28,Math.min(1.05,this.pitch+e.movementY*.004));}});canvas.addEventListener('wheel',e=>{e.preventDefault();if(this.performance)this.performance.camera=false;this.distance=Math.max(7,Math.min(22,this.distance+e.deltaY*.01));},{passive:false});
  window.addEventListener('blur',()=>{this.keys.clear();this.clearReady();});
  }
+ showNpcCheck({id,label,success,observation=false,income=false}){
+ const n=this.npcs.get(id),state=this.sim.s.people[id];if(!n||!state||state.hp<=0||state.stunnedUntil>(this.sim.s.npcClock||0)||this.cinematic||n.actor.position.distanceTo(this.hero.position)>10||!visibleBetween(n.actor.position,this.hero.position,this.obstacles,this.sim.s.ecosystem?.objects)||(!income&&this.t<(n.nextCheckFlash||0)))return;
+ if(!n.checkFlash&&[...this.npcs.values()].filter(n=>n.checkFlash&&this.t-n.checkFlashStart<1.25).length>=2)return;
+ if(n.checkFlash){n.actor.remove(n.checkFlash);n.checkFlash.material.map.dispose();n.checkFlash.material.dispose();}
+ n.checkFlash=textSprite(observation?label:label+(success?' 成功':' 失败'),income?'#f3d27e':success?'#d7edb0':'#d3c3b7',32);n.checkFlash.scale.set(2.5,.47,1);n.checkFlash.position.y=3.12;n.actor.add(n.checkFlash);n.checkFlashStart=this.t;n.nextCheckFlash=this.t+4;
+ }
+ updateNpcChecks(){for(const n of this.npcs.values()){if(!n.checkFlash)continue;const age=this.t-n.checkFlashStart;if(age>=1.25){n.actor.remove(n.checkFlash);n.checkFlash.material.map.dispose();n.checkFlash.material.dispose();n.checkFlash=null;continue;}n.checkFlash.visible=!this.cinematic&&n.actor.position.distanceTo(this.hero.position)<10&&visibleBetween(n.actor.position,this.hero.position,this.obstacles,this.sim.s.ecosystem?.objects);n.checkFlash.position.y=3.12+age*.3;n.checkFlash.material.opacity=Math.min(1,age/.1,(1.25-age)/.4);if(n.checkFlash.visible&&n.alert)n.alert.visible=false;}}
  noticeIncident(event){
  event.witnesses=[];const replies=[];
  for(const [id,n]of this.npcs){const state=this.sim.s.people[id];if(!state||state.hp<=0||state.stunnedUntil>(this.sim.s.npcClock||0))continue;const pos=n.actor.position,d=Math.hypot(pos.x-event.x,pos.z-event.z);if(d>12)continue;
@@ -69,7 +76,7 @@ export class World{
  const seen=(d<3||facing>-.15)&&(!event.covert||(d<1.6&&facing>.65))&&visibleBetween(pos,event,this.obstacles,this.sim.s.ecosystem?.objects);
  if(!seen&&['tamper','theft'].includes(event.type))continue;
  const repeated=this.sim.s.people[id].awareness?.suspect==='player'&&(this.sim.s.npcClock||0)-(this.sim.s.people[id].awareness?.lastIncident||0)<20;
- if(seen){event.witnesses.push(id);if(!repeated)replies.push({id,text:event.type==='tamper'?(event.owner===id?'你往里面放了什么？这些吃喝先别碰！':'等等，他刚往吃喝里放了东西！'):event.type==='theft'?'住手！那不是你的东西！':event.type==='assault'?'住手！有人动刀了！':'别砸了！快来人！'});}
+ if(seen){if(!repeated&&['tamper','theft'].includes(event.type))this.sim.emit('npcCheck',{id,label:event.type==='theft'?'察觉 · 偷窃':'察觉 · 动过吃喝',success:true,observation:true});event.witnesses.push(id);if(!repeated)replies.push({id,text:event.type==='tamper'?(event.owner===id?'你往里面放了什么？这些吃喝先别碰！':'等等，他刚往吃喝里放了东西！'):event.type==='theft'?'住手！那不是你的东西！':event.type==='assault'?'住手！有人动刀了！':'别砸了！快来人！'});}
  if(seen&&event.type==='tamper'&&event.itemId){const item=this.sim.s.ecosystem?.items.find(i=>i.id===event.itemId);if(item){item.knownPoisonBy??=[];if(!item.knownPoisonBy.includes(id))item.knownPoisonBy.push(id);}}
  witnessEvent(this.sim,id,event,seen,n.base);
  if(seen&&event.type==='assault'&&id===event.target)this.sim.s.people[id].awareness.severe=true;
@@ -366,6 +373,7 @@ export class World{
  dressActor(this.hero,0x385953,outfit(this.sim)?.color??0x385953);
  for(const [id,n]of this.npcs){if(s.people[id].wardrobeInitialized)dressActor(n.actor,n.person.color,s.ecosystem.items.some(i=>i.type==='clothing'&&i.ownerId===id&&i.location==='npc:'+id&&i.hp>0)?n.person.color:0xb6b09b);const st=s.people[id],a=n.actor,d=a.position.distanceTo(this.hero.position),available=st.hp>0&&!(st.stunnedUntil>(s.npcClock||0));const visible=available&&d<6&&visibleBetween(a.position,this.hero.position,this.obstacles,s.ecosystem?.objects);const dx=this.hero.position.x-a.position.x,dz=this.hero.position.z-a.position.z;const front=Math.sin(a.rotation.y)*dx+Math.cos(a.rotation.y)*dz>0;
  const target=visible&&(front||this.t<n.lookUntil)?this.hero.position:null;bodyFeedback(a,st.hp,this.t,dt,target);}
+ this.updateNpcChecks();
  this.renderer.render(this.scene,this.camera);
  }
 }

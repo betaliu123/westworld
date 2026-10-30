@@ -1,3 +1,4 @@
+import {placePayment,collectPayments,takePayment} from './cash-transfers.js';
 import {helpless,patrolStep} from './impersonation.js';
 import {ensureMerchantPass} from './merchant-pass.js';
 import {visibleBetween} from './npc-awareness.js';
@@ -58,6 +59,7 @@ export class Ecosystem{
  if(kind==='eat'){if(!item||item.location!=='player'||item.type!=='food')return '没有这份食物。';consumeFood(p,item,this.s.time);this.log(`你吃下${item.name}，体力恢复${item.poisoned?'，随后腹痛，气血 −25':'，气血 +20。'}`);return;}
  if(kind==='wear'){if(!item||item.type!=='clothing'||item.location!=='player'||item.hp<=0)return '衣服已不在行囊中。';const off=p.wornOutfit===item.id&&p.disguise==='borrowed';p.wornOutfit=off?null:item.id;p.disguise=off?null:'borrowed';p.nextIdentityCheck??=this.s.time+15;this.log(off?'你换回自己的衣服。':'你换上'+item.name+'。衣着像了，姓名来历还得应付盘问。');return;}
  if(kind==='drop'){if(!item||item.location!=='player')return '物品不在行囊中。';this.transfer(item,'ground');item.x=p.x+.8;item.z=p.z;this.log(`你放下了${item.name}。`);return;}
+ if(kind==='pickup'&&item?.type==='coins')return takePayment(this.sim,this,item);
  if(kind==='pickup'){if(!item||item.location!=='ground'||!this.range(item.x,item.z))return '物品已不在附近。';this.transfer(item,'player');this.log(`拾起：${item.name}${item.poisoned?'（有毒）':''}。`);return;}
  if(kind==='plant'){
   const n=this.sim.s.people[id];if(!n||n.hp<=0||!this.positions[id]||!this.range(this.positions[id].x,this.positions[id].z)||!item||item.location!=='player')return '无法放入。';
@@ -73,7 +75,7 @@ export class Ecosystem{
  if(kind==='buy'||kind==='steal'){
   if(!item||item.location!=='object:'+id||item.type!=='food')return '这份食物已经不在摊上。';if(kind==='buy'&&p.money<4)return '需要四文钱。';
   const c=kind==='steal'?this.check('偷取'+item.name):null;if(c&&!c.success){const event={type:'theft',owner:o.owner,target:o.id,x:p.x,z:p.z};this.sim.emit('worldIncident',event);this.log(event.witnesses?.length?'伸手取物被看见，没能拿到。':'手法失误，没能拿到食物。',event.witnesses?.length?[]:[{id:'hero',text:'没拿稳……先收手。'}]);return;}
-  if(kind==='buy'){p.money-=4;this.sim.s.people[o.owner].purse+=4;}item.location='player';this.log(`${kind==='buy'?'花费 4 文买下':`身法检定 ${c.roll} ≤ ${c.chance}，悄悄拿走`}：${item.name}。`,kind==='buy'?[{id:o.owner,text:'给，拿稳了。趁热吃。'}]:[{id:'hero',text:'到手了，先收起来。'}]);return;
+  if(kind==='buy'){if(!placePayment(this.sim,this,{payer:'player',payee:o.owner,amount:4,x:o.x+.6,z:o.z+.5,y:1.12,stand:{x:o.x,z:o.z+1.95},reason:'购买吃食'}))return '无法完成付款。';}item.location='player';this.log(`${kind==='buy'?'花费 4 文买下':`身法检定 ${c.roll} ≤ ${c.chance}，悄悄拿走`}：${item.name}。`,kind==='buy'?[{id:o.owner,text:'给，拿稳了。趁热吃。'}]:[{id:'hero',text:'到手了，先收起来。'}]);return;
  }
  if(kind==='poison'){const toxin=this.items('player').find(i=>i.type==='poison');return this.poisonItem(toxin?.id,itemId);}
  }
@@ -89,7 +91,7 @@ export class Ecosystem{
  stopShow(){if(!this.show)return;const name=this.show.owner==='companion'?'阿笙':'少侠';this.show=null;this.log(name+'收起竹笛，围观的人渐渐散去。');}
  tick(dt,positions,environmentOnly=false){for(const o of Object.values(this.s.objects)){if(o.burning&&o.hp>0&&this.activeObjects.has(o.id)){if(o.wetUntil>this.s.time)o.burning=0;else this.damage(o.id,'fire',4*dt,true);}}this.positions=positions;this.syncRing();this.s.time+=dt;if(this.s.stockDay<this.sim.s.day){this.s.stockDay=this.sim.s.day;for(const o of Object.values(this.s.objects)){if(o.kind==='stall'&&o.hp>0){const count=this.items('object:'+o.id).length;for(let i=count;i<5;i++)this.create('包子','food','object:'+o.id);}}for(const n of Object.values(this.sim.s.people))n.purse=Math.min(40,n.purse+8);this.log('新的一天，仍在营业的食摊补上了吃食。');}for(const f of this.s.followups.filter(f=>!f.done&&f.due<=this.s.time)){f.done=true;const o=this.s.objects[f.stall];if(o){o.closedUntil=this.s.time+30;this.log('食客的不适传到摊主耳中，食摊暂停售卖，开始检查同批吃食。',[{id:o.owner,text:'先别卖了！把这批吃食留下，我得查清楚。'}],true);}}const p=this.sim.s.player;
   if(environmentOnly)return;
-  patrolStep(this.sim,this,dt);lifeStep(this.sim,this,dt,positions);teaStep(this.sim,this,positions);
+  patrolStep(this.sim,this,dt);lifeStep(this.sim,this,dt,positions);collectPayments(this.sim,this,positions);teaStep(this.sim,this,positions);
   if(this.show){const show=this.show,p=this.sim.s.party?.members[show.owner]||this.sim.s.player;show.elapsed+=dt;p.energy=Math.max(0,p.energy-dt*5);if(p.hp<=0||p.energy<1||Math.hypot(p.x-show.x,p.z-show.z)>1){this.stopShow();}else{
    show.audience=Object.entries(positions).filter(([id,q])=>!this.reserved?.has(id)&&this.sim.s.people[id].hp>0&&!['angry','afraid'].includes(this.sim.s.people[id].mood)&&!(['shen','su'].includes(id)&&this.sim.event)&&Math.hypot(q.x-show.x,q.z-show.z)<12).map(([id])=>id).slice(0,4);
    if(show.elapsed>=show.beat+8){show.beat+=8;const near=show.audience.filter(id=>Math.hypot(positions[id].x-show.x,positions[id].z-show.z)<4);
@@ -103,7 +105,7 @@ export class Ecosystem{
    for(const item of this.items('npc:'+id)){if(!item.discovered&&this.s.time>=item.discoverAt){item.discovered=true;if(item.type==='ring'&&id==='shen'){this.sim.s.facts.missing=false;this.sim.s.searchClosed=false;if(['inquiry','ring_quarrel'].includes(this.sim.event?.type)){this.sim.s.event.status='resolved';this.sim.emit('scene',null);}this.sim.s.pending={id:++this.sim.s.sequence,type:'truce',depth:(this.sim.s.event?.depth||0)+1,due:this.sim.s.day+1,allowed:['truce']};}this.log(`${PEOPLE.find(n=>n.id===id).name}整理行囊，发现了${item.name}。`,[{id,text:'咦，行囊里怎么多了这件东西？'}],true);}}
    const food=this.items('npc:'+id).filter(i=>i.type==='food'&&!i.drink&&i.discovered&&i.hp>0&&!i.knownPoisonBy?.includes(id)).sort((a,b)=>(b.receivedAt??-1)-(a.receivedAt??-1))[0];
    if(food&&this.s.hunger[id]>=65&&canEat(this.sim,this,id,q)){if(!inspectFood(this.sim,id,food)){this.log('对方察觉吃食有异，留下没有吃。',[{id,text:'这味道不对……先搁着。'}]);continue;}consumeFood(n,food,this.s.time);this.s.hunger[id]=5;if(food.poisoned){if(food.vendor)this.s.followups.push({stall:food.vendor,due:this.s.time+10});n.memories.push('吃过食物后腹痛，不知道是谁做了手脚。');this.log(`${PEOPLE.find(n=>n.id===id).name}吃下${food.name}后不适，气血 −25，停下来求助。`,[{id,text:'这吃食……我的肚子好疼，谁能帮我找郎中？'}],true);}}
-   const target=this.foodTarget(id);if(target&&Math.hypot(q.x-target.x,q.z-target.z)<2.7){const f=this.items('object:'+target.id).find(i=>i.type==='food');if(f){if(n.purse<4)continue;n.purse-=4;this.sim.s.people[target.owner].purse+=4;f.location='npc:'+id;f.vendor=target.id;f.discovered=true;}}
+   const target=this.foodTarget(id);if(target&&Math.hypot(q.x-target.x,q.z-target.z)<2.7){const f=this.items('object:'+target.id).find(i=>i.type==='food');if(f){if(n.purse<4)continue;if(!placePayment(this.sim,this,{payer:id,payee:target.owner,amount:4,x:target.x+.6,z:target.z+.5,y:1.12,stand:{x:target.x,z:target.z+1.95},reason:'购买吃食'}))continue;f.location='npc:'+id;f.vendor=target.id;f.discovered=true;}}
   }
  }
  foodTarget(id){if(id===this.sim.s.watch?.holder)return null;if(this.reserved?.has(id))return null;if((this.s.hunger[id]||0)<65||this.items('npc:'+id).some(i=>i.type==='food'&&!i.drink&&!i.knownPoisonBy?.includes(id))||this.show?.audience.includes(id)||(['shen','su','gao'].includes(id)&&this.sim.event))return null;const q=this.positions[id];return Object.values(this.s.objects).filter(o=>!q||(q.z>21)===(o.z>21)).sort((a,b)=>q?Math.hypot(a.x-q.x,a.z-q.z)-Math.hypot(b.x-q.x,b.z-q.z):0).find(o=>o.kind==='stall'&&o.hp>0&&!(o.closedUntil>this.s.time)&&this.items('object:'+o.id).some(i=>i.type==='food'))||null;}

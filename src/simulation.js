@@ -1,3 +1,4 @@
+import {retirePrinceEscorts} from './prince.js';
 import {migrateLocations} from './locations.js';
 import {syncQuests,progressSnapshot,observeProgress} from './progress.js';
 import {isGate,gateState,gateView,gateActions,resolveGate,tickGate} from './gate-scene.js';
@@ -14,7 +15,7 @@ export function newGame(role='wanderer'){
 }
 export function newArrival(role='wanderer'){const s=newGame(role);s.player.x=0;s.player.z=27;s.player.money=12;s.wanted=3;s.facts.entryStarted=true;s.event={id:1,type:'gate',status:'active',depth:0,point:[0,24],cast:['gate_guard']};return s;}
 export class Simulation{
- constructor(state=newGame(),rng=Math.random){this.s=state;ensureParty(state);migrateLocations(state);this.rng=rng;this.listeners=[];syncQuests(state);this.progressBaseline=progressSnapshot(state);for(const p of PEOPLE)state.people[p.id]??={relation:p.relation,mood:'calm',fear:0,hp:100,memories:[]};if(state.facts.missing&&state.event?.status==='active'&&state.event.type==='banquet'){state.event.type='inquiry';state.event.elapsed=0;state.facts.couple=false;}}
+ constructor(state=newGame(),rng=Math.random){this.s=state;retirePrinceEscorts(state);ensureParty(state);migrateLocations(state);this.rng=rng;this.listeners=[];syncQuests(state);this.progressBaseline=progressSnapshot(state);for(const p of PEOPLE)state.people[p.id]??={relation:p.relation,mood:'calm',fear:0,hp:100,memories:[]};if(state.facts.missing&&state.event?.status==='active'&&state.event.type==='banquet'){state.event.type='inquiry';state.event.elapsed=0;state.facts.couple=false;}}
  emit(type,data){if(['result','streetResult','npc','sandbox','entry','day','violence','save','actionWitnessed','fieldCheck'].includes(type))observeProgress(this,type==='entry'?(data==='prison'?'刑满出狱：三日刑期结算':'进入城内'):type==='day'?'休息与日程推进':type==='violence'?'发生交战':type==='save'?'行动与身体状态变化':data?.label||data?.text||'大世界行动');for(const fn of this.listeners)fn(type,data);}
  save(){this.emit('save',this.s);}
  banquetOccurred(){return !!this.s.facts.couple||this.s.facts.banquetDay!=null||this.s.history.some(h=>h.type==='banquet');}

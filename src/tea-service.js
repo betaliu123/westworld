@@ -13,7 +13,7 @@ export function teaStep(sim,eco,positions){
  if(tea&&now>=tea.drinkAt&&n?.hp>0&&pos&&Math.hypot(pos.x-cup.x,pos.z-cup.z)<1.7&&canEat(sim,eco,cup.guest,pos)&&!(n.sickUntil>now)){
  if(!inspectFood(sim,cup.guest,tea)){if(!tea.refused){tea.refused=true;sim.emit('npcRoutine',{id:cup.guest,text:'这茶闻着不对，先别喝。'});}continue;}
  consumeFood(n,tea,now);n.drinkingUntil=now+3;if(tea.poisoned){n.memories.push('喝过茶后腹痛，不知道是谁动了手脚。');sim.emit('npcRoutine',{id:cup.guest,text:'这茶……喝下去肚子怎么绞着疼。'});}sim.save();}}
- const available=host?.hp>0&&q&&!(host.stunnedUntil>(sim.s.npcClock||0))&&!(host.sickUntil>now)&&!host.drowning&&!host.awareness?.caseOpen&&!['meal','rest','escape'].includes(host.life?.activity);
+ const available=host?.hp>0&&q&&!(host.stunnedUntil>(sim.s.npcClock||0))&&!(host.sickUntil>now)&&!host.drowning&&!host.awareness?.caseOpen&&!['meal','rest','escape','collect'].includes(host.life?.activity);
  if(!available||now<t.nextAt)return;
  const cup=TEA_CUPS[t.index%TEA_CUPS.length],vessel=eco.s.objects[cup.id];
  if(!vessel||vessel.hp<=0||eco.items('object:'+cup.id).length){t.index++;t.nextAt=now+3;return;}

@@ -3,8 +3,8 @@ export function visibleBetween(a,b,obstacles,objects={}){const distance=Math.hyp
 export function witnessEvent(sim,id,event,seen,home){const n=sim.s.people[id];if(!n||n.hp<=0)return;const now=sim.s.npcClock||0;let a=n.awareness;
  const repeated=a?.suspect==='player'&&now-(a.lastIncident||0)<20;
  a??={home:{x:home.x,z:home.z}};n.awareness=a;a.lastIncident=now;a.lastKnown={x:event.x,z:event.z};a.seen=seen;
- const escort=['quiet_guest','bridge_guest'].includes(id)&&['traveler','quiet_guest','bridge_guest'].includes(event.target||event.owner),guard=['guard','gate_guard','gate_relief'].includes(id)||escort,owner=event.owner===id,victim=event.target===id;a.caseOpen=(seen&&(guard||owner||victim))||a.caseOpen;
- if(seen){a.suspect='player';if(event.type==='assault')a.severe=true;a.strikes=repeated?(a.strikes||0)+1:1;if(!repeated){sim.relation(id,guard||owner||victim?-3:-1);if(guard&&!escort)sim.s.wanted=Math.min(9,sim.s.wanted+1);}a.state=guard?(event.type==='assault'||a.strikes>1?'fight':'warn'):victim||owner?'flee':'notice';a.until=now+(a.state==='fight'?20:5);}
+ const guard=['guard','gate_guard','gate_relief'].includes(id),owner=event.owner===id,victim=event.target===id;a.caseOpen=(seen&&(guard||owner||victim))||a.caseOpen;
+ if(seen){a.suspect='player';if(event.type==='assault')a.severe=true;a.strikes=repeated?(a.strikes||0)+1:1;if(!repeated){sim.relation(id,guard||owner||victim?-3:-1);if(guard)sim.s.wanted=Math.min(9,sim.s.wanted+1);}a.state=guard?(event.type==='assault'||a.strikes>1?'fight':'warn'):victim||owner?'flee':'notice';a.until=now+(a.state==='fight'?20:5);}
  else if(!['fight','warn','flee'].includes(a.state)){a.state='investigate';a.until=now+5;}
  return a;
 }

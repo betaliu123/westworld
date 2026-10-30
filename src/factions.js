@@ -21,7 +21,7 @@ export const CLUES={
  watch:{nodes:['gate_guard','gate_relief'],edges:[['gate_guard','gate_relief','统属']],text:'周伍长受韩校尉节制，轮替看守关口。',confidence:'已知'},
  tax:{nodes:['taxchief'],edges:[['taxchief','gate_guard','催办税课公文']],text:'关口催办的公文出自东街税课司。公务往来尚不能证明同谋。',confidence:'传闻'},
  ledger:{nodes:['taxchief','prisoner'],edges:[['taxchief','prisoner','掌管副账']],text:'旧账房指认东街有一份未上报的副账。',confidence:'证言'},
- patron:{nodes:['patron'],edges:[['patron','taxchief','疑似收受输送']],text:'锦衣客提到税银另有“京中接引”，姓梁；尚缺账目印证。',confidence:'传闻'},
+ patron:{nodes:['patron'],edges:[['patron','taxchief','疑似收受输送']],text:'杜老捕提到税银另有“京中接引”，姓梁；尚缺账目印证。',confidence:'传闻'},
  apex:{nodes:['caijing'],edges:[['caijing','patron','疑似庇护']],text:'杜老捕听闻梁中丞出入蔡府。这是调查方向，尚非定罪证据。',confidence:'传闻'}
 };
 export function knowledge(sim){return sim.s.intelligence??={people:{},clues:{}};}

@@ -3,8 +3,6 @@ export const ROLES={wanderer:{name:'江湖游侠',desc:'身法见长，敢走险
 export const PEOPLE=[
  {id:'inspector',name:'顾钦差',title:'六扇门 · 奉旨查案',faction:'六扇门',color:0x723e3d,x:10,z:-23,relation:0},
  {id:'gang_boss',name:'梅掌舵',title:'赤砂帮 · 帮主',faction:'赤砂帮',color:0x57352e,x:23,z:-5,relation:0},
- {id:'quiet_guest',name:'灰衣旅人',title:'沉默的旅人',color:0x626966,x:-3,z:29,relation:0},
- {id:'bridge_guest',name:'桥边客',title:'倚栏候人的旅客',color:0x514d65,x:3,z:26,relation:0},
  {id:'gate_relief',name:'周伍长',title:'临溪守军 · 轮值伍长',faction:'临溪守军',color:0x4b5965,x:2,z:25,relation:0},
  {id:'tea_host',name:'宋茶娘',title:'城外茶棚掌柜',faction:'临溪街坊',color:0x92734e,x:-11.9,z:27,relation:0},
  {id:'traveler',name:'锦衣客',title:'在茶棚候人的旅客',color:0x657f89,x:-5,z:30,relation:0},
