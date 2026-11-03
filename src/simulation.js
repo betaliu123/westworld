@@ -1,4 +1,6 @@
-import {retirePrinceEscorts} from './prince.js';
+import {endPlayerPursuit} from './pursuit.js';
+import {registerCourt} from './court-street.js';
+import {recordRoyalLetter,retirePrinceEscorts} from './prince.js';
 import {migrateLocations} from './locations.js';
 import {syncQuests,progressSnapshot,observeProgress} from './progress.js';
 import {isGate,gateState,gateView,gateActions,resolveGate,tickGate} from './gate-scene.js';
@@ -15,7 +17,7 @@ export function newGame(role='wanderer'){
 }
 export function newArrival(role='wanderer'){const s=newGame(role);s.player.x=0;s.player.z=27;s.player.money=12;s.wanted=3;s.facts.entryStarted=true;s.event={id:1,type:'gate',status:'active',depth:0,point:[0,24],cast:['gate_guard']};return s;}
 export class Simulation{
- constructor(state=newGame(),rng=Math.random){this.s=state;retirePrinceEscorts(state);ensureParty(state);migrateLocations(state);this.rng=rng;this.listeners=[];syncQuests(state);this.progressBaseline=progressSnapshot(state);for(const p of PEOPLE)state.people[p.id]??={relation:p.relation,mood:'calm',fear:0,hp:100,memories:[]};if(state.facts.missing&&state.event?.status==='active'&&state.event.type==='banquet'){state.event.type='inquiry';state.event.elapsed=0;state.facts.couple=false;}}
+ constructor(state=newGame(),rng=Math.random){this.s=state;if(state.facts.princeLetter)recordRoyalLetter(state);if(state.player.hp<=0)endPlayerPursuit(state);if(state.facts.career==="court")registerCourt(state);retirePrinceEscorts(state);ensureParty(state);migrateLocations(state);this.rng=rng;this.listeners=[];syncQuests(state);this.progressBaseline=progressSnapshot(state);for(const p of PEOPLE)state.people[p.id]??={relation:p.relation,mood:'calm',fear:0,hp:100,memories:[]};if(state.facts.missing&&state.event?.status==='active'&&state.event.type==='banquet'){state.event.type='inquiry';state.event.elapsed=0;state.facts.couple=false;}}
  emit(type,data){if(['result','streetResult','npc','sandbox','entry','day','violence','save','actionWitnessed','fieldCheck'].includes(type))observeProgress(this,type==='entry'?(data==='prison'?'刑满出狱：三日刑期结算':'进入城内'):type==='day'?'休息与日程推进':type==='violence'?'发生交战':type==='save'?'行动与身体状态变化':data?.label||data?.text||'大世界行动');for(const fn of this.listeners)fn(type,data);}
  save(){this.emit('save',this.s);}
  banquetOccurred(){return !!this.s.facts.couple||this.s.facts.banquetDay!=null||this.s.history.some(h=>h.type==='banquet');}
@@ -185,16 +187,16 @@ export class Simulation{
  respawn(){
  if(this.s.player.hp>0)return false;
  // End the current fight, while retaining social memory and story consequences.
- this.s.wanted=0;this.advanceDay();this.s.player.hp=60;this.s.player.x=0;this.s.player.z=14;
+ endPlayerPursuit(this.s);this.s.wanted=0;this.advanceDay();this.s.player.hp=60;this.s.player.x=0;this.s.player.z=14;
  this.save();return true;
  }
  tick(dt){const s=this.s;this.tickStory(dt);s.time+=dt;if(s.time>=240&&!isGate(this.event))this.advanceDay();for(const n of Object.values(s.people))n.fear=Math.max(0,n.fear-dt);}
  attack(id,witnesses=[]){
  const s=this.s,n=s.people[id];if(!n||n.hp<=0)return;
- this.emit('worldIncident',{type:'assault',target:id,x:s.player.x,z:s.player.z});
+ const incident={type:'assault',target:id,x:s.player.x,z:s.player.z};this.emit('worldIncident',incident);witnesses=incident.witnesses??witnesses;
  if(isGate(this.event)&&id==='gate_guard'){if(!n.awareness&&gateState(this.event).phase!=='fight')resolveGate(this,this.event.id,'g_charge');n.hp=Math.max(1,n.hp-1);this.save();return;}
  if(id==='shen'&&isProposal(this.event)&&proposalState(this.event).phase==='duel'){n.hp=Math.max(1,n.hp-combatDamage(s.player));if(n.hp<=50)finishProposalDuel(this,true);this.save();return;}
- const first=n.hp>0; n.hp=Math.max(0,n.hp-combatDamage(s.player));
+ if(s.player.lessons?.boxing&&!s.player.lessons.shortStrike){s.player.lessons.shortStrike=true;this.emit('sandbox',{text:'你照图收肘，短打终于使顺了。近战伤害 +3。',dialogue:[]});}const first=n.hp>0; n.hp=Math.max(0,n.hp-combatDamage(s.player));
  if(first&&n.hp===0)earnGrowth(s.player,'might',12,`combat:${s.day}:${id}`);n.fear=18;n.mood=n.hp<=0?'down':'angry';if(!n.awareness){this.relation(id,-6);s.wanted=clamp(s.wanted+1,0,9);}s.attacks++;
  for(const w of witnesses){if(w!==id&&s.people[w]){s.people[w].fear=12;s.people[w].mood=w==='guard'?'angry':'afraid';}}
  n.memories.push('你曾在街上对我动手。');this.emit('violence',{id,down:n.hp<=0});

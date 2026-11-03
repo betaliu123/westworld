@@ -1,4 +1,14 @@
 import {ATTR,PEOPLE} from './data.js';
+export function entryObjective(s){
+ if(s.event?.type!=='gate'||s.facts.enteredCity)return '';
+ const phase=s.event.gate?.phase,bag=s.player.inventory;
+ if(['prison','testimony'].includes(phase))return '在牢中等候释放，或听听同牢人的来历。';
+ if(['exposed','fight'].includes(phase))return '先应付眼前的盘问。';
+ if(s.player.disguise==='runner')return '已换差役服，可去关口应答。';
+ if(bag.includes('改名路引'))return '路引已改名，原官印仍在。去关口应答。';
+ if(bag.includes('他人的路引'))return '路引有官印，但名字不是你的。';
+ return '正门查验：路引须有官印，姓名须对得上。';
+}
 export function syncQuests(s){
  s.quests??={};
  const has=s.facts.taxLedgerLead||s.intelligence?.clues?.ledger||s.player.inventory.includes('狱友口供：东街副账');
@@ -23,4 +33,4 @@ export function observeProgress(sim,reason){
 export function imprisonmentCost(sim){const q=sim.event.gate??={};if(q.imprisonmentCost)return; q.imprisonmentCost=true;
  const p=mainPlayer(sim.s);p.stats.charm=Math.max(0,p.stats.charm-3);observeProgress(sim,'被捕入狱：囚徒身份损及风仪');
 }
-export function questsHTML(s,esc){const quests=syncQuests(s);return `<p>线索、下一步与来源会随经历保存。</p>${quests.map(q=>`<article class="quest-card"><small>调查 · 第 ${q.day} 日 · ${esc(q.source)}</small><h3>${esc(q.title)}</h3><p>${esc(q.objective)}</p><small>${esc(q.note)}</small><p><button data-track="${esc(q.id)}">${s.trackedQuest===q.id?'取消追踪':'追踪任务'}</button></p></article>`).join('')||'<p>尚未掌握可追查的线索。</p>'}`;}
+export function questsHTML(s,esc){const quests=syncQuests(s);return `${entryObjective(s)?'<article class="quest-card"><small>主线</small><h3>入城</h3><p>'+esc(entryObjective(s))+'</p><small>也可另寻入城的门路。</small></article>':''}<p>线索、下一步与来源会随经历保存。</p>${quests.map(q=>`<article class="quest-card"><small>调查 · 第 ${q.day} 日 · ${esc(q.source)}</small><h3>${esc(q.title)}</h3><p>${esc(q.objective)}</p><small>${esc(q.note)}</small><p><button data-track="${esc(q.id)}">${s.trackedQuest===q.id?'取消追踪':'追踪任务'}</button></p></article>`).join('')||'<p>尚未掌握可追查的线索。</p>'}`;}

@@ -7,14 +7,20 @@ import {PEOPLE} from './data.js';
 export const GATE_PEOPLE=['gate_guard','gate_relief','relay','gate_merchant','scribe','tea_host','traveler','old_constable'];
 export const GUARDS=['guard','gate_guard','gate_relief'];
 export const POST={x:0,z:23.8};
+// Both ends are on dry ground. Approach the grove and the water from the gate side.
+const rounds=[{x:-17,z:23.5},{x:-12,z:29},{x:1,z:29},{x:12,z:29},{x:21,z:27}];
+function patrolTarget(n,q,id){n.roundIndex??=id==='gate_relief'?3:1;n.roundDir??=id==='gate_relief'?1:-1;
+ if(distance(q,rounds[n.roundIndex])<.8){if(n.roundIndex===0)n.roundDir=1;if(n.roundIndex===rounds.length-1)n.roundDir=-1;n.roundIndex+=n.roundDir;}
+ return rounds[n.roundIndex];}
 export const SEATS={gate_guard:{x:-5,z:27.2},gate_relief:{x:-8,z:27.2},traveler:{x:-5,z:30},old_constable:{x:-8,z:30},gate_merchant:{x:-5,z:32.6},tea_host:{x:-8,z:32.6}};
 const distance=(a,b)=>a&&b?Math.hypot(a.x-b.x,a.z-b.z):Infinity;
 export function ensureLife(sim,eco){
  ensurePrince(sim,eco);
  sim.s.watch??={holder:'gate_guard',since:eco.s.time};
- for(const p of PEOPLE){const n=sim.s.people[p.id];n.stats??={wit:({old_constable:80,gate_guard:65,gate_relief:45,tea_host:55,traveler:40}[p.id]??35)};n.faction??=p.faction||'临溪街坊';n.energy??=100;n.trust??=0;n.life??={activity:'idle'};eco.s.hunger[p.id]??=p.id==='elder'?78:p.id==='gate_guard'?40:50;
+ for(const p of PEOPLE){const n=sim.s.people[p.id];n.stats??={wit:({bookseller:76,old_constable:80,gate_guard:65,gate_relief:45,tea_host:55,traveler:40}[p.id]??35)};n.faction??=p.faction||'临溪街坊';n.energy??=100;n.trust??=0;n.life??={activity:'idle'};eco.s.hunger[p.id]??=p.id==='elder'?78:p.id==='gate_guard'?40:50;
+  if(p.id==='scribe'){n.faction='赤砂帮';if(!n.inkStockSeeded){eco.create('迷毒散','poison','npc:scribe',{material:'stone',discovered:true});n.inkStockSeeded=true;}}
   if(!n.wardrobeInitialized){n.wardrobeInitialized=true;eco.create(p.id==='traveler'?'绣纹锦袍':GUARDS.includes(p.id)?'值勤外袍':'随身外袍','clothing','npc:'+p.id,{ownerId:p.id,color:p.color,material:'cloth',discovered:true});}
-  if(!n.packInitialized){n.packInitialized=true;n.lifeInventoryVersion=1;if(GATE_PEOPLE.includes(p.id))eco.create(GUARDS.includes(p.id)?'值勤腰牌':p.id==='old_constable'?'旧捕快手札':'随身杂物','personal','npc:'+p.id,{discovered:true});if(p.id==='gate_merchant')eco.create('赵行商的货包','cargo','npc:gate_merchant',{discovered:true});if(p.id==='tea_host')for(let i=0;i<12;i++)eco.create('包子','food','npc:tea_host',{discovered:true});if(['gate_relief','traveler','old_constable'].includes(p.id))eco.create('干粮','food','npc:'+p.id,{discovered:true});}
+  if(!n.packInitialized){n.packInitialized=true;n.lifeInventoryVersion=1;if(GATE_PEOPLE.includes(p.id))eco.create(GUARDS.includes(p.id)?'值勤腰牌':p.id==='old_constable'?'旧捕快手札':'随身杂物','personal','npc:'+p.id,{discovered:true});if(p.id==='bookseller')eco.create('朱批校样','personal','npc:bookseller',{material:'paper',discovered:true});if(p.id==='gate_merchant')eco.create('赵行商的货包','cargo','npc:gate_merchant',{discovered:true});if(p.id==='tea_host')for(let i=0;i<12;i++)eco.create('包子','food','npc:tea_host',{discovered:true});if(['gate_relief','traveler','old_constable'].includes(p.id))eco.create('干粮','food','npc:'+p.id,{discovered:true});}
   if(!n.lifeInventoryVersion){n.lifeInventoryVersion=1;if(p.id==='gate_merchant'&&!eco.s.items.some(i=>i.type==='cargo'))eco.create('赵行商的货包','cargo','npc:'+p.id,{discovered:true});if(p.id==='tea_host')for(let i=0;i<12;i++)eco.create('包子','food','npc:tea_host',{discovered:true});}
  }
 }
@@ -49,6 +55,7 @@ export function lifeStep(sim,eco,dt,positions){ensureLife(sim,eco);const now=eco
   if(n.life.activity==='escort'&&n.life.until>now)continue;
   if((eco.s.hunger[id]||0)<65&&(n.energy<35||n.life.activity==='rest'&&n.energy<85)){n.life={activity:'rest',target:SEATS[id]||{x:-9,z:29}};continue;}
   if((eco.s.hunger[id]||0)>=65){n.life={activity:'meal',target:eco.items('npc:'+id).some(i=>i.type==='food'&&!i.drink&&!i.knownPoisonBy?.includes(id))?(SEATS[id]||{x:-4.2,z:27.2}):null};continue;}
+  if(id==='gate_guard'||id==='gate_relief'){n.life={activity:'patrol',target:patrolTarget(n,q,id)};continue;}
   n.life={activity:['traveler','old_constable'].includes(id)?'tea':'idle',target:SEATS[id]||null};
  }
  princeStep(sim,eco,positions);custodyStep(sim,positions);

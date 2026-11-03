@@ -1,12 +1,21 @@
+import {mountAim} from './aim-skills.js';
+import {detainAtGate} from './gate-scene.js';
+import {PRISON} from './locations.js';
+import {imprisonmentCost} from './progress.js';
+import {endPlayerPursuit,lawConfrontation} from './pursuit.js';
+import {answerComplaint,complaintChoices} from './complaints.js';
+import {opening,fresh,topicKey,heard} from './conversation-memory.js';
+import {courtLine} from './court-street.js';
+import {talkTree} from './talk-tree.js';
 import {thoughtLine} from './body-feedback.js';
 import {princeGreeting} from './prince-voice.js';
-import {probePreview,probeNpc,npcInfo,npcPortrait} from './npc-discovery.js';
+import {probeSight,probePreview,probeNpc,npcInfo,npcPortrait} from './npc-discovery.js';
 import {itemIcon} from './inventory-view.js';
 import {questsHTML} from './progress.js';
 import {mountProgressUI} from './progress-ui.js';
 import {visibleBetween} from './npc-awareness.js';
-import {contactOptions,contactPreview,contactResolve,learnedFootwork} from './gate-society.js';
-import {meet,organizationHTML} from './factions.js';
+import {contactFollowups,contactOptions,contactPreview,contactResolve,learnedFootwork} from './gate-society.js';
+import {meet,organizationHTML,personTab} from './factions.js';
 import {touchPreview,pressurePoint,giveItem} from './npc-actions.js';
 import {socialOptions,socialPreview,socialResolve} from './npc-social.js';
 import {mountCheckReveal} from './check-reveal.js';
@@ -15,7 +24,7 @@ import {visitGate} from './gate-scene.js';
 import {mountObjectInteractions} from './object-interactions.js';
 import {mountDialogue,isDirectReply} from './dialogue.js';
 import {PATHS,growth,growthBonus,checkGrade} from './growth.js';
-import {mountParty} from './party.js';
+import {switchMember} from './party-state.js';
 import {icon,iconButton} from './ui-icons.js';
 import {mountEnvironment} from './environment-ui.js';
 import {createJournal} from './journal.js';
@@ -28,14 +37,17 @@ const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,
 const gatePreview=new URLSearchParams(location.search).get('preview')==='gate';
 const SAVE=gatePreview?'jianghu-gate-preview-v1':'jianghu-echoes-v1';let saved=null;try{const v=JSON.parse(localStorage.getItem(SAVE));if(v?.version===1&&v.player&&v.people)saved=v;}catch{}
 let restartConfirmed=false,selectedNpc=null,pendingProbe=null;
-let role='wanderer',sim=new Simulation(saved||newArrival()),world=new World($('world'),sim),started=false,panelTarget=null,more=false,ranked=null,epoch=0,sound=false,audio=null,lastSpeech='',lastSpeechAt=0,resultTimer,aiStatus='正在连接';
+function createSoloWorld(game){switchMember(game.s,'main');return new World($('world'),game);}
+let role='wanderer',sim=new Simulation(saved||newArrival()),world=createSoloWorld(sim),started=false,panelTarget=null,more=false,ranked=null,epoch=0,sound=false,audio=null,lastSpeech='',lastSpeechAt=0,resultTimer,aiStatus='正在连接';
 const checkReveal=mountCheckReveal(()=>sound);
 world.checkReveal=checkReveal;
 const journal=createJournal(()=>sim.s,esc);
 const dialogue=mountDialogue(world,{journal,speak,clear:()=>{reactionTicket++;speechQueue=[];world.speaking=null;closePanel();collapseConversation();$('result').hidden=true;$('npc-speech').hidden=true;}});
 const environment=mountEnvironment(world,()=>sim,toast,esc);
 const objects=mountObjectInteractions(world,()=>sim,environment,toast,closePanel);
-const party=mountParty(world,()=>sim,environment,toast,journal,closePanel);
+const aim=mountAim(world,()=>sim,()=>started&&!world.locked&&!world.performance&&!dialogue.active&&!checkReveal.active&&sim.s.player.hp>0,()=>{closePanel();environment.close();},(id,mode,point)=>{panelTarget=id;runBubbleAction({id:mode,mode,point,kind:mode==='probe'?'listen':'steal'});},toast);
+
+// Solo demo: companion data stays in the save; no follower actor or controls are mounted.
 iconButton($('rest'),'Moon','歇息与重开');iconButton($('sound'),'VolumeX','开启声音');iconButton($('letters'),'Mail','飞鸽传书 · Tab');iconButton($('profile'),'UserRound','人物属性 · C');
 const historyLog=[];let bubbleGroup=null,bubblePage=0,bubbleEvent=null,visualResult=null;let speechQueue=[],pendingActionSpeech=[];let reactionTicket=0;
 
@@ -46,8 +58,13 @@ function speak(text){if(!sound||!window.speechSynthesis||text===lastSpeech||perf
 function bind(){sim.listeners.push((type,data)=>{
  if(type==='npcRoutine'){const q=world.npcs.get(data.id)?.actor.position;if(q&&q.distanceTo(world.hero.position)<12&&!world.cinematic&&!speechQueue.length&&!pendingActionSpeech.length)queueSpeech([data]);}
  if(type==='worldIncident')world.noticeIncident(data);
+ if(type==='musicLook'){const n=world.npcs.get(data.id);if(n){n.musicLookUntil=world.t+1.2;n.musicPoint={x:data.x,z:data.z};}}
  if(type==='npcCheck')world.showNpcCheck(data);
  if(type==='fieldCheck'){closePanel();environment.close();world.clearReady();world.perform({id:data.actionId||'steal',kind:data.actionId==='probe'?'listen':'steal',motion:data.actionId==='probe'?'talk':'reach'},data.target);checkReveal.play(data,()=>{},true);}
+ if(type==='territoryReport')journal.add('system','堂口交锋',data.text);
+ if(type==='royalDiscovery')showUnlock('traveler','御印密信：王爷奉旨查案，直接向天子回奏。');
+ if(type==='complaintResult'){journal.add('system',PEOPLE.find(p=>p.id===data.id)?.name+' · 问责',data.text);if(data.dialogue){world.quietUntil=world.t+10;dialogue.play(data.dialogue,()=>{world.quietUntil=world.t+10;},data.label);if(data.roll!=null)checkReveal.play(data,()=>{});}}
+ if(type==='complaintAsk'&&!dialogue.active){closePanel();environment.close();world.clearReady();const owner=PEOPLE.find(p=>p.id===data.id)?.name;dialogue.choose({title:owner+'拦住你：'+({theft:'方才伸手拿什么？',assault:'你凭什么动手？',damage:'砸了东西，就这么走？',tamper:'你往吃喝里放了什么？'}[data.type]),listener:data.id,options:complaintChoices(sim),onSelect:a=>answerComplaint(sim,a.id),onClose:()=>{if(sim.s.complaint===data){data.phase='report';data.since=sim.s.npcClock;sim.emit('npcCheck',{id:data.id,label:'去报官',observation:true,priority:true});}}});}
  if(type==='actionWitnessed'){journal.add('system','被目击',data.text);tone('alert');pendingActionSpeech.push(...data.dialogue);pendingActionSpeech=pendingActionSpeech.slice(-3);}
  if(type==='save')save();
  if(type==='relocate'||type==='entry')world.hero.position.set(sim.s.player.x,0,sim.s.player.z);
@@ -64,13 +81,20 @@ function bind(){sim.listeners.push((type,data)=>{
  if(type==='result'){if(data.type==='conversation')journal.add('chat','你',data.label);if(data.type!=='conversation'||data.roll!==null||data.changes.length)journal.add('system',data.label,`${data.roll!=null?`检定 ${data.roll}/${data.check.chance} · ${data.success?'成功':'失败'}。`:''}${data.text}${data.changes.length?'（'+data.changes.join('，')+'）':''}`);if(isDirectReply(data))return;const staged=!!data.eventId&&Array.isArray(data.dialogue);if(!staged)generateReaction(data);const fromMenu=!!panelTarget;closePanel();if(fromMenu||staged){visualResult=data;if(data.roll!=null)checkReveal.play(data,()=>{},true);}else if(data.type==='conversation'&&data.roll===null&&!data.changes.length){$('result').hidden=true;toast('你：'+data.label);}else showResult(data);world.reaction={kind:data.kind,success:data.success,until:world.t+3};world.burst(world.hero.position.x,1.3,world.hero.position.z,data.success?0xe7ce92:0xbc735b,10);}
  if(type==='npc'){journal.add('system','交互',data.reaction?.text||data.text);tone('mail');if(data.reaction)generateReaction(data.reaction);else queueSpeech([{id:data.id,text:data.text}]);}
  if(type==='break')tone('attack');
- });world.onPerformanceEnd=()=>{checkReveal.stop();if(pendingProbe){const probe=pendingProbe;pendingProbe=null;if(probe.success)openNpcInfo(probe.id);else world.onThought?.('看不出更多，过会儿再留意。');}if(visualResult){const r=visualResult;visualResult=null;checkReveal.play(r,()=>dialogue.play(r.dialogue||[],()=>{if(r.ongoing&&sim.sceneView()&&sim.event?.proposal?.phase!=='duel'&&sim.event?.gate?.phase!=='fight'&&world.nearbyEvent()){panelTarget='scene';bubbleEvent=sim.event.id;$('result').hidden=true;$('panel').hidden=false;renderBubbles();}else showResult(r);},(SCENES[r.type]?.name||r.label)+(r.roll!=null?` · 掷出 ${r.roll} / 成功上限 ${r.check.chance} · ${r.grade||checkGrade(r.roll,r.check.chance)}`:'')));}};world.onReady=()=>toast(world.combatReady?'已拔刀 · 左键出招，/ 收刀':'已收刀');world.onSound=tone;world.onArrive=()=>toast('已到附近。可以继续走动，按 E 才会介入。');world.onHurt=()=>{if(sim.s.player.hp===0){closePanel();closeDrawer();world.clearReady();world.attackTime=0;world.keys.clear();world.auto=null;save();toast('你受伤倒地。按 R 调息至次日，再入江湖。');}};}
+ });world.onPerformanceEnd=()=>{checkReveal.stop();if(pendingProbe){const probe=pendingProbe;pendingProbe=null;if(probe.success)showUnlock(probe.id,probe.insight);else queueSpeech([{id:probe.id,text:probe.insight}]);}if(visualResult){const r=visualResult;visualResult=null;checkReveal.play(r,()=>dialogue.play(r.dialogue||[],()=>{if(r.ongoing&&sim.sceneView()&&sim.event?.proposal?.phase!=='duel'&&sim.event?.gate?.phase!=='fight'&&world.nearbyEvent()){panelTarget='scene';bubbleEvent=sim.event.id;$('result').hidden=true;$('panel').hidden=false;renderBubbles();}else showResult(r);},(SCENES[r.type]?.name||r.label)+(r.roll!=null?` · 掷出 ${r.roll} / 成功上限 ${r.check.chance} · ${r.grade||checkGrade(r.roll,r.check.chance)}`:'')));}};world.onReady=()=>toast(world.combatReady?'已拔刀 · 左键出招，/ 收刀':'已收刀');world.onSound=tone;world.onArrive=()=>toast('已到附近。可以继续走动，按 E 才会介入。');world.onHurt=()=>{if(sim.s.player.hp===0){endPlayerPursuit(sim.s);closePanel();closeDrawer();world.clearReady();world.attackTime=0;world.keys.clear();world.auto=null;save();toast('你受伤倒地。按 R 调息至次日，再入江湖。');}};}
 bind();
 function roleCards(){$('roles').innerHTML=Object.entries(ROLES).map(([id,r])=>`<button class="role ${role===id?'active':''}" data-role="${id}"><b>${r.name}</b><small>${r.desc}</small></button>`).join('');}
 roleCards();$('roles').onclick=e=>{const b=e.target.closest('[data-role]');if(b){role=b.dataset.role;roleCards();}};
-$('continue').hidden=!saved;if(saved)$('continue').textContent=`续上前缘 · 第 ${saved.day} 日`;
+$('continue').hidden=!saved;
+if(saved){
+ const card=$('start').parentElement;
+ card.querySelector('.eyebrow').textContent='临溪 / 已有存档';card.querySelector('h2').textContent='再入江湖';
+ card.querySelector('h2 + p').textContent='你的进度已保存，可以从离开的地方继续。';
+ $('roles').hidden=true;$('continue').textContent=`继续游戏 · 第 ${saved.day} 日`;$('continue').className='primary';
+ $('start').before($('continue'));$('start').className='quiet';$('start').textContent='另起新局';
+}
 function begin(resume,fresh=false){
- if(!resume&&saved&&!restartConfirmed){restartConfirmed=true;$('start').textContent='确认重开 · 替换这个原型的进度';return;}
+ if(!resume&&saved&&!restartConfirmed){restartConfirmed=true;$('roles').hidden=false;$('start').parentElement.querySelector('h2 + p').textContent='选择新出身。确认重开将覆盖当前存档；继续游戏可保留原进度。';$('start').textContent='确认重开并覆盖存档';return;}
  if(!resume){sim=new Simulation(newArrival(role));world.sim=sim;world.gatePlaced=false;world.hero.position.set(sim.s.player.x,0,sim.s.player.z);world.syncEvent();bind();}
  started=true;journal.restore();$('welcome').hidden=true;for(const id of ['hud','vitals','controls','minimap'])$(id).hidden=false;save();toast(resume&&!fresh?'旧日的人情与风波都还在。继续你的江湖。':(sim.event?.type==='gate'?'你站在临溪关外：十二文、三星嫌疑、没有路引。按 E 应对校尉。':'你来到临溪。桥头传来争执声……按 E 介入。'));
 }
@@ -89,7 +113,8 @@ function openProfile(){
  const s=sim.s,p=s.player;
  drawer('人物属性',`<p>${s.party.active==='companion'?'阿笙 · 同行':ROLES[s.role].name} · 当前控制角色的属性</p><div class="stat-grid">${Object.entries(ATTR).map(([k,v])=>`<span>${v}${liveNumber(k,p.stats[k])}<small>${STAT_HELP[k]}</small></span>`).join('')}</div><div class="profile-values"><span>气血 ${liveNumber('hp',Math.ceil(p.hp))} / 100</span><span>体力 ${liveNumber('energy',Math.floor(p.energy))} / 100</span><span>盘缠 ${liveNumber('money',p.money)} 文</span><span>阅历 ${liveNumber('xp',p.xp)}</span><span>青竹会声望 ${liveNumber('reputation',s.reputation)}</span><span>当前嫌疑 ${liveNumber('wanted',s.wanted)}</span></div><p>检定概率由属性、难度与关系共同决定，选择气泡里显示的是本次实际成功率。</p><h2>三条成长途径</h2><div id="growth-paths">${growthCards(p)}</div><h2>行囊与线索</h2><p>${p.inventory.map(i=>esc(i==='ring'?'一枚银戒':i)).join('、')||'尚无剧情物品'} · 佩剑、路引、旧行囊</p><h2>故人与好感</h2>${PEOPLE.map(n=>`<div class="relation-row"><span>${n.name}<small data-mood="${n.id}">${MOODS[s.people[n.id].mood]||'平和'}</small></span>${liveNumber('relation-'+n.id,s.people[n.id].relation)}</div>`).join('')}<h2>行过的路</h2>${s.history.slice(-8).reverse().map(h=>`<article class="letter"><small>第 ${h.day} 日 · ${esc(h.label)}</small><p>${esc(h.text)}</p><small>${h.reactionSource==='nlp'?'人物反应 · AI 推演':'人物反应 · 本地演出'}</small>${(h.dialogue||[]).map(d=>`<p>${esc(PEOPLE.find(n=>n.id===d.id)?.name)}：“${esc(d.text)}”</p>`).join('')}</article>`).join('')||'<p>尚未留下故事。</p>'}`);
 }
-const orgButton=document.createElement('button');orgButton.id='organization';$('profile').after(orgButton);iconButton(orgButton,'Network','势力与线索 · J');orgButton.onclick=()=>{if(!$('drawer').hidden&&$('drawer').dataset.view==='organization'){closeDrawer();return;}drawer('势力与线索',organizationHTML(sim,esc));$('drawer').dataset.view='organization';};
+let lastOrgTab;function showOrganization(tab=lastOrgTab){lastOrgTab=tab;drawer('势力与线索',organizationHTML(sim,esc,tab));$('drawer').dataset.view='organization';for(const b of $('drawer').querySelectorAll('[data-org-tab]'))b.onclick=()=>showOrganization(b.dataset.orgTab);}
+const orgButton=document.createElement('button');orgButton.id='organization';$('profile').after(orgButton);iconButton(orgButton,'Network','势力与线索 · J');orgButton.onclick=()=>{if(!$('drawer').hidden&&$('drawer').dataset.view==='organization'){closeDrawer();return;}showOrganization();};
 $('profile').onclick=()=>!$('drawer').hidden&&$('drawer').querySelector('[data-number]')?closeDrawer():openProfile();
 function updateProfile(){
  if($('drawer').hidden)return;const s=sim.s,p=s.player,values={...p.stats,hp:Math.ceil(p.hp),energy:Math.floor(p.energy),money:p.money,xp:p.xp,reputation:s.reputation,wanted:s.wanted};
@@ -98,13 +123,13 @@ function updateProfile(){
  for(const el of $('drawer').querySelectorAll('[data-number]'))el.textContent=values[el.dataset.number];
  for(const el of $('drawer').querySelectorAll('[data-mood]'))el.textContent=MOODS[s.people[el.dataset.mood].mood]||'平和';
 }
-function queueSpeech(lines){
+function queueSpeech(lines){lines=lines.filter(line=>!(sim.s.people[line.id]?.muteUntil>(sim.s.npcClock||0)));if(!lines.length)return;
  if(checkReveal.active){pendingActionSpeech.push(...lines);pendingActionSpeech=pendingActionSpeech.filter((line,i,all)=>all.findIndex(v=>v.id===line.id)===i).slice(0,3);return;}
  if(dialogue.active)return;
  for(const line of lines)journal.add('chat',line.id==='hero'?(line.thought?'少侠 · 心想':'少侠'):PEOPLE.find(n=>n.id===line.id)?.name||line.id,line.text);
  let at=world.t+.35;speechQueue=lines.filter(line=>line.id==='hero'||world.npcs.has(line.id)).map(line=>{const duration=Math.max(3.8,Math.min(6,line.text.length*.14));const entry={...line,start:at,end:at+duration,spoken:false};at+=duration+.3;return entry;});
 }
-world.onLifeSpeech=line=>{if(!started||dialogue.active||speechQueue.some(s=>s.end>world.t))return;queueSpeech([line]);};
+world.onLifeSpeech=line=>{if(!started||dialogue.active||checkReveal.active||world.t<(world.quietUntil||0)||sim.s.complaint||pendingActionSpeech.length||speechQueue.some(s=>s.end>world.t))return false;queueSpeech([line]);return true;};
 world.onThought=text=>{if(!started||dialogue.active||speechQueue.some(line=>line.end>world.t))return false;queueSpeech([thoughtLine(text)]);return true;};
 function updateSpeech(){
  if(dialogue.active){$('npc-speech').hidden=true;return;}
@@ -133,13 +158,13 @@ async function decideSearch(context){const owner=sim;try{const response=await fe
 let replySignature='',replyTargetManual=false,draftTarget=null;
 function nearbySpeakers(){return [...world.npcs].filter(([id,n])=>sim.s.people[id].hp>0&&Math.hypot(n.actor.position.x-world.hero.position.x,n.actor.position.z-world.hero.position.z)<8).map(([id])=>id);}
 function updateConversation(){
- const ids=['companion',...nearbySpeakers()],select=$('reply-target'),selected=select.value;
- if([...select.options].map(o=>o.value).join()!==ids.join()){select.innerHTML=ids.map(id=>`<option value="${id}">${esc(id==='companion'?party.recipient():PEOPLE.find(n=>n.id===id).name)}</option>`).join('');if(ids.includes(selected))select.value=selected;}
- select.options[0].textContent=party.recipient()+' · 同伴';
+ const ids=nearbySpeakers(),select=$('reply-target'),selected=select.value;
+ if([...select.options].map(o=>o.value).join()!==ids.join()){select.innerHTML=ids.map(id=>`<option value="${id}">${esc(PEOPLE.find(n=>n.id===id).name)}</option>`).join('');if(ids.includes(selected))select.value=selected;}
+
  if(!$('conversation').hidden&&!replyTargetManual&&world.speaking&&ids.includes(world.speaking))select.value=world.speaking;
  const disabled=!ids.length||sim.s.player.hp<=0;$('reply-input').disabled=disabled;$('reply-form').querySelector('[type="submit"]').disabled=disabled;
  iconButton($('weapon-toggle'),'Swords',world.combatReady?'收刀 · /':'拔刀 · /');$('weapon-toggle').setAttribute('aria-pressed',String(world.combatReady));
- $('reply-status').textContent=disabled?'受伤倒地，暂时无法交谈。':'与'+(select.value==='companion'?party.recipient():PEOPLE.find(n=>n.id===select.value)?.name)+'交谈';
+ $('reply-status').textContent=disabled?(sim.s.player.hp<=0?'受伤倒地，暂时无法交谈。':'附近没有可交谈的人。'):'与'+(PEOPLE.find(n=>n.id===select.value)?.name)+'交谈';
  const signature=[select.value,sim.s.facts.missing,sim.s.player.inventory.includes('ring'),sim.event?.type].join(':');if(signature===replySignature)return;replySignature=signature;
  const replies=select.value==='companion'?['跟着我','原地等我','吹笛引人','收笛休息']:sim.s.facts.missing?['我没看见那枚戒指。','我帮你一起找找。',...(sim.s.player.inventory.includes('ring')?['戒指是我拿走的。','我把银戒还给你。']:[]),'别吵，先冷静一下。']:['刚才的事，你怎么看？','别着急，慢慢说。','近来可有什么消息？'];
  $('reply-suggestions').innerHTML=replies.slice(0,4).map(t=>`<button type="button">${esc(t)}</button>`).join('');
@@ -148,7 +173,7 @@ function updateConversation(){
 function sendReply(text,target=null){
  if((target||$('reply-target').value)==='companion'){
   if(!started||world.locked||sim.s.player.hp<=0)return;
-  if(!text.trim())return;world.keys.clear();party.command(text);$('reply-input').value='';collapseConversation();return;
+  if(!text.trim())return;world.keys.clear();$('reply-input').value='';collapseConversation();return;
  }
  const id=target||$('reply-target').value;if(!started||world.locked||!nearbySpeakers().includes(id)||world.performance||sim.s.player.hp<=0){toast('等当前动作做完，走近对方再说。');return;}
  text=text.trim();if(!text)return;closePanel();world.clearReady();world.keys.clear();$('reply-input').blur();const r=sim.reply(id,text);if(r.error){toast(r.error);return;}world.perform({id:r.actionId,kind:r.kind},id);world.performance.motion=r.motion;$('reply-input').value='';replyTargetManual=false;
@@ -184,13 +209,17 @@ function sceneOptions(){
  const recommended=ranked||sim.recommend().map(a=>a.id);
  return sim.actions().map(a=>({...a,recommended:recommended.includes(a.id)})).sort((a,b)=>Number(b.recommended)-Number(a.recommended));
 }
+function hasTalkStory(id){return sim.event?.type==='gate'?sim.sceneView()?.listener===id:sim.event?.cast?.includes(id);}
+function talkOptions(id){const story=hasTalkStory(id);return [...(story?[{id:'story',label:sim.event?.type==='gate'&&id===(sim.s.watch?.holder||'gate_guard')?'说说过关的凭据':'谈眼前的事',mode:'story',kind:'listen'}]:[]),...contactOptions(sim,id),...socialOptions(sim,id).filter(a=>a.id!=='gift')].filter(a=>fresh(sim.s,id,a));}
 function npcOptions(id){return [
- {id:'talk',label:'交谈',mode:'talk',kind:'listen'},
- {id:'pressure',label:'点穴',mode:'pressure',kind:'steal',stat:'agility'},
+ ...(!(sim.s.people[id]?.muteUntil>(sim.s.npcClock||0))&&talkOptions(id).length?[{id:'talk',label:'交谈',mode:'talk',kind:'listen'}]:[]),
  {id:'show',label:'出示',mode:'show',kind:'support'},
- {id:'probe',label:sim.s.people[id]?.probed?'查看':'探查',mode:'probe',kind:'listen',stat:sim.s.people[id]?.probed?null:'wit'},
  ...(id==='inn'?[{id:'rest',label:'借宿一夜',mode:'rest',kind:'eat'}]:[])];}
 function bubbleOptions(){return panelTarget==='scene'?sceneOptions():npcOptions(panelTarget);}
+function probeButtonState(id){const n=sim.s.people[id],p=probePreview(sim,id),q=world.npcs.get(id)?.actor.position;
+ const wait=Math.ceil((n?.probeRetryAt||0)-(environment.eco.s.time||0));
+ const reason=n?.hp<=0?'对方已经倒地':!n?.probed&&wait>0?'对方有所警觉 · '+wait+' 秒后可重试':!q||!probeSight(world.hero.position,q,world.obstacles,environment.eco.s.objects)?'视线被挡，换个位置':'';
+ return {blocked:!!reason,detail:reason||(n?.probed?'已探查，无需再检定':'机敏 '+p.score+' · 成功率 '+p.chance+'%')};}
 function bubblePreview(a){if(a.mode==='probe')return probePreview(sim,panelTarget);if(a.mode==='contact')return contactPreview(sim,panelTarget,a);
  if(panelTarget==='scene')return sim.preview(a);
  if(a.mode==='pressure')return touchPreview(sim,panelTarget);
@@ -231,21 +260,24 @@ function positionBubbles(){
  if(!inReach()||sim.s.player.hp<=0){closePanel();return;}
  const point=world.screenPoint(world.interactionPoint(panelTarget));
  if(!point.visible){closePanel();return;}
- if($('panel').classList.contains('npc-action-menu')){const el=$('panel'),w=el.offsetWidth,h=el.offsetHeight;el.style.left=Math.max(12,Math.min(innerWidth-w-12,point.x+35))+'px';el.style.top=Math.max(70,Math.min(innerHeight-h-100,point.y-h/2))+'px';el.style.transform='none';return;}
+ if($('panel').classList.contains('npc-action-menu')){const probe=$('panel').querySelector('[data-action="probe"]');if(probe){const state=probeButtonState(panelTarget);probe.disabled=state.blocked;const small=probe.querySelector('small')||probe.appendChild(document.createElement('small'));if(small.textContent!==state.detail)small.textContent=state.detail;}const el=$('panel'),w=el.offsetWidth,h=el.offsetHeight;el.style.left=Math.max(12,Math.min(innerWidth-w-12,point.x+35))+'px';el.style.top=Math.max(70,Math.min(innerHeight-h-100,point.y-h/2))+'px';el.style.transform='none';return;}
  if($('panel').classList.contains('proposal-panel')){const height=$('panel').offsetHeight,width=$('panel').offsetWidth;$('panel').style.left=Math.max(width/2+12,Math.min(innerWidth-width/2-12,point.x))+'px';$('panel').style.top=Math.max(height/2+64,Math.min(innerHeight-height/2-30,point.y+height/2))+'px';$('panel').style.transform='translate(-50%,-50%)';return;}
  const {scale,x,y}=bubbleLayout(innerWidth,innerHeight,point);
  $('panel').style.left=x+'px';$('panel').style.top=y+'px';$('panel').style.transform=`translate(-50%,-50%) scale(${scale})`;
 }
+function showTalkChoices(target,options){panelTarget=target;dialogue.choose({title:PEOPLE.find(n=>n.id===target)?.name,listener:target,options:options.map(action=>({action,preview:action.mode==='topic'?{certain:true}:bubblePreview(action)})),onSelect:runBubbleAction,onClose:closePanel});}
 function runBubbleAction(a){
  if(!a||world.performance)return;
  if(!inReach()){closePanel();toast('已经走远了，靠近后再聊。');return;}
  const target=panelTarget,actor=target==='scene'?(sim.event?.cast?.[0]||(a.kind==='listen'||a.kind==='rival'?'su':'shen')):target;
- let r;
- if(a.mode==='probe'){if(!visibleBetween(world.hero.position,world.npcs.get(target).actor.position,world.obstacles,environment.eco.s.objects)){toast('中间有遮挡，看不清对方。');return;}const result=probeNpc(sim,target);if(result.error){toast(result.error);return;}closePanel();if(result.cached)openNpcInfo(target);else pendingProbe={id:target,success:result.success};return;}
+ if(target!=='scene'&&faceOfficer(target))return;const memoryKey=target!=='scene'?topicKey(sim.s,target,a):null;let r;
+ if(a.mode==='probe'){const state=probeButtonState(target);if(state.blocked){toast(state.detail);return;}const result=probeNpc(sim,target);if(result.error){toast(result.error);return;}closePanel();if(result.cached)openNpcInfo(target);else pendingProbe={id:target,success:result.success,insight:result.insight};return;}
+ if(a.mode==='endTalk'){closePanel();return;}
  if(a.mode==='show'){closePanel();environment.openGift(target);return;}
- if(a.mode==='talk'){meet(sim,target);const hasStory=sim.event?.cast?.includes(target)&&!(target==='gate_guard'&&sim.s.watch?.holder!=='gate_guard'),view=hasStory?sim.sceneView():null;const line=(target==='old_constable'&&learnedFootwork(sim,target)?'上次教你的身法，用着还顺手吗？':view?.line)||({traveler:target==='traveler'?princeGreeting(sim.s):null,relay:'你要找什么？我手上的活还没做完。',gate_merchant:'货都在这儿，想买什么？',scribe:'刻字还是修印？东西拿来看看。'}[target]||'少侠，有什么事？');dialogue.play([{id:target,text:line}],()=>{panelTarget=target;const options=[...(hasStory?[{id:'story',label:'谈眼前的事',mode:'story',kind:'listen'}]:[]),...contactOptions(sim,target),...socialOptions(sim,target).filter(a=>a.id!=='gift')];dialogue.choose({title:PEOPLE.find(n=>n.id===target)?.name,listener:target,options:options.map(action=>({action,preview:bubblePreview(action)})),onSelect:runBubbleAction,onClose:closePanel});},PEOPLE.find(n=>n.id===target)?.name);return;}
+ if(a.mode==='topic'){dialogue.play([{id:target,text:a.reply}],()=>showTalkChoices(target,a.children),PEOPLE.find(n=>n.id===target)?.name);return;}
+ if(a.mode==='talk'){meet(sim,target);const person=sim.s.people[target];if(person.greeted){showTalkChoices(target,talkTree(target,talkOptions(target)));return;}person.greeted=true;sim.save();const hasStory=hasTalkStory(target),view=hasStory?sim.sceneView():null;const line=(target==='old_constable'&&learnedFootwork(sim,target)?'上次教你的身法，用着还顺手吗？':view?.line)||courtLine(sim.s,target)||({bookseller:'手若是干的，书就翻得。想看哪一种？',traveler:target==='traveler'?princeGreeting(sim.s):null,relay:'你要找什么？我手上的活还没做完。',gate_merchant:'货都在这儿，想买什么？',scribe:'刻字还是修印？东西拿来看看。'}[target]||opening(target)||null);if(!line){showTalkChoices(target,talkTree(target,talkOptions(target)));return;}dialogue.play([{id:target,text:line}],()=>{panelTarget=target;const options=talkOptions(target);showTalkChoices(target,talkTree(target,options));},PEOPLE.find(n=>n.id===target)?.name);return;}
  if(a.mode==='story'){panelTarget='scene';bubbleEvent=sim.event.id;const v=sim.sceneView();dialogue.play(v?.dialogue||[],()=>{panelTarget='scene';renderBubbles();},v?.title||'眼前的事');return;}
- if(a.mode==='pressure'){if(world.npcs.get(target).actor.position.distanceTo(world.hero.position)>2.2){toast('再靠近一点，才能伸手点穴。');return;}r=pressurePoint(sim,target);}
+ if(a.mode==='pressure'){if(world.npcs.get(target).actor.position.distanceTo(world.hero.position)>2.2){toast('再靠近一点，才能伸手点穴。');return;}const check=touchPreview(sim,target,a.point);if(check.blocked)return toast('当前无法点穴。');closePanel();world.perform({motion:'pressure',kind:'steal'},target);const beat=world.performance;beat.point=a.point;checkReveal.start({stat:'agility',label:a.point==='mute'?'点哑穴':'点定身穴'},check);beat.onStrike=()=>{if(world.hero.position.distanceTo(world.npcs.get(target).actor.position)>2.2||!visibleBetween(world.hero.position,world.npcs.get(target).actor.position,world.obstacles,environment.eco.s.objects)){checkReveal.cancel();toast('目标已不在伸手可及之处。');return;}const result=pressurePoint(sim,target,a.point);if(result.error){checkReveal.cancel();toast(result.error);return;}beat.hit=result.success;world.onSound?.(result.success?'attack':'notice');};return;}
  else if(a.mode==='contact')r=contactResolve(sim,environment.eco,target,a.id);
  else if(a.mode==='social')r=socialResolve(sim,target,a.id);
  else if(target==='scene')r=sim.resolve(bubbleEvent,a.id);
@@ -255,14 +287,20 @@ function runBubbleAction(a){
  else if(a.mode==='leave'){r={};queueSpeech([{id:target,text:'江湖路远，后会有期。'}]);toast('你拱手告辞。');}
  else r=sim.npcAction(target,a.id==='gift-tea'?'gift':a.id);
  if(r?.error){toast(r.error);return;}
- if(isDirectReply(r)){visualResult=null;closePanel();dialogue.play(r.dialogue.map(line=>({...line,shot:line.shot||'close'})),()=>{if(r.ongoing&&sim.sceneView()&&world.nearbyEvent()){panelTarget='scene';bubbleEvent=sim.event.id;$('result').hidden=true;$('panel').hidden=false;renderBubbles();}else closePanel();},r.label);return;}
+ if(memoryKey&&r&&!r.error&&(r.success||a.id==='befriend')){heard(sim.s,target,memoryKey);sim.save();}
+ if(isDirectReply(r)){visualResult=null;closePanel();dialogue.play(r.dialogue.map(line=>({...line,shot:line.shot||'close'})),cancelled=>{if(cancelled){closePanel();return;}const next=contactFollowups(sim,target,r);if(next.length){panelTarget=target;if(inReach()){showTalkChoices(target,next);return;}}if(r.ongoing&&sim.sceneView()&&world.nearbyEvent()){panelTarget='scene';bubbleEvent=sim.event.id;$('result').hidden=true;$('panel').hidden=false;renderBubbles();}else closePanel();},r.label);return;}
  if(r?.text&&target!=='scene'&&a.mode!=='check')toast(r.text);
  closePanel();world.perform({...a,motion:r?.motion},actor);
 }
 async function rank(){const req=epoch,id=sim.event?.id;try{const response=await fetch('/api/director',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sim.context()),signal:AbortSignal.timeout(18000)});if(!response.ok)throw Error();const result=await response.json();const ids=[...new Set(result.ids||[])].filter(id=>sim.actions().some(a=>a.id===id&&!sim.preview(a).blocked));if(ids.length<3)throw Error();if(req!==epoch||id!==sim.event?.id)return;ranked=ids.slice(0,5);aiStatus='AI 已参与推荐';if(!bubbleGroup)renderScene();}catch{if(req!==epoch)return;aiStatus='本地画像推荐';if(panelTarget==='scene')renderScene();}}
+function faceOfficer(id){const actor=world.npcs.get(id)?.actor;if(!actor||!lawConfrontation(sim,id,actor.position.distanceTo(world.hero.position)))return false;
+ closePanel();environment.close();world.clearReady();world.auto=null;const s=sim.s;
+ dialogue.choose({title:PEOPLE.find(n=>n.id===id).name+'喝令你放下兵刃',listener:id,options:[['submit','收刀认拘，服刑三日'],['retreat','拉开距离，寻找退路'],['resist','拔刀拒捕']].map(([id,label])=>({action:{id,label},preview:{certain:true}})),onClose:closePanel,onSelect:a=>{
+ if(a.id==='submit'){endPlayerPursuit(s);if(!detainAtGate(sim)){imprisonmentCost(sim);s.day+=3;s.wanted=0;s.reputation-=10;Object.assign(s.player,PRISON.release);sim.emit('relocate');journal.add('system','刑满释放','你收刀认拘，服刑三日后回到城内街口。');}sim.save();}
+ else if(a.id==='resist'){world.readyUntil=Infinity;world.onReady?.();}else toast('趁现在拉开距离。');}});return true;}
 function interact(targetId=null){if(typeof targetId==='string')selectedNpc=targetId;if(typeof targetId!=='string')targetId=null;
  if(!started||world.locked||world.performance||sim.s.player.hp<=0)return;
- const theftNpc=targetId||world.nearest()?.id;if(sim.s.player.stealing&&theftNpc&&objects.openTheft(theftNpc))return;
+ const theftNpc=targetId||world.nearest()?.id;if(theftNpc&&faceOfficer(theftNpc))return;if(sim.s.player.stealing&&theftNpc&&objects.openTheft(theftNpc))return;
  if(!targetId&&objects.interact())return;
  if(!$('panel').hidden){closePanel();return;}
  if(!targetId&&!world.nearest()&&!world.nearbyEvent()&&environment.interactStreet())return;
@@ -293,7 +331,7 @@ window.addEventListener('keydown',e=>{
  if(e.code==='Escape'&&!$('conversation').hidden){e.preventDefault();e.stopImmediatePropagation();collapseConversation();return;}
  if(e.code==='Enter'&&!e.target.closest?.('input,textarea,select,button')){e.preventDefault();e.stopImmediatePropagation();openConversation();}
 },true);
-window.addEventListener('keydown',e=>{if(!started)return;if(e.target.closest?.('input,textarea,select')||e.isComposing){if(e.code==='Escape')e.target.blur();return;}if(['Space','Tab','KeyW','KeyA','KeyS','KeyD'].includes(e.code))e.preventDefault();if(e.repeat)return;environment.key(e);party.key(e);if(e.code==='Escape'){closePanel();closeDrawer();return;}if(e.code==='KeyJ'){orgButton.click();return;}if(e.code==='KeyC'){$('profile').click();return;}if(e.code==='Tab'){!$('drawer').hidden?closeDrawer():inbox();return;}if(world.locked)return;world.keys.add(e.code);if(e.code==='Space')world.jump();if(e.code==='Slash'){e.preventDefault();world.toggleWeapon();}if(e.code==='KeyE')interact();if(e.code==='KeyR'&&sim.s.player.hp<=0)rest();});window.addEventListener('keyup',e=>world.keys.delete(e.code));
+window.addEventListener('keydown',e=>{if(!started)return;if(e.target.closest?.('input,textarea,select')||e.isComposing){if(e.code==='Escape')e.target.blur();return;}if(['Space','Tab','KeyW','KeyA','KeyS','KeyD'].includes(e.code))e.preventDefault();if(e.repeat)return;environment.key(e);if(e.code==='Escape'){closePanel();closeDrawer();return;}if(e.code==='KeyJ'){orgButton.click();return;}if(e.code==='KeyC'){$('profile').click();return;}if(e.code==='Tab'){!$('drawer').hidden?closeDrawer():inbox();return;}if(world.locked)return;world.keys.add(e.code);if(e.code==='Space')world.jump();if(e.code==='Slash'){e.preventDefault();world.toggleWeapon();}if(e.code==='KeyE')interact();if(e.code==='KeyR'&&sim.s.player.hp<=0)rest();});window.addEventListener('keyup',e=>world.keys.delete(e.code));
 fetch('/api/status').then(r=>r.json()).then(r=>aiStatus=r.configured?'AI 随时待命':'本地画像推荐').catch(()=>aiStatus='本地画像推荐');
 function mini(){const canvas=$('minimap').querySelector('canvas'),ctx=canvas.getContext('2d'),p=world.hero.position;ctx.clearRect(0,0,164,164);ctx.save();ctx.beginPath();ctx.arc(82,82,80,0,Math.PI*2);ctx.clip();ctx.strokeStyle='#8ca78b35';ctx.lineWidth=11;ctx.beginPath();ctx.moveTo(82,0);ctx.lineTo(82,164);ctx.stroke();ctx.fillStyle='#618b83';ctx.fillRect(13,0,14,164);for(const o of world.obstacles){ctx.fillStyle='#9da88a77';ctx.fillRect(82+o.x*2.5-o.w,82+o.z*2.5-o.d,o.w*2,o.d*2);}
  for(const [x,z,label]of [[10,-23,'官'],[23,-5,'帮']]){ctx.fillStyle='#efd49b';ctx.font='bold 11px sans-serif';ctx.fillText(label,78+x*2.5,86+z*2.5);}
@@ -305,14 +343,21 @@ let prev=performance.now(),lastUI=0,lastSave=0;
 const gateGoal=document.createElement('button');gateGoal.id='gate-objective';gateGoal.hidden=true;document.body.append(gateGoal);gateGoal.onclick=()=>{if(!dialogue.active&&!checkReveal.active&&sim.event?.type==='gate'){if(!objects.navigate())world.routeTo(sim.event.point,1.8);}};
 mountHudLayout();
 function openQuests(){drawer('任务与线索',questsHTML(sim.s,esc)+'<h3>近期行动影响</h3>'+[...(sim.s.consequences||[])].slice(-12).reverse().map(c=>`<article class="quest-card"><small>第 ${c.day} 日</small><p>${esc(c.reason)}</p><p>${c.changes.map(v=>esc(v.label)+' '+(v.delta>0?'+':'')+v.delta).join(' · ')}</p></article>`).join(''));$('drawer').dataset.view='quests';for(const b of $('drawer').querySelectorAll('[data-track]'))b.onclick=()=>{sim.s.trackedQuest=sim.s.trackedQuest===b.dataset.track?null:b.dataset.track;save();openQuests();};}
-function openNpcInfo(id){const info=npcInfo(sim,environment.eco,id);if(!info)return;selectedNpc=id;
- drawer(info.name,`<div class="npc-summary">${npcPortrait(info)}<p>${esc(info.title)}<br>势力：${esc(info.faction)} · ${info.attitude}</p></div>${info.probed?`<p>${esc(info.condition)} · ${esc(info.observation)}</p><h3>随身包裹</h3><div class="pack-grid"><div class="pack-tile">${icon('Coins')}<span>${info.money} 文</span></div>${info.items.map(i=>`<div class="pack-tile">${icon(itemIcon(i))}<span>${esc(i.name)}</span></div>`).join('')}</div><p>查看不会取走物品。靠近后蹲行可尝试偷窃；密封物品的内容尚未查看。</p>`:'<p>尚未探查。靠近后选择“探查”，了解可观察的信息与随身物品。</p>'}`);
+const unlock=document.createElement('button');unlock.id='person-unlock';unlock.hidden=true;document.body.append(unlock);let unlockTimer;
+function showUnlock(id,insight){const info=npcInfo(sim,environment.eco,id);if(!info)return;clearTimeout(unlockTimer);
+ const title=(info.faction==='？？？'?'归属待查':info.faction)+' · '+info.name;
+ unlock.innerHTML=npcPortrait(info)+'<span><small>已解锁人物</small><b>'+esc(title)+'</b><em>（'+esc(insight)+'）</em></span><strong aria-hidden="true">›</strong>';
+ unlock.setAttribute('aria-label','查看势力图：'+title);unlock.hidden=false;unlockTimer=setTimeout(()=>unlock.hidden=true,5500);
+ unlock.onclick=()=>{clearTimeout(unlockTimer);unlock.hidden=true;showOrganization(personTab(sim,id));const node=$('drawer').querySelector('[data-org-person="'+CSS.escape(id)+'"]');if(node){node.classList.add('discovered-focus');requestAnimationFrame(()=>node.scrollIntoView({block:'center',inline:'center'}));}};
+}
+function openNpcInfo(id,insight=null){const info=npcInfo(sim,environment.eco,id);if(!info)return;selectedNpc=id;
+ drawer(info.name,`${insight?'<p>此刻心念 · （'+esc(insight)+'）</p>':''}<div class="npc-summary">${npcPortrait(info)}<p>${esc(info.title)}<br>势力：${esc(info.faction)} · ${info.attitude}</p></div>${info.probed?`<p>${esc(info.condition)} · ${esc(info.observation)}</p><h3>随身包裹</h3><div class="pack-grid"><div class="pack-tile">${icon('Coins')}<span>${info.money} 文</span></div>${info.items.map(i=>`<div class="pack-tile">${icon(itemIcon(i))}<span>${esc(i.name)}</span></div>`).join('')}</div><p>查看不会取走物品。靠近后蹲行可尝试偷窃；密封物品的内容尚未查看。</p>`:'<p>尚未探查。靠近后选择“探查”，了解可观察的信息与随身物品。</p>'}`);
 }
 const npcCard=document.createElement('button');npcCard.id='npc-target-card';npcCard.hidden=true;document.body.append(npcCard);npcCard.onclick=()=>{if(selectedNpc)openNpcInfo(selectedNpc);};let npcCardHtml='';
 function updateNpcCard(){const n=world.npcs.get(selectedNpc),info=npcInfo(sim,environment.eco,selectedNpc);npcCard.hidden=!started||!info||!n||n.actor.position.distanceTo(world.hero.position)>14||world.locked||world.performance||document.body.classList.contains('hud-detail-open');if(npcCard.hidden)return;const html=npcPortrait(info)+`<span><b>${esc(info.name)}</b><small>${esc(info.title)}</small><small>${esc(info.faction)} · ${info.attitude}</small></span>`;if(html!==npcCardHtml){npcCard.innerHTML=html;npcCardHtml=html;}npcCard.setAttribute('aria-label','查看'+info.name+'的信息');}
 const progressUI=mountProgressUI(()=>sim,esc,openQuests);
 function frame(now){requestAnimationFrame(frame);const dt=Math.min(.045,(now-prev)/1000);prev=now;if(document.hidden)return;
- if(started&&!dialogue.active&&!checkReveal.active)sim.tick(dt);world.playing=started;world.locked=checkReveal.active||dialogue.active||objects.busy||!started||!$('drawer').hidden;objects.update(dt,started);world.locked=checkReveal.active||dialogue.active||objects.busy||!started||!$('drawer').hidden;world.update(dt);if(visualResult&&!world.performance&&!dialogue.active)world.onPerformanceEnd?.();if(!dialogue.active&&!checkReveal.active){environment.update(dt,started);if(sim.event?.type!=='gate')party.update(dt,started);}positionBubbles();if(!checkReveal.active&&!dialogue.active&&!world.performance&&pendingActionSpeech.length){queueSpeech(pendingActionSpeech.splice(0));}updateSpeech();
+ if(started&&!dialogue.active&&!checkReveal.active)sim.tick(dt);world.playing=started;world.locked=checkReveal.active||dialogue.active||objects.busy||!started||!$('drawer').hidden;objects.update(dt,started);world.locked=checkReveal.active||dialogue.active||objects.busy||!started||!$('drawer').hidden;world.update(dt);aim.update();if(visualResult&&!world.performance&&!dialogue.active)world.onPerformanceEnd?.();if(!dialogue.active&&!checkReveal.active){environment.update(dt,started);}positionBubbles();if(!checkReveal.active&&!dialogue.active&&!world.performance&&pendingActionSpeech.length){queueSpeech(pendingActionSpeech.splice(0));}updateSpeech();
  gateGoal.hidden=!started||sim.event?.type!=='gate'||dialogue.active;if(!gateGoal.hidden)iconButton(gateGoal,'MapPin','前往：'+sim.sceneView().title);
  if(started&&now-lastUI>120){lastUI=now;progressUI.update(started);updateNpcCard();environment.refreshPack(started);updateProfile();updateConversation();const s=sim.s;$('combat-ready').hidden=!world.combatReady||world.locked;$('hp').value=s.player.hp;$('energy').value=s.player.energy;$('role-name').textContent=s.party.active==='companion'?'阿笙 · 同行':ROLES[s.role].name;$('money').textContent=s.player.money+' 文';$('clock').textContent=`第 ${s.day} 日 · ${s.time<80?'晨光':s.time<160?'午后':'暮色'}`;$('wanted').textContent=s.wanted?'⚑ 捕头留意 · 嫌疑 '+s.wanted:'青竹会声望 '+s.reputation;$('unread').textContent=s.mail.filter(m=>!m.read).length||'';
  const event=world.nearbyEvent(),near=world.nearest(),hidden=world.locked||!$('panel').hidden||!!world.performance||(!event&&!near&&!environment.nearStreet()&&!objects.canInteract)||s.player.hp<=0;$('interact').hidden=hidden;iconButton($('interact'),'MessageCircle','E · '+(event?'看看眼前发生的事':environment.nearStreet()?'介入街头动静':'与'+(near?.npc.person.name||'路人')+'交互'));if(near){const label=s.player.stealing?'翻看'+near.npc.person.name+'的随身物品':'与'+near.npc.person.name+'对话';$('interact').innerHTML='<span class="npc-talk-label">E · '+esc(label)+'</span>';$('interact').setAttribute('aria-label',label);}else{delete $('interact').dataset.icon;}$('ambient').hidden=!!(near&&s.people[near.id]?.awareness?.caseOpen)||!event||world.locked||!$('panel').hidden||speechQueue.length>0;if(event&&!$('ambient').hidden&&!world.locked&&!speechQueue.length){const lines=sim.sceneView()?[sim.sceneView().line]:SCENES[sim.event.type].lines,line=lines[Math.floor(world.t/6)%lines.length];$('ambient').textContent=line;const split=line.indexOf('：');journal.add('chat',split>=0?line.slice(0,split):'街坊',split>=0?line.slice(split+1):line,`ambient:${sim.event.id}:${line}`);speak(line);}mini();}

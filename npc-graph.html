@@ -1,0 +1,22 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>临溪 · 因果查看器</title>
+<style>body{background:#122d29;color:#f6e7c8;font:16px system-ui;margin:2rem}select,button{font:inherit;padding:.4rem}main{overflow:auto;max-height:72vh;border:1px solid #526e62}svg text{fill:#ffe5ab;font:15px system-ui}line{stroke:#b2b899}rect{fill:#28463f;stroke:#929e7a}small{color:#bed1c5}</style>
+<h1>临溪 · 因果查看器</h1><p>只读设计视图。默认查看锦衣客，可切换全部人物。灰色连线为设计条件，金色连线表示存档已触发照看。</p>
+<label>人物 <select id="who"></select></label> <button id="reload">重读入城预览存档</button> <small id="status"></small><main><svg id="graph"></svg></main>
+<script type="module">
+import {PEOPLE} from './src/data.js';
+import {remembersCare,CARE_RULE} from './src/care-rule.js';
+const who=document.querySelector('#who'),graph=document.querySelector('#graph');
+who.add(new Option('全部人物','*'));for(const n of PEOPLE)who.add(new Option(n.name,n.id));who.value='traveler';
+function render(){let s;try{s=JSON.parse(localStorage.getItem('jianghu-gate-preview-v1'));}catch{}const people=PEOPLE.filter(n=>who.value==='*'||who.value===n.id);
+graph.replaceChildren();let row=0;
+function el(t,props,label){const e=document.createElementNS('http://www.w3.org/2000/svg',t);for(const [k,v] of Object.entries(props))e.setAttribute(k,v);if(label)e.textContent=label;graph.append(e);return e;}
+function node(x,y,label){el('rect',{x,y:y-16,width:182,height:32,rx:7});el('text',{x:x+8,y:y+5},label);}
+function link(x,y,a,b,label,active){let l=el('line',{x1:x+182,y1:y,x2:a,y2:b});if(active)l.style.stroke='gold';el('text',{x:(x+182+a)/2-22,y:(y+b)/2-3},label);}
+for(const n of people){const y=row+30;const active=s?.people&&remembersCare(s,n.id);
+link(10,y,286,y,'患病时',false);link(286,y,562,y,'留下',active);link(562,y,838,y,'影响',active);
+node(10,y,n.name);node(286,y,'玩家递水照看');node(562,y,active?'已记得照看之恩':'照看之恩（未记录）');node(838,y,'结交 +'+CARE_RULE.bonus+' 个百分点');
+let branch=0;for(const [label,value] of [...(n.faction?[['归属',n.faction]]:[]),...(s?.ecosystem?.items||[]).filter(i=>i.location==='npc:'+n.id).map(i=>['携带',i.name])]){const yy=y+(++branch)*43;link(10,y,286,yy,label,false);node(286,yy,value);}
+row=y+branch*43+44;}
+graph.setAttribute('width',1040);graph.setAttribute('height',row);document.querySelector('#status').textContent=s?'第 '+s.day+' 日 · 当前入城预览存档':'暂无入城预览存档 · 显示设计条件';}
+who.onchange=render;document.querySelector('#reload').onclick=render;render();
+</script></html>

@@ -1,0 +1,21 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>临溪 · 玩家行动图</title><style>
+*{box-sizing:border-box}body{margin:clamp(16px,4vw,60px);background:#122d29;color:#ede4cd;font:16px system-ui}h1{font-family:serif;color:#efcc85}button,select,a{color:#eed299;background:#294840;padding:.5em;border:1px solid #657964;border-radius:5px}header{display:flex;flex-wrap:wrap;gap:12px;align-items:center}section{border-top:1px solid #536c61;padding:.7em 0}ol{display:flex;flex-wrap:wrap;align-items:center;gap:.45em;list-style:none;padding:0}li{border:1px solid #62776b;padding:.6em;border-radius:5px}li.done{border-color:#edc775;color:#ffdc8f}.edge{color:#a6bbad}small{color:#c6cbbb}</style>
+<h1>临溪 · 玩家行动图</h1><header><label>我的目标 <select id="goal"><option>进临溪城</option><option>进六扇门，领巡街班</option></select></label><button id="refresh">重读进度</button><a href="npc-graph.html">查看人物因果</a></header><p id="info"></p><main></main>
+<script type="module">
+const goal=document.querySelector('select'),main=document.querySelector('main');function render(){let s;try{s=JSON.parse(localStorage.getItem('jianghu-gate-preview-v1'));}catch{}const f=s?.facts||{},p=s?.player||{},items=p.inventory||[],obs=Object.values(s?.ecosystem?.objects||{});main.replaceChildren();
+document.querySelector('#info').textContent=(s?'第 '+s.day+' 日的入城预览存档。':'尚无预览存档，显示可行路线。')+' 金框表示存档有对应记录；其余步骤可供探索。';
+const route=id=>f.entryRoute===id;const has=id=>s?.history?.some(r=>r.actionId===id&&r.success);function path(name,steps){const section=document.createElement('section'),h=document.createElement('b'),ol=document.createElement('ol');h.textContent=name;section.append(h,ol);for(const [i,[label,done]] of steps.entries()){if(i){let e=document.createElement('span');e.className='edge';e.textContent='→';ol.append(e);}const li=document.createElement('li');li.textContent=(done?'✓ ':'')+label;if(done)li.className='done';ol.append(li);}main.append(section);}
+if(!goal.selectedIndex){
+path('路引 · 冒名过关',[['摸走赵行商的路引',f.gatePassTaken],['拿到他人的路引',f.gatePassTaken||items.includes('他人的路引')],['冒名或改名，递交查验',has('g_present')],['持路引入城',route('papers')]]);
+path('乔装 · 接文书',[['取走或买下差役服',items.includes('旧差役服')],['穿上差役服',p.disguise==='runner'],['以官差身份过关',route('uniform')]]);
+path('河道 · 破栅',[['攻击河中木栅',obs.some(o=>o.id==='river-fence'&&o.hp<o.max)],['打出缺口',obs.some(o=>o.id==='river-fence'&&o.hp===0)],['涉水穿过关墙',route('river')]]);
+path('人情 · 担保',[['与韩校尉建立信任',s?.people?.gate_guard?.trust>=5],['请他作保入城',route('friend')]]);
+path('商队 · 帮工',[['谈成护货',f.merchantContract],['随赵行商登记入城',route('merchant')]]);
+path('入狱 · 服刑',[['接受拘押',has('g_surrender')],['刑满在城内获释',route('prison')]]);
+path('环境探索 · 不直接通关',[['砍树',obs.some(o=>o.kind==='tree'&&o.hp<o.max)],['树木倒下',obs.some(o=>o.kind==='tree'&&o.hp===0)]]);
+}else{
+path('入职 · 两种引荐',[['锦衣客给玉符',f.courtTokenIssued],['向钦差出示',f.courtTokenPresented],['成为捕快',f.career==='court']]);path('旧捕快作保',[['请杜老捕引荐',f.constableReferral],['向顾钦差报到',f.career==='court']]);
+path('缉捕 · 办案功劳',[['领取拘传令',f.warrants?.thief],['亮牌拿燕七',s?.people?.thief?.inCustody],['押到官府交差',s?.people?.thief?.custodyDelivered]]);
+path('竞任 · 巡街捕头',[['报名与韩校尉竞争',f.courtCandidate],['呈上功簿',f.courtHead],['获任巡街捕头',f.courtHead==='player']]);}
+}goal.onchange=render;document.querySelector('#refresh').onclick=render;render();
+</script></html>

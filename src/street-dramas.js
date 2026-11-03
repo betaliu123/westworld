@@ -1,3 +1,4 @@
+import {occupied} from './npc-territory.js';
 import {RIBBON_COURT} from './locations.js';
 import {PEOPLE} from './data.js';
 const name=id=>id==='player'?'你':PEOPLE.find(n=>n.id===id)?.name||id;
@@ -50,7 +51,7 @@ export function tickDrama(d,dt,positions){
   if(e.stage==='踩点'&&e.elapsed>=18&&e.arrived){const merchant=d.sim.s.people.merchant,thief=d.sim.s.people.thief;e.stolen=Math.min(12,merchant.purse??20);merchant.purse=(merchant.purse??20)-e.stolen;thief.purse=(thief.purse??20)+e.stolen;e.waypoint=0;phase(d,'追逐',[['merchant','我的钱袋！抓住那个灰衣人！'],['guard','站住！街坊别挡路！']]);}
   else if(e.stage==='追逐'){
    const a=positions.thief,b=positions.guard;
-   if(elapsed>6&&a&&b&&Math.hypot(a.x-b.x,a.z-b.z)<1.3){recover(d);finish(d,'陆捕头追上燕七，追回钱袋。许行商清点失物，街坊终于散去。');}
+   if(!occupied(d.sim.s,'guard')&&elapsed>6&&a&&b&&Math.hypot(a.x-b.x,a.z-b.z)<1.3){recover(d);finish(d,'陆捕头追上燕七，追回钱袋。许行商清点失物，街坊终于散去。');}
    else if(elapsed>=35)finish(d,'燕七钻出街巷，带着钱袋逃脱。许行商损失了'+e.stolen+'文，陆捕头记下了他的样貌。');
   }
  }

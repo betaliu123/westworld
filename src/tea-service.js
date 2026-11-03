@@ -1,12 +1,14 @@
 import {canEat,consumeFood,inspectFood} from './npc-life.js';
 export const TEA_CUPS=[{id:'tea-cup-0',guest:'gate_relief',x:-7,z:27.2},{id:'tea-cup-1',guest:'gate_guard',x:-6,z:27.2},{id:'tea-cup-2',guest:'old_constable',x:-7,z:30},{id:'tea-cup-3',guest:'traveler',x:-6,z:30},{id:'tea-cup-4',guest:'gate_merchant',x:-6,z:32.6}];
 export const TEAPOT={id:'tea-pot',x:-11.8,z:29.2};
+function dissolve(eco,id,tea){const powder=eco.items('residue:'+id)[0];if(!powder)return;tea.poisoned=true;tea.knownPoisonBy=[...new Set([...(tea.knownPoisonBy||[]),...(powder.knownPoisonBy||[])])];powder.location='consumed';}
 export function teaStep(sim,eco,positions){
  const pot=eco.s.objects[TEAPOT.id];if(!pot||pot.hp<=0)return;
  const now=eco.s.time,host=sim.s.people.tea_host,q=positions.tea_host;
  const t=eco.s.teaService??={index:0,nextAt:now+8};
  let batch=eco.items('object:'+pot.id).find(i=>i.drink);
  if(!batch&&now>=(t.refillAt||0)){batch=eco.create('一壶热茶','food','object:'+pot.id,{drink:true,servings:6});}
+ if(batch)dissolve(eco,pot.id,batch);
  // A cup is a real serving, retained on the table until an eligible guest drinks.
  for(const cup of TEA_CUPS){const vessel=eco.s.objects[cup.id];if(!vessel||vessel.hp<=0)continue;
  const tea=eco.items('object:'+cup.id).find(i=>i.drink),n=sim.s.people[cup.guest],pos=positions[cup.guest];
@@ -21,5 +23,5 @@ export function teaStep(sim,eco,positions){
  const target=carried?{x:-6.5,z:cup.z+1.15}:{x:TEAPOT.x,z:TEAPOT.z+1};host.life={activity:'serve',target};
  if(Math.hypot(q.x-target.x,q.z-target.z)>.55)return;
  if(!carried){if(!batch){t.nextAt=now+3;return;}if(batch.knownPoisonBy?.includes('tea_host')){if(t.warnedBatch!==batch.id){t.warnedBatch=batch.id;sim.emit('npcRoutine',{id:'tea_host',text:'有人动过这壶茶，不能给客人喝。'});}t.nextAt=now+8;return;}carried=eco.create('热茶','food','npc:tea_host',{drink:true,poisoned:batch.poisoned,knownPoisonBy:[...(batch.knownPoisonBy||[])],discovered:true});t.carried=carried.id;if(--batch.servings<=0){batch.location='consumed';t.refillAt=now+35;}host.pouringUntil=now+1;t.nextAt=now+1;}
- else{eco.transfer(carried,'object:'+cup.id);carried.drinkAt=now+4;host.pouringUntil=now+2;t.carried=null;t.index++;t.nextAt=now+4;sim.save();}
+ else{eco.transfer(carried,'object:'+cup.id);dissolve(eco,cup.id,carried);carried.drinkAt=now+4;host.pouringUntil=now+2;t.carried=null;t.index++;t.nextAt=now+4;sim.save();}
 }

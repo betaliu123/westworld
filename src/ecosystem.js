@@ -1,3 +1,6 @@
+import {recordRoyalLetter} from './prince.js';
+import {stockBooks,bookAction} from './bookshop.js';
+import {persona,response} from './npc-persona.js';
 import {placePayment,collectPayments,takePayment} from './cash-transfers.js';
 import {helpless,patrolStep} from './impersonation.js';
 import {ensureMerchantPass} from './merchant-pass.js';
@@ -11,7 +14,7 @@ export class Ecosystem{
  constructor(sim,assets=[]){this.sim=sim;const s=sim.s;s.ecosystem??={time:0,seq:0,items:[],objects:{},hunger:{},rewards:{}};this.s=s.ecosystem;this.positions={};this.s.followups??=[];this.s.stockDay??=sim.s.day;for(const n of Object.values(sim.s.people))n.purse??=20;
   this.registerAssets(assets);for(const i of this.s.items){i.material??=i.type==='ring'?'metal':i.type==='poison'?'stone':'food';i.hp??=30;i.max??=30;}
   if(!this.s.initialized){this.create('干粮','food','player');this.create('干粮','food','player');this.create('迷毒散','poison','player');this.create('迷毒散','poison','player');this.s.initialized=true;}
- ensureLife(sim,this);ensureMerchantPass(sim.s);
+ ensureLife(sim,this);if(!this.s.hatIssued){this.s.hatIssued=true;const hat=this.create('竹编斗笠','hat','player',{material:'wood',discovered:true});sim.s.player.hat=hat.id;}if(this.activeObjects.has("book-desk"))stockBooks(this);ensureMerchantPass(sim.s);
  }
  registerAssets(assets){this.activeObjects=new Set(assets.map(a=>a.id));for(const a of assets){const max=a.max??(a.kind==='tree'?100:80);let o=this.s.objects[a.id];if(!o){o=this.s.objects[a.id]={id:a.id,kind:a.kind,name:a.name,fruit:a.fruit,x:a.x,z:a.z,owner:a.owner,hp:max,max,drops:0};if(a.kind==='stall')for(let i=0;i<5;i++)this.create('包子','food','object:'+a.id);if(this.sim.s.broken.includes(a.id))o.hp=0;}Object.assign(o,{x:a.x,z:a.z,name:a.name,material:a.material||'wood',w:a.w||0,d:a.d||0,y:a.y??1});o.burning??=0;o.wetUntil??=0;}}
  objectRange(o,r=3.5){return this.sim.s.player.hp>0&&objectDistance(o,this.sim.s.player)<=r;}
@@ -22,41 +25,47 @@ export class Ecosystem{
  create(name,type,location,extra={}){const item={id:'item-'+(++this.s.seq),name,type,location,poisoned:false,material:type==='ring'?'metal':type==='poison'?'stone':'food',hp:30,max:30,...extra};this.s.items.push(item);return item;}
  items(location){return this.s.items.filter(i=>i.location===location);}
  syncRing(){const ring=this.s.items.find(i=>i.type==='ring');if(!ring&&this.sim.s.player.inventory.includes('ring'))this.create('银戒','ring','player');else if(ring?.location==='player'&&!this.sim.s.player.inventory.includes('ring')){ring.location='npc:shen';ring.discovered=true;}}
- transfer(item,location){if(location!=='player'&&this.sim.s.player.disguise==='borrowed'&&this.sim.s.player.wornOutfit===item.id){this.sim.s.player.wornOutfit=null;this.sim.s.player.disguise=null;}item.location=location;if(item.documentId==='merchant-pass'&&location!=='npc:gate_merchant')this.sim.s.facts.gatePassTaken=true;if(item.storyId){this.sim.s.player.inventory=this.sim.s.player.inventory.filter(i=>i!==item.storyId);if(location==='player')this.sim.s.player.inventory.push(item.storyId);}if(item.type==='ring'){this.sim.s.player.inventory=this.sim.s.player.inventory.filter(i=>i!=='ring');if(location==='player')this.sim.s.player.inventory.push('ring');}}
+ transfer(item,location){if(location!=='player'&&this.sim.s.player.hat===item.id)this.sim.s.player.hat=null;if(location!=='player'&&this.sim.s.player.flute===item.id)this.sim.s.player.flute=null;if(location!=='player'&&this.sim.s.player.disguise==='borrowed'&&this.sim.s.player.wornOutfit===item.id){this.sim.s.player.wornOutfit=null;this.sim.s.player.disguise=null;}item.location=location;if(item.documentId==='merchant-pass'&&location!=='npc:gate_merchant')this.sim.s.facts.gatePassTaken=true;if(item.storyId){this.sim.s.player.inventory=this.sim.s.player.inventory.filter(i=>i!==item.storyId);if(location==='player')this.sim.s.player.inventory.push(item.storyId);}if(item.type==='ring'){this.sim.s.player.inventory=this.sim.s.player.inventory.filter(i=>i!=='ring');if(location==='player')this.sim.s.player.inventory.push('ring');}}
  log(text,dialogue=[],ai=false){for(const d of dialogue){const n=this.sim.s.people[d.id];if(n){n.memories.push(text);n.memories=n.memories.slice(-12);}}dialogue=dialogue.filter(d=>{if(d.id==='hero')return true;const q=this.positions[d.id],n=this.sim.s.people[d.id];return q&&n?.hp>0&&Math.hypot(q.x-this.sim.s.player.x,q.z-this.sim.s.player.z)<10&&visibleBetween(q,this.sim.s.player,this.obstacles||[],this.s.objects);});this.sim.emit('sandbox',{text,dialogue,ai});this.sim.save();}
  chance(){return Math.max(5,Math.min(95,this.sim.s.player.stats.agility+10+growthBonus(this.sim.s.player,'agility')));}
  check(label='隐蔽取物',target=null){const roll=1+Math.floor(this.sim.rng()*100),chance=this.chance();const success=roll<=chance;this.s.growthAttempt=(this.s.growthAttempt||0)+1;earnGrowth(this.sim.s.player,'agility',success?8:3,`ecology:${this.s.growthAttempt}`);const r={roll,chance,success,label,actionId:'steal',kind:'steal',check:{chance},target};this.sim.emit('fieldCheck',r);return r;}
  range(x,z,r=3.5){const p=this.sim.s.player;return Math.hypot(x-p.x,z-p.z)<=r&&p.hp>0;}
+ theftBlock(id){const p=this.sim.s.player,n=this.sim.s.people[id],q=this.positions[id];if(!p.stealing||!p.crouched)return '先按 Z 蹲下进入偷窃状态。';if(!n||!q||!this.range(q.x,q.z,2.8))return '距离太远，再靠近一点。';if(!visibleBetween(p,q,this.obstacles||[],this.s.objects))return '中间有遮挡，绕到对方身侧。';if(!helpless(this.sim,n)&&n.theftAlertDay===this.sim.s.day)return '对方已有戒心，今天无法再下手。';return '';}
  stealNpc(id,itemId='purse'){
- const p=this.sim.s.player,n=this.sim.s.people[id],q=this.positions[id];
- if(!p.stealing||!p.crouched)return '先按 Z 蹲下进入偷窃状态。';
- if(!n||!q||!this.range(q.x,q.z,2.8)||!visibleBetween(p,q,this.obstacles||[],this.s.objects))return '请先靠近对方。';
- if(!helpless(this.sim,n)&&n.theftAlertDay===this.sim.s.day)return '对方已有戒心，今天无法再下手。';
+ const p=this.sim.s.player,n=this.sim.s.people[id],block=this.theftBlock(id);if(block)return block;
  const item=this.items('npc:'+id).find(i=>i.id===itemId&&i.hp>0);
  if(itemId==='purse'?!n.purse:!item)return '东西已经不在对方身上。';
  if(item?.type==='clothing'&&!helpless(this.sim,n))return '对方还清醒，无法取下穿着的衣物。';
  const c=helpless(this.sim,n)?{success:true}:this.check('偷取随身物品',id);p.energy=Math.max(0,p.energy-3);
- if(!c.success){this.sim.emit('worldIncident',{type:'theft',owner:id,target:id,x:p.x,z:p.z});n.theftAlertDay=this.sim.s.day;this.sim.relation(id,-5);this.sim.s.wanted=Math.min(9,this.sim.s.wanted+1);this.log(`身法检定 ${c.roll} > ${c.chance}：偷窃被发现，嫌疑 +1。`,[{id,text:'谁在碰我的钱袋！'}]);return;}
+ if(!c.success){const incident={type:'theft',caughtBy:id,owner:id,target:id,x:p.x,z:p.z};this.sim.emit('worldIncident',incident);n.theftAlertDay=this.sim.s.day;this.sim.relation(id,-5);if(!incident.locallyHandled&&!incident.witnesses)this.sim.s.wanted=Math.min(9,this.sim.s.wanted+1);this.log(`身法检定 ${c.roll} > ${c.chance}：没能取到财物。`,[]);return;}
  const loot=itemId==='purse'?`${n.purse} 文`:item.name;
  if(itemId==='purse'){p.money+=n.purse;n.purse=0;}else{this.transfer(item,'player');delete item.discoverAt;}
- if(helpless(this.sim,n))this.sim.emit('worldIncident',{type:'theft',covert:true,owner:id,target:id,x:p.x,z:p.z});
+ this.sim.emit('worldIncident',{type:'theft',covert:true,owner:id,target:id,x:p.x,z:p.z});
  this.log(`取走 ${loot}。`,[{id:'hero',text:'到手了。别惊动他。'}]);
  }
- poisonItem(toxinId,itemId){
- const toxin=this.items('player').find(i=>i.id===toxinId&&i.type==='poison'),item=this.s.items.find(i=>i.id===itemId),p=this.sim.s.player;
+ poisonVessel(toxinId,id){
+ const vessel=this.s.objects[id];if(!vessel||!['teacup','teapot'].includes(vessel.kind)||vessel.hp<=0)return '容器已经损毁。';
+ const drink=this.items('object:'+id).find(i=>i.drink&&i.hp>0);if(drink)return this.poisonItem(toxinId,drink.id);
+ if(this.items('residue:'+id).length)return '里面已经有药粉了。';
+ return this.poisonItem(toxinId,null,vessel);
+ }
+ poisonItem(toxinId,itemId,vessel=null){
+ const toxin=this.items('player').find(i=>i.id===toxinId&&i.type==='poison'),item=vessel?{type:'food',name:vessel.name+'底',hp:vessel.hp,location:'object:'+vessel.id}:this.s.items.find(i=>i.id===itemId),p=this.sim.s.player;
  if(!toxin||!item||item.type!=='food'||item.hp<=0||item.poisoned)return '需要迷毒散与一份未下毒的食物或茶水。';
  const o=item.location.startsWith('object:')?this.s.objects[item.location.slice(7)]:item.location==='ground'?item:null;
  if(item.location!=='player'&&(!o||o.hp<=0||!this.objectRange(o,3.3)||!visibleBetween(p,o,this.obstacles||[],this.s.objects)))return '再靠近些，隔着障碍够不到。';
  if(p.hp<=0)return '倒地时无法行动。';
  let c=null;if(o){c=this.check('将迷毒散混入'+item.name);p.energy=Math.max(0,p.energy-3);if(!c.success){const event={type:'tamper',owner:o.owner,target:o.id,x:p.x,z:p.z};this.sim.emit('worldIncident',event);const text=event.witnesses?.length?'伸手时被看见，药粉仍在行囊里。':'手上一滑，没能混入药粉；药粉仍在行囊里。';this.log(text,event.witnesses?.length?[]:[{id:'hero',text:'差一点洒出来……先收好。'}]);return text;}}
- toxin.location='consumed';item.poisoned=true;item.examinedBy={};const event={type:'tamper',covert:c?.success??true,owner:o?.owner,itemId:item.id,target:o?.id,x:p.x,z:p.z};this.sim.emit('worldIncident',event);this.log('迷毒散混入'+item.name+(event.witnesses?.length?'，但动作被看见了。':'，暂未察觉有人发现。'),event.witnesses?.length?[]:[{id:'hero',text:'混进去了。得离远些。'}]);return null;
+ toxin.location=vessel?'residue:'+vessel.id:'consumed';item.poisoned=true;item.examinedBy={};const event={type:'tamper',covert:c?.success??true,owner:o?.owner,itemId:vessel?toxin.id:item.id,target:o?.id,x:p.x,z:p.z};this.sim.emit('worldIncident',event);this.log('迷毒散混入'+item.name+(event.witnesses?.length?'，但动作被看见了。':'，暂未察觉有人发现。'),event.witnesses?.length?[]:[{id:'hero',text:'混进去了。得离远些。'}]);return null;
  }
  act(kind,id,itemId,witnesses=[]){
  const p=this.sim.s.player,o=this.s.objects[id],item=this.s.items.find(i=>i.id===itemId);
- if(p.hp<=0)return '倒地时无法行动。';if(kind==='fire'||kind==='water'){if(itemId){if(!item||p.energy<6)return '体力不足或物品已不在。';const q=item.location==='ground'?item:item.location.startsWith('object:')?this.s.objects[item.location.slice(7)]:null;if(!q||!this.objectRange(q))return '物品已不在附近。';p.energy-=6;if(kind==='water'){item.wetUntil=this.s.time+18;this.log(item.name+'被水浸湿。');}else this.damageItem(itemId,'fire');return;}return this.element(id,kind);}
+ if(p.hp<=0)return '倒地时无法行动。';if(['bookBuy','bookSteal','study','equipFlute'].includes(kind)||(kind==='pickup'&&item?.forSale))return bookAction(this,kind==='pickup'?'bookSteal':kind,item);if(kind==='fire'||kind==='water'){if(itemId){if(!item||p.energy<6)return '体力不足或物品已不在。';const q=item.location==='ground'?item:item.location.startsWith('object:')?this.s.objects[item.location.slice(7)]:null;if(!q||!this.objectRange(q))return '物品已不在附近。';p.energy-=6;if(kind==='water'){item.wetUntil=this.s.time+18;this.log(item.name+'被水浸湿。');}else this.damageItem(itemId,'fire');return;}return this.element(id,kind);}
  if(kind==='drink'){if(!item?.drink||!o||o.kind!=='teacup'||o.hp<=0||item.location!=='object:'+id||!this.objectRange(o)||!visibleBetween(p,o,this.obstacles||[],this.s.objects))return '茶杯已空，或现在够不到。';consumeFood(p,item,this.s.time);p.drinkingUntil=this.s.time+3;this.log(item.poisoned?'喝下茶后腹痛，气血 −25。':'你喝了一口热茶。');return;}
- if(kind==='read'){if(!item||item.location!=='player'||item.type!=='sealed')return '手里没有这封信。';item.opened=true;this.sim.s.facts.princeLetter=true;this.log('信中写着：东街另有副账，接引在京。请公子暂缓亮明身份，听雨楼再议。',[{id:'hero',text:'这位公子，原来也是为税课来的。'}]);return;}
+ if(kind==='read'){if(!item||item.location!=='player'||item.type!=='sealed')return '手里没有这封信。';item.opened=true;const first=recordRoyalLetter(this.sim.s);this.log('密信钤着御印：「闲舟王弟亲启。临溪税案，卿径奏于朕，不经有司。东街另有副账，听雨楼再议。」',first?[{id:'hero',thought:true,text:'（王弟亲启……赵闲舟竟是王爷。这案子，他直接向天子回奏。）'}]:[]);if(first)this.sim.emit('royalDiscovery',{});return;}
  if(kind==='eat'){if(!item||item.location!=='player'||item.type!=='food')return '没有这份食物。';consumeFood(p,item,this.s.time);this.log(`你吃下${item.name}，体力恢复${item.poisoned?'，随后腹痛，气血 −25':'，气血 +20。'}`);return;}
+ if(kind==='hat'){if(item?.type!=='hat'||item.location!=='player'||item.hp<=0)return '斗笠不在行囊。';p.hat=p.hat===item.id?null:item.id;this.log(p.hat?'你戴上斗笠。':'你摘下斗笠。');return;}
+ if(kind==='bounty'){if(id!=='wanted-board'||!o||o.hp<=0||!this.objectRange(o)||this.sim.s.people.thief.inCustody||this.sim.s.facts.publicWarrant)return '此榜已不能领取。';const s=this.sim.s;s.facts.publicWarrant=true;s.quests??={};s.quests['arrest-thief']??={id:'arrest-thief',title:'悬赏 · 拘传燕七',objective:'入城找到燕七，凭榜拘传，押至官府交差。',source:'城外通缉榜',status:'active',day:s.day};s.trackedQuest='arrest-thief';this.log('你记下榜文：燕七涉嫌盗窃，须活着带到顾钦差面前，赏二十文。');return;}
  if(kind==='wear'){if(!item||item.type!=='clothing'||item.location!=='player'||item.hp<=0)return '衣服已不在行囊中。';const off=p.wornOutfit===item.id&&p.disguise==='borrowed';p.wornOutfit=off?null:item.id;p.disguise=off?null:'borrowed';p.nextIdentityCheck??=this.s.time+15;this.log(off?'你换回自己的衣服。':'你换上'+item.name+'。衣着像了，姓名来历还得应付盘问。');return;}
  if(kind==='drop'){if(!item||item.location!=='player')return '物品不在行囊中。';this.transfer(item,'ground');item.x=p.x+.8;item.z=p.z;this.log(`你放下了${item.name}。`);return;}
  if(kind==='pickup'&&item?.type==='coins')return takePayment(this.sim,this,item);
@@ -67,7 +76,7 @@ export class Ecosystem{
   if(c.success){this.transfer(item,'npc:'+id);item.discoverAt=this.s.time+12;item.discovered=false;this.log(`身法检定 ${c.roll} ≤ ${c.chance}：你将${item.name}悄悄放入${PEOPLE.find(n=>n.id===id).name}的行囊，对方尚未发现。`);}
   else{this.sim.relation(id,-5);this.log(`身法检定 ${c.roll} > ${c.chance}：放入物品时被察觉，物品仍在你手中。`,[{id,text:'你在动我的行囊？有事当面说！'}],true);}return;
  }
- if(kind==='help'){const n=this.sim.s.people[id],q=this.positions[id];if(!n||!q||!this.range(q.x,q.z)||!(n.sickUntil>this.s.time))return '对方现在不需要照看。';if(p.energy<6)return '需要六点体力。';p.energy-=6;n.sickUntil=0;n.hp=Math.min(100,n.hp+15);this.sim.relation(id,4);this.log(`你递水照看${PEOPLE.find(n=>n.id===id).name}：对方气血 +15，好感 +4。`,[{id,text:'多谢你照看，我缓过来了。'}],true);return;}
+ if(kind==='help'){const n=this.sim.s.people[id],q=this.positions[id];if(!n||!q||!this.range(q.x,q.z)||!(n.sickUntil>this.s.time))return '对方现在不需要照看。';if(p.energy<6)return '需要六点体力。';p.energy-=6;n.receivedCare=true;n.trust=Math.min(100,(n.trust||0)+8);n.sickUntil=0;n.hp=Math.min(100,n.hp+15);this.sim.relation(id,4);this.log(`你递水照看${PEOPLE.find(n=>n.id===id).name}：对方气血 +15，好感 +4。`,[{id,text:'多谢你照看，我缓过来了。'}],true);return;}
  if(kind==='coat'){const toxin=this.items('player').find(i=>i.type==='poison');if(!item||item.location!=='player'||item.type!=='food'||item.poisoned||!toxin)return '需要一份未下毒的食物和迷毒散。';toxin.location='consumed';item.poisoned=true;this.sim.emit('worldIncident',{type:'tamper',covert:true,itemId:item.id,x:p.x,z:p.z});this.log(`你消耗一份迷毒散，${item.name}变为有毒食物。`);return;}
  if(!o||!this.objectRange(o))return '请先走近物品。';
  if(o.hp<=0)return '已经损毁，无法使用。';if(o.closedUntil>this.s.time&&kind==='buy')return '食摊正在检查吃食，暂停营业。';
@@ -87,17 +96,19 @@ export class Ecosystem{
  else if(!ongoing)this.log(`${o.name}受到${type==='fire'?'火焰':'劈砍'}伤害 −${Math.round(amount*10)/10}，耐久 ${Math.ceil(o.hp)}/${o.max}。`);
  if(!ongoing&&actor==='player')this.sim.emit('worldIncident',{type:'damage',target:id,owner:o.owner,x:this.sim.s.player.x,z:this.sim.s.player.z});return true;
  }
- startShow(x,z,owner=this.sim.s.party?.active){if(this.show)return '已有同伴在表演，先让他收笛。';const p=this.sim.s.party?.members[owner]||this.sim.s.player;if(p.hp<=0||p.energy<15)return '至少需要 15 点体力才能卖艺。';this.show={owner,x,z,elapsed:0,beat:0,audience:[],paid:new Set()};this.log((owner==='companion'?'阿笙':'少侠')+'取出竹笛，原地奏曲招徕听众。');}
+ startShow(x,z,owner=this.sim.s.party?.active){if(this.show)return '已有同伴在表演，先让他收笛。';const p=this.sim.s.party?.members[owner]||this.sim.s.player;if(p.hp<=0||p.energy<15)return '至少需要 15 点体力才能卖艺。';this.show={owner,x,z,elapsed:0,beat:0,quality:(this.sim.rng()*100<p.stats.charm+25?8:-12)+(p.lessons?.score?8:0)+(this.items('player').some(i=>i.id===p.flute&&i.hp>0)?6:0),listeners:new Map(),audience:[],paid:new Set()};this.log((owner==='companion'?'阿笙':'少侠')+'取出竹笛，原地奏曲招徕听众。');}
  stopShow(){if(!this.show)return;const name=this.show.owner==='companion'?'阿笙':'少侠';this.show=null;this.log(name+'收起竹笛，围观的人渐渐散去。');}
  tick(dt,positions,environmentOnly=false){for(const o of Object.values(this.s.objects)){if(o.burning&&o.hp>0&&this.activeObjects.has(o.id)){if(o.wetUntil>this.s.time)o.burning=0;else this.damage(o.id,'fire',4*dt,true);}}this.positions=positions;this.syncRing();this.s.time+=dt;if(this.s.stockDay<this.sim.s.day){this.s.stockDay=this.sim.s.day;for(const o of Object.values(this.s.objects)){if(o.kind==='stall'&&o.hp>0){const count=this.items('object:'+o.id).length;for(let i=count;i<5;i++)this.create('包子','food','object:'+o.id);}}for(const n of Object.values(this.sim.s.people))n.purse=Math.min(40,n.purse+8);this.log('新的一天，仍在营业的食摊补上了吃食。');}for(const f of this.s.followups.filter(f=>!f.done&&f.due<=this.s.time)){f.done=true;const o=this.s.objects[f.stall];if(o){o.closedUntil=this.s.time+30;this.log('食客的不适传到摊主耳中，食摊暂停售卖，开始检查同批吃食。',[{id:o.owner,text:'先别卖了！把这批吃食留下，我得查清楚。'}],true);}}const p=this.sim.s.player;
   if(environmentOnly)return;
   patrolStep(this.sim,this,dt);lifeStep(this.sim,this,dt,positions);collectPayments(this.sim,this,positions);teaStep(this.sim,this,positions);
   if(this.show){const show=this.show,p=this.sim.s.party?.members[show.owner]||this.sim.s.player;show.elapsed+=dt;p.energy=Math.max(0,p.energy-dt*5);if(p.hp<=0||p.energy<1||Math.hypot(p.x-show.x,p.z-show.z)>1){this.stopShow();}else{
-   show.audience=Object.entries(positions).filter(([id,q])=>!this.reserved?.has(id)&&this.sim.s.people[id].hp>0&&!['angry','afraid'].includes(this.sim.s.people[id].mood)&&!(['shen','su'].includes(id)&&this.sim.event)&&Math.hypot(q.x-show.x,q.z-show.z)<12).map(([id])=>id).slice(0,4);
-   if(show.elapsed>=show.beat+8){show.beat+=8;const near=show.audience.filter(id=>Math.hypot(positions[id].x-show.x,positions[id].z-show.z)<4);
-    for(const id of near){const key=this.sim.s.day+':'+id;if(!show.paid.has(id)&&!this.s.rewards[key]){show.paid.add(id);this.s.rewards[key]=true;const c=1+Math.floor(this.sim.rng()*100),success=c<=p.stats.charm+25;
-     earnGrowth(p,'charm',success?8:3,`perform:${key}`);if(success){p.money+=4;p.stats.charm=Math.min(90,p.stats.charm+1);this.log(`${PEOPLE.find(n=>n.id===id).name}听完笛曲后打赏：盘缠 +4，风仪 +1。`,[{id,text:'这支曲子有些意思，赏你几文！'}],true);}else this.log(`${PEOPLE.find(n=>n.id===id).name}听完这一段笛曲，没有打赏。`,[{id,text:'气息还不稳，再练练吧。'}],true);}
-    }
+   show.audience=[];
+   for(const [id,q] of Object.entries(positions)){const n=this.sim.s.people[id],d=Math.hypot(q.x-show.x,q.z-show.z);
+    if(d>=10||!visibleBetween(q,show,this.obstacles||[],this.s.objects)||this.reserved?.has(id)||n.hp<=0||n.inCustody||n.stunnedUntil>this.sim.s.npcClock||n.sickUntil>this.s.time||['angry','afraid'].includes(n.mood)||n.awareness?.caseOpen||(['shen','su'].includes(id)&&this.sim.event))continue;
+    let l=show.listeners.get(id);const taste=persona(id)[1],liking=Math.round(n.relation/3);if(!l){const chance=Math.max(5,Math.min(95,32+p.stats.charm/2+taste+liking+show.quality));l={stay:this.sim.rng()*100<chance,heard:0};show.listeners.set(id,l);this.sim.emit('musicLook',{id,x:show.x,z:show.z});}
+    if(!l.stay||show.audience.length>=4)continue;show.audience.push(id);if(d>=4)continue;l.heard+=dt;const key=this.sim.s.day+':'+id;
+    if(l.heard<8||show.paid.has(id)||this.s.rewards[key])continue;show.paid.add(id);this.s.rewards[key]=true;const success=n.purse>=4&&this.sim.rng()*100<Math.max(5,Math.min(95,p.stats.charm+25+taste+liking+show.quality));earnGrowth(p,'charm',success?8:3,'perform:'+key);
+    if(success){const angle=show.paid.size*2.4;placePayment(this.sim,this,{payer:id,payee:'player',amount:4,x:p.x+.48*Math.cos(angle),z:p.z+.48*Math.sin(angle),y:.08,reason:'卖艺打赏'});p.stats.charm=Math.min(90,p.stats.charm+1);this.log(PEOPLE.find(w=>w.id===id).name+'把四文赏钱放在演奏者脚边，风仪 +1。',[{id,text:persona(id)[0]==='artist'?'这句收得好，再来一段。':'这几文，请你润润嗓子。'}],true);}else{l.stay=false;this.sim.emit('npcRoutine',{id,text:n.purse<4?'今日身上没带够钱。':'听过这段，也该赶路了。'});}
    }
   }}
   for(const [id,q]of Object.entries(positions)){

@@ -1,6 +1,7 @@
+import {courtRank} from './court-street.js';
 import {createFeedbackQueue} from './progress-feedback.js';
 import {ATTR} from './data.js';
-import {mainPlayer,syncQuests} from './progress.js';
+import {mainPlayer,syncQuests,entryObjective} from './progress.js';
 export function mountProgressUI(getSim,esc,onQuests){
  const dock=document.createElement('aside');dock.id='hud-right-stack';dock.hidden=true;
  const board=document.createElement('section');board.id='hero-progress';board.setAttribute('aria-label','主角重要属性');
@@ -11,12 +12,12 @@ export function mountProgressUI(getSim,esc,onQuests){
  const tracked=document.createElement('button');tracked.id='tracked-quest';tracked.hidden=true;tracked.onclick=onQuests;document.getElementById('hud-left-stack').prepend(tracked);
  let signature='',shown=null;const feedback=createFeedbackQueue();
  return {update(started){dock.hidden=!started;info.hidden=!started;if(!started)return;const s=getSim().s,p=mainPlayer(s);syncQuests(s);
- const html=`<small>少侠 · ${s.facts.career==='court'?'六扇门捕快':s.facts.career==='gang'?'赤砂帮外堂弟子':'主角'}</small><div class="hero-stats">${Object.entries(ATTR).map(([k,label])=>`<span title="${label}">${label}<b>${p.stats[k]}</b></span>`).join('')}</div><div class="hero-resources"><span>♥ ${Math.ceil(p.hp)}</span><span>⚡ ${Math.floor(p.energy)}</span><span>◈ ${p.money}文</span><span>声望 ${s.reputation}</span><span>嫌疑 ${s.wanted}</span></div>`;
+ const html=`<small>少侠 · ${s.facts.career==='court'?'六扇门'+courtRank(s):s.facts.career==='gang'?'赤砂帮外堂弟子':'主角'}</small><div class="hero-stats">${Object.entries(ATTR).map(([k,label])=>`<span title="${label}">${label}<b>${p.stats[k]}</b></span>`).join('')}</div><div class="hero-resources"><span>♥ ${Math.ceil(p.hp)}</span><span>⚡ ${Math.floor(p.energy)}</span><span>◈ ${p.money}文</span><span>声望 ${s.reputation}</span><span>嫌疑 ${s.wanted}</span></div>`;
  if(signature!==html){board.innerHTML=html;signature=html;}
  const latest=s.consequences?.at(-1),current=feedback.update(s,performance.now());
  if(current!==shown){shown=current;if(current)notice.innerHTML=`<b>${[...current.changes].sort((a,b)=>Number(['hp','energy'].includes(a.key))-Number(['hp','energy'].includes(b.key))).slice(0,3).map(c=>`<span class="${c.delta<0?'loss':'gain'}">${esc(c.label)} ${c.delta>0?'+':''}${c.delta}</span>`).join(' · ')}</b><small>${esc(current.reason)}</small>`;}
  notice.hidden=!current;
  board.title=(latest?latest.reason+'：'+latest.changes.map(c=>c.label+' '+(c.delta>0?'+':'')+c.delta).join('，'):'主角属性');
- const q=s.quests?.[s.trackedQuest];tracked.hidden=!q;if(q)tracked.innerHTML=`<small>调查 · ${esc(q.title)}</small><span>${esc(q.objective)}</span>`;
+ const q=s.quests?.[s.trackedQuest];const entry=entryObjective(s);tracked.hidden=!q&&!entry;if(entry)tracked.innerHTML='<small>主线 · 入城</small><span>'+esc(entry)+'</span>';if(q&&q.status!=='complete')tracked.innerHTML=(entry?tracked.innerHTML:'')+`<small>支线 · ${esc(q.title)}</small><span>${esc(q.objective)}</span>`;else if(!entry)tracked.hidden=true;
  }};
 }

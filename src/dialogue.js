@@ -26,7 +26,7 @@ export function mountDialogue(world,{journal,clear,speak}){
  let lines=[],index=0,done=null,previousFocus=null,choosing=false;
  const choices=document.createElement('div');choices.className='cinematic-choices';el.querySelector('.dialogue-card').insertBefore(choices,el.querySelector('footer'));
  const field=name=>el.querySelector(`[data-${name}]`);
- function finish(){if(el.hidden)return;el.hidden=true;choosing=false;el.classList.remove('choosing');choices.replaceChildren();world.cinematic=null;world.speaking=null;world.keys.clear();world.locked=false;document.body.classList.remove('cinematic');const cb=done;done=null;previousFocus?.isConnected&&previousFocus.focus({preventScroll:true});cb?.();}
+ function finish(cancelled=false){if(el.hidden)return;el.hidden=true;choosing=false;el.classList.remove('choosing');choices.replaceChildren();world.cinematic=null;world.speaking=null;world.keys.clear();world.locked=false;document.body.classList.remove('cinematic');const cb=done;done=null;previousFocus?.isConnected&&previousFocus.focus({preventScroll:true});cb?.(cancelled);}
  function show(){const line=lines[index];if(!line)return finish();
  const next=lines.find((l,i)=>i>index&&l.id!==line.id&&world.npcs.has(l.id));
  const listener=line.listener||next?.id||'player';
@@ -44,6 +44,6 @@ export function mountDialogue(world,{journal,clear,speak}){
   choices.replaceChildren();options.forEach(({action:a,preview:p},i)=>{const b=document.createElement('button');b.dataset.action=a.id;b.dataset.choice=a.id;b.disabled=!!p.blocked;const label=document.createElement('b'),detail=document.createElement('small');label.textContent=`${i+1}. ${a.label}`;detail.textContent=choiceCheckText(a,p)+(a.cost?` · ${a.cost} 文`:'');b.append(label,detail);b.onclick=()=>{if(b.disabled||!choosing)return;done=null;finish();onSelect(a);};choices.append(b);});choices.querySelector('button:not(:disabled)')?.focus({preventScroll:true});
  },finish};
  field('next').onclick=()=>{index++;show();};
- window.addEventListener('keydown',e=>{if(!api.active)return;e.stopImmediatePropagation();if(choosing){if(e.code==='Tab')return;e.preventDefault();if(e.repeat)return;if(e.code==='Escape'){finish();return;}const b=/^Digit[1-3]$/.test(e.code)?choices.children[Number(e.code.slice(-1))-1]:['Enter','Space'].includes(e.code)&&choices.contains(document.activeElement)?document.activeElement:null;b?.click();return;}if(['Space','Enter','KeyE','Escape'].includes(e.code)){e.preventDefault();if(e.repeat)return;if(e.code==='Escape')finish();else{index++;show();}}},true);
+ window.addEventListener('keydown',e=>{if(!api.active)return;e.stopImmediatePropagation();if(choosing){if(e.code==='Tab')return;e.preventDefault();if(e.repeat)return;if(e.code==='Escape'){finish();return;}const b=/^Digit[1-4]$/.test(e.code)?choices.children[Number(e.code.slice(-1))-1]:['Enter','Space'].includes(e.code)&&choices.contains(document.activeElement)?document.activeElement:null;b?.click();return;}if(['Space','Enter','KeyE','Escape'].includes(e.code)){e.preventDefault();if(e.repeat)return;if(e.code==='Escape')finish(true);else{index++;show();}}},true);
  world.dialogue=api;return api;
 }

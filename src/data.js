@@ -22,6 +22,7 @@ export const PEOPLE=[
  {id:'su',name:'苏晚',title:'行脚琴师',color:0xb65d56,x:0,z:2,relation:0},
  {id:'gao',name:'高小楼',title:'酒客 · 你的旧识',color:0xba9959,x:3,z:3,relation:18},
  {id:'guard',faction:'临溪县衙',name:'陆捕头',title:'临溪镇捕头',color:0x334955,x:10,z:5,relation:0},
+ {id:'bookseller',name:'温素笺',title:'墨香斋主人 · 修书辨版',faction:'临溪街坊',color:0x548d84,x:-12,z:6.6,relation:0},
  {id:'inn',name:'柳掌柜',title:'听雨楼掌柜',color:0x74618b,x:-10,z:-7,relation:5},
  {id:'tea',name:'阿青',title:'卖茶姑娘',color:0x678154,x:10,z:-8,relation:0},
  {id:'porter',name:'周大石',title:'脚夫',color:0x9b7858,x:-8,z:10,relation:0},

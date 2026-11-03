@@ -1,5 +1,13 @@
 // Witness knowledge is local to each NPC; the event's actor is not automatically known.
 export function visibleBetween(a,b,obstacles,objects={}){const distance=Math.hypot(b.x-a.x,b.z-a.z);for(let t=.15;t<distance-.2;t+=.25){const x=a.x+(b.x-a.x)*t/distance,z=a.z+(b.z-a.z)*t/distance;if(obstacles.some(o=>objects[o.id]?.hp!==0&&Math.abs(x-o.x)<o.w/2&&Math.abs(z-o.z)<o.d/2))return false;}return true;}
+// Seeing identifies a culprit; noise alone can only prompt a local investigation.
+export function perceiveIncident(event,id,d,facing,clear){
+ if(event.type==='assault'&&event.target===id||event.type==='theft'&&event.caughtBy===id&&clear&&d<=2.8)return 'seen';
+ const patrol=['guard','gate_guard','gate_relief'].includes(id);
+ if(clear&&d<=(event.covert?1.6:patrol?6:4.5)&&facing>=(event.covert?.65:.45))return 'seen';
+ if(['damage','assault'].includes(event.type)&&d<=(clear?3.5:2))return 'heard';
+ return null;
+}
 export function witnessEvent(sim,id,event,seen,home){const n=sim.s.people[id];if(!n||n.hp<=0)return;const now=sim.s.npcClock||0;let a=n.awareness;
  const repeated=a?.suspect==='player'&&now-(a.lastIncident||0)<20;
  a??={home:{x:home.x,z:home.z}};n.awareness=a;a.lastIncident=now;a.lastKnown={x:event.x,z:event.z};a.seen=seen;
@@ -9,7 +17,7 @@ export function witnessEvent(sim,id,event,seen,home){const n=sim.s.people[id];if
  return a;
 }
 export function advanceAwareness(sim,id,position,canSee,dt,armed){const a=sim.s.people[id]?.awareness;if(!a||a.state==='idle')return null;const now=sim.s.npcClock||0,p=sim.s.player;
- if(a.state==='fight'){if(canSee&&Math.hypot(position.x-p.x,position.z-p.z)<15){a.lastKnown={x:p.x,z:p.z};a.until=now+8;if(!armed&&Math.hypot(position.x-p.x,position.z-p.z)>3){a.state='warn';a.until=now+5;}}else{a.state='search';a.until=now+7;}}
+ if(a.state==='fight'){if(canSee&&Math.hypot(position.x-p.x,position.z-p.z)<15){a.lastKnown={x:p.x,z:p.z};a.until=now+8;if(!a.obstructingWarrant&&!armed&&Math.hypot(position.x-p.x,position.z-p.z)>3){a.state='warn';a.until=now+5;}}else{a.state='search';a.until=now+7;}}
  if(now>=a.until&&!['return','idle'].includes(a.state)){a.state='return';}
  if(a.state==='return'&&Math.hypot(position.x-a.home.x,position.z-a.home.z)<.4){a.state='idle';return null;}
  return a;

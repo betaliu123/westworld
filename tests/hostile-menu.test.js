@@ -1,0 +1,2 @@
+﻿import test from 'node:test';import assert from 'node:assert/strict';import {lawConfrontation} from '../src/pursuit.js';import {Simulation,newGame} from '../src/simulation.js';
+test('guard chasing on suspicion or actively fighting requires a conflict interaction',()=>{const sim=new Simulation(newGame());sim.s.wanted=2;assert.ok(lawConfrontation(sim,'guard',2));sim.s.wanted=0;assert.ok(!lawConfrontation(sim,'guard',2));sim.s.people.guard.awareness={state:'fight'};assert.ok(lawConfrontation(sim,'guard',2));assert.ok(!lawConfrontation(sim,'guard',8));});

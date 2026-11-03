@@ -10,7 +10,7 @@ export function growth(player,id){
  return {xp,level,name:PATHS[id].steps[level],next:THRESHOLDS[level+1]??null};
 }
 export function growthBonus(player,stat){const id=pathFor(stat);return id?growth(player,id).level*4:0;}
-export function combatDamage(player){return 22+growth(player,'combat').level*3;}
+export function combatDamage(player){return 22+growth(player,'combat').level*3+(player.lessons?.shortStrike?3:0);}
 // Rewards are keyed to a concrete attempt, so retries/reloads cannot farm growth.
 export function earnGrowth(player,stat,amount,key){
  const id=pathFor(stat);if(!id)return [];

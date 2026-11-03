@@ -11,3 +11,10 @@ export function princeStep(sim,eco,positions){const n=sim.s.people.traveler,rout
 
 // Retire cut demo roles without removing loot already acquired by the player.
 export function retirePrinceEscorts(s){for(const id of ['quiet_guest','bridge_guest']){delete s.people[id];if(s.ecosystem){delete s.ecosystem.hunger?.[id];s.ecosystem.items=s.ecosystem.items.filter(i=>i.location!=='npc:'+id);}if(s.intelligence?.people)delete s.intelligence.people[id];}}
+
+export function recordRoyalLetter(s){
+ const f=s.facts,first=!f.royalLetterEvidence;
+ f.princeLetter=f.princeRoyal=f.princeAlias=true;
+ f.royalLetterEvidence??={day:s.day,source:'密信抬头与御印'};
+ return first;
+}

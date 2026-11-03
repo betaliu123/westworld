@@ -1,3 +1,9 @@
+import {ambientLine} from './ambient-lines.js';
+import {officials,startComplaint,receiveReport} from './complaints.js';
+import {response,markEncounter,persona} from './npc-persona.js';
+import {encounterStep,encounterFor} from './npc-territory.js';
+import {routinePath as encounterPath} from './npc-navigation.js';
+import {arrestWitness} from './court-street.js';
 import {dressActor,outfit} from './impersonation.js';
 import {canJump,seesDraw,bodyFeedback} from './body-feedback.js';
 import {PRINCE_LIFE_LINES} from './prince-voice.js';
@@ -6,7 +12,7 @@ import {buildLocationScenery} from './location-scenery.js';
 import {nearestWalkable,stuckStep} from './npc-navigation.js';
 import {TEA_CUPS,TEAPOT} from './tea-service.js';
 import {ALERT_EMOJI,LIFE_LINES,lifeCue,FeedbackBudget} from './npc-feedback.js';
-import {visibleBetween,witnessEvent,advanceAwareness} from './npc-awareness.js';
+import {visibleBetween,perceiveIncident,witnessEvent,advanceAwareness} from './npc-awareness.js';
 import {inDeepWater,environmentStep} from './world-rules.js';
 import {enterRiver,detainAtGate} from './gate-scene.js';
 import {shotPlan} from './dialogue.js';
@@ -33,6 +39,12 @@ export function character(color,hero=false,female=false,variant=null){
  if(hero){const cape=box(rig,.55,.85,.055,0xd3c6a1,0,1.13,-.24);cape.rotation.x=-.12;}
  const head=new T.Group();head.position.y=1.7;const headParts=rig.children.filter(c=>c.isMesh&&c.position.y>=1.7);rig.add(head);for(const part of headParts){head.add(part);part.position.y-=1.7;}
  root.userData={rig,arms,legs,sword,head,isHero:hero,phase:Math.random()*6};
+ if(variant==='bookseller'){
+  const pearl=0xf6dacb,jade=0xbbe2ce;
+  for(let i=0;i<5;i++){const a=i*Math.PI*2/5;mesh(new T.SphereGeometry(.042,8,6),pearl,head,.23+.048*Math.cos(a),.37+.048*Math.sin(a),.02);}
+  mesh(new T.SphereGeometry(.032,8,6),0xc59951,head,.23,.37,.053);box(head,.012,.18,.015,0xb39459,.27,.24,.014);mesh(new T.SphereGeometry(.033,8,6),jade,head,.27,.14,.014);
+  for(const arm of arms)cyl(arm,.177,.184,.09,0xddd7c4,0,-.43,0);box(rig,.64,.075,.405,0x554456,0,1.12,0);
+ }
  if(variant==='prince'){
   const ink=0x284e58,gold=0xc6ae73,ivory=0xe4ddc7;
   robe.material=material(ivory);lapel.material=material(ivory);
@@ -56,31 +68,65 @@ export class World{
  this.actionFlute=box(this.hero.userData.rig,.64,.035,.035,0xb99c61,0,1.72,.3);this.actionFlute.visible=false;this.actionCoins=new T.Group();for(let i=0;i<3;i++)cyl(this.actionCoins,.045,.045,.018,0xe5bc60,i*.07,-.58,0);this.hero.userData.arms[0].add(this.actionCoins);this.actionCoins.visible=false;
  this.actionStool=new T.Group();box(this.actionStool,.7,.08,.55,0x806047,0,.5,0);for(const x of [-.25,.25])box(this.actionStool,.08,.5,.4,0x604c3b,x,.25,0);this.scene.add(this.actionStool);this.actionStool.visible=false;
 
- for(const person of PEOPLE){const actor=character(person.color,false,['su','tea','inn','mei','matchmaker'].includes(person.id),person.id==='traveler'?'prince':null);if(person.id==='inspector'){const head=actor.userData.head;box(head,.66,.055,.09,0x20292b,0,.4,0);box(head,.19,.12,.16,0x20292b,0,.47,0);}if(person.id==='gang_boss')box(actor.userData.rig,.68,.1,.43,0xb49b60,0,1.12,0);actor.position.set(sim.s.people[person.id]?.x??person.x,0,sim.s.people[person.id]?.z??person.z);if(person.id==='tea_host'){const q=nearestWalkable(actor.position,(x,z)=>this.collides(x,z,0,false));if(q){actor.position.x=q.x;actor.position.z=q.z;sim.s.people[person.id].x=q.x;sim.s.people[person.id].z=q.z;}}this.scene.add(actor);const label=textSprite(person.name);label.position.y=2.7;actor.add(label);this.npcs.set(person.id,{actor,person,label,base:new T.Vector3(person.x,0,person.z),phase:Math.random()*10});}
+ for(const person of PEOPLE){const actor=character(person.color,false,['su','tea','inn','mei','matchmaker','bookseller'].includes(person.id),person.id==='traveler'?'prince':person.id==='bookseller'?'bookseller':null);if(person.id==='scribe'){for(const off of [-.034,.022]){const scar=box(actor.userData.arms[1],.071,.012,.013,0xa27465,off,-.52,.085);scar.rotation.z=.55;}}if(person.id==='inspector'){const head=actor.userData.head;box(head,.66,.055,.09,0x20292b,0,.4,0);box(head,.19,.12,.16,0x20292b,0,.47,0);}if(person.id==='gang_boss')box(actor.userData.rig,.68,.1,.43,0xb49b60,0,1.12,0);actor.position.set(sim.s.people[person.id]?.x??person.x,0,sim.s.people[person.id]?.z??person.z);if(person.id==='tea_host'){const q=nearestWalkable(actor.position,(x,z)=>this.collides(x,z,0,false));if(q){actor.position.x=q.x;actor.position.z=q.z;sim.s.people[person.id].x=q.x;sim.s.people[person.id].z=q.z;}}this.scene.add(actor);const label=textSprite(person.name);label.position.y=2.7;actor.add(label);this.npcs.set(person.id,{actor,person,label,base:new T.Vector3(person.x,0,person.z),phase:Math.random()*10});}
  this.eventGroup=new T.Group();this.scene.add(this.eventGroup);this.syncEvent();this.resize();window.addEventListener('resize',()=>this.resize());
  this.camera.position.set(0,11,26);this.camera.lookAt(this.hero.position);
- canvas.addEventListener('contextmenu',e=>e.preventDefault());canvas.addEventListener('pointerdown',e=>{if(e.button===2){if(this.performance)this.performance.camera=false;this.drag=true;canvas.setPointerCapture(e.pointerId);}else if(e.button===0)this.primaryAction(e);});canvas.addEventListener('pointerup',()=>this.drag=false);canvas.addEventListener('pointermove',e=>{if(this.drag){this.yaw-=e.movementX*.006;this.pitch=Math.max(.28,Math.min(1.05,this.pitch+e.movementY*.004));}});canvas.addEventListener('wheel',e=>{e.preventDefault();if(this.performance)this.performance.camera=false;this.distance=Math.max(7,Math.min(22,this.distance+e.deltaY*.01));},{passive:false});
+ canvas.addEventListener('contextmenu',e=>e.preventDefault());canvas.addEventListener('pointerdown',e=>{if(e.button===2){if(this.performance)this.performance.camera=false;this.drag=true;canvas.setPointerCapture(e.pointerId);}else if(e.button===0)this.primaryAction(e);});canvas.addEventListener('pointerup',()=>this.drag=false);canvas.addEventListener('pointermove',e=>{if(this.drag){this.yaw-=e.movementX*(this.aimMode?.003:.006);this.pitch=Math.max(.28,Math.min(1.05,this.pitch+e.movementY*.004));}});canvas.addEventListener('wheel',e=>{e.preventDefault();if(this.performance)this.performance.camera=false;this.distance=Math.max(7,Math.min(22,this.distance+e.deltaY*.01));},{passive:false});
  window.addEventListener('blur',()=>{this.keys.clear();this.clearReady();});
  }
- showNpcCheck({id,label,success,observation=false,income=false}){
- const n=this.npcs.get(id),state=this.sim.s.people[id];if(!n||!state||state.hp<=0||state.stunnedUntil>(this.sim.s.npcClock||0)||this.cinematic||n.actor.position.distanceTo(this.hero.position)>10||!visibleBetween(n.actor.position,this.hero.position,this.obstacles,this.sim.s.ecosystem?.objects)||(!income&&this.t<(n.nextCheckFlash||0)))return;
+ showNpcCheck({id,label,success,observation=false,income=false,priority=false}){
+ const n=this.npcs.get(id),state=this.sim.s.people[id];if(!n||!state||state.hp<=0||state.stunnedUntil>(this.sim.s.npcClock||0)||this.cinematic||n.actor.position.distanceTo(this.hero.position)>10||!visibleBetween(n.actor.position,this.hero.position,this.obstacles,this.sim.s.ecosystem?.objects)||(!income&&!priority&&this.t<(n.nextCheckFlash||0)))return;
  if(!n.checkFlash&&[...this.npcs.values()].filter(n=>n.checkFlash&&this.t-n.checkFlashStart<1.25).length>=2)return;
  if(n.checkFlash){n.actor.remove(n.checkFlash);n.checkFlash.material.map.dispose();n.checkFlash.material.dispose();}
  n.checkFlash=textSprite(observation?label:label+(success?' 成功':' 失败'),income?'#f3d27e':success?'#d7edb0':'#d3c3b7',32);n.checkFlash.scale.set(2.5,.47,1);n.checkFlash.position.y=3.12;n.actor.add(n.checkFlash);n.checkFlashStart=this.t;n.nextCheckFlash=this.t+4;
+ }
+ updateActivityCaption(){
+ const s=this.sim.s,styles={patrol:['巡逻中','#94dcff'],relieve:['换岗中','#94dcff'],serve:['送茶中','#b9e6ad'],collect:['收款中','#f2cb80']};
+ let pick=null,best=8;
+ for(const [id,n] of this.npcs){if(n.activityCaption)n.activityCaption.visible=false;
+ if(!this.playing||this.locked||this.cinematic||this.performance||this.speaking||!n.actor.visible||!n.label.visible||n.checkFlash?.visible||n.alert?.visible||encounterFor(s,id)||s.complaint?.id===id)continue;
+ const st=s.people[id],kind=st.life?.activity,d=n.actor.position.distanceTo(this.hero.position);
+ if(st.hp<=0||st.inCustody||st.stunnedUntil>s.npcClock||st.sickUntil>s.ecosystem?.time||st.drowning||n.chasing||n.fleeing||(st.awareness&&!['idle','return'].includes(st.awareness.state))||!styles[kind]||d>=best)continue;
+ if(!this.screenPoint(n.actor.position).visible||!visibleBetween(n.actor.position,this.hero.position,this.obstacles,s.ecosystem?.objects))continue;
+ best=d;pick={n,kind};}
+ if(!pick)return;const {n,kind}=pick;if(n.captionKind!==kind){if(n.activityCaption){n.actor.remove(n.activityCaption);n.activityCaption.material.map.dispose();n.activityCaption.material.dispose();}const [label,color]=styles[kind];n.activityCaption=textSprite(label,color,32);n.activityCaption.position.y=3.03;n.activityCaption.scale.set(3.1,.58,1);n.actor.add(n.activityCaption);n.captionKind=kind;}
+ n.activityCaption.visible=true;
  }
  updateNpcChecks(){for(const n of this.npcs.values()){if(!n.checkFlash)continue;const age=this.t-n.checkFlashStart;if(age>=1.25){n.actor.remove(n.checkFlash);n.checkFlash.material.map.dispose();n.checkFlash.material.dispose();n.checkFlash=null;continue;}n.checkFlash.visible=!this.cinematic&&n.actor.position.distanceTo(this.hero.position)<10&&visibleBetween(n.actor.position,this.hero.position,this.obstacles,this.sim.s.ecosystem?.objects);n.checkFlash.position.y=3.12+age*.3;n.checkFlash.material.opacity=Math.min(1,age/.1,(1.25-age)/.4);if(n.checkFlash.visible&&n.alert)n.alert.visible=false;}}
  noticeIncident(event){
  event.witnesses=[];const replies=[];
  for(const [id,n]of this.npcs){const state=this.sim.s.people[id];if(!state||state.hp<=0||state.stunnedUntil>(this.sim.s.npcClock||0))continue;const pos=n.actor.position,d=Math.hypot(pos.x-event.x,pos.z-event.z);if(d>12)continue;
  const dx=event.x-pos.x,dz=event.z-pos.z,facing=(Math.sin(n.actor.rotation.y)*dx+Math.cos(n.actor.rotation.y)*dz)/Math.max(.01,d);
- const seen=(d<3||facing>-.15)&&(!event.covert||(d<1.6&&facing>.65))&&visibleBetween(pos,event,this.obstacles,this.sim.s.ecosystem?.objects);
+ const perception=perceiveIncident(event,id,d,facing,visibleBetween(pos,event,this.obstacles,this.sim.s.ecosystem?.objects));if(!perception)continue;const seen=perception==='seen';
+ if(event.type==='warrant'){if(seen){const text=arrestWitness(this.sim,id,n.base,event);if(text)replies.push({id,text});}continue;}
  if(!seen&&['tamper','theft'].includes(event.type))continue;
  const repeated=this.sim.s.people[id].awareness?.suspect==='player'&&(this.sim.s.npcClock||0)-(this.sim.s.people[id].awareness?.lastIncident||0)<20;
- if(seen){if(!repeated&&['tamper','theft'].includes(event.type))this.sim.emit('npcCheck',{id,label:event.type==='theft'?'察觉 · 偷窃':'察觉 · 动过吃喝',success:true,observation:true});event.witnesses.push(id);if(!repeated)replies.push({id,text:event.type==='tamper'?(event.owner===id?'你往里面放了什么？这些吃喝先别碰！':'等等，他刚往吃喝里放了东西！'):event.type==='theft'?'住手！那不是你的东西！':event.type==='assault'?'住手！有人动刀了！':'别砸了！快来人！'});}
+ if(seen){if(!repeated&&['tamper','theft'].includes(event.type))this.sim.emit('npcCheck',{id,label:event.type==='theft'?'察觉 · 偷窃':'察觉 · 动过吃喝',success:true,observation:true});event.witnesses.push(id);if(!repeated)replies.push({id,text:event.type==='tamper'?(event.owner===id?'你往里面放了什么？这些吃喝先别碰！':'等等，他刚往吃喝里放了东西！'):event.type==='theft'?response(this.sim.s,id,'theft'):event.type==='assault'?(event.target===id?response(this.sim.s,id,'assault'):'住手！有人动刀了！'):'别砸了！快来人！'});}
  if(seen&&event.type==='tamper'&&event.itemId){const item=this.sim.s.ecosystem?.items.find(i=>i.id===event.itemId);if(item){item.knownPoisonBy??=[];if(!item.knownPoisonBy.includes(id))item.knownPoisonBy.push(id);}}
+ if(seen&&['theft','assault'].includes(event.type))markEncounter(this.sim.s,id,event.type);
  witnessEvent(this.sim,id,event,seen,n.base);
+ if(seen&&event.type==='assault'&&event.target===id&&persona(id)[0]==='blade')state.awareness.state='fight';
  if(seen&&event.type==='assault'&&id===event.target)this.sim.s.people[id].awareness.severe=true;
- }if(event.witnesses.length)this.sim.emit('actionWitnessed',{text:event.witnesses.map(id=>this.npcs.get(id).person.name).join('、')+'目击'+({tamper:'动过吃喝',theft:'伸手取物',assault:'攻击他人'}[event.type]||'破坏物件'),dialogue:replies.sort((a,b)=>(b.id===event.owner)-(a.id===event.owner)).slice(0,2)});this.sim.save();
+ }event.locallyHandled=startComplaint(this.sim,event);if(event.locallyHandled&&this.sim.s.complaint)this.sim.s.complaint.place={x:event.x,z:event.z};if(event.type==='warrant'){for(const r of replies.sort((a,b)=>Number(['chi','gang_boss'].includes(b.id))-Number(['chi','gang_boss'].includes(a.id))).slice(0,2))this.sim.emit('npcRoutine',r);return;}if(event.witnesses.length)this.sim.emit('actionWitnessed',{text:event.witnesses.map(id=>this.npcs.get(id).person.name).join('、')+'目击'+({tamper:'动过吃喝',theft:'伸手取物',assault:'攻击他人'}[event.type]||'破坏物件'),dialogue:replies.sort((a,b)=>Number(b.id===(event.owner||event.target))-Number(a.id===(event.owner||event.target))).slice(0,2)});this.sim.save();
+ }
+ complaintMotion(id,n,dt){const sim=this.sim,s=sim.s,c=s.complaint;if(!c)return false;const victim=s.people[c.id];if(victim.hp<=0||victim.stunnedUntil>s.npcClock||s.player.hp<=0){delete s.complaint;return false;}if(id!==c.id)return c.phase!=='report'&&c.officers.includes(id);
+ const a=n.actor,pos=a.position;if(c.phase!=='report'){const p=this.hero.position;a.rotation.y=turnToward(a.rotation.y,Math.atan2(p.x-pos.x,p.z-pos.z),dt||0.016);}
+ if(!dt||this.performance)return true;let other=null;
+ if(c.phase!=='report'&&s.npcClock-c.since>15){c.phase='report';c.since=s.npcClock;this.showNpcCheck({id,label:'去报官',observation:true,priority:true});}
+ if(c.phase==='report'){other=officials.filter(k=>k!==id&&s.people[k]?.hp>0&&!s.people[k].inCustody&&!(s.people[k].stunnedUntil>s.npcClock)&&this.npcs.has(k)).map(k=>this.npcs.get(k)).sort((l,r)=>pos.distanceTo(l.actor.position)-pos.distanceTo(r.actor.position))[0];
+ if(!other||s.npcClock-c.since>60){delete s.complaint;victim.awareness=null;victim.mood='afraid';this.showNpcCheck({id,label:'求援无果',observation:true,priority:true});return false;}}
+ const goal=other?other.actor.position:this.hero.position,d=pos.distanceTo(goal),clear=visibleBetween(pos,goal,this.obstacles,s.ecosystem?.objects);
+ if(d<(other?2.4:1.7)&&clear){a.rotation.y=Math.atan2(goal.x-pos.x,goal.z-pos.z);this.animateActor(a,0,dt,'talk');if(other){receiveReport(sim,c,other.person.id,other.base);}else{c.phase='ask';sim.emit('complaintAsk',c);}return true;}
+ if(this.t>=(n.complaintRepath||0)){n.complaintRepath=this.t+.7;n.complaintPath=encounterPath(pos,goal,(x,z)=>this.collides(x,z,0,false),1.5);}
+ const path=n.complaintPath||[];while(path.length&&Math.hypot(path[0].x-pos.x,path[0].z-pos.z)<.18)path.shift();const q=path[0]||(clear?goal:null);if(q){const dx=q.x-pos.x,dz=q.z-pos.z,len=Math.hypot(dx,dz)||1,step=Math.min(len,dt*(other?3.4:2.4));a.rotation.y=turnToward(a.rotation.y,Math.atan2(dx,dz),dt);this.move(a,dx/len*step,dz/len*step);}this.animateActor(a,q?1:0,dt,'');return true;
+ }
+ territoryMotion(id,n,dt){const s=this.sim.s,e=encounterFor(s,id);if(!e)return false;
+ const a=n.actor,u=a.userData,other=this.npcs.get(e.host===id?e.guest:e.host)?.actor;if(!other)return false;
+ const exit=e.phase==='withdraw',goal=exit?(id===e.guest?{x:e.x,z:e.z+6}:{x:e.x-2,z:e.z}):other.position,stop=exit?.35:1.45;
+ let q=goal,d=Math.hypot(q.x-a.position.x,q.z-a.position.z),walking=d>stop&&e.phase!=='bout';
+ if(walking){if(!n.territoryPath||this.t>(n.territoryRepath||0)||n.territoryPhase!==e.phase){n.territoryPhase=e.phase;n.territoryRepath=this.t+.65;n.territoryPath=encounterPath(a.position,goal,(x,z)=>this.collides(x,z,0,false),stop);}while(n.territoryPath.length&&Math.hypot(n.territoryPath[0].x-a.position.x,n.territoryPath[0].z-a.position.z)<.15)n.territoryPath.shift();q=n.territoryPath[0]||goal;}
+ const dx=q.x-a.position.x,dz=q.z-a.position.z,len=Math.hypot(dx,dz);if(len>.01){a.rotation.y=turnToward(a.rotation.y,Math.atan2(dx,dz),dt);if(walking){const step=Math.min(len,2.8*dt);this.move(a,dx/len*step,dz/len*step);}}
+ this.animateActor(a,walking?1:0,dt,'');u.sword.visible=e.phase==='bout';if(e.phase==='bout'){const beat=((s.npcClock-e.at)*2+(id===e.host?0:.5))*Math.PI*2;u.arms[1].rotation.x=-1.15-.9*Math.sin(beat);u.arms[0].rotation.x=-.8+.35*Math.sin(beat);u.rig.rotation.z=.095*Math.sin(beat);}else u.rig.rotation.z=0;return true;
  }
  reactNpc(id,n,dt){const s=this.sim.s,a=n.actor,p=this.hero.position,state=s.people[id];
  if(state.stunnedUntil>(s.npcClock||0)){this.animateActor(a,0,dt,'');a.userData.arms[0].rotation.x=-.4;if(n.alert)n.alert.visible=false;return true;}
@@ -112,13 +158,17 @@ export class World{
  const state=lifeCue(s,now,this.sim.s.ecosystem?.hunger?.[id]||0);
  const active=s.hp>0&&!(s.stunnedUntil>(this.sim.s.npcClock||0))&&!this.locked&&!this.cinematic&&!this.performance&&a.position.distanceTo(this.hero.position)<8&&!s.awareness?.caseOpen&&visibleBetween(a.position,this.hero.position,this.obstacles,this.sim.s.ecosystem?.objects);
  if(this.lifeBudget.change(id,state,this.t,active,12,45))this.onLifeSpeech?.({id,text:(id==='traveler'?PRINCE_LIFE_LINES[state]:null)||LIFE_LINES[state]});
+ if(active&&!state&&this.playing&&!this.sim.s.complaint&&this.t>(this.nextAmbient??10)&&this.t>(n.nextAmbient||0)&&this.screenPoint(a.position).visible){
+ const line=ambientLine(id,s.life?.activity,n.ambientIndex||0);
+ if(line&&this.onLifeSpeech?.({id,text:line,ambient:true})){n.ambientIndex=(n.ambientIndex||0)+1;n.nextAmbient=this.t+80;this.nextAmbient=this.t+22;}
+ }
  }
 
  resize(){this.renderer.setSize(innerWidth,innerHeight);this.camera.aspect=innerWidth/innerHeight;this.camera.updateProjectionMatrix();}
  registerObject(group,id,name,material='wood',hp=100,extra={}){group.updateWorldMatrix(true,true);const bounds=new T.Box3().setFromObject(group),c=bounds.getCenter(new T.Vector3()),size=bounds.getSize(new T.Vector3());const asset={id,kind:'prop',name,material,max:hp,x:c.x,z:c.z,w:size.x,d:size.z,y:c.y,group,...extra};this.environmentAssets=this.environmentAssets.filter(a=>a.id!==id);this.environmentAssets.push(asset);return asset;}
  lantern(p,x,y,z){const g=new T.Group();g.position.set(x,y,z);p.add(g);cyl(g,.2,.23,.38,0xbc573c);cyl(g,.14,.14,.07,0x463c31,0,.23,0);cyl(g,.14,.14,.07,0x463c31,0,-.23,0);cyl(g,.018,.018,.23,0xc9a756,0,-.38,0);return g;}
  tree(x,z,blossom=false,scale=1){const g=new T.Group();g.position.set(x,0,z);g.scale.setScalar(scale);this.scene.add(g);cyl(g,.12,.23,2.4,0x60544a,0,1.2,0);for(let i=0;i<5;i++){const a=i*2.4;const branch=cyl(g,.06,.11,1.5,0x60544a,Math.sin(a)*.32,2,Math.cos(a)*.32);branch.rotation.z=Math.sin(a)*.6;mesh(new T.IcosahedronGeometry(.9,1),blossom?[0xdea9a3,0xe7bcaf,0xc88d8d][i%3]:[0x6a8263,0x829476,0x506f61][i%3],g,Math.sin(a)*.8,2.8+(i%2)*.5,Math.cos(a)*.7);}this.obstacles.push({id:`tree:${x}:${z}`,x,z,w:.6,d:.6});this.environmentAssets.push({id:`tree:${x}:${z}`,kind:'tree',name:blossom?'花树':'果树',fruit:!blossom,x,z,group:g});}
- house(x,z,w,d,name,roof=0x4c6062){const g=new T.Group();g.position.set(x,0,z);this.scene.add(g);const base=`house:${x}:${z}`,owner='inn';
+ house(x,z,w,d,name,roof=0x4c6062){const g=new T.Group();g.position.set(x,0,z);this.scene.add(g);const base=`house:${x}:${z}`,owner=name==='墨香斋'?'bookseller':'inn';
  const part=(id,title,material,hp,build,collision=false)=>{const p=new T.Group();g.add(p);build(p);const a=this.registerObject(p,base+':'+id,name+' · '+title,material,hp,{kind:id==='door'?'door':'building',owner});if(collision)this.obstacles.push({id:a.id,x:a.x,z:a.z,w:a.w,d:a.d});return p;};
  part('foundation','台基','stone',1800,p=>box(p,w+.5,.25,d+.5,0x929887,0,.13,0));
  part('back','后墙','stone',1200,p=>box(p,w,2.8,.25,0xd0bda0,0,1.6,-d/2),true);
@@ -141,6 +191,8 @@ export class World{
  for(const x of [-26,-18])for(let z=-27;z<=27;z+=6){const bank=box(this.scene,.7,.55,6,0x8e9989,x,.03,z);this.registerObject(bank,`bank:${x}:${z}`,'河岸石栏','stone',700);}
  const bridge=new T.Group();bridge.position.set(-22,.35,12);this.scene.add(bridge);box(bridge,9,.3,4.3,0xbac0ad);for(const z of [-1.9,1.9]){box(bridge,9,.15,.16,0x938b6f,0,.85,z);for(let x=-4;x<=4;x++)cyl(bridge,.11,.14,1.2,0xaaa58a,x,.45,z);}
  this.registerObject(bridge,'bridge','石桥与桥栏','stone',2400);
+ const board=new T.Group();board.position.set(3.3,0,29.5);this.scene.add(board);box(board,2.3,1.35,.14,0x694731,0,1.65,0);for(const x of [-.92,.92])box(board,.15,2.55,.2,0x63432d,x,1.25,0);box(board,1.2,.82,.025,0xd7bf8f,0,1.57,.085);const notice=textSprite('通 缉 榜','#f8deaa',34);board.add(notice);notice.position.set(0,2.18,.11);this.registerObject(board,'wanted-board','城外通缉榜','wood',150,{kind:'noticeboard'});this.obstacles.push({id:'wanted-board',x:3.3,z:29.5,w:2.3,d:.18});
+ const desk=new T.Group();desk.position.set(-11,0,7.5);this.scene.add(desk);box(desk,3.3,.12,.96,0x76503d,0,.96,0);for(const x of [-1.4,1.4])for(const z of [-.36,.36])box(desk,.12,.9,.12,0x604333,x,.46,z);this.registerObject(desk,'book-desk','墨香斋书案','wood',120,{kind:'table',owner:'bookseller'});this.obstacles.push({id:'book-desk',x:-11,z:7.5,w:3.3,d:.96});
  this.house(-11,-12,7,6,'听雨楼');this.house(12,-13,6,5,'回春堂');this.house(-12,3,5,5,'墨香斋');this.house(13,5,5,5,'云来客栈');this.house(-10,21,6,4,'临溪人家');this.house(11,21,6,4,'青竹会');this.house(0,-23,8,5,'镇公所');
  for(const [x,z,b,s]of [[-6,-9,true,1.2],[7,-10,true,1.1],[-16,10,false,1.2],[8,10,true,1.1],[-14,-21,false,1.6],[17,-5,false,1.5],[18,17,true,1.4],[-17,22,true,1.2],[-31,3,false,1.6]])this.tree(x,z,b,s);
  for(let k=0;k<10;k++){const x=-38+k*8,z=-45-Math.sin(k*2)*9;mesh(new T.ConeGeometry(10+(k%3)*3,16+(k%4)*5,5),[0x789491,0x879e99,0x94aaa3][k%3],this.scene,x,3,z);}
@@ -185,9 +237,9 @@ export class World{
  if(!goal)return false;const route=[];for(let p=goal;p;p=seen.get(p.join(',')))route.unshift(p);this.auto=route.slice(1);return true;
  }
  jump(){if(canJump(this)){this.jumpV=7;this.onSound?.('jump');}}
- reactToDraw(){let said=false;for(const [id,n]of this.npcs){const state=this.sim.s.people[id];if(!seesDraw(n.actor,this.hero,state,this.sim.s.npcClock||0,visibleBetween(n.actor.position,this.hero.position,this.obstacles,this.sim.s.ecosystem?.objects))||this.t<(n.drawCooldown||0))continue;
- n.drawCooldown=this.t+12;n.actor.userData.startledUntil=this.t+.8;n.lookUntil=this.t+3;
- if(!said&&!state.awareness?.caseOpen){said=true;this.onLifeSpeech?.({id,text:['guard','gate_guard','gate_relief'].includes(id)?'把刀收起来，这里不是动武的地方。':id==='traveler'?'且慢。有什么话，值得拔刀？':'你……拔刀做什么？'});this.onSound?.('notice');}
+ reactToDraw(){let said=false;for(const [id,n]of [...this.npcs].sort((a,b)=>a[1].actor.position.distanceTo(this.hero.position)-b[1].actor.position.distanceTo(this.hero.position))){const state=this.sim.s.people[id];if(!seesDraw(n.actor,this.hero,state,this.sim.s.npcClock||0,visibleBetween(n.actor.position,this.hero.position,this.obstacles,this.sim.s.ecosystem?.objects))||this.t<(n.drawCooldown||0))continue;
+ const line=response(this.sim.s,id,'draw');markEncounter(this.sim.s,id,'draw');n.drawCooldown=this.t+12;n.actor.userData.startledUntil=this.t+.8;n.lookUntil=this.t+3;
+ if(!said&&!state.awareness?.caseOpen){said=true;this.onLifeSpeech?.({id,text:line});this.onSound?.('notice');}
  }}
  get combatReady(){return this.readyUntil===Infinity;}
  toggleWeapon(){if(!this.playing||this.locked||this.performance||this.sim.s.player.hp<=0)return;this.readyUntil=this.combatReady?0:Infinity;if(this.combatReady)this.reactToDraw();this.onReady?.();}
@@ -206,7 +258,7 @@ export class World{
  const targets=[...this.npcs].filter(([id,n])=>{const d=n.actor.position.clone().sub(h);return d.length()<2.6&&d.normalize().dot(front)>.1&&this.sim.s.people[id].hp>0;}).sort((a,b)=>a[1].actor.position.distanceTo(h)-b[1].actor.position.distanceTo(h));
  if(this.ecology?.hit(front,objectId?Infinity:targets[0]?.[1].actor.position.distanceTo(h)??Infinity,objectId))return;
  if(objectId)return;
- if(targets.length){const [id,n]=targets[0],witnesses=[...this.npcs].filter(([,v])=>v.actor.position.distanceTo(h)<10).map(([id])=>id);this.sim.attack(id,witnesses);this.burst(n.actor.position.x,1,n.actor.position.z,0xdba77e,10);}
+ if(targets.length){const [id,n]=targets[0];this.sim.attack(id);this.burst(n.actor.position.x,1,n.actor.position.z,0xdba77e,10);}
  else for(const prop of this.props){const d=new T.Vector3(prop.x,0,prop.z).sub(h);if(d.length()<2.8&&d.normalize().dot(front)>.1&&!this.sim.s.broken.includes(prop.id)){prop.hp--;if(prop.hp<=0){this.sim.breakProp(prop.id);this.burst(prop.x,1,prop.z,0xa28152,18);}break;}}
  }
  perform(action,targetId){
@@ -227,6 +279,7 @@ export class World{
  const target=this.npcs.get(a.targetId)?.actor;
  if(target&&!speed)this.hero.rotation.y=turnToward(this.hero.rotation.y,Math.atan2(target.position.x-this.hero.position.x,target.position.z-this.hero.position.z),dt);
  switch(a.motion){
+ case 'pressure':{const thrust=Math.max(0,1-Math.abs(age-.46)/.32);mix(u.arms[1],'x',-.55-thrust*(a.point==='mute'?1.65:1.25));mix(u.arms[0],'x',-.9);mix(u.rig,'x',.12+thrust*.32);if(age>=.44&&a.onStrike){const strike=a.onStrike;a.onStrike=null;strike();}break;}
  case 'crouch':u.rig.position.y-=.3*blend;mix(u.rig,'x',.24);for(const leg of u.legs)mix(leg,'x',-.65);mix(u.arms[1],'x',-1.5);break;
  case 'gamble':mix(u.arms[0],'x',-1.5);mix(u.arms[1],'x',-1.3+wave*.3);mix(u.arms[1],'z',.6);break;
  case 'listen':mix(u.arms[0],'x',-.45);mix(u.arms[1],'x',-.5);mix(u.rig,'x',.12+Math.sin(age*3)*.04);break;
@@ -313,7 +366,8 @@ export class World{
  s.player.x=this.hero.position.x;s.player.z=this.hero.position.z;if(this.playing){const hp=s.player.hp,was=s.player.drowning;environmentStep(s.player,dt,s.ecosystem?.objects);document.body.classList.toggle('drowning',s.player.drowning&&s.player.hp>0);if(s.player.drowning&&!was)this.onThought?.('脚踩不到底，喘不上气……得赶紧找岸。');if(hp>0&&s.player.hp<=0)this.onHurt?.();if(s.player.hp>0&&s.player.z<19.5&&inDeepWater(s.player.x,s.player.z))enterRiver(this.sim);}
  if(this.sceneId!==this.sim.event?.id&&this.sim.event)this.syncEvent();
  if(this.playing&&!this.locked)s.npcClock=(s.npcClock||0)+dt;
- for(const [id,n]of this.npcs){this.lifeFeedback(id,n);if(this.playing&&!this.cinematic&&this.reactNpc(id,n,this.locked?0:dt))continue;const state=s.people[id],a=n.actor;let moving=0,gesture='';const beforeMove=a.position.clone(),dist=Math.hypot(a.position.x-this.hero.position.x,a.position.z-this.hero.position.z);
+ if(this.playing&&!this.locked&&!this.cinematic)encounterStep(this.sim,Object.fromEntries([...this.npcs].map(([id,n])=>[id,n.actor.position])),this.obstacles);
+ for(const [id,n]of this.npcs){this.lifeFeedback(id,n);n.actor.userData.sword.visible=false;if(this.playing&&!this.cinematic&&this.territoryMotion(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&this.complaintMotion(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&this.reactNpc(id,n,this.locked?0:dt))continue;const state=s.people[id],a=n.actor;let moving=0,gesture='';const beforeMove=a.position.clone(),dist=Math.hypot(a.position.x-this.hero.position.x,a.position.z-this.hero.position.z);
  n.chasing=this.playing&&this.sim.isPursuing(id,dist-(n.chasing?2:0));n.fleeing=state.fear>0&&(n.fleeing?dist<10:dist<7);
  if(this.cinematic){const other=this.npcs.get(this.cinematic.speaker===id?this.cinematic.listener:this.cinematic.speaker)?.actor.position||this.hero.position;a.rotation.y=turnToward(a.rotation.y,Math.atan2(other.x-a.position.x,other.z-a.position.z),dt);gesture=this.cinematic.speaker===id?'talk':'';}
  else if(state.hp<=0){gesture='down';}
@@ -337,7 +391,7 @@ export class World{
  for(let i=this.particles.length-1;i>=0;i--){const p=this.particles[i];p.life-=dt;p.m.position.addScaledVector(p.v,dt);p.v.y-=10*dt;p.m.rotation.x+=dt*8;if(p.life<=0){this.scene.remove(p.m);p.m.geometry.dispose();this.particles.splice(i,1);}}
  for(const [i,leaf]of this.petals.entries()){leaf.position.y-=dt*.2;leaf.position.x+=Math.sin(this.t+i)*dt*.12;leaf.rotation.x=this.t+i;if(leaf.position.y<.1)leaf.position.y=4;}
  this.objectPose?.(dt);
- const perf=this.performance,shot=perf?.camera?Math.sin(Math.PI*Math.min(1,(this.t-perf.start)/perf.duration))*.28:0,viewYaw=this.yaw+shot,viewDistance=this.distance*(1-shot*.6);
+ const perf=this.performance,shot=perf?.camera?Math.sin(Math.PI*Math.min(1,(this.t-perf.start)/perf.duration))*.28:0,viewYaw=this.yaw+shot,viewDistance=this.distance*(this.aimMode?.65:1)*(1-shot*.6);
  const target=this.hero.position.clone().add(new T.Vector3(0,1.1,0)),offset=new T.Vector3(Math.sin(viewYaw)*Math.cos(this.pitch)*viewDistance,Math.sin(this.pitch)*viewDistance,Math.cos(viewYaw)*Math.cos(this.pitch)*viewDistance);
  if(this.cinematic){
  const c=this.cinematic,speaker=this.npcs.get(c.speaker)?.actor||this.hero,listener=this.npcs.get(c.listener)?.actor||this.hero;
@@ -370,10 +424,13 @@ export class World{
  }
  const oldHp=this.hero.userData.lastHp;bodyFeedback(this.hero,s.player.hp,this.t,dt);
  if(oldHp!==undefined&&s.player.hp<oldHp){this.onSound?.('hurt');if(s.player.hp<=0&&oldHp>0)this.onHurt?.();}
- dressActor(this.hero,0x385953,outfit(this.sim)?.color??0x385953);
+ const head=this.hero.userData.head;if(!head.userData.bambooHat){head.userData.bambooHat=cyl(head,.045,.48,.26,0xb99457,0,.48,0);}head.userData.bambooHat.visible=!!s.player.hat;dressActor(this.hero,0x385953,outfit(this.sim)?.color??0x385953);
  for(const [id,n]of this.npcs){if(s.people[id].wardrobeInitialized)dressActor(n.actor,n.person.color,s.ecosystem.items.some(i=>i.type==='clothing'&&i.ownerId===id&&i.location==='npc:'+id&&i.hp>0)?n.person.color:0xb6b09b);const st=s.people[id],a=n.actor,d=a.position.distanceTo(this.hero.position),available=st.hp>0&&!(st.stunnedUntil>(s.npcClock||0));const visible=available&&d<6&&visibleBetween(a.position,this.hero.position,this.obstacles,s.ecosystem?.objects);const dx=this.hero.position.x-a.position.x,dz=this.hero.position.z-a.position.z;const front=Math.sin(a.rotation.y)*dx+Math.cos(a.rotation.y)*dz>0;
- const target=visible&&(front||this.t<n.lookUntil)?this.hero.position:null;bodyFeedback(a,st.hp,this.t,dt,target);}
- this.updateNpcChecks();
+ if(id==='scribe'&&this.playing&&!this.locked&&!this.cinematic&&!this.performance&&s.player.hp>0&&!st.probed&&!s.facts.scribeScarsSeen&&visible&&d<3.8&&this.onThought?.('刻刀磨的是指腹。他虎口那几道疤，倒像是替人挡过刀……趁他翻印时，再看仔细些。')){s.facts.scribeScarsSeen=true;this.sim.save();}
+ const watching=this.playing&&!this.locked&&!this.cinematic&&s.player.hp>0&&s.player.crouched&&visible&&front&&d<4&&!st.awareness?.caseOpen;
+ n.skulkTime=watching?(n.skulkTime||0)+dt:0;if(n.skulkTime>=5&&this.t>(this.skulkNext||0)&&st.impressions?.skulk!=='skulk:'+s.day){this.skulkNext=this.t+9;n.lookUntil=this.t+2;const text=response(s,id,'skulk');markEncounter(s,id,'skulk');this.onLifeSpeech?.({id,text});}
+ const target=n.musicLookUntil>this.t?n.musicPoint:visible&&(front||this.t<n.lookUntil)?this.hero.position:null;bodyFeedback(a,st.hp,this.t,dt,target);const beat=this.performance;if(beat?.motion==='pressure'&&beat.targetId===id&&beat.hit!==undefined&&st.hp>0){const recoil=Math.max(0,1-(this.t-beat.start-.44)/1.15);a.userData.rig.rotation.z+=(beat.hit?.16:-.45)*recoil;if(beat.hit&&beat.point==='mute')a.userData.arms[0].rotation.x=-2.35*recoil;}}
+ this.updateNpcChecks();this.updateActivityCaption();
  this.renderer.render(this.scene,this.camera);
  }
 }

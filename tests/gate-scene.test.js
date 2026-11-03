@@ -44,3 +44,4 @@ test('gate questions are direct dialogue but disguise and physical actions retai
  act(s,'g_clothes');assert.equal(isDirectReply(act(s,'g_buy')),false);
  assert.equal(isDirectReply(act(s,'g_order')),false);
 });
+test('release closes a pending complaint and actual guard aggro without erasing the ledger lead or social memory',()=>{const s=setup();act(s,'g_charge');act(s,'g_surrender');act(s,'g_hear');const n=s.s.people.guard;n.awareness={suspect:'player',state:'fight',caseOpen:true};n.mood='angry';n.relation=-9;s.s.wanted=7;s.s.complaint={id:'guard'};act(s,'g_record');assert.equal(s.s.wanted,0);assert.ok(!n.awareness&&!s.s.complaint);assert.equal(n.relation,-9);assert.ok(s.s.facts.taxLedgerLead);assert.ok(!s.isPursuing('guard',1));});
