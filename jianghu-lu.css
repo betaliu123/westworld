@@ -64,6 +64,12 @@ body:has(#drawer[data-view="codex"]:not([hidden])) :is(#hud-left-stack,#hud-info
 .jh-deed{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:2px 0 2px 12px;border-left:2px solid var(--ink-4)}
 .jh-deed.crime{border-left-color:var(--ink-1)}
 .jh-deed.help{border-left-color:var(--malachite)}
+.jh-deed.has-cause{position:relative;border-left-color:var(--cinnabar);padding-left:20px}
+.jh-cause{flex-basis:100%;color:var(--cinnabar);font-size:var(--fs-1);text-decoration:underline;text-underline-offset:4px}
+.jh-deed.has-cause::before{content:'';position:absolute;left:-4px;top:8px;width:6px;height:6px;background:var(--cinnabar);border-radius:50%}
+.jh-deed:target{outline:1px solid var(--cinnabar);outline-offset:6px;scroll-margin:20px}
+.skill-book{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+.skill-book>h3{grid-column:1/-1}.skill-book article{border-top:1px solid var(--ink-4);padding-top:8px}.skill-book h4{font-size:var(--fs-2);margin:0}.skill-book p{margin:6px 0}.skill-book small{font-size:var(--fs-1);color:var(--ink-3)}
 .jh-deed time{font:var(--fs-1)/1 var(--font-data);color:var(--ink-3)}
 .jh-deed b{font-weight:400;color:var(--ink-0)}
 .jh-deed span{color:var(--ink-2)}

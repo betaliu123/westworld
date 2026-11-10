@@ -32,7 +32,7 @@ const BONE_ALIASES = {
 };
 // Head pieces vary the shared commoner and woman bodies; colours are the cloth, not the wearer's robe.
 const LOOKS = {
-  traveler: {kind: 'prince'},
+  traveler: {kind: 'prince'}, fu: {kind:'envoy'}, qinghe: {kind:'woman',head:['scarf',0x788780]},
   gate_guard: {kind: 'guard'}, gate_relief: {kind: 'guard'}, guard: {kind: 'constable'},
   tea_host: {kind: 'woman', head: ['scarf', 0x6b5a45]}, mei: {kind: 'woman', head: ['flower', 0xc4384f]},
   matchmaker: {kind: 'woman', head: ['scarf', 0x4a3b5c]}, su: {kind: 'woman'}, bookseller: {kind: 'woman', head: ['flower', 0xe8e0cf]},
@@ -44,6 +44,7 @@ const LOOKS = {
   qing: {kind: 'commoner'}, chi: {kind: 'sandgang'}, shen: {kind: 'commoner'},
   gao: {kind: 'commoner', head: ['straw', 0xa88c5c]}, porter: {kind: 'commoner', head: ['straw', 0x9f8a5e]},
   elder: {kind: 'commoner', head: ['futou', 0x2b2a27]},
+  beggar: {kind: 'commoner', head: ['straw', 0x8a7350]},
 };
 export const npcLook = id => { const look=LOOKS[id] || {kind:'commoner'}; return {...look, motionProfile:npcMotionProfile(id,look.kind)}; };
 

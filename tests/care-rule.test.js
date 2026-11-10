@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';
 import {Ecosystem} from '../src/ecosystem.js';
 import {contactResolve} from '../src/gate-society.js';
 import {socialPreview,socialResolve,socialOptions} from '../src/npc-social.js';

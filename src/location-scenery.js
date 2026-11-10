@@ -1,6 +1,17 @@
-import {PRIVACY_GROVE} from './locations.js';
+import {BEGGAR_NEST,PRIVACY_GROVE} from './locations.js';
 import * as T from '../vendor/three.module.js';
 export function buildLocationScenery(world,{box,cyl,textSprite}){
+ // The convoy is an actual landmark beside the roll-call porter, not only a dialogue label.
+ const convoy=new T.Group();convoy.position.set(7.8,0,32.5);world.scene.add(convoy);
+ box(convoy,2.5,.22,3.5,0x6e5140,0,.9,0);
+ for(const x of [-1.3,1.3]){box(convoy,.12,.65,3.5,0x70553e,x,1.25,0);box(convoy,.1,.1,2.6,0x5a4230,x*.7,.78,-2.5);for(const z of [-1.05,1.05]){const wheel=cyl(convoy,.62,.62,.16,0x43392e,x,.62,z);wheel.rotation.z=Math.PI/2;}}
+ for(const [x,z] of [[-.6,-.7],[.5,.7]]){const stone=new T.Mesh(new T.DodecahedronGeometry(.72,0),new T.MeshStandardMaterial({color:0x87877a,roughness:1}));stone.position.set(x,1.55,z);stone.scale.set(.8,1.15,.8);convoy.add(stone);}
+ cyl(convoy,.045,.045,4,0x594330,1.4,2,-1.4);box(convoy,.95,1.4,.03,0xc0a34e,1.9,3.15,-1.4);const banner=textSprite('纲','#312c22',32,'sign');banner.position.set(1.9,3.15,-1.36);convoy.add(banner);
+ // Bamboo cage, perch and a small bird silhouette make the imperial cargo legible.
+ for(const y of [1.05,2.05])box(convoy,.65,.06,.65,0x9b7f4a,-.6,y,1.1);
+ for(const x of [-.9,-.6,-.3])for(const z of [.8,1.4])cyl(convoy,.018,.018,1,0xa48e57,x,1.55,z);
+ box(convoy,.6,.035,.035,0x80683e,-.6,1.4,1.1);const bird=new T.Mesh(new T.SphereGeometry(.12,8,6),new T.MeshStandardMaterial({color:0x566057}));bird.scale.set(.7,1,1.4);bird.position.set(-.6,1.53,1.1);convoy.add(bird);
+ world.obstacles.push({id:'flowerstone-cart',x:7.8,z:32.5,w:2.9,d:3.7,sightHeight:2.2});
  for(let j=0;j<8;j++)for(let k=0;k<4;k++){const shrub=new T.Mesh(new T.IcosahedronGeometry(.8,1),new T.MeshStandardMaterial({color:(j+k)%2?0x4e6940:0x637b47}));shrub.scale.set(1,.85,1);shrub.position.set(PRIVACY_GROVE.x+k*1.35+Math.sin(j*3+k)*.18,.55+Math.sin(j+k)*.1,PRIVACY_GROVE.z-.6+j*.85+Math.cos(j+k)*.16);world.scene.add(shrub);}
  world.obstacles.push({id:'privacy-hedge',x:PRIVACY_GROVE.x-.8,z:PRIVACY_GROVE.z+1.9,w:.2,d:5});
  // Open-front halls keep entrances and indoor NPCs physically reachable.
@@ -32,4 +43,11 @@ export function buildLocationScenery(world,{box,cyl,textSprite}){
  for(const x of [-2.9,2.9]){world.lantern(prison,x,2.6,1);const light=new T.PointLight(0xffae61,1.8,8);light.position.set(x,2.5,1);prison.add(light);}
  const label=textSprite('临 溪 县 狱');label.position.set(22,3.6,-18.8);world.scene.add(label);
  world.jailRoof=box(prison,7.7,.25,7.7,0x394844,0,3.9,0);world.prisonBuilding=prison;world.ribbonBuilding=hall;
+ const nest=new T.Group();nest.position.set(BEGGAR_NEST.x,0,BEGGAR_NEST.z-1.1);world.scene.add(nest);
+ for(const [dx,dz,s] of [[-.55,.05,1],[.25,-.15,.75],[.85,.2,.6],[-.15,.55,.7]]){const heap=new T.Mesh(new T.ConeGeometry(.5*s,.4*s,7),new T.MeshStandardMaterial({color:0xb08958,roughness:1}));heap.position.set(dx,.16*s,dz);heap.rotation.set(.45,.3*dx,.25);nest.add(heap);}
+ box(nest,1.35,.045,.85,0x8a7350,-.15,.03,.1);box(nest,.72,.04,.5,0x6d5e48,.65,.03,.35);
+ cyl(nest,.11,.07,.045,0xc8c0a4,.8,.05,.05);cyl(nest,.07,.05,.03,0xa89878,-.7,.04,.45);
+ for(const dx of [-.85,.75]){const pole=cyl(nest,.04,.04,2.15,0x6a5340,dx,.95,-.4);pole.rotation.x=.62;}
+ const cloth=new T.Mesh(new T.PlaneGeometry(1.85,1.35),new T.MeshStandardMaterial({color:0x6e6254,side:T.DoubleSide,roughness:1}));cloth.position.set(-.05,1.05,-.15);cloth.rotation.x=.72;nest.add(cloth);
+ const mark=textSprite('乞丐窝','#efe3c2',30,'sign');mark.position.set(.15,1.55,.7);nest.add(mark);
 }

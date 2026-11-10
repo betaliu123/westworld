@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';
 import {DECKS,peek,commitDeal,pickEvent,validLine,recordDeed,applyAftermath,echoOptions,deliverMail,deckState,dealContext,aftermathContext,stageOf} from '../src/event-deck.js';
 
 const fresh=()=>{const sim=new Simulation(newArrival());sim.save=()=>{};return sim;};

@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';
 import {detainAtGate} from '../src/gate-scene.js';
 import {knownOrganization,organizationSeats,organizationHTML,learn} from '../src/factions.js';
 import {syncQuests,observeProgress,mainPlayer} from '../src/progress.js';

@@ -6,4 +6,6 @@ export function migrateLocations(s){if(s.locationVersion===2)return;if(jailed(s)
 
 // One source for foliage, sight cover and NPC destinations, away from the tea tables.
 export const PRIVACY_GROVE={x:22,z:28};
+// Outside the west wall, in the corner between the river fence and 临溪人家.
+export const BEGGAR_NEST={x:-14.2,z:23.3};
 export const privacySpot=index=>({x:PRIVACY_GROVE.x+(index%4)*1.15,z:PRIVACY_GROVE.z+Math.floor(index/4)*.85});

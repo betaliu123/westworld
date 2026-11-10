@@ -1,5 +1,5 @@
 ﻿import test from 'node:test';import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';
 import {organizationHTML,meet,learn,personTab} from '../src/factions.js';
 test('rumors, personal acquaintances and discovered affiliations have distinct views',()=>{
  const sim=new Simulation(newArrival()),html=tab=>organizationHTML(sim,x=>x,tab);

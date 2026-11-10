@@ -1,5 +1,5 @@
 ﻿import test from 'node:test';import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';import {Ecosystem} from '../src/ecosystem.js';import {desk} from '../src/bookshop.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';import {Ecosystem} from '../src/ecosystem.js';import {desk} from '../src/bookshop.js';
 const assets=[{id:'book-desk',kind:'table',name:'墨香斋书案',x:desk.x,z:desk.z,w:3.3,d:.96}];
 function setup(){const sim=new Simulation(newArrival(),()=>0),eco=new Ecosystem(sim,assets);Object.assign(sim.s.player,{...desk,money:30});eco.positions.bookseller={...desk};return {sim,eco,p:sim.s.player,stock:eco.s.items.filter(i=>i.sku)};}
 test('one physical copy can be read on desk, bought, dropped and read again',()=>{const {sim,eco,p,stock}=setup(),book=stock[1];assert.equal(stock.length,3);assert.equal(eco.act('study',null,book.id),undefined);assert.ok(p.lessons.score);assert.equal(book.location,'ground');eco.act('bookBuy',null,book.id);assert.equal(book.location,'player');assert.equal(p.money,24);assert.ok(eco.s.items.some(i=>i.type==='coins'&&i.amount===6));eco.act('drop',null,book.id);assert.ok(!book.forSale);eco.act('pickup',null,book.id);assert.equal(p.money,24);assert.equal(new Ecosystem(sim,assets).s.items.filter(i=>i.sku).length,3);});

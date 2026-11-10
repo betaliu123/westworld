@@ -1,6 +1,6 @@
 import {OBJECTS,OBJECT_ACTIONS,physicalReady} from '../src/object-contracts.js';
 import test from 'node:test';import assert from 'node:assert/strict';
-import {Simulation,newArrival,newGame} from '../src/simulation.js';
+import {Simulation,legacyArrival as newArrival,newGame} from '../src/simulation.js';
 import {World} from '../src/world.js';
 const setup=(rng=0)=>new Simulation(newArrival(),()=>rng);
 function act(s,id){s.s.player.x=s.event.point[0];s.s.player.z=s.event.point[1];const o=OBJECTS[OBJECT_ACTIONS[id]];if(o){[s.s.player.x,s.s.player.z]=o.stand;if(id==='g_pocket')s.s.player.crouched=true;}const r=s.resolve(s.event.id,id);assert.equal(r.error,undefined,id);return r;}

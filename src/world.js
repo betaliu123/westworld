@@ -1,7 +1,8 @@
+import {npcHitDamage} from './skills.js';
 import {inkPost} from './ink-post.js';
 import {mountHeroModel} from './hero-model.js';
 import {HeroCombat} from './hero-combat.js';
-import {followOrbit} from './orbit-camera.js';
+import {followOrbit,clearDialogueCamera} from './orbit-camera.js';
 import {landscape,paintedSurface,pine,garment,gateRoof,roadVerge,wantedSheet,travelerMantle,strawHat,gateBanners,windAtGate,portrait} from './ink-landscape.js';
 import {ambientLine} from './ambient-lines.js';
 import {officials,startComplaint,receiveReport} from './complaints.js';
@@ -146,6 +147,7 @@ export class World{
  if(seen){if(!repeated&&['tamper','theft'].includes(event.type))this.sim.emit('npcCheck',{id,label:event.type==='theft'?'察觉 · 偷窃':'察觉 · 动过吃喝',success:true,observation:true});event.witnesses.push(id);if(!repeated)replies.push({id,text:event.type==='tamper'?(event.owner===id?'你往里面放了什么？这些吃喝先别碰！':'等等，他刚往吃喝里放了东西！'):event.type==='theft'?response(this.sim.s,id,'theft'):event.type==='assault'?(event.target===id?response(this.sim.s,id,'assault'):'住手！有人动刀了！'):'别砸了！快来人！'});}
  if(seen&&event.type==='tamper'&&event.itemId){const item=this.sim.s.ecosystem?.items.find(i=>i.id===event.itemId);if(item){item.knownPoisonBy??=[];if(!item.knownPoisonBy.includes(id))item.knownPoisonBy.push(id);}}
  if(seen&&['theft','assault'].includes(event.type))markEncounter(this.sim.s,id,event.type);
+ if(seen&&id==='traveler'&&['theft','tamper','assault','damage'].includes(event.type)&&this.sim.s.chapterVersion===2)this.sim.s.facts.royalSawHarm=true;
  witnessEvent(this.sim,id,event,seen,n.base);
  if(seen&&event.type==='assault'&&event.target===id&&persona(id)[0]==='blade')state.awareness.state='fight';
  if(seen&&event.type==='assault'&&id===event.target)this.sim.s.people[id].awareness.severe=true;
@@ -191,7 +193,7 @@ export class World{
  if(r.state==='notice')speed=0;
  const dx=target.x-a.position.x,dz=target.z-a.position.z,d=Math.hypot(dx,dz);a.rotation.y=turnToward(a.rotation.y,Math.atan2(dx,dz),dt);const step=arriveStep(d,speed,dt,stop);if(d>.01)this.move(a,dx/d*step,dz/d*step);
  this.animateActor(a,step>0?1:0,dt,r.state==='warn'?'talk':'');a.userData.sword.visible=r.state==='fight';if(r.state==='warn')a.userData.arms[0].rotation.x=-1.3;
- if(!this.locked&&r.state==='fight'&&canSee&&a.position.distanceTo(p)<1.8&&this.t>(n.nextHit||0)&&s.player.hp>0){n.nextHit=this.t+1.3;a.userData.arms[1].rotation.x=-1.8;s.player.hp=Math.max(0,s.player.hp-(['guard','gate_guard'].includes(id)?9:4));this.burst(p.x,1,p.z,0xb85f47,6);if(id==='gate_guard'&&s.player.hp<=25&&s.event?.type==='gate'){s.player.hp=Math.max(1,s.player.hp);detainAtGate(this.sim);for(const person of Object.values(s.people))if(person.awareness){person.awareness.state='return';person.awareness.caseOpen=false;}}this.onHurt?.();}
+ if(!this.locked&&r.state==='fight'&&canSee&&a.position.distanceTo(p)<1.8&&this.t>(n.nextHit||0)&&s.player.hp>0){n.nextHit=this.t+1.3;a.userData.arms[1].rotation.x=-1.8;s.player.hp=Math.max(0,s.player.hp-npcHitDamage(s,id));this.burst(p.x,1,p.z,0xb85f47,6);if(id==='gate_guard'&&s.player.hp<=25&&s.event?.type==='gate'){s.player.hp=Math.max(1,s.player.hp);detainAtGate(this.sim);for(const person of Object.values(s.people))if(person.awareness){person.awareness.state='return';person.awareness.caseOpen=false;}}this.onHurt?.();}
  return true;
  }
  lifeFeedback(id,n){if(id==='gate_merchant'){if(!n.cargo)n.cargo=box(n.actor,.55,.6,.45,0x8a6346,0,1.1,-.4);n.cargo.visible=this.sim.s.people[id].life?.activity==='escort'&&this.sim.s.ecosystem?.items.some(i=>i.type==='cargo'&&i.location==='npc:'+id);}
@@ -462,7 +464,7 @@ gateRoof(gate);this.banners=gateBanners(gate);this.registerObject(gate,'town-gat
  else if(state.hp<=0){gesture='down';}
  else if(n.chasing){
   const dir=this.hero.position.clone().sub(a.position);dir.y=0;dir.normalize();a.rotation.y=turnToward(a.rotation.y,Math.atan2(dir.x,dir.z),dt);const step=arriveStep(dist,2,dt,1.2);this.move(a,dir.x*step,dir.z*step);moving=1;gesture='talk';
-  if(dist<1.6&&this.t>(n.nextHit||0)){n.nextHit=this.t+1.5;s.player.hp=Math.max(0,s.player.hp-(id==='guard'?9:4));this.burst(this.hero.position.x,1,this.hero.position.z,0xb85f47,6);this.onHurt?.();}
+  if(dist<1.6&&this.t>(n.nextHit||0)){n.nextHit=this.t+1.5;s.player.hp=Math.max(0,s.player.hp-npcHitDamage(s,id));this.burst(this.hero.position.x,1,this.hero.position.z,0xb85f47,6);this.onHurt?.();}
  }else if(n.fleeing){const dir=a.position.clone().sub(this.hero.position).normalize();this.move(a,dir.x*3*dt,dir.z*3*dt);a.rotation.y=turnToward(a.rotation.y,Math.atan2(dir.x,dir.z),dt);moving=1;}
  else if(this.ecology?.steer(id,this.locked?0:dt)){}
  else if(this.sim.event?.type==='gate'&&['gate_guard','relay','gate_merchant','scribe','prisoner'].includes(id)){gesture=this.sim.event.gate?.phase==='fight'?'talk':'';}
@@ -473,7 +475,7 @@ gateRoof(gate);this.banners=gateBanners(gate);this.registerObject(gate,'town-gat
  moving=Math.min(1.5,a.position.distanceTo(beforeMove)/Math.max(dt,.001)/2);
  if(this.speaking===id&&state.hp>0)gesture='talk';this.animateActor(a,moving,dt,gesture);if(this.reaction&&this.t<this.reaction.until&&['shen','su'].includes(id)&&state.hp>0){if(this.reaction.success&&['support','eat','favor'].includes(this.reaction.kind)){a.userData.arms[0].rotation.x=-1.1;a.userData.arms[1].rotation.x=-1.1;}else if(!this.reaction.success){a.userData.rig.rotation.z=Math.sin(this.t*5)*.08;a.userData.arms[1].rotation.x=-.7;}}n.kneel=(n.kneel||0)+(Number(id==='shen'&&this.sim.event?.type==='proposal'&&(!this.sim.event.proposal||this.sim.event.proposal.phase==='opening')&&moving===0&&!state.fear&&state.mood!=='angry')-(n.kneel||0))*(1-Math.exp(-8*dt));if(n.kneel>.001){a.userData.rig.position.y-=.25*n.kneel;a.userData.legs[0].rotation.x=T.MathUtils.lerp(a.userData.legs[0].rotation.x,-1.1,n.kneel);a.userData.arms[1].rotation.x=T.MathUtils.lerp(a.userData.arms[1].rotation.x,-1.2,n.kneel);}
  if(id==='gate_guard'){const fighting=this.sim.event?.gate?.phase==='fight'&&!this.cinematic;a.userData.sword.visible=fighting;if(fighting){a.rotation.y=turnToward(a.rotation.y,Math.atan2(this.hero.position.x-a.position.x,this.hero.position.z-a.position.z),dt);a.userData.arms[1].rotation.x=-.8-Math.max(0,Math.sin((this.sim.event.gate.fightTime||0)*Math.PI/1.5))*1.1;}}
- if(!this.cinematic)this.ecology?.pose(id);n.label.visible=!this.cinematic&&dist<(this.keys.has("AltLeft")||this.keys.has("AltRight")?12:6.6);n.label.material.opacity=Math.min(1,(13-dist)/3);
+ state.facing=a.rotation.y;if(!this.cinematic)this.ecology?.pose(id);const labelWorld=Math.min(2.7,this.camera.position.distanceTo(a.position)*.13);n.label.scale.set(labelWorld,labelWorld*.187,1);n.label.visible=!this.cinematic&&dist<(this.keys.has("AltLeft")||this.keys.has("AltRight")?12:6.6);n.label.material.opacity=Math.min(1,(13-dist)/3);
  }
  if(this.ring)this.ring.visible=!s.facts.missing;
  for(const p of this.props)p.group.visible=!s.broken.includes(p.id)&&s.ecosystem?.objects[p.id]?.hp!==0;
@@ -492,7 +494,7 @@ gateRoof(gate);this.banners=gateBanners(gate);this.registerObject(gate,'town-gat
  if(this.collides(eye.x,eye.z,0,false)){eye.lerp(look,.55);eye.y=2.4;}
  // The cell conversation is filmed from inside, never through the bars at z=17.
  if(c.speaker==='prisoner'&&['prison','testimony'].includes(this.sim.event?.gate?.phase)){eye.set(23,2.3,-20.3);}
- this.camera.position.copy(eye);this.camera.fov=shot.fov;this.camera.lookAt(look);
+ this.camera.position.copy(clearDialogueCamera(look,eye,this.obstacles,s.ecosystem?.objects));this.camera.fov=shot.fov;this.camera.lookAt(look);
  }else if(this.objectFocus){const focus=this.objectFocus;this.camera.position.lerp(focus.clone().add(new T.Vector3(4,3,5)),1-Math.exp(-dt*4));this.camera.fov=48;this.camera.lookAt(focus);}else{
  const shoulder=this.aimMode?.35:0;target.x+=Math.cos(viewYaw)*shoulder;target.z-=Math.sin(viewYaw)*shoulder;
  followOrbit(this.camera,target,target.clone().add(offset),this.obstacles,s.ecosystem?.objects,dt,this.aimMode?44:48+Math.min(4,speed*.65));

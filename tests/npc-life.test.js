@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';
 import {Ecosystem} from '../src/ecosystem.js';
 import {giveItem} from '../src/npc-actions.js';
 import {lifeStep,POST,SEATS,consumeFood} from '../src/npc-life.js';

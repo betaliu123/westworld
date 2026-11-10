@@ -1,3 +1,4 @@
+import {chapterOptions,chapterPreview,chapterResolve,chapterFollowups} from './chapter.js';
 import {VOICE_LINES} from './voice-lines.js';
 import {placePayment} from './cash-transfers.js';
 import {askIdentity,answerIdentity} from './conversation-memory.js';
@@ -16,7 +17,7 @@ export function learnedFootwork(sim,id='old_constable'){
  const learned=n.learnedFootwork||Object.keys(sim.s.player.growthClaims||{}).some(k=>k.startsWith('lesson:')&&k.endsWith(':'+id))||sim.s.history.some(r=>r.success&&r.actionId==='training'&&r.eventId?.endsWith(':'+id+':training'));
  if(learned)n.learnedFootwork=true;return !!learned;
 }
-export function contactOptions(sim,id){const n=sim.s.people[id],k=knowledge(sim);return [
+export function contactOptions(sim,id){if(sim.s.chapterVersion===2)return [...chapterOptions(sim,id),...(sim.s.people[id]?.sickUntil>(sim.s.ecosystem?.time||0)?[option('care','递水照看')]:[])];const n=sim.s.people[id],k=knowledge(sim);return [
  ...careerOptions(sim,id),
  ...(id==='bookseller'?[option('binding','你怎么知道一本书被抽过页？')]:[]),
  ...(id==='scribe'&&outfit(sim)?[option('identity_paper','按身上这身衣服的身份刻制名帖','wit',knowsName(sim,outfit(sim).ownerId)?40:80)]:[]),
@@ -34,11 +35,12 @@ export function contactOptions(sim,id){const n=sim.s.people[id],k=knowledge(sim)
  ...(n.sickUntil>(sim.s.ecosystem?.time||0)?[option('care','递水照看')]:[])
  ];}
 export function contactFollowups(sim,id,result){
+ if(sim.s.chapterVersion===2)return chapterFollowups(sim,id,result);
  if(!result?.success||result.actionId!=='ink_sign')return [];
  const buy=contactOptions(sim,id).find(a=>a.id==='ink_buy');return buy?[buy,{id:'ink_decline',label:'这包先留着，我不要。',mode:'endTalk',kind:'listen'}]:[];
 }
-export function contactPreview(sim,id,a){const n=sim.s.people[id],p=sim.s.player,tries=n.contactAttempts?.[sim.s.day+':'+a.id]||0;return {score:p.stats[a.stat]||0,chance:a.stat?Math.floor(Math.max(5,Math.min(95,p.stats[a.stat]+40-a.difficulty+(n.trust||0)/3-tries*20))):100,certain:!a.stat,blocked:(a.id==="ink_buy"&&p.money<5)||!!careerBlock(sim,id,a)||a.id==='training'&&p.energy<10||a.id==='escort'&&(!!n.awareness?.caseOpen||(!sim.s.facts.merchantContract&&(n.purse||0)<6))};}
-export function contactResolve(sim,eco,id,action){if(action==='training'&&learnedFootwork(sim,id))action='training_review';const n=sim.s.people[id],a=contactOptions(sim,id).find(a=>a.id===action);if(!n||n.hp<=0||!a||n.stunnedUntil>(sim.s.npcClock||0)||['fight','flee'].includes(n.awareness?.state))return {error:'对方现在无法应答。'};
+export function contactPreview(sim,id,a){if(a.id.startsWith('ch_'))return chapterPreview(sim,id,a);const n=sim.s.people[id],p=sim.s.player,tries=n.contactAttempts?.[sim.s.day+':'+a.id]||0;return {score:p.stats[a.stat]||0,chance:a.stat?Math.floor(Math.max(5,Math.min(95,p.stats[a.stat]+40-a.difficulty+(n.trust||0)/3-tries*20))):100,certain:!a.stat,blocked:(a.id==="ink_buy"&&p.money<5)||!!careerBlock(sim,id,a)||a.id==='training'&&p.energy<10||a.id==='escort'&&(!!n.awareness?.caseOpen||(!sim.s.facts.merchantContract&&(n.purse||0)<6))};}
+export function contactResolve(sim,eco,id,action){if(action.startsWith('ch_'))return chapterResolve(sim,eco,id,action);if(action==='training'&&learnedFootwork(sim,id))action='training_review';const n=sim.s.people[id],a=contactOptions(sim,id).find(a=>a.id===action);if(!n||n.hp<=0||!a||n.stunnedUntil>(sim.s.npcClock||0)||['fight','flee'].includes(n.awareness?.state))return {error:'对方现在无法应答。'};
  const check=contactPreview(sim,id,a);if(check.blocked)return {error:(action==='ink_buy'?'得付五文钱。':null)||careerBlock(sim,id,a)||'眼下还做不到。'};meet(sim,id);n.contactAttempts??={};const stamp=sim.s.day+':'+action;n.contactAttempts[stamp]=(n.contactAttempts[stamp]||0)+1;
  const roll=a.stat?Math.floor(sim.rng()*100)+1:null,success=check.certain||roll<=check.chance;let text=id==='traveler'?'一块玉佩，未必说明得了什么。咱们还是说眼前的事吧。':'眼下还信不过你，改日再谈。',changes=[];
  if(success){const career=careerResolve(sim,eco,id,action);if(career?.error)return career;if(career){text=career.text;changes=career.changes;}switch(action){
@@ -62,10 +64,11 @@ export function contactResolve(sim,eco,id,action){if(action==='training'&&learne
  case 'training_review':text='上次教你的身法，用着还顺手吗？别急着迈步，先看看人家的肩膀和眼睛。';break;
  case 'training':n.learnedFootwork=true;sim.s.player.energy-=10;changes=earnGrowth(sim.s.player,'agility',18,'lesson:'+sim.s.day+':'+id);if(n.contactAttempts[stamp]===1)n.trust=Math.min(100,(n.trust||0)+2);text='先看肩，再看眼。人转开身，你才挪脚。脚步轻不轻，得自己练。';break;
  case 'escort':if(!eco.items('npc:'+id).some(i=>i.type==='cargo'))return {error:'货包不见了，我得先找回来。'};if(!sim.s.facts.merchantContract){n.purse-=6;sim.s.facts.merchantContract={agreed:true,complete:false,wages:6};n.trust=(n.trust||0)+3;}n.life={activity:'escort',target:{x:1,z:22.8},until:eco.s.time+100};text='行。跟我到关前，把名字记在货单上。进城后你替我照看这一趟货，别让我找不着人。';break;
- case 'care':{const before=n.relation,trust=n.trust||0;const error=eco.act('help',id);if(error)return {error};changes=[`好感 +${n.relation-before}`,`信任 +${n.trust-trust}`];text=id==='traveler'?VOICE_LINES.princeCare:VOICE_LINES.teaCare;break;}
+ case 'care':{const before=n.relation,trust=n.trust||0;const error=eco.act('help',id);if(error)return {error};changes=[`好感 +${n.relation-before}`,`信任 +${n.trust-trust}`];if(sim.s.chapterVersion===2&&id==='traveler'&&!sim.s.facts.royalSawHarm){sim.s.facts.royalSawKindness=true;}text=id==='traveler'?VOICE_LINES.princeCare:VOICE_LINES.teaCare;break;}
  }}
  const r={type:'npc',eventId:'contact:'+sim.s.day+':'+id+':'+action,actionId:action,label:a.label,kind:'listen',motion:['training','court_arrest'].includes(action)?'reach':'talk',check,roll,success,text,changes,dialogue:[{id,text}],authored:true};sim.s.history.push(r);sim.emit('result',r);sim.save();return r;
 }
+const NEW_RUMORS=[{id:'watch',a:'old_constable',b:'traveler',line:'韩校尉认得赵成。轮到周伍长，只认衣服、凭据与名字。'},{id:'tax',a:'old_constable',b:'traveler',line:'符祥催花石纲，连人都写在货册上。茶娘的青禾才多大。'},{id:'ledger',a:'old_constable',b:'traveler',line:'东街那位旧账房关进牢里了。副账没交出去，才保住他一条命。'}];
 const RUMORS=[
  {id:'watch',a:'old_constable',b:'traveler',line:'关口是韩校尉管着，周伍长替他轮值。我从前当差，也得等接班的人到了，才顾得上吃饭。'},
  {id:'tax',a:'old_constable',b:'traveler',line:'东街郑税使又在催关口的公文。守军是守军，税课是税课，偏偏搅在一起。'},
@@ -80,7 +83,7 @@ export function societyStep(sim,eco,world,dt){const s=sim.s;s.gateSociety??={nex
  }
  if(contract?.complete&&!contract.delivered)s.people.gate_merchant.life={activity:'escort',target:{x:4,z:18},until:eco.s.time+180};
  if(contract?.complete&&!contract.delivered&&q&&Math.hypot(q.x-4,q.z-18)<1.4&&Math.hypot(q.x-p.x,q.z-p.z)<4&&eco.items('npc:gate_merchant').some(i=>i.type==='cargo')){contract.delivered=true;s.player.money+=contract.wages||0;contract.wages=0;s.people.gate_merchant.trust=Math.min(100,s.people.gate_merchant.trust+8);sim.relation('gate_merchant',8);sim.emit('npcRoutine',{id:'gate_merchant',text:'这一趟有人照应，省心。六文工钱收好，下回路上见。'});sim.save();}
- if(eco.s.time<state.nextTalk)return;state.nextTalk=eco.s.time+24;const r=RUMORS[state.index++%RUMORS.length],a=positions[r.a],b=positions[r.b];
+ if(eco.s.time<state.nextTalk)return;state.nextTalk=eco.s.time+24;const rumors=s.chapterVersion===2?NEW_RUMORS:RUMORS,r=rumors[state.index++%rumors.length],a=positions[r.a],b=positions[r.b];
  if(!a||!b||Math.hypot(a.x-b.x,a.z-b.z)>4||[r.a,r.b].some(id=>s.people[id].hp<=0||s.people[id].sickUntil>eco.s.time||s.people[id].stunnedUntil>(s.npcClock||0)||s.people[id].awareness?.caseOpen))return;
  if(Math.hypot(p.x-a.x,p.z-a.z)<8&&visibleBetween(p,a,world.obstacles,eco.s.objects)){learn(sim,r.id,'茶棚旁听');meet(sim,r.a);meet(sim,r.b);sim.emit('npcRoutine',{id:r.a,text:r.line});}
 }

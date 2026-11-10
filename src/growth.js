@@ -1,3 +1,4 @@
+import {practice,weaponDamage} from './skills.js';
 export const PATHS={
  social:{name:'交涉',stats:['charm','wit'],steps:['开口试探','察言观色','以理破局'],effect:'风仪、机敏检定 +4 / +8；倾听、说服、识谎都能历练。'},
  theft:{name:'偷窃',stats:['agility'],steps:['冒险伸手','敛息取物','妙手藏锋'],effect:'身法检定 +4 / +8；第一阶学会伏低取物，求婚场景可降低取物难度。'},
@@ -9,11 +10,11 @@ export function growth(player,id){
  const xp=player.growth?.[id]?.xp||0,level=xp>=90?2:xp>=30?1:0;
  return {xp,level,name:PATHS[id].steps[level],next:THRESHOLDS[level+1]??null};
 }
-export function growthBonus(player,stat){const id=pathFor(stat);return id?growth(player,id).level*4:0;}
-export function combatDamage(player){return 22+growth(player,'combat').level*3+(player.lessons?.shortStrike?3:0);}
+export function growthBonus(player,stat){if(player.skills)return 0;const id=pathFor(stat);return id?growth(player,id).level*4:0;}
+export function combatDamage(player,armor=0){if(player.skills)return weaponDamage(player,armor);return 22+growth(player,'combat').level*3+(player.lessons?.shortStrike?3:0);}
 // Rewards are keyed to a concrete attempt, so retries/reloads cannot farm growth.
 export function earnGrowth(player,stat,amount,key){
- const id=pathFor(stat);if(!id)return [];
+ const id=pathFor(stat);if(!id)return [];if(player.skills)return practice(player,id==='social'?'insight':id,amount,key);
  player.growth??={};player.growthClaims??={};
  if(player.growthClaims[key])return [];
  player.growthClaims[key]=true;

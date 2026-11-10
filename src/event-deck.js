@@ -13,7 +13,7 @@ export const DECKS={
  gate:['route','bond','craft','rest','route','fame','echo','route','rest'],
  town:['route','bond','craft','echo','rest','fame','bond','route','echo','rest']
 };
-export const GATE_PEOPLE=['gate_guard','gate_relief','tea_host','traveler','old_constable','relay','gate_merchant','scribe'];
+ export const GATE_PEOPLE=['gate_guard','gate_relief','tea_host','traveler','old_constable','relay','gate_merchant','scribe','beggar','porter','fu','qinghe'];
 const has=(s,item)=>s.player.inventory.includes(item);
 const met=(s,id)=>!!s.people[id]?.metPlayer;
 const clue=(s,id)=>!!s.intelligence?.clues?.[id];
@@ -92,9 +92,23 @@ export function deckState(s){
 export function chronicle(s){const c=s.chronicle??={};c.deeds??=[];c.diaries??=[];c.seq??=0;return c;}
 function zoneOf(id){return GATE_PEOPLE.includes(id)?'gate':'town';}
 function alive(s,id){const n=s.people[id];return !!n&&n.hp>0&&!n.awareness?.caseOpen;}
+const CHAPTER_EVENTS={
+ merchant_escort:{title:'黄旗下的役夫',lead:'花石纲在辰时、申时点役夫。找城门外的脚夫问短褂与点名的事。',place:{person:'porter'},requires:()=>true,known:s=>!!s.facts.convoySchedule,lines:{tea_host:'那脚夫替应奉局抬箱子。辰时、申时黄旗一点，人就往里走。',porter:'缺个搭手的。辰时、申时点名，你别误了时候。'}},
+ guard_vouch:{title:'一份担保',lead:'锦衣客留意关外的人情。肯替宋家母女解围，或照料病人，或许能请他作保。',place:{person:'traveler'},known:s=>s.facts.entryRoute==='royal',lines:{old_constable:'那位锦衣公子看了宋家母女许久，像是有话要说。',tea_host:'公子替我挡过一回催逼，关上也肯听他说话。'}},
+ footwork:{title:'老捕的指法',lead:'杜老捕能教正面擒拿的点穴手法；关外替人解围之后，还能进一步请教哑穴。',known:s=>(s.player.skills?.pressure.tier||0)>=2,lines:{gate_relief:'杜老捕拿人不用蛮力，手往筋骨上一搭，人就不动了。',tea_host:'杜老捕那双手，拿过人，也救过人。'}},
+ seal_lesson:{title:'刻刀之外',lead:'刻字人的伤疤不寻常。先向西墙的瘸张学眼力，再辨他的来历。',known:s=>!!s.facts.scribeIdentity,lines:{old_constable:'西墙那瘸子看人很准。你问他刻字人的手。',tea_host:'刻字师傅不肯挽袖。瘸张瞧过一眼，没再问。'}},
+ ledger_rumor:{title:'狱中的副账',lead:'旧账房被关在县狱。花石纲的副账或许还在他手中。',place:{person:'prisoner'},lines:{inn:'抄账的被关了，说是看见花石纲的账对不上。',elder:'县狱里那位账房，进去时袖中还护着一本账。'}},
+ gang_den:{lead:'替脚夫平息两帮的工钱之争，或获燕七引荐，可以到赤砂堂谈入帮。',lines:{chi:'你肯替脚夫说话，梅掌舵便肯听你说话。',porter:'燕七和赤砂堂有来往。找活路的人，彼此都认得。'}},
+ court_hiring:{lead:'带燕七到案交差，或获锦衣客引荐，可去顾钦差处当差。',lines:{inn:'顾大人选人，肯接手难事的，他都留心。',guard:'榜上那燕七能带回来，大堂就认你这一份功。'}},
+ ribbon:null,
+ proposal:{title:'桥头未了的争执',lead:'沈砚与苏晚为去留争执。归还银戒能止住寻找，苏晚自己的去向还得问她。',lines:{qing:'沈师兄的戒指和苏姑娘的心事，哪里是同一回事。',gao:'桥头那两位还没谈妥。苏姑娘想走自己的路。'}},
+ su_music:{title:'桥头的竹笛',lead:'苏晚愿意教笛，先听她自己的打算，替她留出选择的余地。',lines:{tea:'苏姑娘的笛子好听，可总有人不肯听她说话。',gao:'苏晚说要唱自己的曲子，我觉得没什么不好。'}},
+ aqing_herbs:{lead:'阿青懂草药。替她照看伤者、偿清药钱，她愿教辨药。',lines:{porter:'脚夫扭了脚，都找阿青敷药。',inn:'阿青一直给伤者敷药，药账却还欠着。'}}
+};
+export function eventsFor(s){return s.chapterVersion===2?EVENTS.filter(e=>CHAPTER_EVENTS[e.id]!==null).map(e=>({...e,...CHAPTER_EVENTS[e.id]})):EVENTS;}
 export function eventCandidates(s,card,speaker){
  const d=deckState(s),st=stageOf(s);
- return EVENTS.filter(e=>e.card===card&&e.stage===st&&e.lines[speaker]&&!d.used[e.id]&&!e.known?.(s)&&(e.requires?.(s)??true));
+ return eventsFor(s).filter(e=>e.card===card&&e.stage===st&&e.lines[speaker]&&!d.used[e.id]&&!e.known?.(s)&&(e.requires?.(s)??true));
 }
 function deliverableEchoes(s,speaker,channel){
  return deckState(s).echoes.filter(e=>!e.delivered&&e.due<=s.day&&e.channel===channel&&(channel==='mail'||e.who===speaker)&&alive(s,e.who));
@@ -152,6 +166,7 @@ export function commitDeal(sim,draw,speaker,pick={}){
  }else if(pick.event){
   const e=pick.event;d.used[e.id]=s.day;
   Object.assign(card,{title:e.title,lead:e.lead,line:pick.line||e.lines[speaker],event:e.id,place:e.place||null});
+  if(s.chapterVersion===2&&e.id==='merchant_pass'&&card.line.includes('赵成')){s.facts.knownNames??={};s.facts.knownNames.gate_merchant='赵成';}
   if(e.heal){s.player.hp=Math.min(100,s.player.hp+e.heal);const n=s.people[speaker];if(n){n.memories.push('替你包扎过伤口。');n.memories=n.memories.slice(-12);n.favorOwed=(n.favorOwed||0)+1;}}
   else d.leads.push({id:card.id,event:e.id,card:e.card,stage:st,title:e.title,lead:e.lead,source:speaker,day:s.day,place:e.place||null,ai:card.ai,reason:card.reason});
  }else{
@@ -163,7 +178,7 @@ export function commitDeal(sim,draw,speaker,pick={}){
 const CRIME=/steal|snatch|pocket|lift|poison|attack|assault|g_steal|theft/;
 const HELP=/gift|care|befriend|return|escort|give|truce|support/;
 export function recordDeed(sim,type,data){
- const s=sim.s,c=chronicle(s);let deed=null;
+ const s=sim.s,c=chronicle(s);if(data?.causalRecorded)return null;let deed=null;
  if(type==='result'&&data&&(data.roll!=null||data.changes?.length)&&data.type!=='conversation'){
   const tag=String(data.actionId||'')+' '+String(data.kind||'');
   deed={title:data.label,text:data.text,target:data.dialogue?.[0]?.id||data.target||null,valence:CRIME.test(tag)?'crime':HELP.test(tag)&&data.success!==false?'help':'deed',witnesses:[]};

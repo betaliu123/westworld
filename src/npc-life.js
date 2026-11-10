@@ -3,6 +3,7 @@ import {custodyStep} from './faction-career.js';
 import {ensurePrince,princeStep} from './prince.js';
 import {environmentStep} from './world-rules.js';
 import {PEOPLE} from './data.js';
+import {visibleBetween} from './npc-awareness.js';
 
 export const GATE_PEOPLE=['gate_guard','gate_relief','relay','gate_merchant','scribe','tea_host','traveler','old_constable'];
 export const GUARDS=['guard','gate_guard','gate_relief'];
@@ -17,8 +18,8 @@ const distance=(a,b)=>a&&b?Math.hypot(a.x-b.x,a.z-b.z):Infinity;
 export function ensureLife(sim,eco){
  ensurePrince(sim,eco);
  sim.s.watch??={holder:'gate_guard',since:eco.s.time};
- for(const p of PEOPLE){const n=sim.s.people[p.id];n.stats??={wit:({bookseller:76,old_constable:80,gate_guard:65,gate_relief:45,tea_host:55,traveler:40}[p.id]??35)};n.faction??=p.faction||'临溪街坊';n.energy??=100;n.trust??=0;n.life??={activity:'idle'};eco.s.hunger[p.id]??=p.id==='elder'?78:p.id==='gate_guard'?40:50;
-  if(p.id==='scribe'){n.faction='赤砂帮';if(!n.inkStockSeeded){eco.create('迷毒散','poison','npc:scribe',{material:'stone',discovered:true});n.inkStockSeeded=true;}}
+ for(const p of PEOPLE){const n=sim.s.people[p.id];n.stats??={wit:({bookseller:76,old_constable:80,beggar:78,gate_guard:65,gate_relief:45,tea_host:55,traveler:40}[p.id]??35)};n.faction??=p.faction||'临溪街坊';n.energy??=100;n.trust??=0;n.life??={activity:'idle'};eco.s.hunger[p.id]??=p.id==='elder'?78:p.id==='gate_guard'?40:50;
+  if(p.id==='scribe'){n.faction=sim.s.chapterVersion===2?'无相门':'赤砂帮';if(!n.inkStockSeeded){eco.create('迷毒散','poison','npc:scribe',{material:'stone',discovered:true});n.inkStockSeeded=true;}}
   if(!n.wardrobeInitialized){n.wardrobeInitialized=true;eco.create(p.id==='traveler'?'绣纹锦袍':GUARDS.includes(p.id)?'值勤外袍':'随身外袍','clothing','npc:'+p.id,{ownerId:p.id,color:p.color,material:'cloth',discovered:true});}
   if(!n.packInitialized){n.packInitialized=true;n.lifeInventoryVersion=1;if(GATE_PEOPLE.includes(p.id))eco.create(GUARDS.includes(p.id)?'值勤腰牌':p.id==='old_constable'?'旧捕快手札':'随身杂物','personal','npc:'+p.id,{discovered:true});if(p.id==='bookseller')eco.create('朱批校样','personal','npc:bookseller',{material:'paper',discovered:true});if(p.id==='gate_merchant')eco.create('赵行商的货包','cargo','npc:gate_merchant',{discovered:true});if(p.id==='tea_host')for(let i=0;i<12;i++)eco.create('包子','food','npc:tea_host',{discovered:true});if(['gate_relief','traveler','old_constable'].includes(p.id))eco.create('干粮','food','npc:'+p.id,{discovered:true});}
   if(!n.lifeInventoryVersion){n.lifeInventoryVersion=1;if(p.id==='gate_merchant'&&!eco.s.items.some(i=>i.type==='cargo'))eco.create('赵行商的货包','cargo','npc:'+p.id,{discovered:true});if(p.id==='tea_host')for(let i=0;i<12;i++)eco.create('包子','food','npc:tea_host',{discovered:true});}
@@ -48,6 +49,13 @@ export function lifeStep(sim,eco,dt,positions){ensureLife(sim,eco);const now=eco
   if(flames){n.life={activity:'escape',target:{x:q.x+3,z:q.z+3}};continue;}
   if(n.stunnedUntil>(sim.s.npcClock||0)||n.awareness&&['fight','warn','flee','investigate','search'].includes(n.awareness.state))continue;
   if(n.sickUntil>now){const index=PEOPLE.findIndex(p=>p.id===id),target=privacySpot(index);if(n.life.activity!=='privacy')sim.emit('npcRoutine',{id,text:'肚子怎么闹起来了……得找个僻静处。'});n.life={activity:'privacy',target};continue;}
+  if(sim.s.chapterVersion===2&&id==='gate_merchant'&&sim.s.facts.gatePassTaken&&!eco.items('npc:gate_merchant').some(i=>i.documentId==='merchant-pass')){
+   n.passAbsentSince??=now;
+   if(!n.passMissingNoticed&&now-n.passAbsentSince>45){n.passMissingNoticed=true;sim.emit('npcRoutine',{id,text:'路引呢？明明还在腰间……得去关上报个失。'});}
+   if(n.passMissingNoticed&&!n.passReported){const guard=GUARDS.map(id=>({id,q:positions[id],n:sim.s.people[id]})).filter(g=>g.q&&g.n.hp>0&&!(g.n.stunnedUntil>sim.s.npcClock)&&!g.n.awareness?.caseOpen).sort((a,b)=>distance(q,a.q)-distance(q,b.q))[0];
+    if(guard){n.life={activity:'report',target:{x:guard.q.x+.8,z:guard.q.z+.8}};if(distance(q,guard.q)<2.5&&visibleBetween(q,guard.q,eco.obstacles||[],eco.s.objects)){n.passReported=true;sim.emit('npcRoutine',{id,text:'差爷，我的路引丢了。名字是赵成，劳您记下，别叫人冒用。'});}continue;}
+   }
+  }
   if(['inspector','gang_boss'].includes(id)){const home=PEOPLE.find(p=>p.id===id);n.life={activity:'duty',target:{x:home.x,z:home.z}};continue;}
   if(!GATE_PEOPLE.includes(id))continue;
   if(id===watch.holder){n.life={activity:'duty',target:POST};continue;}

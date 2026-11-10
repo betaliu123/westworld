@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';
 import {clockText,untilTime} from '../src/world-clock.js';
 
 test('waiting through midnight leaves the gate active and sleeping until dawn restores rest',()=>{

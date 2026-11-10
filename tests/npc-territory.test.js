@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {Simulation,newArrival} from '../src/simulation.js';import {encounterStep,occupied} from '../src/npc-territory.js';
+import test from 'node:test';import assert from 'node:assert/strict';import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';import {encounterStep,occupied} from '../src/npc-territory.js';
 const pos={gang_boss:{x:23,z:-5},guard:{x:23,z:-4}};
 function setup(){let sim=new Simulation(newArrival(),()=>0);sim.s.player.x=23;sim.s.player.z=-5;sim.s.wanted=2;return sim;}
 for(const wins of [true,false])test('territory contest with actual opposing rolls: defender wins '+wins,()=>{

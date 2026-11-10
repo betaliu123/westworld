@@ -194,6 +194,13 @@
       "pitch": -2,
       "direction": "说书有顿挫，日常不说播音腔"
     },
+    "beggar": {
+      "name": "瘸张",
+      "voice_id": "male-qn-jingying",
+      "speed": 0.86,
+      "pitch": -2,
+      "direction": "沙哑自嘲，慢半拍，不哭穷卖惨"
+    },
     "player_male": {
       "name": "少侠（男）",
       "voice_id": "male-qn-qingse",
@@ -207,6 +214,20 @@
       "speed": 0.98,
       "pitch": 0,
       "direction": "只在主角性别明确时启用"
+    },
+    "fu": {
+      "name": "符祥",
+      "voice_id": "male-qn-badao",
+      "speed": 0.96,
+      "pitch": 0,
+      "direction": "笑里催逼，官腔压人，短句，不喊叫"
+    },
+    "qinghe": {
+      "name": "宋青禾",
+      "voice_id": "female-yujie",
+      "speed": 0.9,
+      "pitch": -1,
+      "direction": "年轻明快，有主见，谈去向时认真坚定"
     }
   },
   "performances": [

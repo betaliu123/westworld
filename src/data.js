@@ -1,13 +1,15 @@
 export const ATTR={might:'膂力',agility:'身法',charm:'风仪',wit:'机敏'};
 export const ROLES={wanderer:{name:'江湖游侠',desc:'身法见长，敢走险路',stats:{might:48,agility:68,charm:40,wit:48},style:'rogue'},scholar:{name:'风流书生',desc:'善察人心，以言解围',stats:{might:32,agility:42,charm:72,wit:64},style:'social'},guardian:{name:'仗义刀客',desc:'膂力过人，护弱扶危',stats:{might:74,agility:46,charm:46,wit:38},style:'kind'}};
 export const PEOPLE=[
+ {id:'fu',name:'符祥',title:'应奉局管事 · 催押花石纲',faction:'应奉局',color:0x877346,x:8,z:29,relation:-5},
+ {id:'qinghe',gender:'female',name:'宋青禾',title:'宋茶娘之女',faction:'临溪街坊',color:0x8b5777,x:-11,z:29.5,relation:0},
  {id:'inspector',name:'顾钦差',title:'六扇门 · 奉旨查案',faction:'六扇门',color:0x723e3d,x:10,z:-23,relation:0},
  {id:'gang_boss',name:'梅掌舵',title:'赤砂帮 · 帮主',faction:'赤砂帮',color:0x57352e,x:23,z:-5,relation:0},
  {id:'gate_relief',name:'周伍长',title:'临溪守军 · 轮值伍长',faction:'临溪守军',color:0x4b5965,x:2,z:25,relation:0},
  {id:'tea_host',gender:'female',name:'宋茶娘',title:'城外茶棚掌柜',faction:'临溪街坊',color:0x92734e,x:-11.9,z:27,relation:0},
  {id:'traveler',name:'锦衣客',title:'在茶棚候人的旅客',color:0x657f89,x:-5,z:30,relation:0},
  {id:'old_constable',name:'杜老捕',title:'退役捕快',faction:'临溪县衙',color:0x5c6972,x:-8,z:30,relation:0},
- {id:'gate_guard',faction:'临溪守军',name:'韩校尉',title:'临溪关 · 20级披甲校尉',color:0x34434a,x:0,z:23,relation:-10},
+ {id:'gate_guard',faction:'临溪守军',name:'韩校尉',title:'临溪关 · 披甲校尉',color:0x34434a,x:0,z:23,relation:-10},
  {id:'relay',faction:'临溪驿舍',name:'驿舍补衣人',title:'城外驿舍',color:0x887052,x:-7,z:24,relation:0},
  {id:'gate_merchant',faction:'东溪商帮',name:'赵行商',title:'等饼的行商',color:0x456e77,x:6,z:24,relation:0},
  {id:'scribe',faction:'临溪街坊',name:'刻字人',title:'修印改字',color:0x65605c,x:11,z:24,relation:0},
@@ -24,12 +26,13 @@ export const PEOPLE=[
  {id:'guard',faction:'临溪县衙',name:'陆捕头',title:'临溪镇捕头',color:0x334955,x:10,z:5,relation:0},
  {id:'bookseller',gender:'female',name:'温素笺',title:'墨香斋主人 · 修书辨版',faction:'临溪街坊',color:0x548d84,x:-12,z:6.6,relation:0},
  {id:'inn',gender:'female',name:'柳掌柜',title:'听雨楼掌柜',color:0x74618b,x:-10,z:-7,relation:5},
- {id:'tea',gender:'female',name:'阿青',title:'卖茶姑娘',color:0x678154,x:10,z:-8,relation:0},
- {id:'porter',name:'周大石',title:'脚夫',color:0x9b7858,x:-8,z:10,relation:0},
- {id:'elder',name:'陈先生',title:'说书人',color:0x9e9b83,x:7,z:12,relation:0}
+ {id:'tea',gender:'female',name:'阿青',title:'回春堂学徒 · 照料病母',color:0x678154,x:10,z:-8,relation:0},
+ {id:'porter',name:'周大石',title:'花石纲脚夫',color:0x9b7858,x:5,z:31,relation:0},
+ {id:'elder',name:'陈先生',title:'说书人',color:0x9e9b83,x:7,z:12,relation:0},
+ {id:'beggar',name:'瘸张',title:'城西墙外 · 乞丐窝',color:0x5c5348,x:-14.2,z:23.3,relation:0}
 ];
 export const SCENES={
- gate:{name:'临溪关 · 入城',place:'城外关口',point:[0,24],intro:'十二文，三星嫌疑，一个假名字。校尉横枪拦住去路。',lines:['韩校尉：路引呢？']},
+ gate:{name:'临溪关 · 入城',place:'城外关口',point:[0,24],intro:'黄旗催过关，花石纲占住了城门。符祥在茶棚摊开名册，宋茶娘把女儿护在身后。',lines:['韩校尉：路引呢？']},
  proposal:{name:'桥头 · 一枚银戒',place:'听雨桥头',point:[-1,2],intro:'苏晚明确拒绝今日定亲，沈砚却堵住桥口。敞开的戒盒与一句赊账，让这场求亲变了味。',lines:['沈砚：戒指都赊来了，你让我怎么收场？','苏晚：今天不定亲，把路让开。','高小楼：别起哄，让她自己说。']},
  banquet:{name:'听雨楼 · 喜宴',place:'听雨楼前',point:[-7,-6],intro:'红绸系上长桌，沈砚请来街坊。苏晚坐在人群中，像是有话想说。',lines:['沈砚：今日这杯喜酒，大家都要喝！','苏晚：你也来了……那日多谢你。','高小楼：这桌菜，可等了你半天。']},
  ring_quarrel:{name:'桥头 · 遗失的心意',place:'听雨桥头',point:[-1,2],intro:'找遍桥头仍不见银戒。苏晚问起他为何连戒指都保管不好，沈砚又急又委屈。',lines:['苏晚：怎么连戒指都会弄丢？你答应的事也这样吗？','沈砚：我找遍了，这不是我不在意！','高小楼：先缓口气，别把没说清的话变成伤人的话。']},

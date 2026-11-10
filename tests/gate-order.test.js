@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';
 import {clothesActions,takeClothes} from '../src/clothes-interaction.js';
 import {visitGate,gateView} from '../src/gate-scene.js';
 const move=(s,x,z)=>Object.assign(s.s.player,{x,z});

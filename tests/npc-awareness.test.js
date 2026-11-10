@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';
 import {witnessEvent,advanceAwareness,visibleBetween} from '../src/npc-awareness.js';
 import {socialResolve,socialOptions,socialPreview} from '../src/npc-social.js';
 const setup=()=>new Simulation(newArrival(),()=>0);

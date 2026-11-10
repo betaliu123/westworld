@@ -8,7 +8,7 @@ const PROFILES = {
   lively: {idles:['stand_relaxed','breathe','idle_weightshift'], gesture:.34, chance:.8},
 };
 export function npcMotionProfile(id, kind) {
-  if (['old_constable','elder'].includes(id)) return 'elder';
+  if (['old_constable','elder','beggar'].includes(id)) return 'elder';
   if (['traveler','inspector','gang_boss','scribe'].includes(id) || ['prince','guard'].includes(kind)) return 'reserved';
   if (['gate_merchant','merchant','matchmaker','inn','tea_host','qing'].includes(id)) return 'lively';
   return 'composed';

@@ -4,6 +4,7 @@ export function entryObjective(s){
  const phase=s.event.gate?.phase,bag=s.player.inventory;
  if(['prison','testimony'].includes(phase))return '在牢中等候释放，或听听同牢人的来历。';
  if(['exposed','fight'].includes(phase))return '先应付眼前的盘问。';
+ if(s.chapterVersion===2){if(s.player.disguise==='runner')return s.facts.runnerNameKnown?'衣服与姓名已对上，到当值守卫处应答。':'差役服已穿上，领口的姓名还需问清。';if(bag.includes('他人的路引'))return s.facts.knownNames?.gate_merchant?'已知原主姓名；熟识原主的守卫仍会识破。':'拿到了路引，还不知道原主姓名。';return s.facts.entryRulesKnown?'凭据对姓名；也可请人担保、随役夫过关，或另寻水路。':'黄旗封关，先问问当值守卫。';}
  if(s.player.disguise==='runner')return '已换差役服，可去关口应答。';
  if(bag.includes('改名路引'))return '路引已改名，原官印仍在。去关口应答。';
  if(bag.includes('他人的路引'))return '路引有官印，但名字不是你的。';
@@ -11,6 +12,7 @@ export function entryObjective(s){
 }
 export function syncQuests(s){
  s.quests??={};
+ if(s.chapterVersion===2&&s.facts.taxLedgerLead&&!s.quests.ledger)s.quests.ledger={id:'ledger',title:'花石纲副账',status:'active',source:'旧账房',objective:'取回副账，交给锦衣客或顾钦差核验',note:'只听证言还不够，须带去实物。'};
  const has=s.facts.taxLedgerLead||s.intelligence?.clues?.ledger||s.player.inventory.includes('狱友口供：东街副账');
  if(has&&!s.quests.ledger){s.quests.ledger={id:'ledger',title:'东街副账',status:'active',source:'旧账房证言',day:s.day,objective:'调查东街税课司，寻找未上报的副账',note:'已知去向，尚未取得账本。证言不能代替实证。'};s.trackedQuest??='ledger';}
  return Object.values(s.quests);

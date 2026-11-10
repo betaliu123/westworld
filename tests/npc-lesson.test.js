@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';
 import {Ecosystem} from '../src/ecosystem.js';
 import {contactOptions,contactPreview,contactResolve,learnedFootwork} from '../src/gate-society.js';
 const setup=()=>{const sim=new Simulation(newArrival(),()=>0);return {sim,eco:new Ecosystem(sim,[])};};

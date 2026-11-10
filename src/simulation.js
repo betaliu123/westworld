@@ -1,3 +1,7 @@
+import {initSkills,initCombatants,skill,wornArmor} from './skills.js';
+import {identityCheck} from './arrival-check.js';
+import {nextChapterDay,tickChapter} from './chapter.js';
+import {settleMeaning} from './item-meaning.js';
 import {endPlayerPursuit} from './pursuit.js';
 import {registerCourt} from './court-street.js';
 import {recordRoyalLetter,retirePrinceEscorts} from './prince.js';
@@ -15,9 +19,10 @@ export function newGame(role='wanderer'){
  const r=ROLES[role]||ROLES.wanderer;
  return {version:1,role,day:1,time:0,player:{x:0,z:14,hp:100,energy:100,satiety:85,rested:90,money:80,stats:{...r.stats},xp:0,inventory:[]},people:Object.fromEntries(PEOPLE.map(n=>[n.id,{relation:n.relation,mood:'calm',fear:0,hp:100,memories:[]}])),reputation:0,wanted:0,style:{[r.style]:3},event:{id:1,type:'proposal',depth:0,status:'active'},pending:null,history:[],mail:[],facts:{},sequence:1,broken:[],attacks:0};
 }
-export function newArrival(role='wanderer'){const s=newGame(role);s.player.x=0;s.player.z=27;s.player.money=12;s.wanted=3;s.facts.entryStarted=true;s.event={id:1,type:'gate',status:'active',depth:0,point:[0,24],cast:['gate_guard']};return s;}
+export function legacyArrival(role='wanderer'){const s=newGame(role);s.player.x=0;s.player.z=27;s.player.money=12;s.wanted=3;s.facts.entryStarted=true;s.event={id:1,type:'gate',status:'active',depth:0,point:[0,24],cast:['gate_guard']};return s;}
+export function newArrival(role='wanderer'){const s=newGame(role);s.player.x=0;s.player.z=27;s.version=2;s.chapterVersion=2;initSkills(s.player);initCombatants(s);s.player.money=12;s.wanted=0;s.facts.entryStarted=true;s.event={id:1,type:'gate',status:'active',depth:0,point:[0,24],cast:['gate_guard']};gateState(s.event);return s;}
 export class Simulation{
- constructor(state=newGame(),rng=Math.random){this.s=state;state.time=(state.time||0)%240;state.player.satiety??=85;state.player.rested??=90;if(state.facts.princeLetter)recordRoyalLetter(state);if(state.player.hp<=0)endPlayerPursuit(state);if(state.facts.career==="court")registerCourt(state);retirePrinceEscorts(state);ensureParty(state);migrateLocations(state);this.rng=rng;this.listeners=[];syncQuests(state);this.progressBaseline=progressSnapshot(state);for(const p of PEOPLE)state.people[p.id]??={relation:p.relation,mood:'calm',fear:0,hp:100,memories:[]};if(state.facts.missing&&state.event?.status==='active'&&state.event.type==='banquet'){state.event.type='inquiry';state.event.elapsed=0;state.facts.couple=false;}}
+ constructor(state=newGame(),rng=Math.random){this.s=state;initCombatants(state);state.time=(state.time||0)%240;state.player.satiety??=85;state.player.rested??=90;if(state.facts.princeLetter)recordRoyalLetter(state);if(state.player.hp<=0)endPlayerPursuit(state);if(state.facts.career==="court")registerCourt(state);retirePrinceEscorts(state);ensureParty(state);migrateLocations(state);this.rng=rng;this.listeners=[];syncQuests(state);this.progressBaseline=progressSnapshot(state);for(const p of PEOPLE)state.people[p.id]??={relation:p.relation,mood:'calm',fear:0,hp:100,memories:[]};if(state.facts.missing&&state.event?.status==='active'&&state.event.type==='banquet'){state.event.type='inquiry';state.event.elapsed=0;state.facts.couple=false;}}
  emit(type,data){if(['result','streetResult','npc','sandbox','entry','day','violence','save','actionWitnessed','fieldCheck'].includes(type))observeProgress(this,type==='entry'?(data==='prison'?'刑满出狱：三日刑期结算':'进入城内'):type==='day'?'休息与日程推进':type==='violence'?'发生交战':type==='save'?'行动与身体状态变化':data?.label||data?.text||'大世界行动');for(const fn of this.listeners)fn(type,data);}
  save(){this.emit('save',this.s);}
  banquetOccurred(){return !!this.s.facts.couple||this.s.facts.banquetDay!=null||this.s.history.some(h=>h.type==='banquet');}
@@ -29,7 +34,7 @@ export class Simulation{
  get event(){return this.s.event?.status==='active'?this.s.event:null;}
  actions(){return isGate(this.event)?gateActions(this):isProposal(this.event)?proposalActions(this):hasContinuation(this)?continuationActions(this):this.event?actionsFor(this.event.type,this.s.player.inventory.includes('ring')):[];}
  sceneView(){return isGate(this.event)?gateView(this):isProposal(this.event)?proposalView(this):hasContinuation(this)?continuationView(this):null;}
- preview(a){const p=this.s.player,score=p.stats[a.stat]||0,relation=isGate(this.event)?Math.round((this.s.people[this.event.cast[0]]?.relation||0)/10):Math.round((this.s.people.su.relation+this.s.people.shen.relation)/10),chance=a.stat?clamp(score+40-a.difficulty+relation+growthBonus(p,a.stat)+(this.event?.type==='favor'&&this.s.facts.extortionLead?12:0)+(isProposal(this.event)&&a.id==='p_take_ready'&&growthBonus(p,'agility')?8:0),5,95):100;return {chance,score,relation,bonus:growthBonus(p,a.stat),blocked:p.money<(a.cost||0),certain:!a.stat};}
+ preview(a){if(this.s.chapterVersion===2&&['g_present','g_order'].includes(a.id))return identityCheck(this.s,{uniform:a.id==='g_order'});const p=this.s.player,score=p.stats[a.stat]||0,relation=isGate(this.event)?Math.round((this.s.people[this.event.cast[0]]?.relation||0)/10):Math.round((this.s.people.su.relation+this.s.people.shen.relation)/10),chance=a.stat?clamp(score+40-a.difficulty+relation+growthBonus(p,a.stat)+(this.event?.type==='favor'&&this.s.facts.extortionLead?12:0)+(isProposal(this.event)&&a.id==='p_take_ready'&&growthBonus(p,'agility')?8:0),5,95):100;return {chance,score,relation,bonus:growthBonus(p,a.stat),blocked:p.money<(a.cost||0),certain:!a.stat};}
  recommend(){return this.actions().map(a=>({...a,weight:(a.tags||[]).reduce((n,t)=>n+(this.s.style[t]||0)*5,0)+(a.stat?(this.s.player.stats[a.stat]-a.difficulty)*.25:0)})).sort((a,b)=>b.weight-a.weight).filter((a,i,all)=>i===all.findIndex(b=>b.kind===a.kind)).slice(0,5);}
  relation(id,delta){const p=this.s.people[id];p.relation=clamp(p.relation+delta,-100,100);}
  resolve(id,actionId,evidence=null){
@@ -117,6 +122,7 @@ export class Simulation{
  }
  direct(id,type,reason){const p=this.s.pending;if(!p||p.id!==id||!p.allowed?.includes(type)||(type==='banquet'&&this.banquetOccurred()))return false;p.type=type;p.directorReason=String(reason||'').slice(0,180);this.save();return true;}
  advanceDay(natural=false){
+ if(this.s.chapterVersion===2){this.s.day++;this.s.time=0;nextChapterDay(this);this.save();return;}
  if(isGate(this.event)){
   if(natural){this.s.time=0;this.s.day++;this.emit('day',this.s.day);this.save();}
   return;
@@ -134,6 +140,7 @@ export class Simulation{
  }
 
  tickStory(dt){
+ if(this.s.chapterVersion===2){tickChapter(this,dt);if(isGate(this.event))tickGate(this,dt);return;}
  const s=this.s,e=this.event;if(!e)return;if(isGate(e)){tickGate(this,dt);return;}
  if(isProposal(e)){const q=proposalState(e);q.idle=(q.idle||0)+dt;if(q.phase==='duel'){q.duelElapsed=(q.duelElapsed||0)+dt;if(s.player.hp<=25||Math.hypot(s.player.x+1,s.player.z-2)>7||q.duelElapsed>60)finishProposalDuel(this,false);}if(q.idle>150&&Math.hypot(s.player.x+1,s.player.z-2)>8){e.status='resolved';s.pending={id:++s.sequence,type:'confidence',depth:e.depth+1,due:s.day+1,allowed:['confidence']};s.people.shen.mood='calm';this.emit('scene',null);this.save();}return;}
  e.elapsed=(e.elapsed||0)+dt;
@@ -163,6 +170,10 @@ export class Simulation{
  else if(/(一起|帮|再|继续).*(找|寻找)/.test(text)&&missing)intent='search';
  else if(/别吵|冷静|消消气|好好说|别怪|不是故意/.test(text))intent='calm';
  if(intent==='return'&&/不|别|如果|假如|要是|[？?]|能否|是否/.test(text))intent='chat';
+ if(intent==='return'&&s.chapterVersion===2&&id==='shen'&&hasRing){
+ const item=s.ecosystem?.items.find(i=>i.location==='player'&&i.type==='ring')||{id:'legacy-ring',name:'银戒',type:'ring',location:'player'};
+ const settled=settleMeaning(this,null,id,item,'truth');const r={...settled,type:'npc',presentation:'dialogue',actionId:'reply-return',label:text,motion:'talk',roll:null,dialogue:[{id,text:settled.text}]};this.emit('result',r);return r;
+ }
  if(intent==='return'){
   if(id!=='shen'){line='这枚戒指是沈砚的，请你亲手交给他吧。';outcome='对方请你把戒指直接交给沈砚。银戒仍在原处。';success=false;}
   else if(!hasRing){line='少侠，你手里并没有那枚戒指啊。';outcome='你提出归还，但行囊里没有银戒，没有物品发生转移。';success=false;}
@@ -211,10 +222,10 @@ export class Simulation{
  attack(id,witnesses=[]){
  const s=this.s,n=s.people[id];if(!n||n.hp<=0)return;
  const incident={type:'assault',target:id,x:s.player.x,z:s.player.z};this.emit('worldIncident',incident);witnesses=incident.witnesses??witnesses;
- if(isGate(this.event)&&id==='gate_guard'){if(!n.awareness&&gateState(this.event).phase!=='fight')resolveGate(this,this.event.id,'g_charge');n.hp=Math.max(1,n.hp-1);this.save();return;}
+ if(this.s.chapterVersion!==2&&isGate(this.event)&&id==='gate_guard'){if(!n.awareness&&gateState(this.event).phase!=='fight')resolveGate(this,this.event.id,'g_charge');n.hp=Math.max(1,n.hp-1);this.save();return;}
  if(id==='shen'&&isProposal(this.event)&&proposalState(this.event).phase==='duel'){n.hp=Math.max(1,n.hp-combatDamage(s.player));if(n.hp<=50)finishProposalDuel(this,true);this.save();return;}
- if(s.player.lessons?.boxing&&!s.player.lessons.shortStrike){s.player.lessons.shortStrike=true;this.emit('sandbox',{text:'你照图收肘，短打终于使顺了。近战伤害 +3。',dialogue:[]});}const first=n.hp>0; n.hp=Math.max(0,n.hp-combatDamage(s.player));
- if(first&&n.hp===0)earnGrowth(s.player,'might',12,`combat:${s.day}:${id}`);n.fear=18;n.mood=n.hp<=0?'down':'angry';if(!n.awareness){this.relation(id,-6);s.wanted=clamp(s.wanted+1,0,9);}s.attacks++;
+ if(s.chapterVersion!==2&&s.player.lessons?.boxing&&!s.player.lessons.shortStrike){s.player.lessons.shortStrike=true;this.emit('sandbox',{text:'你照图收肘，短打终于使顺了。近战伤害 +3。',dialogue:[]});}const first=n.hp>0; n.hp=Math.max(0,n.hp-combatDamage(s.player,s.chapterVersion===2?wornArmor(s,id):0));
+ if(first&&n.hp===0&&(s.chapterVersion!==2||skill(n,'combat').tier>=skill(s.player,'combat').tier))earnGrowth(s.player,'might',12,s.chapterVersion===2?`combat:${id}`:`combat:${s.day}:${id}`);n.fear=18;n.mood=n.hp<=0?'down':'angry';if(!n.awareness){this.relation(id,-6);s.wanted=clamp(s.wanted+1,0,9);}s.attacks++;
  for(const w of witnesses){if(w!==id&&s.people[w]){s.people[w].fear=12;s.people[w].mood=w==='guard'?'angry':'afraid';}}
  n.memories.push('你曾在街上对我动手。');this.emit('violence',{id,down:n.hp<=0});
  if(['shen','su'].includes(id)&&isProposal(this.event)){const e=this.event;e.status='resolved';s.pending={id:++s.sequence,type:'dispute',depth:e.depth+1,due:s.day+1,allowed:['dispute']};this.emit('scene',null);}

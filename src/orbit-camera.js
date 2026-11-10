@@ -30,6 +30,20 @@ export function clearCameraPosition(focus, desired, obstacles, states = {}) {
   return ray.at(distance, new T.Vector3());
 }
 
+// Prefer a clear side of the speaker rather than pushing the lens into their face.
+export function clearDialogueCamera(focus, desired, obstacles, states = {}) {
+  const offset = desired.clone().sub(focus), axis = new T.Vector3(0, 1, 0);
+  let best = clearCameraPosition(focus, desired, obstacles, states);
+  let score = best.distanceTo(focus);
+  for (const angle of [Math.PI / 4, -Math.PI / 4, Math.PI / 2, -Math.PI / 2, Math.PI]) {
+    const candidate = focus.clone().add(offset.clone().applyAxisAngle(axis, angle));
+    const safe = clearCameraPosition(focus, candidate, obstacles, states);
+    const candidateScore = safe.distanceTo(focus) - Math.abs(angle) * .12;
+    if (candidateScore > score + .15) { best = safe; score = candidateScore; }
+  }
+  return best;
+}
+
 export function followOrbit(camera, focus, desired, obstacles, states, dt, fov) {
   const safe = clearCameraPosition(focus, desired, obstacles, states);
   // Retract promptly, recover gently. Clamp again after smoothing so the camera

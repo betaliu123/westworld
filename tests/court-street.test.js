@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';import {Ecosystem} from '../src/ecosystem.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';import {Ecosystem} from '../src/ecosystem.js';
 import {contactResolve} from '../src/gate-society.js';import {knownOrganization} from '../src/factions.js';import {arrestWitness} from '../src/court-street.js';
 for(const solved of [true,false])test('old officer save and competitive appointment: delivered='+solved,()=>{
  const s=newArrival();s.facts.career='court';const sim=new Simulation(s,()=>0),eco=new Ecosystem(sim,[]);

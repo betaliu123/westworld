@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';
 import {Ecosystem} from '../src/ecosystem.js';
 import {teaStep,TEA_CUPS,TEAPOT} from '../src/tea-service.js';
 import {inspectFood,consumeFood,SEATS} from '../src/npc-life.js';

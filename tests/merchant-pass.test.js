@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';import {Ecosystem} from '../src/ecosystem.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';import {Ecosystem} from '../src/ecosystem.js';
 import {visitGate,gateActions} from '../src/gate-scene.js';import {updateMerchantPass} from '../src/merchant-pass.js';
 function setup(state=newArrival()){const sim=new Simulation(state,()=>0),eco=new Ecosystem(sim,[]);eco.positions.gate_merchant={x:sim.s.player.x,z:sim.s.player.z};sim.s.player.stealing=sim.s.player.crouched=true;return {sim,eco};}
 test('route document is in merchant inventory before dialogue and after unrelated scenes',()=>{for(const phase of ['gate','relay','finished']){const state=newArrival();if(phase==='finished')state.event={id:20,type:'proposal',status:'active',depth:0};else state.event.gate={phase,attempts:[],facts:{}};const {sim,eco}=setup(state),pass=eco.items('npc:gate_merchant').find(i=>i.documentId==='merchant-pass');assert.ok(pass);eco.stealNpc('gate_merchant',pass.id);assert.equal(pass.location,'player');assert.ok(sim.s.player.inventory.includes('他人的路引'));assert.equal(sim.s.facts.gatePassTaken,true);assert.ok(!eco.items('npc:gate_merchant').includes(pass));assert.match(eco.stealNpc('gate_merchant',pass.id),/不在/);}});

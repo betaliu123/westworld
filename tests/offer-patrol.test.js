@@ -1,5 +1,5 @@
 ﻿import test from 'node:test';import assert from 'node:assert/strict';
-import {Simulation,newArrival} from '../src/simulation.js';import {Ecosystem} from '../src/ecosystem.js';
+import {Simulation,legacyArrival as newArrival} from '../src/simulation.js';import {Ecosystem} from '../src/ecosystem.js';
 import {contactResolve,contactFollowups,contactPreview} from '../src/gate-society.js';
 import {lifeStep,POST} from '../src/npc-life.js';
 test('offer immediately branches into purchase or decline and disappears when stock leaves',()=>{
