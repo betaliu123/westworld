@@ -1,0 +1,11 @@
+GET /v2/openapi/task/00000000-0000-0000-0000-000000000000 -> 400
+{"code":"task_not_exist","message":"task_not_exist","data":null}
+
+POST /v2/openapi/upload -> 400
+{"code":1004,"message":"One or more of your parameter is invalid","suggestion":"Refer to the API documentation for parameter requirements"}
+
+POST /v2/openapi/task -> 400
+{"code":"fail_to_fetch_task","message":"{\"code\":1004,\"message\":\"One or more of your parameter is invalid\",\"suggestion\":\"Refer to the API documentation for parameter requirements\"}","data":null}
+
+POST /v1/videos -> 400
+{"code":"invalid_api_platform","message":"invalid api platform: 7777","data":null}

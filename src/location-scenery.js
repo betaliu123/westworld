@@ -10,9 +10,9 @@ export function buildLocationScenery(world,{box,cyl,textSprite}){
   for(const part of [{x:-3.5,z:0,w:.25,d:5.8},{x:3.5,z:0,w:.25,d:5.8},{x:0,z:-2.8,w:7,d:.25}]){box(g,part.w,3.6,part.d,site.wall,part.x,1.8,part.z);world.obstacles.push({id:site.id+':'+part.x+':'+part.z,x:site.x+part.x,z:site.z+part.z,w:part.w,d:part.d});}
   for(const x of [-3,3]){cyl(g,.16,.19,3.6,site.trim,x,1.8,2.6);world.lantern(g,x,2.6,2.7);}
   const roof=new T.Group();g.add(roof);for(let i=0;i<4;i++)box(roof,8-i*.35,.18,6.8-i*1.5,site.trim,0,3.9+i*.2,0);world.factionRoofs??=[];world.factionRoofs.push({roof,x:site.x,z:site.z});
-  box(g,7.5,.35,.8,site.trim,0,3.7,2.7);box(g,4,.6,.18,0x292f2c,0,3.1,2.8);const sign=textSprite(site.name,'#efd496',27);sign.position.set(0,3.15,2.95);g.add(sign);
+  box(g,7.5,.35,.8,site.trim,0,3.7,2.7);box(g,4,.6,.18,0x292f2c,0,3.1,2.8);const sign=textSprite(site.name,'#efd496',27,'sign');sign.position.set(0,3.15,2.95);g.add(sign);
   box(g,2.4,.16,.85,0x5f4233,0,.9,-1.3);for(const x of [-1,1])box(g,.13,.9,.65,0x4b352a,x,.45,-1.3);
-  if(site.id==='court-hall'){const plaque=textSprite('明镜高悬','#e8c68b',30);plaque.position.set(0,2.8,-2.55);g.add(plaque);for(const x of [-2.4,2.4])box(g,.35,2,.16,0x8a3b32,x,1.4,-2.5);}
+  if(site.id==='court-hall'){const plaque=textSprite('明镜高悬','#e8c68b',30,'sign');plaque.position.set(0,2.8,-2.55);g.add(plaque);for(const x of [-2.4,2.4])box(g,.35,2,.16,0x8a3b32,x,1.4,-2.5);}
   else{for(const x of [-2.4,2.4]){box(g,.7,.7,.7,0x785838,x,.35,-1.4);cyl(g,.3,.24,.65,0x514735,x,.35,.5);}const flag=box(g,.8,1.3,.06,0x8f3932,2.8,2,-2.5);}
  }
  const hall=new T.Group();hall.position.set(22,0,5);world.scene.add(hall);
@@ -21,7 +21,7 @@ export function buildLocationScenery(world,{box,cyl,textSprite}){
  box(hall,2.1,2.4,.09,0x392a28,0,1.3,3.04);for(const x of [-2.4,2.4]){box(hall,.16,5.6,.16,0x683129,x,2.8,3.12);for(const y of [1.7,4.5]){box(hall,1.2,1.1,.08,0xd6b779,x,y,3.08);for(const d of [-.4,0,.4])box(hall,.055,1.1,.1,0x612c28,x+d,y,3.14);}}
  box(hall,5.8,.16,1.1,0x7e4234,0,3.25,3.3);for(const x of [-2.8,-2,-1,0,1,2,2.8])box(hall,.08,.85,.08,0xc18c58,x,3.7,3.8);box(hall,5.8,.09,.1,0xc18c58,0,4.1,3.8);
  for(const x of [-2.8,2.8])world.lantern(hall,x,2.8,3.4);for(const x of [-3.1,3.1])box(hall,.22,1.8,.06,0xc54345,x,2,3.2);
- const sign=textSprite('绛 云 楼');sign.position.set(0,2.75,3.2);hall.add(sign);world.obstacles.push({id:'ribbon-house',x:22,z:5,w:6.7,d:6});
+ const sign=textSprite('绛 云 楼','#eee3be',36,'sign');sign.position.set(0,2.75,3.2);hall.add(sign);world.obstacles.push({id:'ribbon-house',x:22,z:5,w:6.7,d:6});
  box(world.scene,7.6,.025,5.5,0xb49780,22,.015,11.2);for(const x of [18.5,25.5]){cyl(world.scene,.08,.1,2.6,0x733d32,x,1.3,10);world.lantern(world.scene,x,2.3,10);}
  const prison=new T.Group();prison.position.set(22,0,-22);world.scene.add(prison);box(prison,8,.16,9,0x646966,0,-.03,.7);
  const wall=(id,x,z,w,d)=>{box(prison,w,3.7,d,0x555e5a,x,1.85,z);world.obstacles.push({id,x:22+x,z:-22+z,w,d});};wall('jail-west',-3.5,0,.45,7);wall('jail-east',3.5,0,.45,7);wall('jail-back',0,-3.5,7.4,.45);

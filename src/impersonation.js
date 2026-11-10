@@ -11,4 +11,4 @@ export function patrolStep(sim,eco,dt){const i=outfit(sim),p=sim.s.player;if(!i|
  eco.log(success?'盘查暂且过关，久留仍有暴露风险。':'冒名身份被识破，嫌疑 +2。',[{id,text:success?'下回带齐凭据。走吧。':'姓名来历对不上！留下说清楚。'}]);
 }
 
-export function dressActor(actor,baseColor,color){if(!actor.userData.clothingMeshes){actor.userData.clothingMeshes=[];actor.traverse(m=>{if(m.isMesh&&m.material?.color?.getHex()===baseColor){m.material=m.material.clone();actor.userData.clothingMeshes.push(m);}});}for(const m of actor.userData.clothingMeshes)m.material.color.setHex(color);}
+export function dressActor(actor,baseColor,color){if(!actor.userData.clothingMeshes){actor.userData.clothingMeshes=[];actor.traverse(m=>{if(m.isMesh&&m.material?.color?.getHex()===baseColor){m.material=m.material.clone();actor.userData.clothingMeshes.push(m);}});}for(const m of actor.userData.clothingMeshes)m.material.color.setHex(color);actor.userData.outfitColor=color;}

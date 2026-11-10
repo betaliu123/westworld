@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>江湖有回声 · 界面样张</title>
+<link rel="stylesheet" href="/vendor/fonts/fonts.css">
+<link rel="stylesheet" href="/ink-ui.css">
+<style>
+  body{margin:0;background:var(--grain),var(--fibre),var(--paper);color:var(--ink-1);font:var(--fs-2)/1.75 var(--font-body)}
+  main{width:1520px;margin:0 auto;padding:56px 0 80px}
+  section{margin-top:64px}
+  .label{font:var(--fs-1)/1 var(--font-data);color:var(--ink-3);letter-spacing:.2em;margin-bottom:18px}
+  .row{display:flex;gap:56px;align-items:flex-end;flex-wrap:wrap}
+  .hero{display:flex;gap:120px;align-items:center}
+  .hero .t-title{font:400 96px/1 var(--font-title);letter-spacing:.14em;color:var(--ink-0)}
+  .hero .alt{font-family:'Jianghu Title Alt',KaiTi,serif}
+  .swatch{width:132px}.swatch i{display:block;height:84px;border-radius:2px;box-shadow:inset 0 0 0 1px #15140f14}
+  .swatch b{display:block;font:400 var(--fs-4)/1.6 var(--font-title);margin-top:8px}.swatch small{font:var(--fs-1) var(--font-data);color:var(--ink-3)}
+  .icons{display:grid;grid-template-columns:repeat(8,1fr);gap:28px 0;color:var(--ink-1)}
+  .icons figure{margin:0;text-align:center}.icons figcaption{font:var(--fs-1) var(--font-body);color:var(--ink-3);margin-top:6px}
+  .type p{margin:0 0 6px}
+  /* In-scene mock */
+  .scene{position:relative;width:1520px;height:1008px;background:url(scene.png) center/cover;overflow:hidden}
+  .scene::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 60%,#15140f30)}
+  .quest{position:absolute;left:40px;top:34px;opacity:.55}
+  .quest .ink-float{font-size:var(--fs-2)}
+  .quest b{font:400 var(--fs-4)/1 var(--font-title);color:var(--ink-0);margin-right:12px;letter-spacing:.1em}
+  .tools{position:absolute;right:40px;top:30px;display:flex;gap:22px;color:var(--ink-1);filter:drop-shadow(0 0 3px var(--paper)) drop-shadow(0 0 8px var(--paper))}
+  .tools .dot{position:relative}.tools .dot::after{content:'';position:absolute;right:-2px;top:-2px;width:7px;height:7px;border-radius:50%;background:var(--cinnabar)}
+  .vitals{position:absolute;left:40px;bottom:44px;display:grid;gap:10px}
+  .prompt{position:absolute;left:776px;top:350px}
+  .say .who{font:400 var(--fs-4)/1 var(--font-title);color:var(--ink-0);letter-spacing:.12em}
+  .npc-tag{position:absolute;left:728px;top:290px}
+  .say{position:absolute;left:calc(50% - 430px);bottom:120px;width:860px;display:flex;gap:22px;align-items:flex-start}
+  .say p{margin:6px 0 0;font-size:var(--fs-3);line-height:1.8}
+  .feed{position:absolute;left:40px;bottom:110px;display:grid;gap:4px}
+  /* Panels */
+  .panels{display:grid;grid-template-columns:600px 780px;gap:80px;align-items:start;padding:40px 30px;background:url(scene.png) center/cover;position:relative}
+  .panels::before{content:'';position:absolute;inset:0;background:#ece3cf8c;backdrop-filter:blur(1px)}
+  .panels>*{position:relative}
+  .result{text-align:left}
+  .result .head{display:flex;align-items:center;gap:18px}
+  .result .big{font:400 var(--fs-6)/1 var(--font-title);color:var(--ink-0);letter-spacing:.16em}
+  .result p{font-size:var(--fs-3);margin:14px 0}
+  .rewards{display:flex;gap:26px}
+  .foreshadow{color:var(--ink-3);font-size:var(--fs-2)}
+  .actions{display:flex;justify-content:flex-end;gap:22px;margin-top:6px}
+  .check .opt{display:grid;grid-template-columns:30px 1fr 76px 96px 70px;align-items:center;gap:14px;padding:12px 4px;cursor:pointer}
+  .check .opt+.opt{border-top:0}
+  .check .opt:hover{background:linear-gradient(90deg,#15140f10,transparent)}
+  .check .act{font-size:var(--fs-3);color:var(--ink-0)}
+  .check .ability{font:600 var(--fs-1)/1 var(--font-data);color:var(--ink-2);letter-spacing:.1em}
+  .check .rate{font:600 var(--fs-4)/1 var(--font-data);color:var(--ink-0);text-align:right}
+  .check .diff{font-size:var(--fs-1);color:var(--ink-3);text-align:right}
+  .check .ink-bar{width:96px;height:9px}
+  .check .missing{color:var(--cinnabar);font-size:var(--fs-1)}
+  .night{margin-top:28px;height:200px;position:relative;background:url(scene-night.png) center 62%/cover}
+  .night>*{position:absolute}
+</style>
+<body>
+<main>
+  <section class="hero" style="margin-top:0">
+    <div><div class="label">题字 · 志莽行书（推荐）</div><div class="t-title">江湖有回声</div></div>
+    <div><div class="label">题字 · 马善政毛笔楷书（备选）</div><div class="t-title alt">江湖有回声</div></div>
+    <span class="ink-seal stamp" style="font-size:44px">临溪</span>
+  </section>
+
+  <section>
+    <div class="label">色 · 墨分五色，一点朱砂</div>
+    <div class="row" id="palette"></div>
+  </section>
+
+  <section class="type">
+    <div class="label">字 · 题字 / 正文 / 数据</div>
+    <p class="ink-title" style="font-size:44px">临溪关 · 北街 · 绛云楼</p>
+    <p style="font-size:var(--fs-4)">韩校尉翻开路引，指腹在朱印上停了一停：“这印是县里的，人却不像。”</p>
+    <p style="font-size:var(--fs-2);color:var(--ink-2)">三日后刑满，你从城内街口重新开始。桥头那边，似乎还有一场风波。</p>
+    <p style="font:600 var(--fs-4) var(--font-data)">气血 86 · 体力 42 · 钱 1,280 文 · 成功率 65%</p>
+  </section>
+
+  <section>
+    <div class="label">图 · 笔意图标（起笔重、收笔轻；朱点为状态）</div>
+    <div class="icons" id="icons"></div>
+  </section>
+
+  <section>
+    <div class="label">景 · 探索清屏：只留墨条、交互、近处名签；任务与见闻淡出</div>
+    <div class="scene">
+      <div class="quest"><span class="ink-float"><b>入城</b>路引须有官印，姓名须对得上</span></div>
+      <nav class="tools" id="tools"></nav>
+      <div class="npc-tag ink-tag ink-in">赵行商</div>
+      <div class="say ink-wash ink-in">
+        <span class="ink-seal small">赵</span>
+        <div><span class="who">赵行商</span><p>“慢着，刀尖离摊子远些。这一担是给县尊贺寿的，磕坏了，你我都担不起。”</p></div>
+      </div>
+      <div class="prompt ink-float"><span class="ink-key">E</span>交谈</div>
+      <div class="feed">
+        <span class="ink-chip up" id="feed1"></span>
+      </div>
+      <div class="vitals">
+        <div class="ink-bar hp" style="--v:.86" title="气血 86"></div>
+        <div class="ink-bar" style="--v:.42" title="体力 42"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="label">卷 · 结算与检定（同一张纸笺；结论一字定调，后果一句话）</div>
+    <div class="panels">
+      <article class="ink-paper result ink-unroll">
+        <div class="head"><span class="big">出狱</span><span class="ink-seal hollow small stamp">释</span></div>
+        <div class="ink-rule"></div>
+        <p>你没有追问旧案。三日后刑满，从城内街口重新开始。</p>
+        <div class="rewards" id="rewards"></div>
+        <div class="ink-rule"></div>
+        <p class="foreshadow">入城之后，桥头还有一场风波。</p>
+        <div class="actions"><button class="ink-btn primary">继续</button></div>
+      </article>
+
+      <article class="ink-paper check ink-unroll">
+        <h2>翻墙入城</h2>
+        <div class="ink-rule"></div>
+        <div id="opts"></div>
+        <div class="ink-rule"></div>
+        <div class="actions"><button class="ink-btn">作罢</button></div>
+      </article>
+    </div>
+    <div class="night ink-night">
+      <div class="ink-float" style="left:40px;top:30px;font-size:var(--fs-2)"><span class="ink-key">Z</span>蹲行</div>
+      <div class="ink-float" style="left:220px;top:30px;font-size:var(--fs-2)"><span class="ink-key">E</span>偷取</div>
+      <div class="ink-float" style="left:470px;top:84px;display:flex;align-items:center;gap:16px"><span class="ink-seal small">更</span>“三更天了，城门那边换岗。”</div>
+      <div class="ink-float" style="left:1180px;top:60px;font-size:var(--fs-1);opacity:.7">夜色 · 字改纸色、晕边改墨</div>
+    </div>
+  </section>
+</main>
+<script type="module">
+  import {inkIcon, INK_ICONS, ensureInkDefs} from '/src/ink-icons.js';
+  ensureInkDefs();
+  const $ = id => document.getElementById(id);
+  const palette = [['--paper','生宣'],['--paper-deep','旧纸'],['--ink-0','焦墨'],['--ink-1','浓墨'],['--ink-2','重墨'],['--ink-3','淡墨'],['--ink-4','清墨'],['--cinnabar','朱砂'],['--malachite','石绿'],['--ochre','赭石'],['--azurite','石青']];
+  const css = getComputedStyle(document.documentElement);
+  $('palette').innerHTML = palette.map(([v, n]) => `<div class="swatch"><i style="background:var(${v})"></i><b>${n}</b><small>${css.getPropertyValue(v).trim()}</small></div>`).join('');
+  const names = {sword:'拔刀',bundle:'行囊',mirror:'人物',letter:'传书',tea:'歇息',bell:'声音',scroll:'地图',hand:'交互',foot:'足迹',crouch:'蹲行',lots:'检定',coin:'钱',eye:'探查',book:'见闻',close:'关闭'};
+  $('icons').innerHTML = Object.keys(INK_ICONS).map(k => `<figure>${inkIcon(k, {size: 48, label: names[k]})}<figcaption>${names[k]}</figcaption></figure>`).join('');
+  $('tools').innerHTML = ['bundle','mirror','letter','tea','scroll'].map((k, i) => `<span class="${k === 'letter' ? 'dot' : ''}" title="${names[k]}">${inkIcon(k, {size: 30, label: names[k]})}</span>`).join('');
+  $('feed1').innerHTML = inkIcon('bundle', {size: 20}) + '+2';
+  $('rewards').innerHTML = `<span class="ink-chip up" title="战斗历练 +18">${inkIcon('sword', {size: 22})}+18</span><span class="ink-chip down" title="风仪 −5">${inkIcon('mirror', {size: 22})}−5</span>`;
+  const opts = [
+    ['foot', '踩着柴垛翻过去', '身法', .65, '稍难'],
+    ['hand', '攀着老槐树枝过墙', '膂力', .42, '难'],
+    ['eye', '等巡夜的走远再动', '机敏', .81, '易'],
+  ];
+  $('opts').innerHTML = opts.map(([icon, act, ability, rate, diff]) =>
+    `<div class="opt">${inkIcon(icon, {size: 26})}<span class="act">${act}</span><span class="ability">${ability}</span>`
+    + `<span><span class="rate" style="display:block;margin-bottom:4px">${Math.round(rate * 100)}%</span><span class="ink-bar" style="--v:${rate}"></span></span><span class="diff">${diff}</span></div>`).join('');
+</script>
+</body>
+</html>

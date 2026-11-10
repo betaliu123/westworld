@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "After animation next-stage choices open automatically",
+    "Reload restores the middle of the conversation",
+    "Completion grants a visible social skill and evidence item",
+    "Failed theft immediately offers a recovery, without advancing the day",
+    "Sparring advances after three real canvas attacks",
+    "No browser runtime errors"
+  ],
+  "errors": []
+}

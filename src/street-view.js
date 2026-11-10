@@ -1,7 +1,8 @@
+import {npcArriveStep as arriveStep} from './npc-locomotion.js';
 import * as T from '../vendor/three.module.js';
 import {StreetStories} from './street-stories.js';
 import {PEOPLE,ATTR} from './data.js';
-import {turnToward,arriveStep} from './interaction.js';
+import {turnToward} from './interaction.js';
 import {DRAMAS,dramaTarget} from './street-dramas.js';
 export function streetView(world,getSim,notify,escape,hud){
  let sim=getSim(),director=new StreetStories(sim),last='',refresh=0,lastBurst='',cargoId=null;
@@ -38,26 +39,52 @@ export function streetView(world,getSim,notify,escape,hud){
   const positions=Object.fromEntries([...world.npcs].map(([key,n])=>[key,{x:n.actor.position.x,z:n.actor.position.z}])),target=dramaTarget(e,t,id,positions);
   if(e.type==='duel'&&e.stage==='决胜'&&id===e.champion)target.point=[world.hero.position.x,world.hero.position.z];
   let route=routes.get(id);if(!route||route.event!==e.id||route.until<world.t){const proxy={hero:n.actor,collides:world.collides.bind(world)};world.routeTo.call(proxy,target.point,.6);route={event:e.id,until:world.t+.8,path:proxy.auto||[]};routes.set(id,route);}
-  if(route.path.length){const [x,z]=route.path[0],dx=x-p.x,dz=z-p.z,d=Math.hypot(dx,dz);if(d<.25)route.path.shift();else{n.actor.rotation.y=turnToward(n.actor.rotation.y,Math.atan2(dx,dz),dt);const step=Math.min(d,target.speed*dt);world.move(n.actor,dx/d*step,dz/d*step);}}
-  else{const dx=target.point[0]-p.x,dz=target.point[1]-p.z,d=Math.hypot(dx,dz);if(d>.2){n.actor.rotation.y=turnToward(n.actor.rotation.y,Math.atan2(dx,dz),dt);const step=Math.min(d,target.speed*dt);world.move(n.actor,dx/d*step,dz/d*step);}else{const other=world.npcs.get(e.cast[index===0?1:0]).actor.position;n.actor.rotation.y=turnToward(n.actor.rotation.y,Math.atan2(other.x-p.x,other.z-p.z),dt);}}return true;
+  if(route.path.length){const [x,z]=route.path[0],dx=x-p.x,dz=z-p.z,d=Math.hypot(dx,dz);if(d<.25)route.path.shift();else{n.actor.rotation.y=turnToward(n.actor.rotation.y,Math.atan2(dx,dz),dt);const step=arriveStep(d,target.speed,dt,.18)*Math.max(0,Math.cos(Math.atan2(dx,dz)-n.actor.rotation.y));world.move(n.actor,dx/d*step,dz/d*step);}}
+  else{const dx=target.point[0]-p.x,dz=target.point[1]-p.z,d=Math.hypot(dx,dz);if(d>.2){n.actor.rotation.y=turnToward(n.actor.rotation.y,Math.atan2(dx,dz),dt);const step=arriveStep(d,target.speed,dt,.18)*Math.max(0,Math.cos(Math.atan2(dx,dz)-n.actor.rotation.y));world.move(n.actor,dx/d*step,dz/d*step);}else{const other=world.npcs.get(e.cast[index===0?1:0]).actor.position;n.actor.rotation.y=turnToward(n.actor.rotation.y,Math.atan2(other.x-p.x,other.z-p.z),dt);}}return true;
  }
  if(t.mode==='fight'){x=t.point[0]+(index===0?-.65:index===1?.65:0);z=t.point[1]+(index===2?2.5:0);}else {const a=index*Math.PI*.7;x=t.point[0]+(index===0?0:Math.sin(a)*2.4);z=t.point[1]+(index===0?0:Math.cos(a)*2.4);}
  const dx=x-p.x,dz=z-p.z,d=Math.hypot(dx,dz);if(d>.2){const angle=Math.atan2(dx,dz);n.actor.rotation.y=turnToward(n.actor.rotation.y,angle,dt);const step=arriveStep(d,1.6,dt,.15)*Math.max(0,Math.cos(angle-n.actor.rotation.y));world.move(n.actor,dx/d*step,dz/d*step);}else {const other=world.npcs.get(e.cast[index===0?1:0]).actor.position;n.actor.rotation.y=turnToward(n.actor.rotation.y,Math.atan2(other.x-p.x,other.z-p.z),dt);}return true;}
+ function upperBody(id){const e=director.active,t=director.template,index=e?.cast.indexOf(id)??-1;if(index<0)return null;
+  if(t.mode==='ribbon'){const throwTime=e.stage==='争球'?e.elapsed-e.stageAt:0;return id===(e.winner||'mei')&&(e.stage!=='争球'||throwTime<.75)?{kind:'ribbon',throwTime}:null;}
+  if(t.mode==='perform'&&e.arrived)return {kind:index===0?'flute':'clap'};
+  if(t.mode==='care'&&index<2)return {kind:index===0?'sick':'care'};
+  if(t.mode==='cargo'&&e.arrived)return {kind:'carry'};
+  return null;
+ }
  function pose(id){const e=director.active,t=director.template,index=e?.cast.indexOf(id)??-1;if(index<0)return false;const u=world.npcs.get(id).actor.userData;
- if(t.mode==='ribbon'){if(id==='mei'){u.arms[0].rotation.x=e.stage==='争球'?-2:-1.2;u.arms[1].rotation.x=u.arms[0].rotation.x;}else if(e.stage==='争球'){u.arms[0].rotation.x=-2;u.arms[1].rotation.x=-2;}return true;}
- if(t.mode==='duel'){if((e.stage==='首轮'&&['qing','chi'].includes(id))||(e.stage==='决胜'&&id===e.champion)){u.arms[1].rotation.x=-.7-(Math.sin(e.elapsed*6+index*Math.PI)+1)*.6;u.arms[0].rotation.x=-.9;}else if(id==='matchmaker')u.arms[1].rotation.x=-1.2;return true;}
+ if(t.mode==='ribbon'){
+  u.npcUpperBody=upperBody(id);
+  u.npcTalking=world.speaking===id;return true;
+ }
+ if(t.mode==='duel'){if((e.stage==='首轮'&&['qing','chi'].includes(id))||(e.stage==='决胜'&&id===e.champion)){u.npcPoseOverride=true;u.arms[1].rotation.x=-.7-(Math.sin(e.elapsed*6+index*Math.PI)+1)*.6;u.arms[0].rotation.x=-.9;}else u.npcTalking=world.speaking===id;return true;}
  if(t.mode==='chase'){if(id==='thief')u.rig.rotation.x=.18;return true;}
- if(t.mode==='fight'&&!e.followup&&e.arrived&&index<2){const punch=(Math.sin(e.elapsed*4+index*Math.PI)+1)/2;u.arms[1].rotation.x=-.5-punch*1.2;u.arms[0].rotation.x=-.8;u.rig.rotation.x=.08;}
- else if(t.mode==='perform'&&e.arrived){if(index===0){u.arms[0].rotation.x=-1.5;u.arms[1].rotation.x=-1.6;u.arms[1].rotation.z=.4;}else{u.arms[0].rotation.x=-1;u.arms[1].rotation.x=-1;u.arms[0].rotation.z=.3+Math.sin(world.t*6)*.15;u.arms[1].rotation.z=-.3-Math.sin(world.t*6)*.15;}}
- else if(t.mode==='care'&&index<2){u.rig.rotation.x=.18;u.arms[0].rotation.x=-1.1;}
- else if(t.mode==='cargo'&&e.arrived){u.rig.rotation.x=.15;u.arms[0].rotation.x=-.7;u.arms[1].rotation.x=-.7;}
- else if(e.arrived)u.arms[1].rotation.x=-.6+Math.sin(world.t*3)*.15;
+ if(t.mode==='fight'&&!e.followup&&e.arrived&&index<2){u.npcPoseOverride=true;const punch=(Math.sin(e.elapsed*4+index*Math.PI)+1)/2;u.arms[1].rotation.x=-.5-punch*1.2;u.arms[0].rotation.x=-.8;u.rig.rotation.x=.08;}
+ else if(t.mode==='perform'&&e.arrived)u.npcUpperBody={kind:index===0?'flute':'clap'};
+ else if(t.mode==='care'&&index<2)u.npcUpperBody={kind:index===0?'sick':'care'};
+ else if(t.mode==='cargo'&&e.arrived)u.npcUpperBody={kind:'carry'};
+ else if(e.arrived)u.npcTalking=world.speaking===id;
  return true;}
+ let releaseEvent='',releasePoint=null;
+ function afterPose(){const e=director.active;if(!e)return;
+  if(e.type==='ribbon'){
+   const holder=e.winner||'mei',npc=world.npcs.get(holder),age=e.elapsed-e.stageAt;
+   const grip=npc?.model.betweenHands?.();
+   if(e.stage!=='争球'||age<.55){
+    if(grip)ball.position.copy(grip).add(new T.Vector3(0,.05,0));
+    if(e.stage==='争球'){releaseEvent=e.id;releasePoint=ball.position.clone();}
+   }else{
+    if(releaseEvent!==e.id||!releasePoint){releaseEvent=e.id;releasePoint=world.npcs.get('mei').actor.localToWorld(new T.Vector3(0,1.65,.5));}
+    const f=Math.min(1,Math.max(0,(age-.55)/7.45)),point=director.point();
+    ball.position.lerpVectors(releasePoint,new T.Vector3(point[0],1.2,point[1]+1.7),f);ball.position.y+=Math.sin(f*Math.PI)*3.8;
+   }
+  }
+  if(flute.visible){const npc=world.npcs.get('elder'),grip=npc.model.betweenHands?.();if(grip){world.scene.attach(flute);flute.position.copy(grip);flute.rotation.set(0,npc.actor.rotation.y,0);}}
+ }
  function visuals(){const e=director.active,t=director.template;arena.visible=!!e&&e.type==='duel';ball.visible=!!e&&e.type==='ribbon';purse.visible=!!e&&e.type==='theft'&&e.stage==='追逐';status.hidden=!e||!DRAMAS[e.type]||world.locked;
   if(arena.visible)arena.position.set(t.point[0],0,t.point[1]);
   if(ball.visible){const p=world.npcs.get(e.winner&&e.winner!=='player'?e.winner:'mei').actor.position;if(e.stage==='争球'){const f=Math.min(1,(e.elapsed-e.stageAt)/8);ball.position.set(t.point[0],1.2+Math.sin(f*Math.PI)*3.8,t.point[1]-1.1+f*2.8);ball.rotation.y=e.elapsed*3;}else if(e.winner==='player')ball.position.copy(world.hero.position).add(new T.Vector3(.3,1.3,0));else ball.position.copy(p).add(new T.Vector3(0,1.5,.35));}
   if(purse.visible)purse.position.copy(world.npcs.get('thief').actor.position).add(new T.Vector3(.35,1.15,0));
   if(!status.hidden){const point=director.point(),p=world.screenPoint(new T.Vector3(point[0],4.2,point[1]));status.hidden=!p.visible||Math.hypot(world.hero.position.x-point[0],world.hero.position.z-point[1])>18;if(!status.hidden){status.textContent=t.name+' · '+e.stage;status.style.left=Math.max(120,Math.min(innerWidth-120,p.x))+'px';status.style.top=Math.max(90,Math.min(innerHeight-200,p.y))+'px';}}
  }
- return {hotspot(){const t=director.template;return director.active&&t?{point:director.point(),name:t.name,mode:t.mode}:null;},open(){button.click();},near(){const point=director.point();return !!point&&Math.hypot(world.hero.position.x-point[0],world.hero.position.z-point[1])<5;},interact(){if(!this.near())return false;button.click();return true;},steer,pose,reserved:()=>director.reserved(),key(e){if(e.code==='Escape')panel.hidden=true;},update(dt,positions,blocked){if(sim!==getSim()){sim=getSim();director=new StreetStories(sim);last='';routes.clear();restoreActors();}director.tick(dt,positions,blocked);const e=director.active,t=director.template;visuals();flute.visible=!!e&&t.mode==='perform'&&e.arrived;stage.visible=!!e&&t.mode==='cargo';if(stage.visible)stage.position.set(t.point[0],0,t.point[1]);if(cargoId!==(stage.visible?e.id:null)){world.environmentAssets=world.environmentAssets.filter(a=>!a.id.startsWith('cargo:'));cargoId=stage.visible?e.id:null;if(cargoId)stage.children.forEach((m,i)=>{m.visible=true;world.registerObject(m,`cargo:${cargoId}:${i}`,'运货木箱','wood',90,{owner:'porter'});});}if(e&&['fight','duel'].includes(t.mode)&&e.lastHit&&lastBurst!==e.id+':'+e.lastHit){lastBurst=e.id+':'+e.lastHit;for(const id of e.type==='duel'?['qing','chi']:e.cast.slice(0,2)){const p=world.npcs.get(id).actor.position;world.burst(p.x,1,p.z,0xd8ac76,5);}}refresh+=dt;if(refresh>.5){refresh=0;render();}}};
+ return {hotspot(){const t=director.template;return director.active&&t?{point:director.point(),name:t.name,mode:t.mode}:null;},open(){button.click();},near(){const point=director.point();return !!point&&Math.hypot(world.hero.position.x-point[0],world.hero.position.z-point[1])<5;},interact(){if(!this.near())return false;button.click();return true;},steer,pose,upperBody,afterPose,reserved:()=>director.reserved(),key(e){if(e.code==='Escape')panel.hidden=true;},update(dt,positions,blocked){if(sim!==getSim()){sim=getSim();director=new StreetStories(sim);last='';routes.clear();restoreActors();}director.tick(dt,positions,blocked);const e=director.active,t=director.template;visuals();flute.visible=!!e&&t.mode==='perform'&&e.arrived;stage.visible=!!e&&t.mode==='cargo';if(stage.visible)stage.position.set(t.point[0],0,t.point[1]);if(cargoId!==(stage.visible?e.id:null)){world.environmentAssets=world.environmentAssets.filter(a=>!a.id.startsWith('cargo:'));cargoId=stage.visible?e.id:null;if(cargoId)stage.children.forEach((m,i)=>{m.visible=true;world.registerObject(m,`cargo:${cargoId}:${i}`,'运货木箱','wood',90,{owner:'porter'});});}if(e&&['fight','duel'].includes(t.mode)&&e.lastHit&&lastBurst!==e.id+':'+e.lastHit){lastBurst=e.id+':'+e.lastHit;for(const id of e.type==='duel'?['qing','chi']:e.cast.slice(0,2)){const p=world.npcs.get(id).actor.position;world.burst(p.x,1,p.z,0xd8ac76,5);}}refresh+=dt;if(refresh>.5){refresh=0;render();}}};
 }

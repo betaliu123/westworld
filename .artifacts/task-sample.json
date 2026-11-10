@@ -1,0 +1,47 @@
+{
+  "code": 0,
+  "data": {
+    "type": "image_to_model",
+    "input": {
+      "pbr": false,
+      "file": {
+        "type": "png",
+        "object": {
+          "key": "tcli_993c5803102148a593b815e081c33242/20261110/80147732-7c69-4edd-823c-7e91cd75be08/image.png",
+          "bucket": "cn-openapi"
+        }
+      },
+      "texture": true,
+      "auto_size": false,
+      "export_uv": true,
+      "face_limit": 18000,
+      "orientation": "align_image",
+      "model_version": "v3.1-20260211",
+      "texture_quality": "standard",
+      "geometry_quality": "standard",
+      "enable_image_autofix": false
+    },
+    "output": {
+      "model": "<url>",
+      "rendered_image": "<url>"
+    },
+    "result": {
+      "model": {
+        "url": "<url>",
+        "type": "glb"
+      },
+      "rendered_image": {
+        "url": "<url>",
+        "type": "webp"
+      }
+    },
+    "status": "success",
+    "task_id": "80147732-7c69-4edd-823c-7e91cd75be08",
+    "progress": 100,
+    "thumbnail": "<url>",
+    "create_time": 1794298807,
+    "queuing_num": -1,
+    "consumed_credit": 30,
+    "running_left_time": -1
+  }
+}

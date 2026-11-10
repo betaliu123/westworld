@@ -100,7 +100,7 @@ test('old live matchmaking locations migrate once, without resetting results or 
 });
 test('every matchmaking mark is reachable around the actual town buildings',()=>{
  const previous=globalThis.document;
- globalThis.document={createElement:()=>({getContext:()=>({fillText(){}})})};
+ globalThis.document={createElement:()=>({getContext:()=>({fillText(){},strokeText(){},clearRect(){}})})};
  try{
   const world=Object.create(World.prototype);
   Object.assign(world,{scene:new THREE.Scene(),sim:setup(),obstacles:[],environmentAssets:[],props:[],hero:{position:{x:0,z:2}}});

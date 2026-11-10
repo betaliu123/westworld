@@ -1,0 +1,8 @@
+{
+  "checks": [
+    "Full fresh-start dialogue, walking, rack purchase, return to gate and uniform entry",
+    "Fresh-start Z crouch physically discovers timed cover, paper theft, rewrite, return and entry",
+    "Failed theft continues to arrest, prison testimony and release without reloading"
+  ],
+  "errors": []
+}

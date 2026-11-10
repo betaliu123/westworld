@@ -1,0 +1,164 @@
+{
+  "music": {
+    "title": "临溪·琴箫",
+    "src": "/assets/audio/world/music-0386861b34da909f.wav",
+    "raw": "music-0386861b34da909f-raw.wav",
+    "seconds": 40.0,
+    "normalizationGainDb": 9.75,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成40秒完整的原创中国古风游戏探索背景纯音乐。北宋小城清晨，古琴温润的散音与少量洞箫长音相互呼应，五声音阶，悠缓从容、含蓄而有江湖感。旋律简洁有留白，力度轻，不要一直演奏密集的音符，不要戏剧性高潮。没有人声，没有吟唱，没有任何语言，没有鼓点，没有电子音色，没有环境声。近距离自然录音，尾音柔和。开头和结尾都轻缓，适合在城镇漫步时低声循环。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-10T09:21:51.889958+00:00"
+  },
+  "swing": {
+    "title": "刀锋破风",
+    "src": "/assets/audio/world/swing-ae73707c5099f099.wav",
+    "raw": "swing-ae73707c5099f099-raw.wav",
+    "seconds": 0.535,
+    "normalizationGainDb": 9.74,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成3秒干净的游戏拟音素材。安静无混响环境中，只有一次利落的单手钢刀挥过空气的短促破风声，唰的一声，带轻微袖口布料摩擦，声音有真实重量，瞬态集中在开头一秒内，之后迅速安静。没有碰撞，没有金属撞击，没有人声、音乐、电子音、爆炸、背景噪音，不要多次挥动。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-10T09:22:04.545061+00:00"
+  },
+  "wood": {
+    "title": "木材受击",
+    "src": "/assets/audio/world/wood-4f29dd6cd078b3f8.wav",
+    "raw": "wood-4f29dd6cd078b3f8-raw.wav",
+    "seconds": 1.717,
+    "normalizationGainDb": 10.95,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成3秒干净的写实游戏拟音。只有一次钢刀劈中坚硬木栅栏的撞击，短促厚实的木头咔嗒声，少量细小木屑落下。第一秒内命中，随后快速衰减。无其他动作，无人声、音乐、喘息、电子音，无长混响，不要连续敲击。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-10T09:22:14.898401+00:00"
+  },
+  "body": {
+    "title": "衣甲受击",
+    "src": "/assets/audio/world/body-f53d38b8ef3874c7.wav",
+    "raw": "body-f53d38b8ef3874c7-raw.wav",
+    "seconds": 0.624,
+    "normalizationGainDb": 2.28,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成3秒干净的写实游戏拟音。只有一次拳掌击中穿厚布衣的练功沙包，低沉而结实的闷响，衣料窸窣，第一秒内击中，之后迅速安静。克制、无血腥，无骨折声，无人声、惨叫、音乐、电子音，无长混响，不要连续攻击。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-10T09:22:28.370312+00:00"
+  },
+  "metal": {
+    "title": "兵刃相接",
+    "src": "/assets/audio/world/metal-7146ef815ad1efeb.wav",
+    "raw": "metal-7146ef815ad1efeb-raw.wav",
+    "seconds": 0.697,
+    "normalizationGainDb": -1.94,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成3秒干净的游戏拟音。两把钢刀只有一次短促的格挡碰撞，清脆的铛声与轻微真实金属余振，第一秒内碰撞，不尖锐刺耳，尾音自然很快消失。没有砍肉声，没有人声、音乐、风声、电子合成效果，无长混响，不要连续碰撞。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-10T09:22:38.621207+00:00"
+  },
+  "draw": {
+    "title": "拔刀出鞘",
+    "src": "/assets/audio/world/draw-3146f69dd00a8309.wav",
+    "raw": "draw-3146f69dd00a8309-raw.wav",
+    "seconds": 0.725,
+    "normalizationGainDb": 13.31,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成3秒干净的游戏拟音。一把传统钢刀从木鞘中利落抽出，只有一次短暂的金属与木鞘滑擦声，末尾轻微金属清鸣，动作发生在第一秒，之后安静。没有挥刀攻击，没有打斗，没有人声、音乐、电子音，无长混响。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-10T09:22:54.091502+00:00"
+  },
+  "coins": {
+    "title": "铜钱轻落",
+    "src": "/assets/audio/world/coins-c7cfc6734a729a22.wav",
+    "raw": "coins-c7cfc6734a729a22-raw.wav",
+    "seconds": 0.769,
+    "normalizationGainDb": 3.69,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成3秒干净的游戏拟音。三枚铜钱一次轻轻落在木桌上，细小清脆的叮当声，短暂滚动后停住，全部发生在前一秒半。自然、轻巧、近距离，之后安静。没有重复倒钱，没有人声、音乐、电子音，无长混响。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-10T09:23:18.290128+00:00"
+  },
+  "step": {
+    "title": "布靴落地",
+    "src": "/assets/audio/world/step-dd29dfcbae47002a.wav",
+    "raw": "step-dd29dfcbae47002a-raw.wav",
+    "seconds": 0.42,
+    "normalizationGainDb": 16.25,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成3秒干净的游戏拟音。只有一只布靴在石板路上落地的一步，短促低沉的鞋底触地声，带一点细沙轻擦，声音在第一秒发生，之后安静。只有一步，不要连续走路，不要人声、喘息、音乐、电子音、背景环境声，无长混响。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-10T09:25:09.505292+00:00"
+  },
+  "city": {
+    "title": "临溪·街巷底声",
+    "src": "/assets/audio/world/city-c417551478bd03b8.wav",
+    "raw": "city-c417551478bd03b8-raw.wav",
+    "seconds": 20.0,
+    "normalizationGainDb": 30.57,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成20秒写实的北宋城镇街巷环境底声。人们在中远处轻声交谈，形成温和热闹、自然起伏的人声混响，夹杂偶尔的脚步和远处碗盏轻碰。所有人声均不可辨认具体字句，只作为远处的模糊人群声，绝不要说任何清晰台词，不要叫卖，不要近距离人物说话。无现代车流、广播、电机，无音乐，无戏剧性变化。开头结尾平稳，适合长时间循环游戏环境底声。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-10T09:25:26.947946+00:00"
+  }
+}

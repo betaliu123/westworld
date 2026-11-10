@@ -1,0 +1,221 @@
+[
+  {
+    "id": "city",
+    "model": "seed-audio-1.0",
+    "file": "city.wav",
+    "durationSeconds": 20,
+    "bytes": 3840044,
+    "generationSeconds": 21.7,
+    "settings": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成20秒写实的环境录音：北宋小城的白天街巷，几组男女远近交谈形成柔和模糊的人声，脚步偶尔经过，近处茶摊有一两声碗盏轻碰。第7至10秒，中远处一位女摊主自然地招呼一句：热茶，刚沏的热茶。其余时间没有突出的清晰对白。人声有自然的距离感，整体不喧闹。不要现代车流、电机、广播，不要音乐，不要旁白。声场稳定，不做戏剧性高潮，开头结尾都平稳，适合作为游戏街市环境底声。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "generatedAt": "2026-11-10",
+    "aiGenerated": true,
+    "listeningFile": "city-listen.wav",
+    "listeningGainDb": 14.09,
+    "measuredRmsDbfs": -40.09
+  },
+  {
+    "id": "creek",
+    "model": "seed-audio-1.0",
+    "file": "creek.wav",
+    "durationSeconds": 20,
+    "bytes": 3840044,
+    "generationSeconds": 15.4,
+    "settings": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成20秒写实的户外环境录音：城外浅浅的溪水绕过小石头，细腻连续的潺潺流水；微风轻轻吹过树叶，间歇有一两只小鸟在远处清脆鸣叫，鸟鸣自然错落，不要密集重复。水声是小溪，不是瀑布、海浪或暴雨。没有人声、没有音乐、没有旁白、没有现代机器声。空间开阔宁静，水声持续平稳，开头与结尾不要突变，适合游戏环境循环底声。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "generatedAt": "2026-11-10",
+    "aiGenerated": true,
+    "listeningFile": "creek-listen.wav",
+    "listeningGainDb": 18.93,
+    "measuredRmsDbfs": -44.93
+  },
+  {
+    "id": "prince",
+    "model": "speech-2.6-hd",
+    "file": "prince.mp3",
+    "durationSeconds": 3.456,
+    "bytes": 57012,
+    "generationSeconds": 0.8,
+    "settings": {
+      "model": "speech-2.6-hd",
+      "text": "城门查得这样紧……你是怎么进来的？",
+      "stream": false,
+      "voice_setting": {
+        "voice_id": "male-qn-jingying",
+        "speed": 0.94,
+        "vol": 1,
+        "pitch": 0,
+        "emotion": "neutral"
+      },
+      "audio_setting": {
+        "sample_rate": 32000,
+        "bitrate": 128000,
+        "format": "mp3",
+        "channel": 1
+      },
+      "language_boost": "Chinese",
+      "subtitle_enable": false
+    },
+    "generatedAt": "2026-11-10",
+    "aiGenerated": true
+  },
+  {
+    "id": "tea-hostess",
+    "model": "speech-2.6-hd",
+    "file": "tea-hostess.mp3",
+    "durationSeconds": 4.86,
+    "bytes": 79476,
+    "generationSeconds": 0.9,
+    "settings": {
+      "model": "speech-2.6-hd",
+      "text": "客官，茶刚沏好。赶路累了，就坐下歇歇脚。",
+      "stream": false,
+      "voice_setting": {
+        "voice_id": "female-chengshu",
+        "speed": 0.96,
+        "vol": 1,
+        "pitch": 0,
+        "emotion": "neutral"
+      },
+      "audio_setting": {
+        "sample_rate": 32000,
+        "bitrate": 128000,
+        "format": "mp3",
+        "channel": 1
+      },
+      "language_boost": "Chinese",
+      "subtitle_enable": false
+    },
+    "generatedAt": "2026-11-10",
+    "aiGenerated": true
+  },
+  {
+    "id": "prince-28",
+    "title": "锦衣客 · 含笑试探",
+    "model": "speech-2.8-hd",
+    "file": "prince-28.mp3",
+    "durationSeconds": 3.888,
+    "bytes": 63924,
+    "generationSeconds": 12.38,
+    "settings": {
+      "model": "speech-2.8-hd",
+      "text": "城门查得这样紧……<#0.35#>你是怎么进来的？(chuckle)",
+      "stream": false,
+      "output_format": "hex",
+      "voice_setting": {
+        "voice_id": "male-qn-jingying",
+        "speed": 0.94,
+        "vol": 1,
+        "pitch": 0
+      },
+      "language_boost": "Chinese",
+      "audio_setting": {
+        "sample_rate": 32000,
+        "bitrate": 128000,
+        "format": "mp3",
+        "channel": 1
+      }
+    },
+    "direction": "自动情绪，句间停顿与轻笑；与第一轮使用相同男声音色和主要台词",
+    "aiGenerated": true,
+    "generatedAt": "2026-11-10T16:32:27+08:00",
+    "validation": {
+      "decodedSeconds": 3.833,
+      "sampleRate": 32000,
+      "channels": 1,
+      "peakDbfs": -5.82,
+      "finite": true
+    }
+  },
+  {
+    "id": "guard-28",
+    "title": "守卫 · 怒气问责",
+    "model": "speech-2.8-hd",
+    "file": "guard-28.mp3",
+    "durationSeconds": 5.436,
+    "bytes": 88692,
+    "generationSeconds": 2.42,
+    "settings": {
+      "model": "speech-2.8-hd",
+      "text": "站住。<#0.25#>把手里的东西放下。<#0.35#>你当我没瞧见？",
+      "stream": false,
+      "output_format": "hex",
+      "voice_setting": {
+        "voice_id": "male-qn-badao",
+        "speed": 0.96,
+        "vol": 1,
+        "pitch": 0,
+        "emotion": "angry"
+      },
+      "language_boost": "Chinese",
+      "audio_setting": {
+        "sample_rate": 32000,
+        "bitrate": 128000,
+        "format": "mp3",
+        "channel": 1
+      }
+    },
+    "direction": "显式 angry，短句停顿；观察是否过于喊叫",
+    "aiGenerated": true,
+    "generatedAt": "2026-11-10T16:32:30+08:00",
+    "validation": {
+      "decodedSeconds": 5.387469,
+      "sampleRate": 32000,
+      "channels": 1,
+      "peakDbfs": -5.04,
+      "finite": true
+    }
+  },
+  {
+    "id": "hostess-28",
+    "title": "宋茶娘 · 松口气后道谢",
+    "model": "speech-2.8-hd",
+    "file": "hostess-28.mp3",
+    "durationSeconds": 8.1,
+    "bytes": 131316,
+    "generationSeconds": 1.11,
+    "settings": {
+      "model": "speech-2.8-hd",
+      "text": "(sighs)多亏你搭了把手。<#0.3#>方才真吓着我了……<#0.35#>来，这盏茶，我请你。",
+      "stream": false,
+      "output_format": "hex",
+      "voice_setting": {
+        "voice_id": "female-chengshu",
+        "speed": 0.94,
+        "vol": 1,
+        "pitch": 0
+      },
+      "language_boost": "Chinese",
+      "audio_setting": {
+        "sample_rate": 32000,
+        "bitrate": 128000,
+        "format": "mp3",
+        "channel": 1
+      }
+    },
+    "direction": "自动情绪与叹气；观察惊魂未定到感谢的转变",
+    "aiGenerated": true,
+    "generatedAt": "2026-11-10T16:32:31+08:00",
+    "validation": {
+      "decodedSeconds": 8.033938,
+      "sampleRate": 32000,
+      "channels": 1,
+      "peakDbfs": -6.57,
+      "finite": true
+    }
+  }
+]

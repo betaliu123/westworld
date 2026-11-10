@@ -1,0 +1,21 @@
+{
+  "task_id": "8f6d7d21-00fd-41d9-bea2-4d8e1b36fe42",
+  "type": "animate_rig",
+  "status": "success",
+  "input": {
+    "topology": "biped",
+    "original_model_id": "007b61a2-0a18-4288-9319-0f1095327899"
+  },
+  "output_fields": [
+    "model_url",
+    "rendered_image_url"
+  ],
+  "credits_consumed": 25,
+  "created_at": "2026-11-10T08:29:04.876122Z",
+  "completed_at": "2026-11-10T08:29:09.928314Z",
+  "files": [
+    "model.glb",
+    "rendered_image.webp",
+    "preview.png"
+  ]
+}

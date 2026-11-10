@@ -1,0 +1,26 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>临溪 · 人物配音验收</title><link rel="stylesheet" href="../style.css"><link rel="stylesheet" href="../ink-ui.css">
+<style>body{overflow:auto;background:var(--paper,#e7decb);padding:32px;max-width:1000px;margin:auto}h1{font-size:30px}button{margin:6px;padding:12px;font:inherit}#samples{display:flex;flex-wrap:wrap}#status{white-space:pre-wrap;padding:16px;font-size:16px}p{font-size:18px}</style>
+<h1>人物配音 · 实际对白</h1><p>使用游戏的声音调度与对白组件，仅播放已有录音，不生成、不读取或更改存档。</p>
+<div id="samples"></div><button id="sequence">锦衣客 → 茶娘 → 守卫</button><button id="mute">静音</button><button id="stop">停止</button>
+<p id="status" role="status">加载中</p><p id="errors"></p>
+<script type="module">
+import {NpcVoice} from '../src/npc-voice.js';
+import {VOICE_TRIAL} from '../src/voice-lines.js';
+import {mountDialogue} from '../src/dialogue.js';
+const status=document.querySelector('#status'),errors=document.querySelector('#errors');
+window.addEventListener('error',e=>errors.textContent=e.message);
+window.addEventListener('unhandledrejection',e=>errors.textContent=String(e.reason));
+const voice=new NpcVoice({onError:(kind)=>errors.textContent=kind});voice.setEnabled(true);await voice.init();
+let playingText='',startedCount=0,finishedCount=0;
+const world={npcs:new Map(),keys:new Set(),clearReady(){},hero:{rotation:{},position:{x:0,z:0}}};
+const dialogue=mountDialogue(world,{journal:{add(){}},clear:()=>voice.stop(),stopSpeech:()=>voice.stop(),hasVoice:()=>true,
+ speak:line=>voice.play(line,{generate:false,onStart:()=>{playingText=line.text;startedCount++;}})});
+function play(rows){voice.unlock();dialogue.play(rows.map(r=>({id:r.actor,text:r.text})),()=>finishedCount++,'配音验收');}
+for(const row of VOICE_TRIAL){const b=document.createElement('button');b.textContent=voice.config.cast[row.actor].name+' · '+row.text.slice(0,12);b.onclick=()=>play([row]);document.querySelector('#samples').append(b);}
+document.querySelector('#sequence').onclick=()=>play([VOICE_TRIAL[1],VOICE_TRIAL[2],VOICE_TRIAL[4]]);
+document.querySelector('#stop').onclick=()=>{dialogue.finish(true);voice.stop();};
+document.querySelector('#mute').onclick=e=>{voice.setEnabled(!voice.enabled);if(voice.enabled)voice.unlock();e.target.textContent=voice.enabled?'静音':'开启声音';};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)voice.stop();});
+setInterval(()=>{status.textContent=`音频：${voice.source?'播放中':'停止'} · 声音${voice.enabled?'开':'关'} · ${voice.context?.state||'等待点击'}\n已起播 ${startedCount} 条 · 结束对白 ${finishedCount} 次\n${playingText}`;},100);
+</script></html>

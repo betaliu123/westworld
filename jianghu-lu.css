@@ -1,0 +1,150 @@
+/* 江湖录、右上角图标坞、江湖牌与夜里发牌。色与字只取 ink-ui.css 的变量。 */
+
+/* —— 右上角：小地图、时辰、三枚图标 —— */
+#hud-right-stack{width:auto;align-items:flex-end}
+#hud-right-stack #corner-dock{display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:auto}
+#hud-right-stack #corner-dock #minimap{position:relative;display:block;width:132px;height:132px;margin:0;transform:none}
+#hud-right-stack #corner-dock #minimap canvas{width:132px;height:132px}
+#corner-dock .corner-map{position:absolute;left:-6px;bottom:-4px;width:30px;height:30px}
+#corner-dock .corner-map svg{width:18px;height:18px}
+#hud-right-stack #corner-dock .corner-clock{position:static;display:block;width:auto;margin:0;font:var(--fs-3)/1.2 var(--font-body);letter-spacing:.12em;color:var(--ink-1);
+  text-shadow:0 0 2px var(--paper),0 0 6px var(--paper),0 0 12px #ece3cfcc;text-align:center}
+body.ink-night #hud-right-stack #corner-dock .corner-clock{color:var(--paper);text-shadow:0 0 2px var(--ink-0),0 0 8px var(--ink-0)}
+#corner-dock .corner-row{display:flex;gap:6px}
+#corner-dock .corner-row .icon-button{width:36px;height:36px}
+#corner-dock .news-dot{display:none;position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;background:var(--cinnabar)}
+#codex-button.has-news .news-dot{display:block}
+body.hud-detail-open #corner-dock,body.cinematic #corner-dock,body.checking #corner-dock,body.night-open #corner-dock{visibility:hidden}
+@media (max-width:820px){#hud-right-stack #corner-dock #minimap,#hud-right-stack #corner-dock #minimap canvas{width:104px;height:104px}}
+
+/* —— 江湖录：沿用 #drawer，展宽成一卷 —— */
+#drawer[data-view="codex"]{top:16px;bottom:16px;right:16px;left:auto;width:min(980px,calc(100vw - 32px));max-height:none;padding:16px 30px 30px}
+body:has(#drawer[data-view="codex"]:not([hidden])) :is(#hud-left-stack,#hud-info-stack,#hud-context-stack,#environment-tools,#npc-target-card,.field-compass){visibility:hidden}
+#drawer[data-view="codex"]>h2{font:400 var(--fs-5)/1.2 var(--font-title)!important;color:var(--ink-0);letter-spacing:.2em;margin:4px 0 8px}
+.jh-tabs{display:flex;align-items:center;gap:4px;margin:0 0 14px;padding-bottom:8px;position:relative}
+.jh-tabs::after{content:'';position:absolute;left:0;right:0;bottom:0;height:8px;background:var(--ink-3);opacity:.55;-webkit-mask:var(--brush-line) center/100% 100% no-repeat;mask:var(--brush-line) center/100% 100% no-repeat}
+.jh-tabs [role=tab]{display:inline-flex;align-items:center;gap:6px;border:0!important;background:none!important;color:var(--ink-3)!important;font:var(--fs-3)/1 var(--font-body);padding:8px 12px;border-radius:2px;position:relative}
+.jh-tabs [role=tab] svg{width:20px;height:20px}
+.jh-tabs [role=tab][aria-selected=true]{color:var(--ink-0)!important}
+.jh-tabs [role=tab][aria-selected=true]::after{content:'';position:absolute;left:8px;right:8px;bottom:-2px;height:7px;background:var(--cinnabar);-webkit-mask:var(--brush-line) center/100% 100% no-repeat;mask:var(--brush-line) center/100% 100% no-repeat}
+.jh-tabs .jh-tools{margin-left:auto;display:flex;gap:4px}
+.jh-tabs .jh-tools button{width:34px;height:34px}
+.jh-page{font:var(--fs-2)/1.75 var(--font-body);color:var(--ink-1)}
+.jh-h{font:var(--fs-4)/1.3 var(--font-body);color:var(--ink-2);margin:22px 0 10px;letter-spacing:.1em}
+
+/* 三个收束目标 */
+.jh-goals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.jh-goals article{position:relative;padding:4px 0 8px}
+.jh-goals h3{font:400 var(--fs-5)/1.1 var(--font-title);color:var(--ink-0);margin:0 0 6px;letter-spacing:.14em}
+.jh-goals p{margin:0 0 10px;font-size:var(--fs-2);color:var(--ink-2)}
+.jh-goals .locked{opacity:.5}
+.jh-goals .done .ink-seal{position:absolute;top:0;right:8px}
+.jh-sticks{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.jh-stick{writing-mode:vertical-rl;display:flex;align-items:center;gap:6px;min-height:96px;padding:10px 5px;border:0!important;border-left:1.5px solid var(--ink-3)!important;border-right:1.5px solid var(--ink-3)!important;
+  background:var(--grain),var(--paper-deep)!important;color:var(--ink-1)!important;border-radius:1px;font:var(--fs-2)/1 var(--font-body);letter-spacing:.14em;cursor:pointer}
+.jh-stick small{font-size:var(--fs-1);color:var(--ink-3)}
+.jh-stick:disabled{cursor:default}
+.jh-stick:not(:disabled):hover{background:var(--grain),var(--paper)!important}
+.jh-stick.unknown{display:grid;place-items:center;min-height:96px;width:30px;color:var(--ink-4);border-left:1.5px dashed var(--ink-4);border-right:1.5px dashed var(--ink-4);background:none;cursor:default}
+.jh-fame{display:flex;gap:16px}
+.jh-fame span,.jh-map-legend span{display:inline-flex;align-items:center;gap:6px;font:var(--fs-2)/1 var(--font-body);color:var(--ink-2)}
+.jh-fame b,.jh-map-legend b{font:600 var(--fs-4)/1 var(--font-data);color:var(--ink-0)}
+.jh-fame svg,.jh-map-legend svg{width:20px;height:20px}
+
+/* 牌序：只露牌类，不露内容 */
+.jh-deck{display:flex;gap:6px;list-style:none;padding:0;margin:0}
+.jh-deck li{display:grid;place-items:center;width:32px;height:44px;font:var(--fs-3)/1 var(--font-body);color:var(--ink-2);border:1.5px solid var(--ink-3);border-radius:2px}
+.jh-deck li.dealt{color:var(--ink-4);border-color:var(--ink-4);border-style:dashed}
+.jh-deck li.next{color:var(--cinnabar);border-color:var(--cinnabar)}
+
+/* 因果簿 */
+.jh-day{margin-bottom:18px}
+.jh-day h4{font:var(--fs-3)/1 var(--font-body);color:var(--ink-3);margin:0 0 8px;letter-spacing:.16em}
+.jh-day ul{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+.jh-deed{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;padding:2px 0 2px 12px;border-left:2px solid var(--ink-4)}
+.jh-deed.crime{border-left-color:var(--ink-1)}
+.jh-deed.help{border-left-color:var(--malachite)}
+.jh-deed time{font:var(--fs-1)/1 var(--font-data);color:var(--ink-3)}
+.jh-deed b{font-weight:400;color:var(--ink-0)}
+.jh-deed span{color:var(--ink-2)}
+.jh-deed small{display:inline-flex;align-items:center;gap:4px;color:var(--ink-3);font-size:var(--fs-1)}
+.jh-deed small svg{width:16px;height:16px}
+.jh-diary-quote{position:relative;margin:0 0 10px;padding:6px 40px 6px 16px;font:var(--fs-3)/1.8 var(--font-body);color:var(--ink-1)}
+.jh-diary-quote p{margin:0}
+.jh-diary-quote .jh-src{position:absolute;top:6px;right:8px}
+
+/* 江湖牌 */
+.jh-card{position:relative;display:flex;flex-direction:column;gap:4px;width:220px;padding:12px 14px 10px;color:var(--ink-1);
+  background:var(--grain),linear-gradient(176deg,#f1e9d6,var(--paper) 50%,var(--paper-deep));border:1.5px solid var(--ink-3);border-radius:2px}
+#drawer .jh-page header{position:static;background:none;color:inherit}
+.jh-card header,#drawer .jh-card header{display:flex;align-items:center;gap:8px;padding:0}
+.jh-card .jh-seal{display:grid;place-items:center;width:28px;height:28px;font:var(--fs-3)/1 var(--font-body);color:var(--paper);background:var(--ink-1);border-radius:2px;transform:rotate(-4deg)}
+.jh-card.urgent .jh-seal,.jh-card[data-card=aid] .jh-seal{background:var(--cinnabar)}
+.jh-card header b{font:var(--fs-2)/1 var(--font-body);color:var(--ink-2);font-weight:400;letter-spacing:.14em}
+.jh-card h4{margin:2px 0 0;font:var(--fs-3)/1.3 var(--font-body);color:var(--ink-0)}
+.jh-card p{margin:0;font:var(--fs-2)/1.6 var(--font-body);color:var(--ink-1)}
+.jh-card small{font:var(--fs-1)/1.5 var(--font-body);color:var(--ink-3)}
+.jh-card .jh-reason{color:var(--azurite)}
+.jh-card footer{margin-top:2px;font:var(--fs-1)/1 var(--font-data);color:var(--ink-3)}
+.jh-src{display:inline-grid;place-items:center;width:22px;height:22px;margin-left:auto;font:var(--fs-1)/1 var(--font-body);color:var(--ink-3);border:1.5px solid var(--ink-4);border-radius:2px;cursor:help}
+.jh-src.ai{color:var(--azurite);border-color:var(--azurite)}
+.jh-card.down{background:var(--paper-deep);border-color:var(--ink-3);color:var(--ink-1);min-height:120px;justify-content:flex-end}
+.jh-card.down .jh-back{position:absolute;inset:8px;border:1px solid color-mix(in srgb,var(--ink-3) 40%,transparent);border-radius:1px;background:repeating-linear-gradient(135deg,transparent 0 7px,color-mix(in srgb,var(--ink-3) 18%,transparent) 7px 8px)}
+.jh-card.down p{position:relative;color:var(--ink-1);font-size:var(--fs-2);text-shadow:0 0 4px var(--paper-deep),0 0 8px var(--paper-deep)}
+.jh-card.down small{position:relative;color:var(--ink-2)}
+
+/* 舆图 */
+.jh-map{position:relative;margin:0;user-select:none;aspect-ratio:3/2}
+.jh-map img{display:block;width:100%;height:100%;object-fit:cover;border-radius:2px;filter:saturate(.85)}
+.jh-place{position:absolute;transform:translate(-50%,-6px);display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none;white-space:nowrap}
+.jh-place.up{flex-direction:column-reverse;transform:translate(-50%,calc(-100% + 6px))}
+.jh-place b{font:400 var(--fs-4)/1.1 var(--font-body);color:var(--ink-1);text-shadow:0 0 2px var(--paper),0 0 6px var(--paper),0 0 12px var(--paper),0 0 18px var(--paper)}
+.jh-place.live b{font:400 var(--fs-5)/1.1 var(--font-title);color:var(--ink-0)}
+.jh-place small{font:var(--fs-1)/1.2 var(--font-body);color:var(--ink-2);text-shadow:0 0 2px var(--paper),0 0 6px var(--paper),0 0 10px var(--paper)}
+.jh-place.end b{color:var(--azurite)}
+.jh-dot{width:12px;height:12px;border-radius:50%;background:var(--ink-1);box-shadow:0 0 0 3px color-mix(in srgb,var(--paper) 80%,transparent)}
+.jh-place.far .jh-dot{background:none;border:2px solid var(--ink-1)}
+.jh-place.here .jh-dot{background:var(--cinnabar)}
+.jh-map-legend{display:flex;gap:22px;margin-top:10px}
+
+/* style.css 把 #drawer 下的文字统一压成 inherit、去掉晕边；江湖录里的墨色层次要按 id 优先级补回 */
+#drawer .jh-goals h3,#drawer .jh-fame b,#drawer .jh-deed b,#drawer .jh-card h4{color:var(--ink-0)}
+#drawer .jh-card p,#drawer .jh-diary-quote p{color:var(--ink-1)}
+#drawer .jh-goals p,#drawer .jh-fame span,#drawer .jh-deed span,#drawer .jh-card header b,#drawer .jh-deck li{color:var(--ink-2)}
+#drawer .jh-stick small,#drawer .jh-card small,#drawer .jh-card footer,#drawer .jh-deed time,#drawer .jh-deed small,#drawer .jh-day h4,#drawer .jh-src{color:var(--ink-3)}
+#drawer .jh-deck li.dealt{color:var(--ink-4)}
+#drawer .jh-deck li.next{color:var(--cinnabar)}
+#drawer .jh-card .jh-seal{color:var(--paper)}
+:is(#drawer,#night-deal) .jh-card .jh-reason,:is(#drawer,#night-deal) .jh-src.ai{color:var(--azurite)!important}
+#drawer .jh-card.down p{color:var(--ink-1);text-shadow:0 0 4px var(--paper-deep),0 0 8px var(--paper-deep)}
+#drawer .jh-card.down small{color:var(--ink-2)}
+#drawer .jh-place b{color:var(--ink-1);text-shadow:0 0 2px var(--paper),0 0 6px var(--paper),0 0 12px var(--paper),0 0 18px var(--paper)}
+#drawer .jh-place.live b{color:var(--ink-0)}
+#drawer .jh-place.end b{color:var(--azurite)}
+#drawer .jh-place small{color:var(--ink-2);text-shadow:0 0 2px var(--paper),0 0 6px var(--paper),0 0 10px var(--paper)}
+
+/* 夜里发牌 */
+#night-deal{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:radial-gradient(ellipse at center,#15140f99,#15140fd9)}
+.jh-night{width:min(820px,calc(100vw - 40px));max-height:calc(100vh - 40px);overflow:auto;padding:26px 36px 22px}
+.jh-night header{display:flex;align-items:baseline;gap:14px}
+.jh-night header h2{font:400 var(--fs-6)/1 var(--font-title);color:var(--ink-0)}
+.jh-night header small{font:var(--fs-2)/1 var(--font-body);color:var(--ink-3);letter-spacing:.12em}
+.jh-night header button{margin-left:auto;width:36px;height:36px;border:0;background:none;color:var(--ink-2)}
+.jh-diary{position:relative;margin:16px 0 12px;padding-right:30px}
+.jh-diary .jh-src{position:absolute;top:2px;right:0}
+.jh-stroke{margin:0;font:var(--fs-4)/1.8 var(--font-body);color:var(--ink-1);animation:jh-stroke .38s var(--ease) both}
+@keyframes jh-stroke{from{clip-path:inset(0 100% 0 0);opacity:.3}to{clip-path:inset(0 0 0 0);opacity:1}}
+.jh-wait{display:flex;align-items:center;gap:10px;font:var(--fs-3)/1 var(--font-body);color:var(--ink-3);letter-spacing:.2em}
+.jh-wait i{width:14px;height:14px;border-radius:50%;background:var(--ink-2);animation:jh-bleed 1.4s var(--ease) infinite}
+@keyframes jh-bleed{from{transform:scale(.4);opacity:.9}to{transform:scale(1.6);opacity:0}}
+.jh-hand{display:flex;flex-wrap:wrap;gap:14px;margin:8px 0 6px}
+.jh-deal-in{animation:jh-deal .3s var(--ease) both}
+@keyframes jh-deal{from{opacity:0;transform:translateY(14px) rotate(-2deg)}to{opacity:1;transform:none}}
+.jh-night footer{display:flex;justify-content:flex-end;margin-top:8px}
+
+/* 白天得牌：飞入江湖录 */
+.jh-fly{position:fixed;left:0;top:0;z-index:90;width:40px;height:56px;margin:-28px 0 0 -20px;display:grid;place-items:center;pointer-events:none;
+  font:var(--fs-4)/1 var(--font-body);color:var(--paper);background:var(--ink-1);border:1.5px solid var(--paper);border-radius:2px}
+
+@media (max-width:900px){.jh-goals{grid-template-columns:1fr}.jh-card{width:100%}}
+@media (prefers-reduced-motion:reduce){.jh-stroke,.jh-deal-in{animation:ink-fade .2s both}.jh-wait i{animation:none}}

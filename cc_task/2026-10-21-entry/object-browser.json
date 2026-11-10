@@ -1,0 +1,10 @@
+{
+  "checks": [
+    "Crouch cancelled before completion: no phase change or roll",
+    "Walked to crate and crouched, merchant turned, no dialogue menu",
+    "Approach and reach physically completed before pass transfer",
+    "Walked to modelled scribe desk and paid only after engraving",
+    "Clothing rack approached; coat obtained and six coins deducted after reaching"
+  ],
+  "errors": []
+}

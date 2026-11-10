@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>临溪 · 声音试听</title>
+<link rel="stylesheet" href="./vendor/fonts/fonts.css">
+<link rel="stylesheet" href="./ink-ui.css">
+<style>
+*{box-sizing:border-box}body{margin:0;background:var(--grain),var(--paper);color:var(--ink-1);font:18px/1.7 var(--font-body)}
+main{width:min(1120px,100%);margin:auto;padding:36px clamp(22px,5vw,64px) 48px}
+header{display:flex;justify-content:space-between;align-items:start;gap:24px;padding-bottom:24px;border-bottom:2px solid var(--ink-3)}
+h1{font:400 44px/1.2 var(--font-title);margin:8px 0 12px}h2{font-size:22px;margin:0 0 8px;font-weight:400}p{margin:8px 0}
+.eyebrow,.meta{font-size:14px;color:var(--ink-2)}.stamp{color:var(--cinnabar);border:2px solid currentColor;padding:5px 12px;white-space:nowrap;letter-spacing:.15em}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 40px}
+.samples{grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}
+.samples p{min-height:110px}.samples .meta{min-height:48px}
+summary{cursor:pointer;font-size:22px;padding:24px 0 8px}details{margin-top:20px}
+@media(max-width:900px){.samples{grid-template-columns:1fr}.samples p,.samples .meta{min-height:0}}
+article{min-width:0;padding:24px 0 22px;border-bottom:1px solid var(--ink-4)}
+article p{min-height:60px;color:var(--ink-2);font-size:16px}
+audio{display:block;width:100%;height:42px;margin:16px 0 10px}
+.meta{display:flex;gap:12px;justify-content:space-between;flex-wrap:wrap}
+a{color:var(--azurite);text-underline-offset:4px}
+.stage{margin:28px 0 0;padding:22px 0;border-bottom:1px solid var(--ink-3)}
+.controls{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin:16px 0}
+button{font:18px var(--font-body);cursor:pointer;background:none;border:1px solid var(--ink-3);padding:9px 18px;color:var(--ink-1);border-radius:2px}
+button.primary{border-color:var(--cinnabar);color:var(--cinnabar)}button:disabled{opacity:.5;cursor:wait}
+button:focus-visible,a:focus-visible{outline:2px solid var(--azurite);outline-offset:4px}
+label{font-size:16px;display:flex;align-items:center;gap:10px}
+input{accent-color:var(--ochre);width:130px}
+#mix-status{min-height:32px;color:var(--ink-2);font-size:16px}
+footer{margin-top:20px;font-size:14px;color:var(--ink-2)}
+@media(max-width:600px){.grid{grid-template-columns:1fr}main{padding-top:22px}h1{font-size:30px}header{gap:12px}.stamp{font-size:14px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div><div class="eyebrow">临溪 · MiniMax 2.8 HD 情绪补测</div><h1>听见江湖</h1><p>三段短对白，听听停顿、情绪和人物的分寸。</p></div>
+<span class="stamp">试听</span>
+</header>
+<section class="grid samples" aria-label="本轮 MiniMax 情绪补测">
+<article><h2>锦衣客 · 含笑试探</h2><p>“城门查得这样紧……你是怎么进来的？”<br><span class="eyebrow">试听重点：问句后的轻笑，是否像在试探。</span></p>
+<audio id="prince-28" controls preload="metadata" aria-label="锦衣客 MiniMax 2.8 试探试听" src="./assets/audio/audition-2026-11-10/prince-28.mp3"></audio>
+<div class="meta"><span>自动情绪 · 停顿 + 轻笑</span><a href="./assets/audio/audition-2026-11-10/prince-28.mp3" download>下载原音</a></div></article>
+<article><h2>守卫 · 怒气问责</h2><p>“站住。把手里的东西放下。你当我没瞧见？”<br><span class="eyebrow">试听重点：有没有压迫感，会不会太像喊叫。</span></p>
+<audio id="guard-28" controls preload="metadata" aria-label="守卫 MiniMax 2.8 问责试听" src="./assets/audio/audition-2026-11-10/guard-28.mp3"></audio>
+<div class="meta"><span>愤怒情绪 · 短句停顿</span><a href="./assets/audio/audition-2026-11-10/guard-28.mp3" download>下载原音</a></div></article>
+<article><h2>宋茶娘 · 道谢</h2><p>“多亏你搭了把手。方才真吓着我了……来，这盏茶，我请你。”<br><span class="eyebrow">试听重点：松口气之后，道谢是否自然。</span></p>
+<audio id="hostess-28" controls preload="metadata" aria-label="宋茶娘 MiniMax 2.8 道谢试听" src="./assets/audio/audition-2026-11-10/hostess-28.mp3"></audio>
+<div class="meta"><span>自动情绪 · 叹气 + 停顿</span><a href="./assets/audio/audition-2026-11-10/hostess-28.mp3" download>下载原音</a></div></article>
+</section>
+<p class="eyebrow">本轮均为 Speech 2.8 HD。锦衣客沿用上一轮音色和主要台词，另加停顿与轻笑；不是仅替换模型的严格 A/B 测试。</p>
+<details><summary>第一轮 · 2.6 对白与 Seed 环境音</summary>
+<div class="grid">
+<article><h2>街市 · 茶棚</h2><p>轻声交谈、脚步、碗盏，以及远处的一声招呼。留意叫卖是否自然，是否抢对白。</p>
+<audio id="city" controls preload="metadata" aria-label="街市茶棚环境音试听" src="./assets/audio/audition-2026-11-10/city-listen.wav"></audio>
+<div class="meta"><span>Seed Audio 1.0 · 20 秒</span><a href="./assets/audio/audition-2026-11-10/city.wav" download>下载原音</a></div></article>
+<article><h2>城外 · 溪畔</h2><p>连续的浅溪水声、风过树叶、零星鸟鸣。留意是否像真实户外，以及久听是否疲劳。</p>
+<audio id="creek" controls preload="metadata" aria-label="溪流鸟鸣环境音试听" src="./assets/audio/audition-2026-11-10/creek-listen.wav"></audio>
+<div class="meta"><span>Seed Audio 1.0 · 20 秒</span><a href="./assets/audio/audition-2026-11-10/creek.wav" download>下载原音</a></div></article>
+<article><h2>锦衣客 · 试探</h2><p>“城门查得这样紧……你是怎么进来的？”</p>
+<audio id="prince" controls preload="metadata" aria-label="锦衣客对白试听" src="./assets/audio/audition-2026-11-10/prince.mp3"></audio>
+<div class="meta"><span>Speech 2.6 HD · 沉稳男声</span><a href="./assets/audio/audition-2026-11-10/prince.mp3" download>下载原音</a></div></article>
+<article><h2>宋茶娘 · 招呼</h2><p>“客官，茶刚沏好。赶路累了，就坐下歇歇脚。”</p>
+<audio id="tea-hostess" controls preload="metadata" aria-label="宋茶娘对白试听" src="./assets/audio/audition-2026-11-10/tea-hostess.mp3"></audio>
+<div class="meta"><span>Speech 2.6 HD · 成熟女声</span><a href="./assets/audio/audition-2026-11-10/tea-hostess.mp3" download>下载原音</a></div></article>
+</div>
+</details>
+<section class="stage" aria-labelledby="mix-title">
+<h2 id="mix-title">把声音放在一起</h2>
+<p>复用 Seed 街市底声，搭配本轮 2.8 的锦衣客与宋茶娘；对白出现时，环境声轻轻退后。</p>
+<div class="controls"><button id="mix-play" class="primary">试听场景</button><button id="mix-stop" disabled>停止</button><label>环境音量 <input id="ambience-volume" type="range" min="0" max="100" value="45" aria-label="混音环境音量"><output id="volume-value">45%</output></label></div>
+<p id="mix-status" role="status" aria-live="polite">约 20 秒 · 点击后播放</p>
+</section>
+<footer>本轮新增三段 AI 合成对白，未替换游戏声音。展开第一轮可对比旧版；环境音试听已抬升音量，下载保留原音。所有播放仅使用已有文件，不产生新的生成请求。</footer>
+</main>
+<script type="module" src="./src/audio-audition.js"></script>
+</body>
+</html>
+

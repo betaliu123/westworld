@@ -1,0 +1,97 @@
+{
+  "provider": "Adobe Mixamo",
+  "url": "https://www.mixamo.com/",
+  "downloaded": "2026-11-10",
+  "source_character": "X BOT",
+  "export": {
+    "format": "FBX Binary",
+    "skin": "With Skin",
+    "fps": 30,
+    "keyframe_reduction": "None"
+  },
+  "clips": [
+    {
+      "clip": "argue",
+      "source_file": "argue.fbx",
+      "sha256": "36a4bf2035ff9f3b81b24da4b497f4d26651b0faa75dfaee9b6d2940ddd71d3a",
+      "duration": 20.8
+    },
+    {
+      "clip": "breathe",
+      "source_file": "breathe.fbx",
+      "sha256": "b2023b9a4deb9b9365c4c9e0255aba8d6257032b996db644233ee9d6b240afcd",
+      "duration": 9.933333333333334
+    },
+    {
+      "clip": "idle",
+      "source_file": "idle.fbx",
+      "sha256": "12cd1c60f37a1352b47935e0e2ae3cd71ba48bc05d01b6f1724afd9edda04347",
+      "duration": 8.333333333333334
+    },
+    {
+      "clip": "question",
+      "source_file": "question.fbx",
+      "sha256": "5f20bd6e573fbd04a26c5b192e5715be2acb9c40aead91572116ee72b7174c1e",
+      "duration": 3.7666666666666666
+    },
+    {
+      "clip": "sit_idle",
+      "source_file": "sit_idle.fbx",
+      "sha256": "f0e9d6534789bd4b84c77cb64ad8fc8493b2b89cef90f76ab2f73c839720b890",
+      "duration": 4.3
+    },
+    {
+      "clip": "sit_talk",
+      "source_file": "sit_talk.fbx",
+      "sha256": "aad9fe776be24f70eb1bd17cd921a0fc237fd0cf2bb704f6cc5e95c022a0f883",
+      "duration": 9.0
+    },
+    {
+      "clip": "talk",
+      "source_file": "talk.fbx",
+      "sha256": "f4797fcde0160071b6e2f3c29860495bcb9040d79f86e960fa25d3e47832d6cf",
+      "duration": 10.266666666666667
+    },
+    {
+      "clip": "walk",
+      "source_file": "walk.fbx",
+      "sha256": "0f515da9cf53bfebb41b6f405c62a0b32cc2d4adef038f5bb8f6e2c8369efdf2",
+      "duration": 1.0333333333333334
+    },
+    {
+      "clip": "stand_relaxed",
+      "title": "Standing Idle",
+      "source_file": "stand_relaxed.fbx",
+      "sha256": "65e53ce3688e52acf4b12ec0328846c4aad89f9eeade7b53361b36405a03450b",
+      "duration": 6.0
+    },
+    {
+      "clip": "elder_idle",
+      "title": "Old Man Idle",
+      "source_file": "elder_idle.fbx",
+      "sha256": "855fe9b2cb882c94bb117f473d9996086daf95c249845688842732411e615ed2",
+      "duration": 12.166666666666666
+    },
+    {
+      "clip": "idle_weightshift",
+      "title": "Bored",
+      "source_file": "idle_weightshift.fbx",
+      "sha256": "fcdbfc2e91ca1c0176701dfa91fa79dc8426961f51b9b7fbabb697306288c8e7",
+      "duration": 10.666666666666666
+    },
+    {
+      "clip": "crouch_idle",
+      "title": "Crouching Idle / Low Crouching Idle",
+      "source_file": "crouch_idle.fbx",
+      "sha256": "0689bc026bf5c124eabe6ccc98ad260960e55d13397a3da61e2ec81f0bd66cbe",
+      "duration": 2.5
+    },
+    {
+      "clip": "crouch_walk",
+      "title": "Crouched Walking / Crouched Walk",
+      "source_file": "crouch_walk.fbx",
+      "sha256": "5a4bc9aaa09a0c03aebafed7b495a6ca4087ea8d3a94439e137dd9cefaa23360",
+      "duration": 1.0333333333333334
+    }
+  ]
+}

@@ -1,3 +1,10 @@
 .env
 __pycache__/
 *.log
+# Reference motion has no verified redistribution license. Local experiment only.
+src/models/sumiro-motion.local.json
+# Full OFL source fonts (~60 MB); build_fonts.py subsets them into vendor/fonts.
+assets-src/fonts/*.ttf
+# Mixamo source downloads and intermediate samples stay local; ship the baked NPC tracks.
+assets-src/animations/mixamo/
+assets-src/animations/samples/

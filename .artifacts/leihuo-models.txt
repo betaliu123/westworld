@@ -1,0 +1,57 @@
+GET /v1/models 200 bytes 15147
+interesting:
+  gemini-2.5-flash-image
+  gemini-3-pro-image
+  gemini-3.1-flash-image
+  gemini-3.1-flash-lite-image
+  gpt-image-2
+  gpt-image-2.5-flare
+  gpt-image-2.5-sunburst
+  hunyuan3d-pro
+  hunyuan3d-pro-3.1
+  qwen-image-3.0-pro
+  tripo-default
+  tripo-P-v2.0-20251225
+  tripo-P1-20260311
+  tripo-v1.4-20240625
+  tripo-v2.5-20250123
+  tripo-v3.0-20250812
+  tripo-v3.1-20260211
+total models 104
+
+GET https://ai.leihuo.netease.com/v3/account/balance -> 200
+
+<DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="language" content="en" />
+    <link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet">
+    <link href="/static/bootstrap/css/oauth.20230926.css" rel="stylesheet">
+    <script type="text/javascript" src="/static/js/jquery-1.9.1.min.js"></s
+
+POST https://ai.leihuo.netease.com/v3/generation/text-to-model -> 401
+<!doctype html>
+<html lang=en>
+<title>401 Unauthorized</title>
+<h1>Unauthorized</h1>
+<p>LOGIN REQUIRED</p>
+
+
+GET https://ai.leihuo.netease.com/v2/openapi/user/balance -> 200
+
+<DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="language" content="en" />
+    <link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/bootstrap/css/bootstrap-responsive.min.css" rel="stylesheet">
+    <link href="/static/bootstrap/css/oauth.20230926.css" rel="stylesheet">
+    <script type="text/javascript" src="/static/js/jquery-1.9.1.min.js"></s
+
+POST https://ai.leihuo.netease.com/v1/task/submit -> 404
+{"error":{"message":"Invalid URL (POST /v1/task/submit)","type":"invalid_request_error","param":"","code":""}}

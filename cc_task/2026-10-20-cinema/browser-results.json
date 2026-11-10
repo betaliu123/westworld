@@ -1,0 +1,10 @@
+{
+  "checks": [
+    "Reading dialogue freezes story clock",
+    "Failed mediation returns three meaningful follow-up choices",
+    "Follow-up persists through reload and settles once",
+    "Proposal opening and result use cinema, Esc skips text without choosing",
+    "Confidence keeps second decision after failed first check"
+  ],
+  "errors": []
+}

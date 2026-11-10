@@ -1,0 +1,240 @@
+{
+  "schema": 1,
+  "model": "speech-2.8-hd",
+  "language_boost": "Chinese",
+  "audio_setting": {
+    "sample_rate": 32000,
+    "bitrate": 128000,
+    "format": "mp3",
+    "channel": 1
+  },
+  "defaults": {
+    "vol": 1
+  },
+  "cast": {
+    "traveler": {
+      "name": "锦衣客",
+      "voice_id": "male-qn-jingying",
+      "speed": 0.94,
+      "pitch": 0,
+      "direction": "从容含笑、克制试探；不以声音泄露身份"
+    },
+    "gate_guard": {
+      "name": "韩校尉",
+      "voice_id": "male-qn-badao",
+      "speed": 0.96,
+      "pitch": 0,
+      "direction": "低沉强硬；问责才用 angry，普通轮值自动情绪"
+    },
+    "gate_relief": {
+      "name": "周伍长",
+      "voice_id": "male-qn-badao",
+      "speed": 1,
+      "pitch": 1,
+      "direction": "年轻利落，比校尉稍快"
+    },
+    "guard": {
+      "name": "陆捕头",
+      "voice_id": "male-qn-badao",
+      "speed": 0.98,
+      "pitch": -1,
+      "direction": "沉着执法，短句施压"
+    },
+    "inspector": {
+      "name": "顾钦差",
+      "voice_id": "male-qn-jingying",
+      "speed": 0.9,
+      "pitch": -1,
+      "direction": "审慎威严，不高声吼叫"
+    },
+    "old_constable": {
+      "name": "杜老捕",
+      "voice_id": "male-qn-jingying",
+      "speed": 0.91,
+      "pitch": -2,
+      "direction": "老练、随和，指点时留停顿"
+    },
+    "tea_host": {
+      "name": "宋茶娘",
+      "voice_id": "female-chengshu",
+      "speed": 0.94,
+      "pitch": 0,
+      "direction": "利落亲切；道谢自然，遇险短促"
+    },
+    "bookseller": {
+      "name": "温素笺",
+      "voice_id": "female-yujie",
+      "speed": 0.94,
+      "pitch": 0,
+      "direction": "清雅镇定、有分寸，避免撒娇"
+    },
+    "inn": {
+      "name": "柳掌柜",
+      "voice_id": "female-chengshu",
+      "speed": 1,
+      "pitch": -1,
+      "direction": "爽利练达，与茶娘区分节奏"
+    },
+    "tea": {
+      "name": "阿青",
+      "voice_id": "female-shaonv",
+      "speed": 1.02,
+      "pitch": 0,
+      "direction": "年轻明快，保持自然"
+    },
+    "mei": {
+      "name": "梅知意",
+      "voice_id": "female-yujie",
+      "speed": 0.96,
+      "pitch": 1,
+      "direction": "自信清楚、有主见"
+    },
+    "su": {
+      "name": "苏晚",
+      "voice_id": "female-yujie",
+      "speed": 0.9,
+      "pitch": -1,
+      "direction": "安静疏淡，琴师的从容"
+    },
+    "matchmaker": {
+      "name": "花婶",
+      "voice_id": "female-chengshu",
+      "speed": 1.06,
+      "pitch": 1,
+      "direction": "热络健谈，清晰而不尖叫"
+    },
+    "gate_merchant": {
+      "name": "赵行商",
+      "voice_id": "male-qn-qingse",
+      "speed": 1.02,
+      "pitch": -1,
+      "direction": "精明谨慎，做生意利落"
+    },
+    "merchant": {
+      "name": "许行商",
+      "voice_id": "male-qn-qingse",
+      "speed": 0.99,
+      "pitch": 1,
+      "direction": "走街商人，招呼有抑扬"
+    },
+    "scribe": {
+      "name": "刻字人",
+      "voice_id": "male-qn-jingying",
+      "speed": 0.92,
+      "pitch": -2,
+      "direction": "寡言警惕，暗话压低节奏"
+    },
+    "relay": {
+      "name": "驿舍补衣人",
+      "voice_id": "male-qn-qingse",
+      "speed": 0.95,
+      "pitch": -1,
+      "direction": "朴实慢条斯理"
+    },
+    "prisoner": {
+      "name": "旧账房",
+      "voice_id": "male-qn-jingying",
+      "speed": 0.89,
+      "pitch": -1,
+      "direction": "疲倦谨慎，不轻易说破"
+    },
+    "gang_boss": {
+      "name": "梅掌舵",
+      "voice_id": "male-qn-badao",
+      "speed": 0.91,
+      "pitch": -2,
+      "direction": "有压迫感，愤怒有克制"
+    },
+    "chi": {
+      "name": "段赤川",
+      "voice_id": "male-qn-badao",
+      "speed": 1,
+      "pitch": 0,
+      "direction": "直爽硬朗"
+    },
+    "qing": {
+      "name": "林青舟",
+      "voice_id": "male-qn-qingse",
+      "speed": 0.97,
+      "pitch": 0,
+      "direction": "坦荡、温和坚定"
+    },
+    "shen": {
+      "name": "沈砚",
+      "voice_id": "male-qn-qingse",
+      "speed": 0.94,
+      "pitch": -1,
+      "direction": "内敛认真"
+    },
+    "thief": {
+      "name": "燕七",
+      "voice_id": "male-qn-qingse",
+      "speed": 1.08,
+      "pitch": 1,
+      "direction": "机灵、戒备，快而不滑稽"
+    },
+    "gao": {
+      "name": "高小楼",
+      "voice_id": "male-qn-jingying",
+      "speed": 0.99,
+      "pitch": 1,
+      "direction": "熟络散漫，不靠夸张醉腔"
+    },
+    "porter": {
+      "name": "周大石",
+      "voice_id": "male-qn-badao",
+      "speed": 0.97,
+      "pitch": -1,
+      "direction": "厚实朴直"
+    },
+    "elder": {
+      "name": "陈先生",
+      "voice_id": "male-qn-jingying",
+      "speed": 0.9,
+      "pitch": -2,
+      "direction": "说书有顿挫，日常不说播音腔"
+    },
+    "player_male": {
+      "name": "少侠（男）",
+      "voice_id": "male-qn-qingse",
+      "speed": 0.98,
+      "pitch": 0,
+      "direction": "只在主角性别明确时启用"
+    },
+    "player_female": {
+      "name": "少侠（女）",
+      "voice_id": "female-yujie",
+      "speed": 0.98,
+      "pitch": 0,
+      "direction": "只在主角性别明确时启用"
+    }
+  },
+  "performances": [
+    {
+      "actors": [
+        "traveler"
+      ],
+      "text": "城门查得这样紧……你是怎么进来的？",
+      "synthesisText": "城门查得这样紧……<#0.35#>你是怎么进来的？(chuckle)",
+      "sample": "prince-28"
+    },
+    {
+      "actors": [
+        "gate_guard"
+      ],
+      "text": "站住。把手里的东西放下。你当我没瞧见？",
+      "synthesisText": "站住。<#0.25#>把手里的东西放下。<#0.35#>你当我没瞧见？",
+      "emotion": "angry",
+      "sample": "guard-28"
+    },
+    {
+      "actors": [
+        "tea_host"
+      ],
+      "text": "多亏你搭了把手。方才真吓着我了……来，这盏茶，我请你。",
+      "synthesisText": "(sighs)多亏你搭了把手。<#0.3#>方才真吓着我了……<#0.35#>来，这盏茶，我请你。",
+      "sample": "hostess-28",
+      "note": "试听保留，游戏必须先实际赠茶才可使用此句；目前不触发请茶承诺。"
+    }
+  ]
+}

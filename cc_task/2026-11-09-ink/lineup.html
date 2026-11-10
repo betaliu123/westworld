@@ -1,0 +1,43 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>NPC lineup</title>
+<style>html,body{margin:0;background:#d9cfb8;overflow:hidden}canvas{display:block}</style>
+<script type="module">
+import * as T from '/vendor/three.module.js';
+import {character, textSprite} from '/src/world.js';
+import {PEOPLE} from '/src/data.js';
+import {mountActorModel, npcLook} from '/src/actor-model.js';
+
+// Every NPC in two rows using the game's own builders; ?pose=walk swings limbs, ?sword=1 shows blades, ?only=id,id narrows.
+const q = new URLSearchParams(location.search), only = q.get('only')?.split(',');
+const renderer = new T.WebGLRenderer({antialias: true});
+renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true; document.body.append(renderer.domElement);
+const scene = new T.Scene(); scene.background = new T.Color(0xd9cfb8);
+scene.add(new T.HemisphereLight(0xfff4e0, 0x6b6253, 1.6));
+const sun = new T.DirectionalLight(0xffffff, 2.2); sun.position.set(4, 9, 8); scene.add(sun);
+const people = PEOPLE.filter(p => !only || only.includes(p.id)), perRow = Math.ceil(people.length / (only ? 1 : 2));
+const actors = people.map((person, i) => {
+  const actor = character(person.color, false, person.gender === 'female', person.id === 'traveler' ? 'prince' : person.id === 'bookseller' ? 'bookseller' : null);
+  const row = Math.floor(i / perRow), col = i % perRow;
+  actor.position.set((col - (perRow - 1) / 2) * 1.25, 0, -row * 3.2);
+  const label = textSprite(person.name); label.position.y = 2.5; label.scale.multiplyScalar(.45); actor.add(label);
+  if (q.get('sword')) actor.userData.sword.visible = true;
+  scene.add(actor);
+  return {actor, person, model: mountActorModel(actor, npcLook(person.id))};
+});
+const camera = new T.PerspectiveCamera(32, innerWidth / innerHeight, .1, 100);
+const span = perRow * 1.25;
+camera.position.set(0, 1.6, Math.max(3.4, span * 1.55)); camera.lookAt(0, 1.05, only ? 0 : -1.6);
+let t = 0;
+renderer.setAnimationLoop(() => {
+  t += 1 / 60;
+  for (const {actor, person, model} of actors) {
+    const u = actor.userData;
+    if (q.get('pose') === 'walk') { const s = q.get('still') ? 1 : Math.sin(t * 4); u.legs[0].rotation.x = s * .55; u.legs[1].rotation.x = -s * .55; u.arms[0].rotation.x = -s * .45; u.arms[1].rotation.x = s * .45; }
+    if (q.get('pose') === 'talk') u.arms[1].rotation.x = -.7;
+    model.sync(person.color);
+  }
+  renderer.render(scene, camera);
+  document.title = actors.filter(a => a.model.ready).length + '/' + actors.length;
+});
+</script>

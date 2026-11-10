@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>临溪 · 场景混音试听</title><link rel="stylesheet" href="/vendor/fonts/fonts.css"><link rel="stylesheet" href="/ink-ui.css">
+<style>body{margin:0;background:var(--paper);color:var(--ink-1);font:18px/1.7 var(--font-body)}main{max-width:900px;margin:auto;padding:32px}h1{font:44px var(--font-title)}h2{font:22px var(--font-body)}section{padding:18px 0;border-top:1px solid var(--ink-3)}button,select{font:18px var(--font-body);padding:9px 15px;margin:5px;border:1px solid var(--ink-3);border-radius:2px;color:var(--ink-1);background:transparent;cursor:pointer}button:focus-visible{outline:2px solid var(--cinnabar)}a{color:var(--azurite)}p{margin:8px 0}output,small{font-size:14px}#status{display:block;white-space:pre-wrap}audio{width:100%}.controls{display:flex;flex-wrap:wrap;gap:8px}</style></head>
+<body><main><h1>听见临溪</h1><p>琴箫、街巷与溪水。使用与游戏相同的混音器。</p>
+<div class="controls"><button id="start">开始试听</button><button id="stop">停止</button><button id="mute">静音</button>
+<select id="place" aria-label="试听位置"><option value="gate">城门茶棚</option><option value="city">城中街巷</option><option value="creek">城外溪边</option></select>
+<select id="time" aria-label="试听时段"><option value="0">白天</option><option value="170">夜间</option></select></div>
+<section><h2>动作与器物</h2><div id="effects" class="controls"></div></section>
+<section><h2>对白让位</h2><button id="voice">锦衣客开口</button><button id="skip">结束对白</button><button id="performance">卖艺时淡出配乐</button><p>人物开口时背景声降低，结束后恢复。切到其他标签页即静音。</p></section>
+<section><h2>播放状态</h2><output id="status">等待点击开始试听</output></section>
+<section><h2>琴箫原曲</h2><audio id="music" controls preload="none"></audio><small>Seed Audio 生成；正式游戏已接入，右上角声音开关统一控制。</small></section>
+<p><a href="/?preview=gate">返回游戏</a> · <a href="/audio-audition.html">人物台词试听</a></p>
+</main><script type="module" src="/src/audio-world-preview.js"></script></body></html>

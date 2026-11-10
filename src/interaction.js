@@ -26,6 +26,7 @@ export function motionFor(a){
  return 'talk';
 }
 export function turnToward(current,target,dt){const delta=Math.atan2(Math.sin(target-current),Math.cos(target-current));if(Math.abs(delta)<.008)return current;const step=delta*(1-Math.exp(-6*dt)),limit=2.8*dt;return current+Math.max(-limit,Math.min(limit,step));}
+export function heroTurn(current,target,dt){const delta=Math.atan2(Math.sin(target-current),Math.cos(target-current)),step=delta*(1-Math.exp(-16*dt)),limit=13*dt;return current+Math.max(-limit,Math.min(limit,step));}
 export function arriveStep(distance,speed,dt,stop=.12){return Math.min(speed*dt,Math.max(0,distance-stop));}
 
 export function bubbleLayout(width,height,point){

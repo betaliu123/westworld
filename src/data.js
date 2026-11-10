@@ -4,7 +4,7 @@ export const PEOPLE=[
  {id:'inspector',name:'顾钦差',title:'六扇门 · 奉旨查案',faction:'六扇门',color:0x723e3d,x:10,z:-23,relation:0},
  {id:'gang_boss',name:'梅掌舵',title:'赤砂帮 · 帮主',faction:'赤砂帮',color:0x57352e,x:23,z:-5,relation:0},
  {id:'gate_relief',name:'周伍长',title:'临溪守军 · 轮值伍长',faction:'临溪守军',color:0x4b5965,x:2,z:25,relation:0},
- {id:'tea_host',name:'宋茶娘',title:'城外茶棚掌柜',faction:'临溪街坊',color:0x92734e,x:-11.9,z:27,relation:0},
+ {id:'tea_host',gender:'female',name:'宋茶娘',title:'城外茶棚掌柜',faction:'临溪街坊',color:0x92734e,x:-11.9,z:27,relation:0},
  {id:'traveler',name:'锦衣客',title:'在茶棚候人的旅客',color:0x657f89,x:-5,z:30,relation:0},
  {id:'old_constable',name:'杜老捕',title:'退役捕快',faction:'临溪县衙',color:0x5c6972,x:-8,z:30,relation:0},
  {id:'gate_guard',faction:'临溪守军',name:'韩校尉',title:'临溪关 · 20级披甲校尉',color:0x34434a,x:0,z:23,relation:-10},
@@ -12,19 +12,19 @@ export const PEOPLE=[
  {id:'gate_merchant',faction:'东溪商帮',name:'赵行商',title:'等饼的行商',color:0x456e77,x:6,z:24,relation:0},
  {id:'scribe',faction:'临溪街坊',name:'刻字人',title:'修印改字',color:0x65605c,x:11,z:24,relation:0},
  {id:'prisoner',faction:'税课司',name:'旧账房',title:'被关押的抄账人',color:0x666459,x:20.5,z:-23,relation:0},
- {id:'mei',name:'梅知意',title:'绛云楼的梅家姑娘 · 招亲由她自己决定',color:0xb44e7b,x:22,z:8.9,relation:0},
- {id:'matchmaker',name:'花婶',title:'招亲主持',color:0x6e5486,x:25,z:9,relation:0},
+ {id:'mei',gender:'female',name:'梅知意',title:'绛云楼的梅家姑娘 · 招亲由她自己决定',color:0xb44e7b,x:22,z:8.9,relation:0},
+ {id:'matchmaker',gender:'female',name:'花婶',title:'招亲主持',color:0x6e5486,x:25,z:9,relation:0},
  {id:'merchant',name:'许行商',title:'走街行商',color:0x4b8490,x:2,z:12,relation:0},
  {id:'thief',name:'燕七',title:'游手闲汉',color:0x535260,x:-3,z:14,relation:0},
  {id:'qing',name:'林青舟',title:'青竹会 · 护路弟子',color:0x3e7566,x:-4,z:7,faction:'青竹会',relation:0},
  {id:'chi',name:'段赤川',title:'赤砂帮 · 镖手',color:0x994939,x:3,z:7,faction:'赤砂帮',relation:0},
  {id:'shen',name:'沈砚',title:'青竹会 · 外堂弟子',color:0x48736b,x:-2,z:2,faction:'青竹会',relation:0},
- {id:'su',name:'苏晚',title:'行脚琴师',color:0xb65d56,x:0,z:2,relation:0},
+ {id:'su',gender:'female',name:'苏晚',title:'行脚琴师',color:0xb65d56,x:0,z:2,relation:0},
  {id:'gao',name:'高小楼',title:'酒客 · 你的旧识',color:0xba9959,x:3,z:3,relation:18},
  {id:'guard',faction:'临溪县衙',name:'陆捕头',title:'临溪镇捕头',color:0x334955,x:10,z:5,relation:0},
- {id:'bookseller',name:'温素笺',title:'墨香斋主人 · 修书辨版',faction:'临溪街坊',color:0x548d84,x:-12,z:6.6,relation:0},
- {id:'inn',name:'柳掌柜',title:'听雨楼掌柜',color:0x74618b,x:-10,z:-7,relation:5},
- {id:'tea',name:'阿青',title:'卖茶姑娘',color:0x678154,x:10,z:-8,relation:0},
+ {id:'bookseller',gender:'female',name:'温素笺',title:'墨香斋主人 · 修书辨版',faction:'临溪街坊',color:0x548d84,x:-12,z:6.6,relation:0},
+ {id:'inn',gender:'female',name:'柳掌柜',title:'听雨楼掌柜',color:0x74618b,x:-10,z:-7,relation:5},
+ {id:'tea',gender:'female',name:'阿青',title:'卖茶姑娘',color:0x678154,x:10,z:-8,relation:0},
  {id:'porter',name:'周大石',title:'脚夫',color:0x9b7858,x:-8,z:10,relation:0},
  {id:'elder',name:'陈先生',title:'说书人',color:0x9e9b83,x:7,z:12,relation:0}
 ];
@@ -87,3 +87,5 @@ export function actionsFor(scene,ring=false){
  return base;
 }
 export const LETTERS={ring_quarrel:'戒指还是没找到。沈砚和苏晚在桥头拌起嘴来，说起了丢戒指这件事。你若路过，帮着劝两句吧。',banquet:'听雨楼前摆起长桌了，沈砚与苏晚请街坊喝喜酒。你有空也来坐坐？',inquiry:'求婚那枚银戒不见了，沈砚正在桥头问人。你那天也在，可曾看见什么？',dispute:'沈砚还惦记着桥头那件事。他在老地方，想找你把话说开。',confidence:'苏晚托我问问你有没有空。她在河畔柳树下，有些话不想当着人群说。',favor:'沈砚在听雨楼前等你，还带了一位行商。他说，那天的人情该还了。',truce:'我在听雨楼前凑了一桌薄酒。江湖不大，大家坐下解个疙瘩，可好？',ending:'今日又有人说起那场风波，提到了你。临溪镇不大，有些事倒记得挺久。'};
+
+export const personPronoun=id=>PEOPLE.find(p=>p.id===id)?.gender==='female'?'她':'他';

@@ -1,5 +1,5 @@
 const topic=(id,label,reply,children)=>({id:'topic:'+id,mode:'topic',label,reply,children});
-const matter=new Set(['story','prince_answer','prince_evidence','watch','escort','tax','apex','ledger','seal','vouch','identity_paper']);
+const matter=new Set(['deal','story','prince_answer','prince_evidence','watch','escort','tax','apex','ledger','seal','vouch','identity_paper']);
 const personal=new Set(['identity','prince_identity','prince_leave','tea_news','training','training_review']);
 export function talkTree(id,actions){
  if(actions.length<=3)return actions;

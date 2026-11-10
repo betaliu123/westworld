@@ -1,0 +1,939 @@
+
+> jianghu-echoes@0.1.0 test
+> node --test tests/*.test.js
+
+TAP version 13
+# Subtest: gang: success/failure 0 continues, saves, recovers, settles once
+ok 1 - gang: success/failure 0 continues, saves, recovers, settles once
+  ---
+  duration_ms: 2.1963
+  ...
+# Subtest: gang: success/failure 0.999 continues, saves, recovers, settles once
+ok 2 - gang: success/failure 0.999 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.7915
+  ...
+# Subtest: performance: success/failure 0 continues, saves, recovers, settles once
+ok 3 - performance: success/failure 0 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.3302
+  ...
+# Subtest: performance: success/failure 0.999 continues, saves, recovers, settles once
+ok 4 - performance: success/failure 0.999 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.3564
+  ...
+# Subtest: cargo: success/failure 0 continues, saves, recovers, settles once
+ok 5 - cargo: success/failure 0 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.2954
+  ...
+# Subtest: cargo: success/failure 0.999 continues, saves, recovers, settles once
+ok 6 - cargo: success/failure 0.999 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.2096
+  ...
+# Subtest: bargain: success/failure 0 continues, saves, recovers, settles once
+ok 7 - bargain: success/failure 0 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.3102
+  ...
+# Subtest: bargain: success/failure 0.999 continues, saves, recovers, settles once
+ok 8 - bargain: success/failure 0.999 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.1856
+  ...
+# Subtest: care: success/failure 0 continues, saves, recovers, settles once
+ok 9 - care: success/failure 0 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.5508
+  ...
+# Subtest: care: success/failure 0.999 continues, saves, recovers, settles once
+ok 10 - care: success/failure 0.999 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.4632
+  ...
+# Subtest: parley: success/failure 0 continues, saves, recovers, settles once
+ok 11 - parley: success/failure 0 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.669
+  ...
+# Subtest: parley: success/failure 0.999 continues, saves, recovers, settles once
+ok 12 - parley: success/failure 0.999 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.1433
+  ...
+# Subtest: encore: success/failure 0 continues, saves, recovers, settles once
+ok 13 - encore: success/failure 0 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.1245
+  ...
+# Subtest: encore: success/failure 0.999 continues, saves, recovers, settles once
+ok 14 - encore: success/failure 0.999 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.0997
+  ...
+# Subtest: account: success/failure 0 continues, saves, recovers, settles once
+ok 15 - account: success/failure 0 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.1055
+  ...
+# Subtest: account: success/failure 0.999 continues, saves, recovers, settles once
+ok 16 - account: success/failure 0.999 continues, saves, recovers, settles once
+  ---
+  duration_ms: 0.0919
+  ...
+# Subtest: banquet: authored conversation preserves a second decision after roll 0
+ok 17 - banquet: authored conversation preserves a second decision after roll 0
+  ---
+  duration_ms: 0.8422
+  ...
+# Subtest: banquet: authored conversation preserves a second decision after roll 0.999
+ok 18 - banquet: authored conversation preserves a second decision after roll 0.999
+  ---
+  duration_ms: 0.1702
+  ...
+# Subtest: ring_quarrel: authored conversation preserves a second decision after roll 0
+ok 19 - ring_quarrel: authored conversation preserves a second decision after roll 0
+  ---
+  duration_ms: 0.1761
+  ...
+# Subtest: ring_quarrel: authored conversation preserves a second decision after roll 0.999
+ok 20 - ring_quarrel: authored conversation preserves a second decision after roll 0.999
+  ---
+  duration_ms: 0.1232
+  ...
+# Subtest: dispute: authored conversation preserves a second decision after roll 0
+ok 21 - dispute: authored conversation preserves a second decision after roll 0
+  ---
+  duration_ms: 0.1981
+  ...
+# Subtest: dispute: authored conversation preserves a second decision after roll 0.999
+ok 22 - dispute: authored conversation preserves a second decision after roll 0.999
+  ---
+  duration_ms: 0.1054
+  ...
+# Subtest: confidence: authored conversation preserves a second decision after roll 0
+ok 23 - confidence: authored conversation preserves a second decision after roll 0
+  ---
+  duration_ms: 0.0917
+  ...
+# Subtest: confidence: authored conversation preserves a second decision after roll 0.999
+ok 24 - confidence: authored conversation preserves a second decision after roll 0.999
+  ---
+  duration_ms: 0.0916
+  ...
+# Subtest: favor: authored conversation preserves a second decision after roll 0
+ok 25 - favor: authored conversation preserves a second decision after roll 0
+  ---
+  duration_ms: 0.1065
+  ...
+# Subtest: favor: authored conversation preserves a second decision after roll 0.999
+ok 26 - favor: authored conversation preserves a second decision after roll 0.999
+  ---
+  duration_ms: 0.1173
+  ...
+# Subtest: truce: authored conversation preserves a second decision after roll 0
+ok 27 - truce: authored conversation preserves a second decision after roll 0
+  ---
+  duration_ms: 0.1055
+  ...
+# Subtest: truce: authored conversation preserves a second decision after roll 0.999
+ok 28 - truce: authored conversation preserves a second decision after roll 0.999
+  ---
+  duration_ms: 0.0904
+  ...
+# Subtest: ending: authored conversation preserves a second decision after roll 0
+ok 29 - ending: authored conversation preserves a second decision after roll 0
+  ---
+  duration_ms: 0.0851
+  ...
+# Subtest: ending: authored conversation preserves a second decision after roll 0.999
+ok 30 - ending: authored conversation preserves a second decision after roll 0.999
+  ---
+  duration_ms: 0.1333
+  ...
+# Subtest: dialogue sentence split preserves speaker and ordered punctuation
+ok 31 - dialogue sentence split preserves speaker and ordered punctuation
+  ---
+  duration_ms: 0.2075
+  ...
+# Subtest: camera templates differ in position, framing and field of view with finite coincident fallback
+ok 32 - camera templates differ in position, framing and field of view with finite coincident fallback
+  ---
+  duration_ms: 0.2173
+  ...
+# Subtest: violent interruption still overrides a continuation and cannot award negotiation rewards
+ok 33 - violent interruption still overrides a continuation and cannot award negotiation rewards
+  ---
+  duration_ms: 0.4301
+  ...
+# Subtest: clothing can be stolen outside gate, preserves story and cannot duplicate
+ok 34 - clothing can be stolen outside gate, preserves story and cannot duplicate
+  ---
+  duration_ms: 1.0543
+  ...
+# Subtest: remote clothes theft blocked and failure leaves a purchase fallback
+ok 35 - remote clothes theft blocked and failure leaves a purchase fallback
+  ---
+  duration_ms: 0.681
+  ...
+# Subtest: food keeps poison through purchase, drop, pickup, planting, save and consumption
+ok 36 - food keeps poison through purchase, drop, pickup, planting, save and consumption
+  ---
+  duration_ms: 2.981
+  ...
+# Subtest: failed stealing and poisoning never transfer items or consume poison
+ok 37 - failed stealing and poisoning never transfer items or consume poison
+  ---
+  duration_ms: 0.4275
+  ...
+# Subtest: tree fruit is finite and destruction drops stock only once
+ok 38 - tree fruit is finite and destruction drops stock only once
+  ---
+  duration_ms: 0.4975
+  ...
+# Subtest: planting validates range and medicine bottle is never consumed as food
+ok 39 - planting validates range and medicine bottle is never consumed as food
+  ---
+  duration_ms: 0.3233
+  ...
+# Subtest: busking needs nearby living listeners, costs stamina, pays once per day and stops on leaving
+ok 40 - busking needs nearby living listeners, costs stamina, pays once per day and stops on leaving
+  ---
+  duration_ms: 0.3639
+  ...
+# Subtest: NPC buys only stocked food and a poisoning triggers a delayed shop closure
+ok 41 - NPC buys only stocked food and a poisoning triggers a delayed shop closure
+  ---
+  duration_ms: 0.8955
+  ...
+# Subtest: helping sick NPC restores health once and spends real stamina
+ok 42 - helping sick NPC restores health once and spends real stamina
+  ---
+  duration_ms: 0.1559
+  ...
+# Subtest: ring inventory is shared and secretly returning it ends the search after discovery
+ok 43 - ring inventory is shared and secretly returning it ends the search after discovery
+  ---
+  duration_ms: 0.2257
+  ...
+# Subtest: clothes and information commute: clothes first
+ok 44 - clothes and information commute: clothes first
+  ---
+  duration_ms: 2.6806
+  ...
+# Subtest: clothes and information commute: information first
+ok 45 - clothes and information commute: information first
+  ---
+  duration_ms: 0.3515
+  ...
+# Subtest: walking to clothing or tea does not manufacture dispatch knowledge
+ok 46 - walking to clothing or tea does not manufacture dispatch knowledge
+  ---
+  duration_ms: 0.1266
+  ...
+# Subtest: arrival is a new opening with twelve coins and three suspicion, old saves stay where they are
+ok 47 - arrival is a new opening with twelve coins and three suspicion, old saves stay where they are
+  ---
+  duration_ms: 0.9888
+  ...
+# Subtest: talking without credentials never admits; preparation and disguise do
+ok 48 - talking without credentials never admits; preparation and disguise do
+  ---
+  duration_ms: 1.151
+  ...
+# Subtest: stolen pass has another name, is rewritten and keeps a risk after entry
+ok 49 - stolen pass has another name, is rewritten and keeps a risk after entry
+  ---
+  duration_ms: 0.4466
+  ...
+# Subtest: failed theft raises suspicion and leads to prison, testimony and three day release
+ok 50 - failed theft raises suspicion and leads to prison, testimony and three day release
+  ---
+  duration_ms: 0.3015
+  ...
+# Subtest: real gate attacks only scratch armour; counterattacks imprison rather than kill
+ok 51 - real gate attacks only scratch armour; counterattacks imprison rather than kill
+  ---
+  duration_ms: 0.4687
+  ...
+# Subtest: retreat stops remote damage and rest does not bypass the gate
+ok 52 - retreat stops remote damage and rest does not bypass the gate
+  ---
+  duration_ms: 0.2217
+  ...
+# Subtest: failed preparation can change route, checks cannot farm rewards and save restores location
+ok 53 - failed preparation can change route, checks cannot farm rewards and save restores location
+  ---
+  duration_ms: 0.9341
+  ...
+# Subtest: normal question does not roll; theft really transfers a ring without public omniscience
+ok 54 - normal question does not roll; theft really transfers a ring without public omniscience
+  ---
+  duration_ms: 0.9799
+  ...
+# Subtest: failed ring theft and a returned ring have distinct consequences
+ok 55 - failed ring theft and a returned ring have distinct consequences
+  ---
+  duration_ms: 0.4613
+  ...
+# Subtest: paper inspection can expose a forgery and cannot be rerolled on the same day
+ok 56 - paper inspection can expose a forgery and cannot be rerolled on the same day
+  ---
+  duration_ms: 0.5215
+  ...
+# Subtest: unseen theft does not enter other peoples memories as player guilt
+ok 57 - unseen theft does not enter other peoples memories as player guilt
+  ---
+  duration_ms: 0.3009
+  ...
+# Subtest: gate collision blocks bypass and prison confines the player until release
+ok 58 - gate collision blocks bypass and prison confines the player until release
+  ---
+  duration_ms: 0.2176
+  ...
+# Subtest: remote physical actions cannot award pass, growth or spend coins
+ok 59 - remote physical actions cannot award pass, growth or spend coins
+  ---
+  duration_ms: 0.1855
+  ...
+# Subtest: object readiness requires approach and crouching for covered theft
+ok 60 - object readiness requires approach and crouching for covered theft
+  ---
+  duration_ms: 0.0785
+  ...
+# Subtest: plain gate question has no roll and reveals a practical lead
+ok 61 - plain gate question has no roll and reveals a practical lead
+  ---
+  duration_ms: 0.0739
+  ...
+# Subtest: unmodified papers require returning to guard and keep the borrowed name
+ok 62 - unmodified papers require returning to guard and keep the borrowed name
+  ---
+  duration_ms: 0.1245
+  ...
+# Subtest: world contact discovers theft without menu prerequisites and cannot erase confrontation
+ok 63 - world contact discovers theft without menu prerequisites and cannot erase confrontation
+  ---
+  duration_ms: 0.1704
+  ...
+# Subtest: uniform route gives usable handoff evidence and records its consequence
+ok 64 - uniform route gives usable handoff evidence and records its consequence
+  ---
+  duration_ms: 0.0913
+  ...
+# Subtest: dispatch knowledge materially improves disguise and world visits do not reroll resolved checks
+ok 65 - dispatch knowledge materially improves disguise and world visits do not reroll resolved checks
+  ---
+  duration_ms: 0.1021
+  ...
+# Subtest: lamp takes physical damage, building walls have independent larger durability
+ok 66 - lamp takes physical damage, building walls have independent larger durability
+  ---
+  duration_ms: 1.3887
+  ...
+# Subtest: fire persists on wood, water extinguishes and protects damp objects
+ok 67 - fire persists on wood, water extinguishes and protects damp objects
+  ---
+  duration_ms: 1.1169
+  ...
+# Subtest: stone never sustains fire; destruction happens once, saved fire and wetness restore
+ok 68 - stone never sustains fire; destruction happens once, saved fire and wetness restore
+  ---
+  duration_ms: 0.5862
+  ...
+# Subtest: surface reach works for wide walls and does not allow remote fire or dead actors
+ok 69 - surface reach works for wide walls and does not allow remote fire or dead actors
+  ---
+  duration_ms: 0.1767
+  ...
+# Subtest: legacy props migrate without healing damage or duplicating stock
+ok 70 - legacy props migrate without healing damage or duplicating stock
+  ---
+  duration_ms: 0.2022
+  ...
+# Subtest: house has separate walls/door and destroying only the door opens its collision
+ok 71 - house has separate walls/door and destroying only the door opens its collision
+  ---
+  duration_ms: 35.511
+  ...
+# Subtest: physical food and dropped items have materials and destroyed food cannot be eaten or bought
+ok 72 - physical food and dropped items have materials and destroyed food cannot be eaten or bought
+  ---
+  duration_ms: 0.4645
+  ...
+# Subtest: gift transfers exactly one item and cannot transfer twice
+ok 73 - gift transfers exactly one item and cannot transfer twice
+  ---
+  duration_ms: 1.3347
+  ...
+# Subtest: refused gifts retain inventory and no money is deducted
+ok 74 - refused gifts retain inventory and no money is deducted
+  ---
+  duration_ms: 0.1831
+  ...
+# Subtest: giving equipped story clothing removes disguise and can be recovered as an ordinary item
+ok 75 - giving equipped story clothing removes disguise and can be recovered as an ordinary item
+  ---
+  duration_ms: 0.2407
+  ...
+# Subtest: pressure point spends stamina, resolves actual preview and expires instead of killing
+ok 76 - pressure point spends stamina, resolves actual preview and expires instead of killing
+  ---
+  duration_ms: 0.3549
+  ...
+# Subtest: hearing does not identify player; first witnessed damage warns, repeat escalates once
+ok 77 - hearing does not identify player; first witnessed damage warns, repeat escalates once
+  ---
+  duration_ms: 1.0922
+  ...
+# Subtest: lost line of sight searches last known location, then returns to duty
+ok 78 - lost line of sight searches last known location, then returns to duty
+  ---
+  duration_ms: 0.2655
+  ...
+# Subtest: solid obstacles occlude, destroyed ones do not
+ok 79 - solid obstacles occlude, destroyed ones do not
+  ---
+  duration_ms: 0.1501
+  ...
+# Subtest: all NPCs retain compact social options; gifts cost money, repetition diminishes, trust opens gate
+ok 80 - all NPCs retain compact social options; gifts cost money, repetition diminishes, trust opens gate
+  ---
+  duration_ms: 0.7516
+  ...
+# Subtest: known crime blocks favour; repeated conversation cannot infinitely farm relations
+ok 81 - known crime blocks favour; repeated conversation cannot infinitely farm relations
+  ---
+  duration_ms: 0.35
+  ...
+# Subtest: gate stage no longer makes ordinary NPC invulnerable
+ok 82 - gate stage no longer makes ordinary NPC invulnerable
+  ---
+  duration_ms: 0.2184
+  ...
+# Subtest: hungry guard accepts hidden poison, but satiated guard refuses without losing item
+ok 83 - hungry guard accepts hidden poison, but satiated guard refuses without losing item
+  ---
+  duration_ms: 1.4425
+  ...
+# Subtest: known poison is refused even when hungry
+ok 84 - known poison is refused even when hungry
+  ---
+  duration_ms: 0.2541
+  ...
+# Subtest: guard waits for actual relief then consumes poisoned food at table
+ok 85 - guard waits for actual relief then consumes poisoned food at table
+  ---
+  duration_ms: 1.5008
+  ...
+# Subtest: stunned or dead replacement cannot complete handoff
+ok 86 - stunned or dead replacement cannot complete handoff
+  ---
+  duration_ms: 0.5565
+  ...
+# Subtest: all NPCs including reserved actors take deep water damage and seek shore
+ok 87 - all NPCs including reserved actors take deep water damage and seek shore
+  ---
+  duration_ms: 0.1965
+  ...
+# Subtest: food damage and recovery are identical for player and NPC and consumption is single-use
+ok 88 - food damage and recovery are identical for player and NPC and consumption is single-use
+  ---
+  duration_ms: 0.4631
+  ...
+# Subtest: NPC inventory and needs persist, reload does not duplicate seeded possessions
+ok 89 - NPC inventory and needs persist, reload does not duplicate seeded possessions
+  ---
+  duration_ms: 0.4002
+  ...
+# Subtest: hidden organization names and edges never leak into the UI projection
+ok 90 - hidden organization names and edges never leak into the UI projection
+  ---
+  duration_ms: 0.5801
+  ...
+# Subtest: distant or obstructed player does not learn tea gossip
+ok 91 - distant or obstructed player does not learn tea gossip
+  ---
+  duration_ms: 0.5673
+  ...
+# Subtest: merchant agreement alone does not admit player; actual arrival and healthy guard do
+ok 92 - merchant agreement alone does not admit player; actual arrival and healthy guard do
+  ---
+  duration_ms: 0.7432
+  ...
+# Subtest: NPC environmental destruction does not accuse player or consume player stamina
+ok 93 - NPC environmental destruction does not accuse player or consume player stamina
+  ---
+  duration_ms: 0.3397
+  ...
+# Subtest: tired hungry guards cannot bounce the post back every frame
+ok 94 - tired hungry guards cannot bounce the post back every frame
+  ---
+  duration_ms: 1.8827
+  ...
+# Subtest: merchant pays once after physical delivery and cannot deliver stolen cargo
+ok 95 - merchant pays once after physical delivery and cannot deliver stolen cargo
+  ---
+  duration_ms: 0.4401
+  ...
+# Subtest: switch keeps independent physical state and shares money and ring ownership across save/load
+ok 96 - switch keeps independent physical state and shares money and ring ownership across save/load
+  ---
+  duration_ms: 0.9557
+  ...
+# Subtest: A performs while B leaves: A spends stamina, earns charm and shared money; exhausted A stops
+ok 97 - A performs while B leaves: A spends stamina, earns charm and shared money; exhausted A stops
+  ---
+  duration_ms: 1.3512
+  ...
+# Subtest: B performance also survives switching to A and cannot be silently replaced
+ok 98 - B performance also survives switching to A and cannot be silently replaced
+  ---
+  duration_ms: 0.1874
+  ...
+# Subtest: companion action settlement uses their location and team wallet
+ok 99 - companion action settlement uses their location and team wallet
+  ---
+  duration_ms: 0.5923
+  ...
+# Subtest: command targets validate type and location; unsupported commands cannot execute
+ok 100 - command targets validate type and location; unsupported commands cannot execute
+  ---
+  duration_ms: 0.3117
+  ...
+# Subtest: new and unstarted old saves use three immediate choices without changing progress
+ok 101 - new and unstarted old saves use three immediate choices without changing progress
+  ---
+  duration_ms: 1.2851
+  ...
+# Subtest: listening reveals a motive, persuasion changes the scene, only the decision settles
+ok 102 - listening reveals a motive, persuasion changes the scene, only the decision settles
+  ---
+  duration_ms: 1.6043
+  ...
+# Subtest: theft can be prepared, fails into an immediate confrontation and does not end the event
+ok 103 - theft can be prepared, fails into an immediate confrontation and does not end the event
+  ---
+  duration_ms: 0.5324
+  ...
+# Subtest: every authored phase and both check outcomes finish, with no more than three actions
+ok 104 - every authored phase and both check outcomes finish, with no more than three actions
+  ---
+  duration_ms: 21.5196
+  ...
+# Subtest: read/load preserves a mid-scene decision, blocks stale actions and grants rewards only once
+ok 105 - read/load preserves a mid-scene decision, blocks stale actions and grants rewards only once
+  ---
+  duration_ms: 0.4115
+  ...
+# Subtest: actual sparring needs hits, does not create crime or injure witnesses, and yields combat growth
+ok 106 - actual sparring needs hits, does not create crime or injure witnesses, and yields combat growth
+  ---
+  duration_ms: 0.1866
+  ...
+# Subtest: sparring loss and leaving the area lead to a conversation, with no fabricated win
+ok 107 - sparring loss and leaving the area lead to a conversation, with no fabricated win
+  ---
+  duration_ms: 0.3581
+  ...
+# Subtest: outside an agreed sparring match assault still causes crime and closes the conversation
+ok 108 - outside an agreed sparring match assault still causes crime and closes the conversation
+  ---
+  duration_ms: 0.1074
+  ...
+# Subtest: unaffordable preparation, repeated checks and old actor moods cannot grant unearned growth
+ok 109 - unaffordable preparation, repeated checks and old actor moods cannot grant unearned growth
+  ---
+  duration_ms: 0.2281
+  ...
+# Subtest: the four check grades obey the same advertised probability
+ok 110 - the four check grades obey the same advertised probability
+  ---
+  duration_ms: 0.3282
+  ...
+# Subtest: proposal survives time passing nearby and stepping away preserves authored facts
+ok 111 - proposal survives time passing nearby and stepping away preserves authored facts
+  ---
+  duration_ms: 0.1317
+  ...
+# Subtest: remote dramas have disjoint interaction/witness areas and reachable central-street marks
+ok 112 - remote dramas have disjoint interaction/witness areas and reachable central-street marks
+  ---
+  duration_ms: 12.4595
+  ...
+# Subtest: old live matchmaking locations migrate once, without resetting results or the proposal
+ok 113 - old live matchmaking locations migrate once, without resetting results or the proposal
+  ---
+  duration_ms: 0.8022
+  ...
+# Subtest: every matchmaking mark is reachable around the actual town buildings
+ok 114 - every matchmaking mark is reachable around the actual town buildings
+  ---
+  duration_ms: 58.913
+  ...
+# Subtest: talking down a proposed duel earns social skill, never fabricated combat experience
+ok 115 - talking down a proposed duel earns social skill, never fabricated combat experience
+  ---
+  duration_ms: 0.2101
+  ...
+# Subtest: learned stealth changes both the prepared action and its executed pose
+ok 116 - learned stealth changes both the prepared action and its executed pose
+  ---
+  duration_ms: 0.2138
+  ...
+# Subtest: risky opening routes roll their advertised attributes and fail forward
+ok 117 - risky opening routes roll their advertised attributes and fail forward
+  ---
+  duration_ms: 0.1591
+  ...
+# Subtest: a wedding cannot recur after reconciliation on day four
+ok 118 - a wedding cannot recur after reconciliation on day four
+  ---
+  duration_ms: 4.0789
+  ...
+# Subtest: an older save with a repeat wedding queued delivers a favor instead
+ok 119 - an older save with a repeat wedding queued delivers a favor instead
+  ---
+  duration_ms: 0.5678
+  ...
+# Subtest: 32 unique choices with actual attribute checks
+ok 120 - 32 unique choices with actual attribute checks
+  ---
+  duration_ms: 0.1596
+  ...
+# Subtest: successful unseen theft preserves secret and leads to inquiry
+ok 121 - successful unseen theft preserves secret and leads to inquiry
+  ---
+  duration_ms: 0.5827
+  ...
+# Subtest: failed theft creates visible suspicion, no ring
+ok 122 - failed theft creates visible suspicion, no ring
+  ---
+  duration_ms: 0.3857
+  ...
+# Subtest: same advertised chance resolves D100 boundary exactly
+ok 123 - same advertised chance resolves D100 boundary exactly
+  ---
+  duration_ms: 0.2673
+  ...
+# Subtest: resolved and unaffordable actions cannot be repeated
+ok 124 - resolved and unaffordable actions cannot be repeated
+  ---
+  duration_ms: 0.3003
+  ...
+# Subtest: success and failure both leave persistent consequences
+ok 125 - success and failure both leave persistent consequences
+  ---
+  duration_ms: 3.0712
+  ...
+# Subtest: letters arrive once when world day changes and highest relation sends
+ok 126 - letters arrive once when world day changes and highest relation sends
+  ---
+  duration_ms: 0.5801
+  ...
+# Subtest: returning ring removes ownership before compatible followup
+ok 127 - returning ring removes ownership before compatible followup
+  ---
+  duration_ms: 0.5795
+  ...
+# Subtest: direct violence records witnesses and leads to scene consequences
+ok 128 - direct violence records witnesses and leads to scene consequences
+  ---
+  duration_ms: 0.3629
+  ...
+# Subtest: destroying three banquet props enters same consequence system once
+ok 129 - destroying three banquet props enters same consequence system once
+  ---
+  duration_ms: 0.195
+  ...
+# Subtest: ignoring an active scene never fabricates a player action
+ok 130 - ignoring an active scene never fabricates a player action
+  ---
+  duration_ms: 0.1192
+  ...
+# Subtest: all followup actions settle without invalid state
+ok 131 - all followup actions settle without invalid state
+  ---
+  duration_ms: 6.4646
+  ...
+# Subtest: physical damage is already a fact and cannot fail a second roll
+ok 132 - physical damage is already a fact and cannot fail a second roll
+  ---
+  duration_ms: 0.2931
+  ...
+# Subtest: AI director is constrained by facts, delivered scenes and allowed templates
+ok 133 - AI director is constrained by facts, delivered scenes and allowed templates
+  ---
+  duration_ms: 0.1788
+  ...
+# Subtest: greeting and gift affection cannot be farmed repeatedly in one day
+ok 134 - greeting and gift affection cannot be farmed repeatedly in one day
+  ---
+  duration_ms: 0.3618
+  ...
+# Subtest: ordinary NPC checks have real success and failure, and remember them
+ok 135 - ordinary NPC checks have real success and failure, and remember them
+  ---
+  duration_ms: 0.4198
+  ...
+# Subtest: buildings and intact tables block walking; jumping clears low tables
+ok 136 - buildings and intact tables block walking; jumping clears low tables
+  ---
+  duration_ms: 0.259
+  ...
+# Subtest: navigation finds a walkable path around solid obstacles
+ok 137 - navigation finds a walkable path around solid obstacles
+  ---
+  duration_ms: 1.4528
+  ...
+# Subtest: only explicit draw enables left-click attacks and sheathing cancels it
+ok 138 - only explicit draw enables left-click attacks and sheathing cancels it
+  ---
+  duration_ms: 0.2538
+  ...
+# Subtest: respawn ends pursuit but retains consequences, including across save reload
+ok 139 - respawn ends pursuit but retains consequences, including across save reload
+  ---
+  duration_ms: 0.5142
+  ...
+# Subtest: natural day changes never revive a dead player into ongoing pursuit
+ok 140 - natural day changes never revive a dead player into ongoing pursuit
+  ---
+  duration_ms: 0.1655
+  ...
+# Subtest: rest resets positions, movement, combat animation and NPC hit timers
+ok 141 - rest resets positions, movement, combat animation and NPC hit timers
+  ---
+  duration_ms: 0.3017
+  ...
+# Subtest: all scene choices remain reachable exactly once through category pages
+ok 142 - all scene choices remain reachable exactly once through category pages
+  ---
+  duration_ms: 0.6857
+  ...
+# Subtest: every selectable scene action plays a finite pose and completes exactly once
+ok 143 - every selectable scene action plays a finite pose and completes exactly once
+  ---
+  duration_ms: 27.8506
+  ...
+# Subtest: NPC turns take shortest arc and arrival movement cannot overshoot
+ok 144 - NPC turns take shortest arc and arrival movement cannot overshoot
+  ---
+  duration_ms: 0.1909
+  ...
+# Subtest: betting success and failure have distinct truthful outcomes and NPC dialogue
+ok 145 - betting success and failure have distinct truthful outcomes and NPC dialogue
+  ---
+  duration_ms: 0.5292
+  ...
+# Subtest: scene replies survive resolution and secret theft never exposes culprit
+ok 146 - scene replies survive resolution and secret theft never exposes culprit
+  ---
+  duration_ms: 0.8473
+  ...
+# Subtest: every action has unique success and failure facts and explicit motion
+ok 147 - every action has unique success and failure facts and explicit motion
+  ---
+  duration_ms: 0.2899
+  ...
+# Subtest: performance rewards settle once and failed performances pay nothing
+ok 148 - performance rewards settle once and failed performances pay nothing
+  ---
+  duration_ms: 0.2829
+  ...
+# Subtest: NLP reaction incorporates context, changes future and memory but never money or roll
+ok 149 - NLP reaction incorporates context, changes future and memory but never money or roll
+  ---
+  duration_ms: 0.2346
+  ...
+# Subtest: invalid, stale and late NLP responses cannot corrupt subsequent stories
+ok 150 - invalid, stale and late NLP responses cannot corrupt subsequent stories
+  ---
+  duration_ms: 0.1677
+  ...
+# Subtest: successful theft hides culprit and restricts AI knowledge and followup
+ok 151 - successful theft hides culprit and restricts AI knowledge and followup
+  ---
+  duration_ms: 0.1552
+  ...
+# Subtest: ambient NPC attention has hysteresis instead of alternating at the old boundary
+ok 152 - ambient NPC attention has hysteresis instead of alternating at the old boundary
+  ---
+  duration_ms: 0.4576
+  ...
+# Subtest: wander destination stays fixed until arrival, then NPC rests without reversing
+ok 153 - wander destination stays fixed until arrival, then NPC rests without reversing
+  ---
+  duration_ms: 0.4411
+  ...
+# Subtest: lower menu stays inside desktop and compact viewports
+ok 154 - lower menu stays inside desktop and compact viewports
+  ---
+  duration_ms: 0.1593
+  ...
+# Subtest: ignored missing ring search ends, persists and creates a quarrel without opening mail
+ok 155 - ignored missing ring search ends, persists and creates a quarrel without opening mail
+  ---
+  duration_ms: 0.3522
+  ...
+# Subtest: returning via dialogue really transfers ownership and cancels stale search decisions
+ok 156 - returning via dialogue really transfers ownership and cancels stale search decisions
+  ---
+  duration_ms: 0.5129
+  ...
+# Subtest: denials check charm without teleporting the ring or accusing without evidence
+ok 157 - denials check charm without teleporting the ring or accusing without evidence
+  ---
+  duration_ms: 0.2641
+  ...
+# Subtest: chat and repeated searches cannot reset the exit timer or manufacture rewards
+ok 158 - chat and repeated searches cannot reset the exit timer or manufacture rewards
+  ---
+  duration_ms: 0.3948
+  ...
+# Subtest: AI search decision is bounded, stale-safe, and can end the search early
+ok 159 - AI search decision is bounded, stale-safe, and can end the search early
+  ---
+  duration_ms: 0.1259
+  ...
+# Subtest: walking away from search does not erase NPC search progress
+ok 160 - walking away from search does not erase NPC search progress
+  ---
+  duration_ms: 0.105
+  ...
+# Subtest: questions, refusals and the wrong recipient do not hand over inventory
+ok 161 - questions, refusals and the wrong recipient do not hand over inventory
+  ---
+  duration_ms: 0.1722
+  ...
+# Subtest: pickpocket requires crouching and proximity; purse is finite and persists
+ok 162 - pickpocket requires crouching and proximity; purse is finite and persists
+  ---
+  duration_ms: 2.2126
+  ...
+# Subtest: failed pickpocket keeps loot, raises suspicion and blocks repeat farming that day
+ok 163 - failed pickpocket keeps loot, raises suspicion and blocks repeat farming that day
+  ---
+  duration_ms: 0.4472
+  ...
+# Subtest: NPC item theft transfers existing item without duplicating it
+ok 164 - NPC item theft transfers existing item without duplicating it
+  ---
+  duration_ms: 0.2959
+  ...
+# Subtest: all street templates have playable choices, actors and valid followups
+ok 165 - all street templates have playable choices, actors and valid followups
+  ---
+  duration_ms: 7.0085
+  ...
+# Subtest: actor navigation reaches its mark rather than stopping several steps away
+ok 166 - actor navigation reaches its mark rather than stopping several steps away
+  ---
+  duration_ms: 1.0285
+  ...
+# Subtest: all three dramas finish with NPC actors when the player never participates
+ok 167 - all three dramas finish with NPC actors when the player never participates
+  ---
+  duration_ms: 1.2461
+  ...
+# Subtest: ribbon actions have a timing window and a catch does not force marriage
+ok 168 - ribbon actions have a timing window and a catch does not force marriage
+  ---
+  duration_ms: 0.3221
+  ...
+# Subtest: duel enrollment continues into a scored final rather than ending the show
+ok 169 - duel enrollment continues into a scored final rather than ending the show
+  ---
+  duration_ms: 0.3615
+  ...
+# Subtest: theft moves real NPC money, preserves chase across saves, and returns it once
+ok 170 - theft moves real NPC money, preserves chase across saves, and returns it once
+  ---
+  duration_ms: 0.3496
+  ...
+# Subtest: escaped thieves keep the stolen purse and the chase hotspot follows them
+ok 171 - escaped thieves keep the stolen purse and the chase hotspot follows them
+  ---
+  duration_ms: 0.2541
+  ...
+# Subtest: missing or injured actors interrupt a drama without granting a player reward
+ok 172 - missing or injured actors interrupt a drama without granting a player reward
+  ---
+  duration_ms: 0.1697
+  ...
+# Subtest: a rejected invitation closes matchmaking without forcing a marriage
+ok 173 - a rejected invitation closes matchmaking without forcing a marriage
+  ---
+  duration_ms: 0.2917
+  ...
+# Subtest: cancelled assemblies retry later and earlier cancelled saves are repaired
+ok 174 - cancelled assemblies retry later and earlier cancelled saves are repaired
+  ---
+  duration_ms: 0.3661
+  ...
+# Subtest: leaving a duel cannot cause remote damage or heal an already injured actor
+ok 175 - leaving a duel cannot cause remote damage or heal an already injured actor
+  ---
+  duration_ms: 0.1789
+  ...
+# Subtest: gang actors actually lose health without the player and transition to aid
+ok 176 - gang actors actually lose health without the player and transition to aid
+  ---
+  duration_ms: 0.2563
+  ...
+# Subtest: successful mediation stops combat, cannot be paid twice, and leads to parley
+ok 177 - successful mediation stops combat, cannot be paid twice, and leads to parley
+  ---
+  duration_ms: 0.1984
+  ...
+# Subtest: taking sides has opposing faction and relationship effects
+ok 178 - taking sides has opposing faction and relationship effects
+  ---
+  duration_ms: 0.1038
+  ...
+# Subtest: performance success pays while failure does not and repeated attempts are rejected
+ok 179 - performance success pays while failure does not and repeated attempts are rejected
+  ---
+  duration_ms: 0.1954
+  ...
+# Subtest: events persist elapsed time, ignore unavailable actors, and finish without mail
+ok 180 - events persist elapsed time, ignore unavailable actors, and finish without mail
+  ---
+  duration_ms: 0.2075
+  ...
+# Subtest: interventions validate reach, resources and actor reservations
+ok 181 - interventions validate reach, resources and actor reservations
+  ---
+  duration_ms: 0.1178
+  ...
+# Subtest: older saves gain faction NPCs without losing progress
+ok 182 - older saves gain faction NPCs without losing progress
+  ---
+  duration_ms: 0.0731
+  ...
+# Subtest: destruction opens river route, survives save, preserves location and does not grant papers
+ok 183 - destruction opens river route, survives save, preserves location and does not grant papers
+  ---
+  duration_ms: 1.7396
+  ...
+# Subtest: deep water hurts continuously; food heals once, shore and bridge are safe
+ok 184 - deep water hurts continuously; food heals once, shore and bridge are safe
+  ---
+  duration_ms: 0.4844
+  ...
+# Subtest: owned uniform can be removed and re-equipped and affects guard recognition
+ok 185 - owned uniform can be removed and re-equipped and affects guard recognition
+  ---
+  duration_ms: 0.2684
+  ...
+1..185
+# tests 185
+# suites 0
+# pass 185
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 514.9071

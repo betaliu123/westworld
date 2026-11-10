@@ -13,11 +13,11 @@ import {ROLES,PEOPLE,SCENES,actionsFor,LETTERS} from './data.js';
 export const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export function newGame(role='wanderer'){
  const r=ROLES[role]||ROLES.wanderer;
- return {version:1,role,day:1,time:0,player:{x:0,z:14,hp:100,energy:100,money:80,stats:{...r.stats},xp:0,inventory:[]},people:Object.fromEntries(PEOPLE.map(n=>[n.id,{relation:n.relation,mood:'calm',fear:0,hp:100,memories:[]}])),reputation:0,wanted:0,style:{[r.style]:3},event:{id:1,type:'proposal',depth:0,status:'active'},pending:null,history:[],mail:[],facts:{},sequence:1,broken:[],attacks:0};
+ return {version:1,role,day:1,time:0,player:{x:0,z:14,hp:100,energy:100,satiety:85,rested:90,money:80,stats:{...r.stats},xp:0,inventory:[]},people:Object.fromEntries(PEOPLE.map(n=>[n.id,{relation:n.relation,mood:'calm',fear:0,hp:100,memories:[]}])),reputation:0,wanted:0,style:{[r.style]:3},event:{id:1,type:'proposal',depth:0,status:'active'},pending:null,history:[],mail:[],facts:{},sequence:1,broken:[],attacks:0};
 }
 export function newArrival(role='wanderer'){const s=newGame(role);s.player.x=0;s.player.z=27;s.player.money=12;s.wanted=3;s.facts.entryStarted=true;s.event={id:1,type:'gate',status:'active',depth:0,point:[0,24],cast:['gate_guard']};return s;}
 export class Simulation{
- constructor(state=newGame(),rng=Math.random){this.s=state;if(state.facts.princeLetter)recordRoyalLetter(state);if(state.player.hp<=0)endPlayerPursuit(state);if(state.facts.career==="court")registerCourt(state);retirePrinceEscorts(state);ensureParty(state);migrateLocations(state);this.rng=rng;this.listeners=[];syncQuests(state);this.progressBaseline=progressSnapshot(state);for(const p of PEOPLE)state.people[p.id]??={relation:p.relation,mood:'calm',fear:0,hp:100,memories:[]};if(state.facts.missing&&state.event?.status==='active'&&state.event.type==='banquet'){state.event.type='inquiry';state.event.elapsed=0;state.facts.couple=false;}}
+ constructor(state=newGame(),rng=Math.random){this.s=state;state.time=(state.time||0)%240;state.player.satiety??=85;state.player.rested??=90;if(state.facts.princeLetter)recordRoyalLetter(state);if(state.player.hp<=0)endPlayerPursuit(state);if(state.facts.career==="court")registerCourt(state);retirePrinceEscorts(state);ensureParty(state);migrateLocations(state);this.rng=rng;this.listeners=[];syncQuests(state);this.progressBaseline=progressSnapshot(state);for(const p of PEOPLE)state.people[p.id]??={relation:p.relation,mood:'calm',fear:0,hp:100,memories:[]};if(state.facts.missing&&state.event?.status==='active'&&state.event.type==='banquet'){state.event.type='inquiry';state.event.elapsed=0;state.facts.couple=false;}}
  emit(type,data){if(['result','streetResult','npc','sandbox','entry','day','violence','save','actionWitnessed','fieldCheck'].includes(type))observeProgress(this,type==='entry'?(data==='prison'?'刑满出狱：三日刑期结算':'进入城内'):type==='day'?'休息与日程推进':type==='violence'?'发生交战':type==='save'?'行动与身体状态变化':data?.label||data?.text||'大世界行动');for(const fn of this.listeners)fn(type,data);}
  save(){this.emit('save',this.s);}
  banquetOccurred(){return !!this.s.facts.couple||this.s.facts.banquetDay!=null||this.s.history.some(h=>h.type==='banquet');}
@@ -116,10 +116,13 @@ export class Simulation{
  this.save();return true;
  }
  direct(id,type,reason){const p=this.s.pending;if(!p||p.id!==id||!p.allowed?.includes(type)||(type==='banquet'&&this.banquetOccurred()))return false;p.type=type;p.directorReason=String(reason||'').slice(0,180);this.save();return true;}
- advanceDay(){
- if(isGate(this.event))return;
+ advanceDay(natural=false){
+ if(isGate(this.event)){
+  if(natural){this.s.time=0;this.s.day++;this.emit('day',this.s.day);this.save();}
+  return;
+ }
  if(isProposal(this.event)&&proposalState(this.event).phase==='duel')finishProposalDuel(this,false);
- const s=this.s;s.day++;s.time=0;s.player.energy=100;if(s.player.hp>0)s.player.hp=Math.min(100,s.player.hp+30);s.wanted=Math.max(0,s.wanted-1);
+ const s=this.s;s.day++;s.time=0;s.wanted=Math.max(0,s.wanted-1);
  for(const n of Object.values(s.people)){n.fear=0;n.hp=Math.max(n.hp,60);n.mood=n.relation< -10?'wary':'calm';}
  s.broken=[];
  if(s.pending&&s.pending.due<=s.day){
@@ -190,7 +193,21 @@ export class Simulation{
  endPlayerPursuit(this.s);this.s.wanted=0;this.advanceDay();this.s.player.hp=60;this.s.player.x=0;this.s.player.z=14;
  this.save();return true;
  }
- tick(dt){const s=this.s;this.tickStory(dt);s.time+=dt;if(s.time>=240&&!isGate(this.event))this.advanceDay();for(const n of Object.values(s.people))n.fear=Math.max(0,n.fear-dt);}
+ passTime(dt,sleeping=false){
+  const s=this.s,p=s.player;
+  while(dt>0){
+   const step=Math.min(dt,240-s.time),hours=step/10;
+   this.tickStory(step);
+   if(p.hp>0){
+    p.satiety=Math.max(0,p.satiety-hours*(sleeping?2:4));
+    p.rested=clamp(p.rested+hours*(sleeping?12:-3.8),0,100);
+    if(sleeping){p.energy=Math.min(100,p.energy+hours*10);p.hp=Math.min(100,p.hp+hours*3);}
+   }
+   s.time+=step;dt-=step;
+   if(s.time>=240)this.advanceDay(true);
+  }
+ }
+ tick(dt){const s=this.s;this.passTime(dt);for(const n of Object.values(s.people))n.fear=Math.max(0,n.fear-dt);}
  attack(id,witnesses=[]){
  const s=this.s,n=s.people[id];if(!n||n.hp<=0)return;
  const incident={type:'assault',target:id,x:s.player.x,z:s.player.z};this.emit('worldIncident',incident);witnesses=incident.witnesses??witnesses;

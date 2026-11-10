@@ -4,7 +4,7 @@ import {probeSight,probePreview} from './npc-discovery.js';
 import {icon} from './ui-icons.js';
 export function mountAim(world,getSim,available,clear,act,notify){
  const bar=document.createElement('aside'),points=document.createElement('div');bar.id='aim-skills';points.id='aim-points';bar.hidden=points.hidden=true;
- for(const [mode,label,glyph] of [['pressure','点穴','Hand'],['probe','探查','Eye']]){const b=document.createElement('button');b.innerHTML=icon(glyph)+label;b.onclick=()=>{const next=world.aimMode===mode?null:mode;exit();if(next&&available()){clear();world.clearReady();world.auto=null;world.aimMode=next;document.body.dataset.aim=next;b.setAttribute('aria-pressed','true');}};bar.append(b);}
+ for(const [mode,label,glyph] of [['pressure','点穴','Hand'],['probe','探查','Eye']]){const b=document.createElement('button');b.innerHTML=icon(glyph);b.title=label;b.setAttribute('aria-label',label);b.onclick=()=>{const next=world.aimMode===mode?null:mode;exit();if(next&&available()){clear();world.clearReady();world.auto=null;world.aimMode=next;document.body.dataset.aim=next;b.setAttribute('aria-pressed','true');}};bar.append(b);}
  document.body.append(bar,points);let selected=null,approach=null;const ray=new T.Raycaster();
  function exit(){if(approach)world.auto=null;approach=null;world.aimMode=null;selected=null;points.hidden=true;delete document.body.dataset.aim;for(const b of bar.children)b.setAttribute('aria-pressed','false');}
  const clearSight=id=>probeSight(world.hero.position,world.npcs.get(id).actor.position,world.obstacles,getSim().s.ecosystem?.objects);
