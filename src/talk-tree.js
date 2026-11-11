@@ -2,6 +2,7 @@ const topic=(id,label,children)=>({id:'topic:'+id,mode:'topic',label,children});
 const matter=new Set(['deal','story','prince_answer','prince_evidence','watch','escort','tax','apex','ledger','seal','vouch','identity_paper']);
 const personal=new Set(['identity','prince_identity','prince_leave','tea_news','training','training_review']);
 export function talkTree(id,actions){
+ if(actions.length&&actions.every(a=>a.id.startsWith('if_identity_'))){const branch=list=>list.length<=3?list:[...list.slice(0,2),topic('identity-more','再谈钱物与案情',branch(list.slice(2)))];return branch([...actions,{id:'if_end',label:'这些事暂且不办',mode:'endTalk',kind:'listen'}]);}
  if(actions.length<=3)return actions;
  const prince=id==='traveler',groups=[[],[],[]];
  for(const a of actions)groups[a.id.startsWith('ap_')?1:matter.has(a.id)||a.id.startsWith('ch_')?0:personal.has(a.id)?1:2].push(a);

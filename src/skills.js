@@ -1,6 +1,7 @@
 // Experience is practice, not a substitute for instruction. One source for UI and rules.
 export const TIERS=['不会','粗通','入门','熟练','精通'];
 export const SKILLS={
+ lasso:{name:'套索',teacher:'随身本领',abilities:['尚未学会','抛索牵行、近身捆绑与松绑','抛索牵行、近身捆绑与松绑','抛索牵行、近身捆绑与松绑','抛索牵行、近身捆绑与松绑']},
  pressure:{name:'点穴',teacher:'杜老捕',abilities:['尚未学会','背后定身五息','正面点穴十息','定身三十息、封哑穴','隔空点穴']},
  theft:{name:'妙手',teacher:'燕七、梅掌舵',abilities:['尚未学会','蹲身取外露物','解开系紧的钱袋','袖中取物','暗送物件']},
  insight:{name:'眼力',teacher:'瘸张、杜老捕',abilities:['尚未学会','观察衣着伤痕','辨认行囊与腰牌','辨谎识人','看破乔装']},
@@ -10,7 +11,7 @@ export const SKILLS={
  combat:{name:'武艺',teacher:'周伍长、林青舟、段赤川',abilities:['无章法','持刀连击','按住 R 架刀格挡','适时格挡可反击，师承决定刀势','格挡反击可缴械']}
 };
 export function skill(p,id){return p.skills?.[id]||{tier:0,xp:0};}
-export function initSkills(p){p.skills??=Object.fromEntries(Object.keys(SKILLS).map(id=>[id,{tier:['pressure','theft','insight','combat'].includes(id)?1:0,xp:0}]));return p.skills;}
+export function initSkills(p){p.skills??=Object.fromEntries(Object.keys(SKILLS).map(id=>[id,{tier:['pressure','theft','insight','combat','lasso'].includes(id)?1:0,xp:0}]));p.skills.lasso??={tier:1,xp:0};return p.skills;}
 export const PRACTICE_CAP=30;
 export function practice(p,id,amount,key){if(!p.skills)return [];p.skillClaims??={};key=skill(p,id).tier+':'+key;if(p.skillClaims[key])return [];p.skillClaims[key]=true;const s=initSkills(p)[id],earned=Math.max(0,Math.min(amount,PRACTICE_CAP-s.xp));s.xp+=earned;return earned?[`${SKILLS[id].name}心得 +${earned}`]:[];}
 export function learnSkill(p,id,tier,source){const s=initSkills(p)[id];if(s.tier>=tier)return [];s.tier=tier;s.xp=0;s.teacher=source;return [`${SKILLS[id].name} · ${TIERS[tier]}`,SKILLS[id].abilities[tier]];}

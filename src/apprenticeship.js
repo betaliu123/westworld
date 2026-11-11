@@ -1,3 +1,5 @@
+import {rescueDebt} from './action-cards.js';
+import {believedIdentity} from './appearance.js';
 import {PEOPLE} from './data.js';
 import {SKILLS,skill,learnSkill,practice,PRACTICE_CAP} from './skills.js';
 import {addCausalDeed} from './item-meaning.js';
@@ -35,7 +37,7 @@ export const BEGGAR_NEWS=[
  {id:'river',label:'拿一份干粮，问水门',line:'水门第三块闸板，去年就朽了。走水路的，先掂掂自己能憋多久。',objective:'到西侧水门查看朽闸板',x:-22,z:21},
  {id:'pass',label:'拿一份干粮，问行商',line:'赵成那胖子，路引揣在左襟。关上要问名字，你可别支吾。',objective:'留意赵行商的路引与行踪',x:6,z:24},
  {id:'coat',label:'拿一份干粮，问驿舍',line:'衣架上那身皂衣，是县里差爷寄补的。衣领里还缝着陈小乙三个字。',objective:'到驿舍查看差服',x:-11,z:24},
- {id:'convoy',label:'拿一份干粮，问纲队',line:'纲队民夫的脸都是黑的。脏衣、扁担一上肩，点名的懒得细看；辰时和申时过关。',objective:'留意花石纲点名与民夫衣着',x:0,z:27}
+ {id:'convoy',label:'拿一份干粮，问纲队',line:'周大石管着纲队的役夫名额。他肯不肯带你，要看你这份人情与本事。',objective:'争取周大石同意，换好挑夫装束随队入城',x:5,z:31}
 ];
 export function apprenticeships(s){return s.apprenticeships??={records:{},guides:[],practice:{}};}
 export function lessonRecord(s,id,ability,tier){const a=apprenticeships(s),key=[id,ability,tier].join(':');return a.records[key]??={key,id,ability,tier,observed:false,completed:false};}
@@ -53,7 +55,7 @@ function favor(s,id){const d=s.chapter?.done||{};return ({
  })[id]??'';}
 export function lessonPreview(sim,id,ability,tier,observe=false){const s=sim.s,p=s.player,n=s.people[id],r=lessonRecord(s,id,ability,tier);let reason='';
  if(!TEACHERS[id]?.[ability]?.includes(tier))reason='没有这门传承';
- else if(!n||n.hp<=0||n.awareness?.caseOpen||['fight','flee'].includes(n.awareness?.state)||n.stunnedUntil>(s.npcClock||0))reason='先处理眼前的冲突';
+ else if(!n||n.hp<=0||n.restraint||n.awareness?.caseOpen||['fight','flee'].includes(n.awareness?.state)||n.stunnedUntil>(s.npcClock||0))reason='先处理眼前的冲突';
  else if(n.relation<0)reason='对方还在介意你的所作所为';
  else if(skill(p,ability).tier>=tier)reason='这层手法已学会';
  else if(tier>Math.max(2,skill(p,ability).tier+1))reason='先学前一层手法';
@@ -66,12 +68,12 @@ export function apprenticeshipOptions(sim,id){const s=sim.s;if(s.chapterVersion!
  if(id==='relay'&&s.facts.duMedicineRequested&&!s.facts.duMedicineGiven&&!s.ecosystem?.items.some(i=>i.storyId==='du-medicine'&&i.location==='player'))add('medicine_get','替杜老捕取托存的伤药');
  if(id==='old_constable'&&s.ecosystem?.items.some(i=>i.storyId==='du-medicine'&&i.location==='player'))add('medicine_give','把伤药交给杜老捕');
  if(id==='beggar')for(const news of BEGGAR_NEWS)if(!s.facts['beggarNews:'+news.id])add('news_'+news.id,news.label);
- if(id==='tea'&&!s.facts.herbsGround)add('grind','挽袖帮阿青研药');
+ if(id==='tea'&&(!s.facts.herbsGround||rescueDebt(s,id)>0))add('grind',rescueDebt(s,id)>0?'帮阿青研药，偿还救治人情':'挽袖帮阿青研药');
  if(id==='tea'&&skill(s.player,'medicine').tier>=2){add('herbs','买一份配药草药 · 2 文');if(s.ecosystem?.items.some(i=>i.location==='player'&&i.type==='herbs'&&i.hp>0)){if(skill(s.player,'medicine').tier>=3)add('brew','借药案配一剂解毒药');add('poison','借药案配一包泻药');if(skill(s.player,'medicine').tier>=4)add('delayed','借药案配一包迟发散');}}
  for(const [ability,tiers]of Object.entries(TEACHERS[id]||{})){const sk=skill(s.player,ability);if(sk.tier>=2&&sk.tier<4&&tiers.some(t=>t===sk.tier||t===sk.tier+1))add('practice_'+ability,'与'+who(id)+'练一遍'+SKILLS[ability].name);}
  return list;
 }
-export function apprenticeshipPreview(sim,id,a){const n=sim.s.people[id];if(sim.s.player.hp<=0||!n||n.hp<=0||n.relation<0||n.awareness?.caseOpen||['fight','flee'].includes(n.awareness?.state)||n.stunnedUntil>(sim.s.npcClock||0))return {blocked:true,reason:'先处理眼前的冲突'};if(a.id==='ap_herbs')return {certain:true,chance:100,blocked:sim.s.player.money<2,reason:'需两文买药材'};if(a.ability)return lessonPreview(sim,id,a.ability,a.tier,a.observe);if(a.id.startsWith('ap_news_'))return {certain:true,chance:100,blocked:!sim.s.ecosystem?.items.some(i=>i.location==='player'&&i.hp>0&&i.type==='food'&&!i.poisoned),reason:'需一份干净的干粮'};return {certain:true,chance:100,blocked:false};}
+export function apprenticeshipPreview(sim,id,a){const n=sim.s.people[id];if(sim.s.player.hp<=0||!n||n.hp<=0||n.restraint||n.relation<0||n.awareness?.caseOpen||['fight','flee'].includes(n.awareness?.state)||n.stunnedUntil>(sim.s.npcClock||0))return {blocked:true,reason:'先处理眼前的冲突'};if(a.id==='ap_herbs')return {certain:true,chance:100,blocked:sim.s.player.money<2,reason:'需两文买药材'};if(a.ability)return lessonPreview(sim,id,a.ability,a.tier,a.observe);if(a.id.startsWith('ap_news_'))return {certain:true,chance:100,blocked:!sim.s.ecosystem?.items.some(i=>i.location==='player'&&i.hp>0&&i.type==='food'&&!i.poisoned),reason:'需一份干净的干粮'};return {certain:true,chance:100,blocked:false};}
 export function requestApprenticeship(sim,eco,id,action){const a=apprenticeshipOptions(sim,id).find(a=>a.id===action);if(!a)return {error:'这段传承已完成，或机缘未到。'};const preview=apprenticeshipPreview(sim,id,a);if(preview.blocked)return {error:preview.reason};const s=sim.s;
  const reply=text=>({type:'npc',presentation:'dialogue',motion:'talk',kind:'listen',success:true,actionId:action,label:a.label,roll:null,changes:[],dialogue:[{id,text}],text,authored:true});
  if(action==='ap_medicine_get'){eco.create('杜老捕托存的伤药','medicine','player',{storyId:'du-medicine',ownerId:'old_constable',discovered:true});sim.save();return reply('杜老捕交代过了。这包给腿伤的役夫，别弄散。');}
@@ -93,14 +95,14 @@ export function attemptLesson(sim,t,{step,phase,blocked=false}={}){if(t.finished
  if(blocked||!timely){t.failed++;return false;}t.step++;return true;
 }
 export function completeLesson(sim,eco,t){if(t.finished||!t.demonstrated||t.observe||t.step<3)return {error:'尚未亲手完成练习。'};
- const s=sim.s,p=s.player;if(p.hp<=0||s.people[t.id].hp<=0||s.people[t.id].awareness?.caseOpen||['fight','flee'].includes(s.people[t.id].awareness?.state))return {error:'传习已中断。'};
+ const s=sim.s,p=s.player;if(p.hp<=0||s.people[t.id].hp<=0||s.people[t.id].restraint||s.people[t.id].awareness?.caseOpen||['fight','flee'].includes(s.people[t.id].awareness?.state))return {error:'传习已中断。'};
  if(!t.practice&&!t.help&&!t.craft){const c=lessonPreview(sim,t.id,t.ability,t.tier);if(c.blocked)return {error:c.reason};}
  if(t.craft&&!eco.items('player').some(i=>i.type==='herbs'&&i.hp>0))return {error:'药材已不在身上，未配成药。'};
  t.finished=true;let changes=[];
  if(t.craft){const herbs=eco.items('player').find(i=>i.type==='herbs'&&i.hp>0);herbs.location='consumed';const type=t.craft==='antidote'?'antidote':'poison',name=t.craft==='delayed'?'迟发散':type==='antidote'?'亲手配的解毒药':'泻药';eco.create(name,type,'player',{discovered:true,ownerId:'player',poisonDelay:t.craft==='delayed'?25:0,poisonConceal:skill(p,'medicine').tier>=3?2:0});changes=['获得：'+name,...practice(p,'medicine',5,'brew:'+s.day)];}
- else if(t.help){s.facts.herbsGround=true;sim.relation(t.id,6);eco.create('研好的伤药','medicine','npc:tea',{ownerId:'tea',discovered:true});changes=['阿青好感 +6'];}
+ else if(t.help){const first=!s.facts.herbsGround;s.facts.herbsGround=true;if(first)sim.relation(t.id,6);eco.create('研好的伤药','medicine','npc:tea',{ownerId:'tea',discovered:true});changes=first?['阿青好感 +6']:[];const n=s.people.tea,debt=n.rescueDebts?.find(d=>!d.paid&&d.subject===believedIdentity(s,'tea'));if(debt){debt.paid=true;n.favorOwed=Math.max(0,(n.favorOwed||0)-1);changes.push('偿还一份伤药');addCausalDeed(s,{key:'rescue-repaid:'+debt.card,title:'偿还救治人情',text:'亲手研好伤药，交回阿青手中。',target:'tea',cause:debt.cause,subject:debt.subject});}else if(believedIdentity(s,'tea')==='player'&&rescueDebt(s,'tea')>0){if(n.rescueDebts)n.rescueDebtLegacy=Math.max(0,(n.rescueDebtLegacy||0)-1);n.favorOwed=Math.max(0,(n.favorOwed||0)-1);changes.push('偿还一份旧欠伤药');}}
  else if(t.practice){const a=apprenticeships(s),key=[t.id,t.ability,skill(p,t.ability).tier,s.day].join(':');a.practice[key]=(a.practice[key]||0)+1;if(a.practice[key]<=3)changes=practice(p,t.ability,5,'spar:'+key+':'+a.practice[key]);if(changes.length&&a.practice[key]===1){sim.relation(t.id,1);changes.push(who(t.id)+'好感 +1');}}
- else {changes=learnSkill(p,t.ability,t.tier,who(t.id));const r=lessonRecord(s,t.id,t.ability,t.tier);r.completed=true;r.learnedAt=s.day;sim.relation(t.id,3);
+ else {changes=learnSkill(p,t.ability,t.tier,who(t.id));const r=lessonRecord(s,t.id,t.ability,t.tier);r.completed=true;r.learnedAt=s.day;r.learnerSubject=believedIdentity(s,t.id);sim.relation(t.id,3);
  if(t.ability==='combat'&&t.tier===3)p.combatSchool=t.id==='qing'?'qing':'chi';
  const gifts={music:['苏晚的竹笛','flute'],...(t.tier>=3?{medicine:['阿青配的解毒药','antidote']}:{})};if(gifts[t.ability]&&!apprenticeships(s)['gift:'+t.ability]){const [name,type]=gifts[t.ability];eco.create(name,type,'player',{discovered:true,ownerId:t.id});apprenticeships(s)['gift:'+t.ability]=true;changes.push('获得：'+name);}
  apprenticeships(s).guides.push({ability:t.ability,tier:t.tier,teacher:t.id,key:r.key,seen:false});

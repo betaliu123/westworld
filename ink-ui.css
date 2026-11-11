@@ -14,11 +14,27 @@
   --brush-bar:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 20' preserveAspectRatio='none'%3E%3Cpath d='M4 9C3 5 9 2.6 22 3.2L150 4.6 284 3.4C293 3.6 298 6 297 9.6S292 16 280 16.4L150 15.2 26 17C10 17.4 5 13 4 9Z'/%3E%3C/svg%3E");
 }
 .ink-icon{display:inline-block;vertical-align:middle;flex:none}
+#aim-points{max-width:min(340px,calc(100vw - 16px));max-height:calc(100vh - 16px);overflow:auto}
+#aim-points button{font-size:var(--fs-2)!important;white-space:normal;overflow-wrap:anywhere;text-align:left;background:var(--paper);color:var(--ink-1);border-color:var(--ink-4);border-radius:2px;box-shadow:none}
+body[data-aim] #corner-dock{visibility:hidden}
 
 /* Text sitting directly on the scene: ink with a paper halo, no box. */
 .ink-float{font:var(--fs-3)/1.7 var(--font-body);color:var(--ink-1);letter-spacing:.02em;
   text-shadow:0 0 2px var(--paper),0 0 6px var(--paper),0 0 14px #ece3cfcc}
 .ink-night .ink-float{color:var(--paper);text-shadow:0 0 2px var(--ink-0),0 0 8px var(--ink-0),0 0 16px #15140fcc}
+
+/* Investigation belongs to the shared context flow, above nearby actions. */
+#investigation-status{display:flex;align-items:center;gap:8px;max-width:100%;font:var(--fs-2)/1.4 var(--font-body);pointer-events:none}
+#investigation-status .investigation-mark{display:flex;color:var(--cinnabar)}
+#investigation-status .investigation-mark svg{width:30px;height:30px;filter:drop-shadow(0 0 2px var(--paper))}
+#investigation-status .investigation-copy{min-width:0}
+#investigation-status .investigation-line{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+#investigation-status b{font-weight:400}
+#investigation-status time{font:var(--fs-2)/1.4 var(--font-data);font-variant-numeric:tabular-nums}
+#investigation-status [data-hint]{display:block;font-size:var(--fs-1)}
+#investigation-status[data-state="ended"] .investigation-mark{color:var(--ink-2)}
+body.ink-night #investigation-status .investigation-mark svg{filter:drop-shadow(0 0 2px var(--ink-0))}
+body.night-open #investigation-status{visibility:hidden}
 
 /* 墨晕: borderless wash with an irregular, bleeding edge. */
 .ink-wash{position:relative;isolation:isolate;padding:22px 34px}
@@ -81,3 +97,15 @@
 .ink-unroll{animation:ink-unroll .38s var(--ease) both}
 @keyframes ink-unroll{from{clip-path:inset(0 50% 0 50%)}to{clip-path:inset(0 0 0 0)}}
 @media (prefers-reduced-motion:reduce){.ink-in,.ink-unroll,.ink-seal.stamp{animation:ink-fade .2s both}@keyframes ink-fade{from{opacity:0}}}
+
+/* Small world-anchored gaze marks; no permanent captions or panel backgrounds. */
+#stealth-attention{position:fixed;inset:0;pointer-events:none;z-index:12}
+.stealth-eye{position:absolute;width:22px;height:22px;transform:translate(-50%,-50%);color:var(--ink-2);opacity:.68;pointer-events:auto;transition:opacity 180ms ease-out}
+.stealth-eye svg{width:22px;height:22px;filter:drop-shadow(0 0 2px var(--paper))}
+.stealth-eye[data-attention="hidden"]{opacity:.36}
+.stealth-eye[data-attention="edge"]{opacity:.56}
+.stealth-eye[data-attention="watching"]{color:var(--ink-0)}
+.ink-night .stealth-eye{color:var(--paper)}
+.ink-night .stealth-eye svg{filter:drop-shadow(0 0 2px var(--ink-1))}
+#object-actions .theft-sight{font:14px/1.6 var(--font-body);color:var(--ink-2);margin:0 0 8px}
+@media(prefers-reduced-motion:reduce){.stealth-eye{transition:none}}

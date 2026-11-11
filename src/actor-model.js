@@ -2,6 +2,8 @@ import * as T from '../vendor/three.module.js';
 import {GLTFLoader} from '../vendor/GLTFLoader.js';
 import {clone as cloneSkinned} from '../vendor/SkeletonUtils.js';
 import {NpcMotion,npcMotionName,npcMotionProfile} from './npc-motion.js';
+import {bedBones} from './bed-pose.js';
+import {sleepEyes} from './sleep-eyes.js';
 import {NpcGesture} from './npc-gesture.js';
 
 // Daily motion uses retargeted clips; prop-specific choreography keeps its own pose.
@@ -23,6 +25,8 @@ const KINDS = {
   sandgang: {file: 'npc-sandgang.glb', height: 1.86, motion: 'commoner'},
   maskopera: {file: 'npc-maskopera.glb', height: 1.7, motion: false},
 };
+// Eye height differs with each generated head / headdress; measured in the scaled rig.
+const SLEEP_FACE={woman:[.202,.035],commoner:[.191,.029],sandgang:[.135,.035],prince:[.224,.035],constable:[.225,.035]};
 const BONE_ALIASES = {
   head: ['Head'],
   rightArm: ['R_Upperarm'], rightFore: ['R_Forearm'],
@@ -66,7 +70,7 @@ function load(file) {
 }
 
 // Recolours only cloth: skin (warm, moderately saturated) and hair (dark) keep the texture.
-function dyeable(source) {
+export function dyeable(source) {
   const m = source.clone();
   m.metalness = 0; m.roughness = 1;
   const tint = {value: new T.Color(1, 1, 1)}, amount = {value: 0};
@@ -90,7 +94,7 @@ function dyeable(source) {
   return m;
 }
 
-function headPiece(type, color, k) {
+export function headPiece(type, color, k) {
   const g = new T.Group(), mat = new T.MeshStandardMaterial({color, roughness: .95});
   const add = (geometry, x, y, z) => { const m = new T.Mesh(geometry, mat); m.position.set(x * k, y * k, z * k); m.castShadow = true; g.add(m); return m; };
   if (type === 'scarf') {
@@ -112,27 +116,23 @@ function headPiece(type, color, k) {
 }
 
 let swordTemplate = null;
-// Swap the box sword for the generated jian while keeping the group's pivot (guard at origin, blade down).
+// Keep the hand pivot; only the generated jian supplies visible geometry.
 export function fitSword(sword) {
   if (!globalThis.document?.createElement) return;
   swordTemplate ??= load('sword.glb');
-  swordTemplate.then(src => {
+  return swordTemplate.then(src => {
     const blade = src.clone(true);
     blade.traverse(o => { if (o.isMesh) { o.castShadow = true; o.material.metalness = .2; o.material.roughness = .6; } });
-    for (const child of sword.children) child.visible = false;
     sword.add(blade);
-  }).catch(error => console.warn('sword model failed to load; keeping the box sword', error));
+    return true;
+  }).catch(error => {console.error('sword model failed to load',error);return false;});
 }
 
 export function mountActorModel(actor, look) {
-  const u = actor.userData, kind = KINDS[look.kind], handle = {ready: false, sync() {}};
+  const u = actor.userData, kind = KINDS[look.kind], handle = {ready: false, height:kind?.height||2, sync() {}};
   if (!kind || !globalThis.document?.createElement) return handle;
-  const props = new Set();
-  u.sword.traverse(o => props.add(o));
-  const body = [];
-  u.rig.traverse(o => { if (o.isMesh && !props.has(o)) body.push(o); });
-
-  Promise.all([load(kind.file), loadMotion(kind.motion === false ? '' : (kind.motion || look.kind))]).then(([src, clips]) => {
+  u.rig.visible = false;
+  handle.loaded = Promise.all([load(kind.file), loadMotion(kind.motion === false ? '' : (kind.motion || look.kind))]).then(([src, clips]) => {
     const model = cloneSkinned(src), wrapper = new T.Group(), materials = [];
     model.traverse(o => {
       if (!o.isMesh) return;
@@ -155,7 +155,7 @@ export function mountActorModel(actor, look) {
     const bone = {};
     for (const [key, name] of Object.entries(BONES)) bone[key] = model.getObjectByName(T.PropertyBinding.sanitizeNodeName(name)) || (BONE_ALIASES[key] || []).map(alias => model.getObjectByName(alias)).find(Boolean);
     const missing = Object.keys(BONES).filter(key => !bone[key]);
-    if (missing.length) { wrapper.removeFromParent(); u.rig.position.copy(saved.position); u.rig.quaternion.copy(saved.quaternion); console.warn('npc model: missing bones', look.kind, missing); return; }
+    if (missing.length) { wrapper.removeFromParent(); u.rig.position.copy(saved.position); u.rig.quaternion.copy(saved.quaternion); throw new Error('npc model '+look.kind+': missing bones '+missing.join(', ')); }
     const tripoRig = !model.getObjectByName('mixamorigHips');
     const space = node => u.rig.getWorldQuaternion(new T.Quaternion()).invert().multiply(node.getWorldQuaternion(new T.Quaternion()));
     const rest = {}, parent = {};
@@ -167,11 +167,13 @@ export function mountActorModel(actor, look) {
     const shoulder = name => u.rig.worldToLocal(bone[name].getWorldPosition(new T.Vector3()));
     u.arms[0].position.copy(shoulder('rightArm'));
     u.arms[1].position.copy(shoulder('leftArm'));
+    const closeEyes=sleepEyes(u.rig,model,bone.head,kind.height,...(SLEEP_FACE[look.kind]||[.197,.035]));
+    let headwear;
     if (look.head) {
       const k = kind.height / 1.8, piece = headPiece(look.head[0], look.head[1], k);
       piece.position.copy(shoulder('head')).y += .12 * k;
       u.rig.add(piece);
-      bone.head.attach(piece);
+      bone.head.attach(piece);headwear=piece;
     }
     u.rig.position.copy(saved.position); u.rig.quaternion.copy(saved.quaternion);
 
@@ -200,7 +202,7 @@ export function mountActorModel(actor, look) {
     };
     handle.ready = true;
     handle.sync = (baseColor, state = {}) => {
-      for (const mesh of body) mesh.visible = false;
+      u.rig.visible = true;
       const color = u.outfitColor ?? baseColor, dyed = kind.dye || color !== baseColor;
       for (const m of materials) { m.userData.tint.value.setHex(color); m.userData.amount.value = dyed ? 1 : 0; }
       const dt = Math.max(0, Math.min(.1, state.dt || 0));
@@ -237,9 +239,11 @@ export function mountActorModel(actor, look) {
           b.node.position.lerpVectors(from.p,b.node.position,k);
         }
       }
-      gesture.update(dt, state.upperBody, active);
+      if(state.bedPose)bedBones(u.rig,bone,state.bedPose);else gesture.update(dt, state.upperBody, active);
+      closeEyes(state.bedPose?.weight||0);if(headwear)headwear.visible=!(state.bedPose?.weight>.4);
       handle.activeClip = active ? motion.current + (state.upperBody ? '+'+state.upperBody.kind : '') : 'choreography';
     };
-  }).catch(error => console.warn('npc model failed to load; keeping the procedural figure', look.kind, error));
+    return handle;
+  }).catch(error => {handle.error=error;console.error('npc model failed to load',look.kind,error);return handle;});
   return handle;
 }

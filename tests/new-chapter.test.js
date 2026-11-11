@@ -1,3 +1,4 @@
+import {equipAppearance} from '../src/appearance.js';
 import {cityRep} from '../src/reputation.js';
 import {requestApprenticeship,finishDemonstration,attemptLesson,completeLesson} from '../src/apprenticeship.js';
 import test from 'node:test';
@@ -33,7 +34,49 @@ test('returning a purse transfers the actual money once, not a generic gift',()=
 test('actual ledger is evidence while a lead alone does not complete the investigation',()=>{const g=setup();const lead=g.eco.create('税课口供','document','player');giveItem(g.sim,g.eco,'traveler',lead.id);assert.ok(!g.s.facts.ledgerDelivered);const ledger=g.eco.items('npc:prisoner').find(i=>i.type==='ledger');g.eco.transfer(ledger,'player','entrusted');giveItem(g.sim,g.eco,'traveler',ledger.id);assert.equal(g.s.facts.ledgerDelivered,true);assert.equal(ledger.location,'npc:traveler');});
 test('identity check uses name, duty guard, original holder, report and appearance; preview matches settlement',()=>{const g=setup(),n=g.s.people.gate_merchant;const pass=g.eco.items('npc:gate_merchant').find(i=>i.documentId==='merchant-pass');g.eco.transfer(pass,'player','stolen');Object.assign(n,{x:20,z:30});g.s.watch.holder='gate_relief';assert.equal(identityCheck(g.s).chance,45);g.s.facts.knownNames={gate_merchant:'赵成'};assert.equal(identityCheck(g.s).chance,100);g.s.watch.holder='gate_guard';assert.equal(identityCheck(g.s).chance,0);g.s.watch.holder='gate_relief';n.passReported=true;assert.equal(identityCheck(g.s).chance,0);n.passReported=false;Object.assign(n,{x:g.p.x,z:g.p.z});assert.equal(identityCheck(g.s).chance,0);Object.assign(n,{x:20,z:30});g.p.gender='female';assert.equal(identityCheck(g.s).chance,35);learnSkill(g.p,'disguise',2,'刻字人');assert.equal(identityCheck(g.s).chance,35);learnSkill(g.p,'disguise',3,'青禾');assert.equal(identityCheck(g.s).chance,100);const a={id:'g_present'};assert.deepEqual(g.sim.preview(a),identityCheck(g.s));g.s.event.gate.phase='papers';assert.equal(g.sim.resolve(g.sim.event.id,'g_present').success,true);assert.equal(g.s.facts.entryRoute,'papers');});
 test('certain zero identity chance is failure even with the lowest roll',()=>{const g=setup(),pass=g.eco.items('npc:gate_merchant').find(i=>i.documentId==='merchant-pass');g.eco.transfer(pass,'player','stolen');g.s.event.gate.phase='papers';assert.equal(g.sim.preview({id:'g_present'}).chance,0);assert.equal(g.sim.resolve(g.sim.event.id,'g_present').success,false);assert.ok(!g.s.facts.enteredCity);});
-test('convoy waits for rollcall; entering opens town objectives without obsolete ribbon scene',()=>{const g=setup();act(g,'porter','convoy_work');const a=chapterOptions(g.sim,'porter').find(a=>a.id==='ch_convoy_enter');assert.equal(chapterPreview(g.sim,'porter',a).blocked,true);g.s.time=12;act(g,'porter','convoy_enter');assert.equal(g.s.facts.entryRoute,'convoy');g.sim.tick(1);assert.equal(g.s.quests.convoy.status,'active');assert.notEqual(g.s.event.type,'proposal');});
+test('convoy entry requires wearing the outfit, with no rollcall hours or extra check',()=>{
+ for(const gender of ['female','male'])for(const time of [0,9,10,29,30,89,90,109,110,180,239]){
+  const g=setup();g.p.gender=gender;g.s.time=time;
+  const work=act(g,'porter','convoy_work');act(g,'porter','convoy_bribe');const a=chapterOptions(g.sim,'porter').find(a=>a.id==='ch_convoy_enter');
+  assert.doesNotMatch(work.text,/辰时|申时|点名|误了时候/);
+  assert.equal(chapterPreview(g.sim,'porter',a).blocked,true,'owning the clothes is insufficient');
+  equipAppearance(g.sim,g.eco.items('player').find(i=>i.name==='役夫短褂').id,'body');
+  const before={money:g.p.money,energy:g.p.energy};
+  assert.equal(chapterPreview(g.sim,'porter',a).blocked,false,`${gender}/${time}`);
+  g.sim.rng=()=>{throw new Error('clothing entry must not roll dice');};
+  const result=act(g,'porter','convoy_enter');assert.equal(result.roll,null);
+  assert.deepEqual({money:g.p.money,energy:g.p.energy},before);
+  assert.equal(g.s.facts.entryRoute,'convoy');g.sim.tick(1);
+  assert.equal(g.s.quests.convoy.status,'active');assert.notEqual(g.s.event.type,'proposal');
+  assert.ok(!chapterOptions(g.sim,'porter').some(a=>a.id==='ch_convoy_enter'));
+  assert.ok(chapterResolve(g.sim,g.eco,'porter','ch_convoy_enter').error);
+ }
+});
+
+test('a prepared outfit is recognized when negotiating, including after reload at a former closed hour',()=>{
+ for(const reload of [false,true]){
+  const original=setup(),coat=original.eco.items('npc:porter').find(i=>i.type==='clothing');
+  original.eco.transfer(coat,'player','found');equipAppearance(original.sim,coat.id,'body');
+  const sim=reload?new Simulation(JSON.parse(JSON.stringify(original.s))):original.sim,eco=reload?new Ecosystem(sim,[]):original.eco;
+  sim.s.time=reload?180:0;assert.ok(!chapterOptions(sim,'porter').some(a=>a.id==='ch_convoy_enter'));chapterResolve(sim,eco,'porter','ch_convoy_work');chapterResolve(sim,eco,'porter','ch_convoy_bribe');const a=chapterOptions(sim,'porter').find(a=>a.id==='ch_convoy_enter');
+  assert.ok(a);assert.equal(eco.items('player').filter(i=>i.type==='clothing'&&i.ownerId==='porter').length,1);
+  assert.equal(chapterPreview(sim,'porter',a).blocked,false);
+  assert.ok(chapterResolve(sim,eco,'porter',a.id).success);assert.equal(sim.s.facts.entryRoute,'convoy');
+ }
+});
+
+test('convoy execution rechecks clothing after preview without duplicating borrowed clothes',()=>{
+ const g=setup();act(g,'porter','convoy_work');act(g,'porter','convoy_bribe');
+ const coat=g.eco.items('player').find(i=>i.name==='役夫短褂'),ordinary=g.p.wornOutfit;
+ equipAppearance(g.sim,coat.id,'body');const a=chapterOptions(g.sim,'porter').find(a=>a.id==='ch_convoy_enter');
+ assert.equal(chapterPreview(g.sim,'porter',a).blocked,false);
+ equipAppearance(g.sim,ordinary,'body');assert.equal(chapterPreview(g.sim,'porter',a).blocked,true);
+ assert.ok(chapterResolve(g.sim,g.eco,'porter',a.id).error);assert.ok(!g.s.facts.enteredCity);
+ const sim=new Simulation(JSON.parse(JSON.stringify(g.s))),eco=new Ecosystem(sim,[]);
+ assert.ok(chapterResolve(sim,eco,'porter','ch_convoy_work').error);
+ assert.equal(eco.items('player').filter(i=>i.name==='役夫短褂').length,1);
+ equipAppearance(sim,coat.id,'body');assert.ok(chapterResolve(sim,eco,'porter',a.id).success);
+});
 test('royal sponsorship requires witnessed meaningful care; instruction does not farm reputation',()=>{const g=setup();assert.ok(!chapterOptions(g.sim,'traveler').some(a=>a.id==='ch_royal_vouch'));g.eco.positions.traveler={x:g.p.x+1,z:g.p.z};act(g,'tea_host','help_mother');assert.equal(cityRep(g.s),10);const t=requestApprenticeship(g.sim,g.eco,'old_constable','ap_observe_pressure_2').training;finishDemonstration(g.sim,t);assert.equal(cityRep(g.s),10);act(g,'traveler','royal_vouch');assert.equal(g.s.facts.entryRoute,'royal');assert.ok(g.s.facts.princeDebt);});
 test('skill lessons change combat and pressure abilities but repeated practice cannot grind stats',()=>{const g=setup(),n=g.s.people.gate_guard;Object.assign(n,{x:0,z:0,facing:0});g.p.x=0;g.p.z=2;assert.equal(touchPreview(g.sim,'gate_guard').blocked,true);const damage=weaponDamage(g.p);learnSkill(g.p,'combat',3,'林青舟');assert.ok(weaponDamage(g.p)>damage);learnSkill(g.p,'pressure',3,'杜老捕');assert.equal(touchPreview(g.sim,'gate_guard','mute').blocked,false);pressurePoint(g.sim,'gate_guard','mute');assert.equal(n.muteUntil,30);const stats={...g.p.stats};practice(g.p,'pressure',8,'same');practice(g.p,'pressure',8,'same');assert.equal(skill(g.p,'pressure').xp,16);assert.deepEqual(g.p.stats,stats);});
 test('new dealer cards describe implemented routes and do not advertise old escort or wedding',()=>{const g=setup(),cards=eventsFor(g.s);assert.ok(cards.length>5);assert.ok(!cards.some(c=>c.id==='ribbon'));assert.match(JSON.stringify(cards.find(c=>c.id==='merchant_escort')),/花石纲|役夫/);});

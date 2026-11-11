@@ -1,7 +1,8 @@
 import {visibleBetween} from './npc-awareness.js';
+import {factionAuthority,factionStanding} from './faction-discipline.js';
 export function registerCourt(s){s.factions??={};s.factions['六扇门']??=20;}
-export function courtRank(s){return s.facts.courtHead==='player'?'巡街捕头':'捕快';}
-export function courtLine(s,id){if(s.facts.career!=='court')return null;const rank=courtRank(s);return ({merchant:rank+'爷，上回报失的钱袋，还劳您挂心。',gate_merchant:rank+'爷，这边阴凉，请上座。',tea_host:'当差也得喝口水。大人，碗在桌上。',gate_guard:s.facts.courtHead==='player'?'顾大人既点了你的名，巡街的人就交给你了。':s.facts.courtHead==='gate_guard'?'巡街归我点卯。你的案卷，记得按时交。':'挂上腰牌只是入门。想领一班人，先把案子办明白。',inspector:'案子到哪一步了？堂前回话，不必客套。',chi:'腰牌倒是擦得亮。手别伸到赤砂堂来。'})[id];}
+export function courtRank(s){const standing=factionStanding(s,'court');return standing.status==='expelled'?'已除名':(s.facts.courtHead==='player'?'巡街捕头':'捕快')+(standing.status==='restricted'?' · 限权':'');}
+export function courtLine(s,id){if(!factionAuthority(s,'court'))return null;const rank=courtRank(s);return ({merchant:rank+'，上回报失的钱袋，还劳您挂心。',gate_merchant:rank+'，这边阴凉，请上座。',tea_host:'当差也得喝口水。大人，碗在桌上。',gate_guard:s.facts.courtHead==='player'?'顾大人既点了你的名，巡街的人就交给你了。':s.facts.courtHead==='gate_guard'?'巡街归我点卯。你的案卷，记得按时交。':'挂上腰牌只是入门。想领一班人，先把案子办明白。',inspector:'案子到哪一步了？堂前回话，不必客套。',chi:'腰牌倒是擦得亮。手别伸到赤砂堂来。'})[id];}
 export function streetSalute(sim,eco,world){const s=sim.s;if(s.facts.career!=='court'||eco.s.time<(s.facts.nextSalute||0)||world.locked)return;
  const p=s.player;for(const [id,q] of Object.entries(eco.positions)){const n=s.people[id],line=courtLine(s,id);if(!q||!n||!line||n.hp<=0||n.inCustody||n.sickUntil>eco.s.time||n.stunnedUntil>s.npcClock||n.awareness?.caseOpen||n.saluteDay===s.day||Math.hypot(q.x-p.x,q.z-p.z)>4||!visibleBetween(q,p,world.obstacles||[],eco.s.objects))continue;
  n.saluteDay=s.day;s.facts.nextSalute=eco.s.time+14;sim.emit('npcRoutine',{id,text:line});break;}}

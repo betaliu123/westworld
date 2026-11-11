@@ -9,6 +9,7 @@ export function handGoals(pose, time = 0) {
     const lift = kind === 'ribbon' ? T.MathUtils.smoothstep(pose.throwTime || 0, 0, .55) : 0;
     return [[-.28,1.30 + lift*.40,.32 + lift*.14],[.28,1.30 + lift*.40,.32 + lift*.14]];
   }
+  if (kind === 'bound') return [[-.08,1.03,.27],[.08,1.03,.27]];
   if (kind === 'clap') { const x = .07 + (1 + Math.sin(time*7))*.07; return [[-x,1.28,.38],[x,1.28,.38]]; }
   if (kind === 'flute') return [[-.15,1.62,.27],[.34,1.57,.31]];
   if (kind === 'sick') return [[-.12,1.01,.20],[.13,1.08,.24]];
@@ -51,7 +52,8 @@ export function solveArm(upper, fore, hand, target, pole, weight = 1) {
 export class NpcGesture {
   constructor(actor, model, height) {
     this.actor=actor; this.scale=height/2; this.time=0;
-    const bone=name=>model.getObjectByName('mixamorig'+name);
+    const aliases={Hips:'Hip',RightArm:'R_Upperarm',RightForeArm:'R_Forearm',RightHand:'R_Hand',LeftArm:'L_Upperarm',LeftForeArm:'L_Forearm',LeftHand:'L_Hand'};
+    const bone=name=>model.getObjectByName('mixamorig'+name)||model.getObjectByName(aliases[name]||name);
     this.hips=bone('Hips');
     this.hipRest=actor.worldToLocal(this.hips.getWorldPosition(new T.Vector3())).y;
     // Goal signs are discovered from this skeleton, not assumed from source axes.

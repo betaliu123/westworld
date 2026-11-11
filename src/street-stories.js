@@ -18,13 +18,13 @@ STREET_TEMPLATES.gang.options=STREET_TEMPLATES.gang.options.filter(a=>a.id!=='ba
 STREET_TEMPLATES.performance.options=STREET_TEMPLATES.performance.options.filter(a=>a.id!=='quiet');
 export class StreetStories{
  constructor(sim){this.sim=sim;sim.s.street??={time:0,nextAt:6,cursor:0,sequence:0,active:null,pending:[],factions:{青竹会:0,赤砂帮:0}};this.s=sim.s.street;if(this.s.layoutVersion!==2){if(['ribbon','duel'].includes(this.s.active?.type)){this.s.active=null;this.s.nextAt=this.s.time+8;}this.s.layoutVersion=2;}this.s.completed??={};this.s.outcomes??=[];this.s.retryAt??={};for(const type of Object.keys(DRAMAS)){const latest=this.s.outcomes.findLast(o=>o.type===type);if(this.s.completed[type]&&latest?.outcome.includes('演员未能聚齐')){delete this.s.completed[type];this.s.retryAt[type]=this.s.time+30;}}}
- get active(){return this.s.active;}
+ get active(){return this.sim.s.chapterVersion===2?null:this.s.active;}
  get template(){return STREET_TEMPLATES[this.active?.type];}
  options(){return this.active?(DRAMAS[this.active.type]?dramaOptions(this.active,this.template):(streetFollowupOptions(this.active)||this.template.options.slice(0,3))):[];}
  point(){return this.active?dramaPoint(this.active,this.template):null;}
  reserved(){return new Set(this.active?.cast||[]);}
  emit(text,lines=[],ai=false){const dialogue=lines.map(([id,text])=>({id,text}));for(const d of dialogue){this.sim.s.people[d.id].memories.push(text);this.sim.s.people[d.id].memories=this.sim.s.people[d.id].memories.slice(-12);}this.sim.emit('sandbox',{text,dialogue,ai});this.sim.save();}
- canStart(type){return STREET_TEMPLATES[type].cast.every(id=>this.sim.s.people[id]?.hp>25&&(!this.sim.event||!['shen','su','gao'].includes(id))&&this.sim.s.people[id].mood!=='angry');}
+ canStart(type){return this.sim.s.chapterVersion!==2&&STREET_TEMPLATES[type].cast.every(id=>this.sim.s.people[id]?.hp>25&&(!this.sim.event||!['shen','su','gao'].includes(id))&&this.sim.s.people[id].mood!=='angry');}
  start(type){if(this.active||!STREET_TEMPLATES[type]||(DRAMAS[type]&&this.s.completed[type])||!this.canStart(type))return false;const t=STREET_TEMPLATES[type];this.s.active={id:++this.s.sequence,type,cast:[...t.cast],elapsed:0,lastHit:0,line:0,arrived:false,attempts:[],next:null,stage:DRAMAS[type]?(type==='ribbon'?'候场':type==='duel'?'报名':'踩点'):null,stageAt:0};this.emit(t.intro,t.lines.slice(0,2));return true;}
  end(next=this.template?.follow){if(!this.active)return;const e=this.active,t=this.template;for(const id of e.cast){this.sim.s.people[id].memories.push(e.outcome||'我经历了「'+t.name+'」。');this.sim.s.people[id].memories=this.sim.s.people[id].memories.slice(-12);}if(next)this.s.pending.push({type:next,due:this.s.time+24,cause:t.name});this.s.active=null;this.s.nextAt=this.s.time+30;this.sim.save();}
  chance(a){return a.stat?Math.max(5,Math.min(95,this.sim.s.player.stats[a.stat]+40-a.difficulty+Math.round(this.sim.s.people[this.active.cast[0]].relation/10)+growthBonus(this.sim.s.player,a.stat))):100;}
@@ -41,6 +41,7 @@ export class StreetStories{
  r.cast=[...e.cast];if(STREET_FOLLOWUPS[e.type])finishStreet(this,a,r);if(DRAMAS[e.type]){if(a.id.startsWith('duel_')){e.lastPlayerMove=e.elapsed;if(!success)e.opponentScore=(e.opponentScore||0)+1;}dramaAction(this,a,success);r.ongoing=this.active?.id===e.id;}this.sim.emit('streetResult',r);this.sim.save();return r;
  }
  tick(dt,positions,blocked=new Set()){
+ if(this.sim.s.chapterVersion===2)return;
  this.s.time+=dt;this.s.pending=this.s.pending.filter(p=>this.s.time-p.due<100);const e=this.active;if(!e){const due=this.s.pending.find(p=>p.due<=this.s.time);if(due&&!STREET_TEMPLATES[due.type].cast.some(id=>blocked.has(id))&&this.start(due.type)){this.s.pending.splice(this.s.pending.indexOf(due),1);return;}if(this.s.time>=this.s.nextAt&&!due){const roots=['gang','performance','cargo','bargain'],candidates=[...Object.keys(DRAMAS).filter(type=>!this.s.completed[type]&&(this.s.retryAt[type]||0)<=this.s.time),...roots.map((_,i)=>roots[(this.s.cursor+i)%roots.length])];const type=candidates.find(type=>this.canStart(type)&&!STREET_TEMPLATES[type].cast.some(id=>blocked.has(id)));if(type&&this.start(type))this.s.cursor++;else this.s.nextAt=this.s.time+8;}return;}
  const t=this.template;if(e.cast.some(id=>this.sim.s.people[id].hp<=20||this.sim.s.people[id].mood==='angry'||this.sim.s.people[id].fear>0)){this.emit('现场突生变故，众人中断原来的事情，各自退开。');if(DRAMAS[e.type]){this.s.completed[e.type]=true;this.s.outcomes.push({type:e.type,day:this.sim.s.day,outcome:'演员受伤或受惊，演出中断。'});}this.end(t.mode==='fight'?'care':null);return;}e.elapsed+=dt;
  e.arrived=(DRAMAS[e.type]?e.cast:e.cast.slice(0,2)).every(id=>positions[id]&&Math.hypot(positions[id].x-t.point[0],positions[id].z-t.point[1])<4);

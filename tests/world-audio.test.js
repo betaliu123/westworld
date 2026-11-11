@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync} from 'node:fs';
-import {WorldAudio,worldMix,hitSound} from '../src/world-audio.js';
+import {WorldAudio,worldMix,hitSound,damageSound,fluteTrack} from '../src/world-audio.js';
+import {environmentStep} from '../src/world-rules.js';
 
 function fixture(){
  const sources=[],errors=[],requests=[];
@@ -10,7 +11,7 @@ function fixture(){
   createGain:()=>({gain:param(),connect(){},disconnect(){}}),
   createBufferSource(){const source={playbackRate:{value:1},connect(){},disconnect(){},start(t=0){this.started=t;},
    stop(t){if(t!=null){this.ends=t;return;}this.stopped=true;this.onended?.();}};sources.push(source);return source;}};
- const catalog=Object.fromEntries(['music','city','creek','swing','body','wood','metal','draw','step','coins'].map(id=>[id,{src:'/'+id+'.wav'}]));
+ const catalog=Object.fromEntries(['music','city','creek','flute-poor','flute-good','swing','body','wood','metal','draw','step','coins'].map(id=>[id,{src:'/'+id+'.wav'}]));
  const fetcher=async url=>{requests.push(url);return {ok:true,json:async()=>catalog,arrayBuffer:async()=>new ArrayBuffer(4)};};
  const audio=new WorldAudio({fetcher,createContext:()=>context,random:()=>.5,onError:e=>errors.push(e)});
  return {audio,context,sources,errors,requests};
@@ -65,9 +66,58 @@ test('transients are bounded, distant events silent, footsteps exclude teleports
 });
 test('shipping catalog contains actual recorded files for every cue and music, no credentials',()=>{
  const root=new URL('../',import.meta.url),manifest=JSON.parse(readFileSync(new URL('assets/audio/world/manifest.json',root)));
- for(const id of ['music','city','swing','wood','body','metal','draw','coins','step']){
+ for(const id of ['music','city','creek','flute-poor','flute-good','swing','wood','body','metal','draw','coins','step']){
   const row=manifest[id];assert.ok(row,id);assert.ok(existsSync(new URL(row.src.slice(1),root)));
   assert.equal(row.payload.model,'seed-audio-1.0');assert.ok(row.seconds>.1);
  }
  assert.doesNotMatch(JSON.stringify(manifest),/Bearer |sk-[a-zA-Z0-9]{12}/);
+});
+
+test('continuous river damage never retriggers an impact; a real hit in water still sounds',()=>{
+ const player={x:-22,z:0,hp:100};let impacts=0;
+ for(let i=0;i<180;i++){
+  const before=player.hp;environmentStep(player,1/60);
+  if(damageSound(before,player.hp,before-player.hp))impacts++;
+ }
+ assert.equal(impacts,0);assert.ok(player.hp<77&&player.hp>75,'water damage remains intact');
+ const before=player.hp;environmentStep(player,1/60);const waterLoss=before-player.hp;
+ player.hp-=8;assert.equal(damageSound(before,player.hp,waterLoss),'hurt');
+ assert.equal(damageSound(100,92),'hurt');assert.equal(damageSound(92,100),null);
+});
+
+test('flute uses music tier, never overlaps another solo, and stops on action exit',async()=>{
+ const {audio,context}=await ready();assert.equal(fluteTrack(2),'flute-poor');assert.equal(fluteTrack(3),'flute-good');
+ audio.update(.016,{...state,performing:true,musicTier:2});
+ const poor=[...audio.loops.get('flute-poor').sources][0].source;
+ context.currentTime=3.7;audio.update(.016,{...state,performing:true,musicTier:2});
+ const solos=[...audio.loops.get('flute-poor').sources];
+ assert.equal(solos.length,2);assert.ok(solos[1].source.started>=poor.ends,'solo phrases do not overlap');
+ audio.update(.016,{...state,performing:true,musicTier:3});
+ assert.ok(poor.stopped);assert.ok(audio.loops.has('flute-good'));assert.ok(!audio.loops.has('flute-poor'));
+ const good=[...audio.loops.get('flute-good').sources][0].source;
+ audio.update(.016,state);assert.ok(good.stopped);assert.equal(audio.mix.music,worldMix(state).music);
+});
+
+test('flute obeys mute, hidden, dialogue, death and water; late load cannot replay a finished action',async()=>{
+ const {audio,context}=await ready(),perform={...state,performing:true,musicTier:3};
+ for(const interrupted of [{talking:true},{hp:0},{drowning:true},{burning:true}]){
+  audio.update(.016,perform);const source=[...audio.loops.get('flute-good').sources][0].source;
+  audio.update(.016,{...perform,...interrupted});assert.ok(source.stopped);assert.ok(!audio.loops.has('flute-good'));
+ }
+ audio.update(.016,perform);audio.setEnabled(false);assert.equal(audio.loops.size,0);
+ audio.setEnabled(true);audio.update(.016,perform);audio.setHidden(true);assert.equal(audio.loops.size,0);
+ audio.setHidden(false);audio.update(.016,state);assert.ok(!audio.loops.has('flute-good'));
+ audio.buffers.delete('flute-good');audio.loading.delete('flute-good');let finish;
+ context.decodeAudioData=()=>new Promise(resolve=>finish=resolve);
+ const loading=audio.load('flute-good');await new Promise(r=>setImmediate(r));
+ audio.update(.016,perform);audio.update(.016,state);finish({duration:4});await loading;
+ audio.update(.016,state);assert.ok(!audio.loops.has('flute-good'));
+});
+
+test('swimming does not create stone footsteps and repeated impact cues are bounded',async()=>{
+ const {audio,context}=await ready();
+ for(let i=1;i<60;i++){context.currentTime+=.1;audio.update(.1,{...state,x:i*.4,drowning:true});}
+ assert.equal(audio.shots.size,0);
+ assert.ok(audio.play('hurt'));context.currentTime+=.1;assert.equal(audio.play('hurt'),null);
+ context.currentTime+=.6;assert.ok(audio.play('hurt'));
 });

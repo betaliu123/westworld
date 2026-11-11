@@ -5,7 +5,7 @@ const faction=Object.fromEntries(PEOPLE.map(p=>[p.id,p.faction]));
 const side=id=>({'六扇门':'law','临溪县衙':'law','临溪守军':'law','赤砂帮':'gang'})[faction[id]];
 const near=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 const inside=(site,q)=>q&&Math.abs(site.x-q.x)<3.6&&Math.abs(site.z-q.z)<3.2;
-const fit=(s,id)=>{const n=s.people[id];return n?.hp>0&&!n.inCustody&&!n.drowning&&!(n.stunnedUntil>s.npcClock)&&!(n.sickUntil>s.ecosystem?.time);};
+const fit=(s,id)=>{const n=s.people[id];return n?.hp>0&&!n.restraint&&!n.inCustody&&!n.drowning&&!(n.stunnedUntil>s.npcClock)&&!(n.sickUntil>s.ecosystem?.time);};
 // Personal history is directional. The retired constable served with the court;
  // the gang's porter is a familiar face even without a faction badge.
  const prior={inspector:{old_constable:28},old_constable:{inspector:22},gang_boss:{porter:18},porter:{gang_boss:12}};
@@ -17,6 +17,7 @@ const names=Object.fromEntries(PEOPLE.map(p=>[p.id,p.name]));
 function report(sim,e,text){if(near(sim.s.player,e)<=12)sim.emit('territoryReport',{text});}
 function interrupt(sim,t,e,reason){report(sim,e,names[e.host]+'与'+names[e.guest]+'未分胜负：'+reason+'。');delete t.active;sim.save();}
 export function encounterStep(sim,positions,obstacles=[]){
+ if(sim.s.deck?.actions?.active)return;
  const s=sim.s,now=s.npcClock||0,t=s.territory??={visits:{},next:0};let e=t.active;
  if(e){const {host:h,guest:g}=e,a=positions[h],b=positions[g],site=sites.find(k=>k.id===e.site);
  if(!a||!b||!fit(s,h)||!fit(s,g)){if(e.phase!=='withdraw')interrupt(sim,t,e,'一方已无法应战');else delete t.active;return;}

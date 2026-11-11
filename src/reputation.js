@@ -1,3 +1,4 @@
+import {believedIdentity,appearanceState,identityName} from './appearance.js';
 // A place and an affiliation are independent ledgers. Gate and town share Linxi.
 export const CITIES={linxi:'临溪镇',bianjing:'汴京'};
 export const HEADQUARTERS=[
@@ -17,8 +18,9 @@ export function reputation(s){
 }
 export function cityRep(s,id=cityOf(s)){return reputation(s).cities[id]||0;}
 export function factionRep(s,id){const r=reputation(s),h=HEADQUARTERS.find(h=>h.id===id);if(h&&s.factions?.[h.name]!=null)r.factions[id]=s.factions[h.name];return r.factions[id]||0;}
-export function earnReputation(sim,{city=cityOf(sim.s),faction,amount=0,reason,key}){
+export function earnReputation(sim,{city=cityOf(sim.s),faction,amount=0,reason,key,observer,subject}){
  const s=sim.s,r=reputation(s);r.claims??={};if(key&&r.claims[key])return false;if(key)r.claims[key]=true;
+ const actor=subject|| (observer?believedIdentity(s,observer):'player');if(actor!=='player'){const other=appearanceState(s).reputations[actor]??={cities:{},factions:{}};if(city)other.cities[city]=(other.cities[city]||0)+amount;if(faction)other.factions[faction]=(other.factions[faction]||0)+amount;sim.emit('sandbox',{text:identityName(actor)+'的名声 '+(amount>0?'+':'')+amount+'：'+reason});return true;}
  if(city){r.cities[city]=Math.max(-100,Math.min(100,(r.cities[city]||0)+amount));s.reputation=Math.max(-100,Math.min(100,(s.reputation||0)+amount));r.seenGlobal=s.reputation;}
  if(faction){const h=HEADQUARTERS.find(h=>h.id===faction);r.factions[faction]=Math.max(-100,Math.min(100,factionRep(s,faction)+amount));if(h){s.factions??={};s.factions[h.name]=r.factions[faction];}}
  if(amount)sim.emit('reputationChanged',{city,faction,amount,reason});return true;

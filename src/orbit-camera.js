@@ -2,6 +2,7 @@ import * as T from '../vendor/three.module.js';
 
 const ray = new T.Ray(), box = new T.Box3(), point = new T.Vector3();
 function height(o) {
+  if (o.sightHeight !== undefined) return o.sightHeight;
   if (o.cameraHeight !== undefined) return o.cameraHeight;
   if (o.id === 'book-desk' || o.id?.includes('table')) return 1.15;
   if (o.id === 'river-fence') return 2.15;
@@ -19,7 +20,7 @@ export function clearCameraPosition(focus, desired, obstacles, states = {}) {
   ray.set(focus, direction.multiplyScalar(1 / length));
   let distance = length;
   for (const o of obstacles) {
-    if (states[o.id]?.hp === 0) continue;
+    if (states[o.id]?.hp === 0 || states[o.id]?.open || states[o.id]?.cameraCutaway) continue;
     box.min.set(o.x - o.w / 2 - .22, -.1, o.z - o.d / 2 - .22);
     box.max.set(o.x + o.w / 2 + .22, height(o) + .15, o.z + o.d / 2 + .22);
     // The focus may be in the padding of a wall at very close range; casting from

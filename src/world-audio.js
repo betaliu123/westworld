@@ -1,14 +1,22 @@
+import {roomAt} from './night-life.js';
 // Recorded world audio. Playback never calls a generation service.
 const clamp=(n,a=0,b=1)=>Math.min(b,Math.max(a,n));
 export function worldMix({x=0,z=26,time=0,voice=false,talking=false,performing=false,hp=100}={}){
- const hour=((6+time/10)%24+24)%24,day=hour>=6&&hour<19?1:.24;
+ const hour=((6+time/10)%24+24)%24,day=hour>=6&&hour<19?1:0;
  const duck=voice?.28:talking?.65:1;
  const city=clamp((26-z)/12),tea=clamp(1-Math.hypot(x+13,z-25)/17);
- return {music:(performing?0:hp<=0?.12:.5)*duck,
-  city:Math.max(city*.58,tea*.65)*day*(voice?.36:1),
-  creek:clamp(1-Math.abs(x+22)/20)*.7*(voice?.5:1)};
+ const room=roomAt({x,z}),inside=!!room,lateInn=room?.public&&(hour>=19||hour<2);
+ return {music:(performing?0:hp<=0?.12:.5)*duck*day,
+  'music-night':(performing?0:hp<=0?.08:.32)*duck*(1-day),
+  night:(1-day)*(inside?.06:.38)*(voice?.45:1),
+  'night-inn':lateInn?.3*(voice?.4:1):0,
+  city:Math.max(city*.58,tea*.65)*day*(inside?.16:1)*(voice?.36:1),
+  creek:clamp(1-Math.abs(x+22)/20)*.7*(inside?.25:1)*(voice?.5:1)};
 }
 export function hitSound(material){return material==='wood'?'wood':['metal','stone'].includes(material)?'metal':'body';}
+// Continuous water/fire damage is not a new physical impact every frame.
+export function damageSound(before,after,environmentDamage=0){return before-after>environmentDamage+1e-6?'hurt':null;}
+export function fluteTrack(tier=0){return tier>=3?'flute-good':'flute-poor';}
 const CUES={
  attack:['swing',.66],hurt:['body',.7],wood:['wood',.8],metal:['metal',.52],body:['body',.72],
  draw:['draw',.45],sheath:['draw',.28,.8],step:['step',.25],jump:['step',.18],
@@ -24,16 +32,12 @@ export class WorldAudio{
  }
  init(){return this.catalogPromise??=this.fetcher('/assets/audio/world/manifest.json').then(r=>{
   if(!r.ok)throw Error('world audio catalog missing');return r.json();
- }).then(m=>this.catalog={
-  city:{src:'/assets/audio/audition-2026-11-10/city-listen.wav'},
-  creek:{src:'/assets/audio/audition-2026-11-10/creek-listen.wav'},
-  ...m,
- }).catch(e=>{this.onError(e);return this.catalog={};});}
+ }).then(m=>this.catalog=m).catch(e=>{this.onError(e);return this.catalog={};});}
  getContext(){
   if(!this.context){
    this.context=this.createContext();this.master=this.context.createGain();
    this.master.gain.value=this.enabled&&!this.hidden?1:0;this.master.connect(this.context.destination);
-   this.buses={};for(const id of ['music','city','creek']){
+   this.buses={};for(const id of ['music','city','creek','music-night','night','night-inn','flute-poor','flute-good']){
     const bus=this.context.createGain();bus.gain.value=0;bus.connect(this.master);this.buses[id]=bus;
    }
   }
@@ -68,6 +72,7 @@ export class WorldAudio{
   for(const loop of this.loops.values())for(const node of [...loop.sources])node.stop();
   this.loops.clear();for(const node of [...this.shots])node.stop();this.lastCue.clear();
  }
+ stopLoop(id){const loop=this.loops.get(id);if(!loop)return;for(const node of [...loop.sources])node.stop();this.loops.delete(id);}
  makeNode(buffer,bus){
   const source=this.context.createBufferSource(),gain=this.context.createGain();
   source.buffer=buffer;source.connect(gain);gain.connect(bus);
@@ -78,20 +83,22 @@ export class WorldAudio{
  scheduleLoop(id){
   const buffer=this.buffers.get(id);if(!buffer||buffer.duration<1)return;
   let loop=this.loops.get(id);if(!loop){loop={next:this.context.currentTime+.04,sources:new Set()};this.loops.set(id,loop);}
-  const now=this.context.currentTime,fade=Math.min(1.4,buffer.duration/4);
+  const solo=id.startsWith('flute-'),now=this.context.currentTime,fade=Math.min(solo?.08:1.4,buffer.duration/4);
   // Resume after a stalled tab without replaying a queue of obsolete loops.
   if(loop.next<now)loop.next=now+.04;
   if(loop.next>now+.6)return;
   const node=this.makeNode(buffer,this.buses[id]),t=loop.next;
   node.gain.gain.setValueAtTime(0,t);node.gain.gain.linearRampToValueAtTime(1,t+fade);
   node.gain.gain.setValueAtTime(1,t+buffer.duration-fade);node.gain.gain.linearRampToValueAtTime(0,t+buffer.duration);
-  node.source.start(t);node.source.stop(t+buffer.duration);loop.sources.add(node);loop.next=t+buffer.duration-fade;
+  node.source.start(t);node.source.stop(t+buffer.duration);loop.sources.add(node);
+  // One player, one flute: a breath between phrases instead of overlapping two solos.
+  loop.next=t+buffer.duration+(solo?.2:-fade);
  }
  play(kind,{x,z,gain=1,rate=1}={}){
   if(!this.running||!this.enabled||this.hidden||this.context?.state!=='running')return null;
   const cue=CUES[kind];if(!cue)return null;
   const [id,level,pitch=1]=cue,buffer=this.buffers.get(id);if(!buffer)return null;
-  const now=this.context.currentTime,cooldown=['notice','alert','mail'].includes(kind)?1.2:.065;
+  const now=this.context.currentTime,cooldown=['notice','alert','mail'].includes(kind)?1.2:kind==='hurt'?.6:.065;
   if(now-(this.lastCue.get(kind)??-Infinity)<cooldown)return null;
   const distance=x==null?0:Math.hypot(x-this.position.x,z-this.position.z);
   if(distance>15)return null;
@@ -107,14 +114,20 @@ export class WorldAudio{
    if(this.running)this.stop();return;
   }
   this.running=true;
-  for(const id of ['music','city','creek']){
-   this.buses[id].gain.setTargetAtTime(this.mix[id],this.context.currentTime,state.voice?.16:.8);
+  for(const id of ['music','city','creek','music-night','night','night-inn']){
+   this.buses[id].gain.setTargetAtTime(this.mix[id],this.context.currentTime,state.voice||state.performing?.16:.8);
+   if(id==='creek'||this.mix[id]>0)this.scheduleLoop(id);else this.stopLoop(id);
+  }
+  const flute=state.performing&&state.hp>0&&!state.talking&&!state.drowning&&!state.burning?fluteTrack(state.musicTier):null;
+  for(const id of ['flute-poor','flute-good']){
+   if(id!==flute){this.stopLoop(id);continue;}
+   this.buses[id].gain.setTargetAtTime(state.voice?.2:.85,this.context.currentTime,.12);
    this.scheduleLoop(id);
   }
   const before=this.lastPosition;this.lastPosition=this.position;
   if(before){const travel=Math.hypot(before.x-this.position.x,before.z-this.position.z);
    // Only actual grounded travel counts. Teleports, death and climbing never make footsteps.
-   if(travel<Math.max(1,dt*12)&&state.grounded!==false&&state.hp>0){
+   if(travel<Math.max(1,dt*12)&&state.grounded!==false&&!state.drowning&&state.hp>0){
     this.stride+=travel;if(this.stride>(state.crouching?.78:1.2)){
      this.stride=0;this.play('step',{gain:state.crouching?.35:1});
     }

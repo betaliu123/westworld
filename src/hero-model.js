@@ -1,6 +1,8 @@
 import * as T from '../vendor/three.module.js';
 import {GLTFLoader} from '../vendor/GLTFLoader.js';
 import {HeroMotion} from './hero-motion.js';
+import {bedBones} from './bed-pose.js';
+import {sleepEyes} from './sleep-eyes.js';
 import {FootGrounding} from './foot-grounding.js';
 
 // Retargeted motion drives locomotion/combat. Bespoke interactions retain their procedural choreography.
@@ -23,12 +25,8 @@ function rigSpace(rig, node) {
 export function mountHeroModel(actor, url) {
   const u = actor.userData, handle = {ready: false, sync() {}};
   if (!globalThis.document?.createElement) return handle;
-  const props = new Set();
-  u.sword.traverse(o => props.add(o));
-  const body = [];
-  u.rig.traverse(o => { if (o.isMesh && !props.has(o)) body.push(o); });
-
-  new GLTFLoader().load(url, gltf => {
+  u.rig.visible = false;
+  handle.loaded = new GLTFLoader().loadAsync(url).then(async gltf => {
     const model = gltf.scene, wrapper = new T.Group();
     model.traverse(o => {
       if (!o.isMesh) return;
@@ -51,7 +49,7 @@ export function mountHeroModel(actor, url) {
     const bone = {};
     for (const [key, name] of Object.entries(BONES)) bone[key] = model.getObjectByName(T.PropertyBinding.sanitizeNodeName(name));
     const missing = Object.keys(BONES).filter(key => !bone[key]);
-    if (missing.length) { wrapper.removeFromParent(); u.rig.position.copy(saved.position); u.rig.quaternion.copy(saved.quaternion); console.warn('hero model: missing bones', missing); return; }
+    if (missing.length) { wrapper.removeFromParent(); u.rig.position.copy(saved.position); u.rig.quaternion.copy(saved.quaternion); throw new Error('hero model: missing bones '+missing.join(', ')); }
     const rest = {}, parent = {};
     for (const key of Object.keys(BONES)) { rest[key] = rigSpace(u.rig, bone[key]); parent[key] = rigSpace(u.rig, bone[key].parent); }
     const hang = side => new T.Quaternion().setFromAxisAngle(axisZ, side * HANG);
@@ -67,6 +65,7 @@ export function mountHeroModel(actor, url) {
     const right = shoulder('rightArm'), left = shoulder('leftArm');
     u.arms[0].position.set(right.x, right.y, right.z);
     u.arms[1].position.set(left.x, left.y, left.z);
+    const closeEyes=sleepEyes(u.rig,model,bone.head,HEIGHT,.209);
     u.rig.position.copy(saved.position); u.rig.quaternion.copy(saved.quaternion);
 
     const hat = model.getObjectByName('Hat');
@@ -82,7 +81,7 @@ export function mountHeroModel(actor, url) {
     swordSocket.position.set(0,.025,0);
     let usedMotion = false, stealthExit = 0;
     const grounding = new FootGrounding(actor,wrapper,model);
-    Promise.all(['sumiro-motion.local.json','hero-stealth-motion.json'].map(file=>
+    await Promise.all(['sumiro-motion.local.json','hero-stealth-motion.json'].map(file=>
       fetch(new URL('./models/'+file,import.meta.url)).then(r=>r.ok?r.json():{clips:[]})
         .catch(()=>({clips:[]})))).then(packs=>{
       const clips=packs.flatMap(p=>p.clips);
@@ -102,18 +101,16 @@ export function mountHeroModel(actor, url) {
       bone[shin].quaternion.copy(q2.copy(rest[key]).invert().multiply(knee).multiply(rest[shin]));
     }
     handle.ready = true;
-    handle.wrapper = wrapper;
+    handle.wrapper = wrapper;handle.bindPose=bindPose;
     handle.sync = ({hatOn, disguised, dt = 0, ...state}) => {
-      const active = !disguised;
-      wrapper.visible = active;
-      for (const mesh of body) mesh.visible = !active;
-      if (u.head.userData.bambooHat) u.head.userData.bambooHat.visible = !active && hatOn;
-      if (hat) hat.visible = hatOn;
-      const animated = handle.motion?.update(dt, {...state, disguised});
+      u.rig.visible = true;
+      if (hat) hat.visible = hatOn && !(state.bedPose?.weight>.3);
+      closeEyes(state.bedPose?.weight||0);
+      const animated = handle.motion?.update(dt, {...state, disguised:false});
       grounding.reset();
       stealthExit=state.crouched?.3:Math.max(0,stealthExit-dt);
-      u.heroAnimationActive = !!animated && active;
-      if(animated && active){
+      u.heroAnimationActive = !!animated;
+      if(animated){
         u.rig.position.set(0,0,0); u.rig.rotation.set(0,0,0);
         if(stealthExit>0 && state.hp>0 && !state.airborne) grounding.apply();
         if(u.sword.parent!==swordSocket){swordSocket.add(u.sword);u.sword.position.set(0,0,0);u.sword.quaternion.identity();u.sword.scale.set(1,1,1);}
@@ -121,12 +118,11 @@ export function mountHeroModel(actor, url) {
         usedMotion = true;
         return;
       }
-      if(usedMotion){
+      if(usedMotion||state.bedPose){
         for(const p of bindPose){p.bone.position.copy(p.position);p.bone.quaternion.copy(p.quaternion);}
         swordHome.parent.add(u.sword);u.sword.position.copy(swordHome.position);u.sword.quaternion.copy(swordHome.quaternion);u.sword.scale.copy(swordHome.scale);
         usedMotion=false;
       }
-      if (!active) return;
       drive('rightArm', u.arms[0], hangs.rightArm);
       drive('leftArm', u.arms[1], hangs.leftArm);
       bone.rightFore.quaternion.copy(foreLocal.rightFore);
@@ -134,7 +130,9 @@ export function mountHeroModel(actor, url) {
       leg('rightLeg', 'rightShin', u.legs[0]);
       leg('leftLeg', 'leftShin', u.legs[1]);
       drive('head', u.head);
+      if(state.bedPose)bedBones(u.rig,bone,state.bedPose);
     };
-  }, undefined, error => console.warn('hero model failed to load; keeping the procedural figure', error));
+    return handle;
+  }).catch(error => {handle.error=error;console.error('hero model failed to load',error);return handle;});
   return handle;
 }

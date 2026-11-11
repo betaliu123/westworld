@@ -1,4 +1,12 @@
 import {icon} from './ui-icons.js';
+// Keep scene-anchored speech inside the viewport and below any top HUD it intersects.
+export function placeWorldSpeech(el,point){
+ const width=el.offsetWidth,height=el.offsetHeight,gap=12;
+ const x=Math.max(width/2+gap,Math.min(innerWidth-width/2-gap,point.x));let bottom=Math.max(height+gap,point.y);
+ const blocks=[...document.querySelectorAll('#hud-right-stack,#corner-money,.field-compass,#hud-left-stack')].filter(e=>!e.hidden&&getComputedStyle(e).visibility!=='hidden').map(e=>e.getBoundingClientRect()).filter(r=>r.width&&r.height&&r.top<innerHeight/2).sort((a,b)=>a.top-b.top);
+ for(const r of blocks)if(x+width/2>r.left-gap&&x-width/2<r.right+gap&&bottom-height<r.bottom+gap&&bottom>r.top-gap)bottom=r.bottom+gap+height;
+ el.style.left=x+'px';el.style.top=Math.min(innerHeight-gap,bottom)+'px';
+}
 // HUD owns screen space; world-space speech and markers remain in the scene.
 export function mountHudLayout(){
  const byId=id=>document.getElementById(id);

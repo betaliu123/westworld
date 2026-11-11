@@ -75,19 +75,6 @@ export function pine(group, seed) {
   canopy.computeBoundingSphere();group.add(canopy);
 }
 
-export function garment(parent, profile, color, zScale=1, folds=.035) {
-  const g=new T.LatheGeometry(profile.map(([r,y])=>new T.Vector2(r,y)),32);
-  const pos=g.attributes.position;
-  for(let i=0;i<pos.count;i++){
-    const x=pos.getX(i),z=pos.getZ(i),a=Math.atan2(x,z);
-    const ripple=1+folds*Math.cos(a*9+.55*pos.getY(i));
-    pos.setXYZ(i,x*ripple,pos.getY(i),z*ripple*zScale);
-  }
-  g.computeVertexNormals();
-  const m=new T.Mesh(g,new T.MeshStandardMaterial({color,roughness:1,side:T.DoubleSide,bumpMap:paintedSurface('linen').map,bumpScale:.014}));
-  m.castShadow=true;parent.add(m);return m;
-}
-
 // Raised ridge, curved eaves and painted rafters are attached to the destructible gate.
 export function gateRoof(gate) {
   const width=8.3, depth=1.38, rows=8, cols=40;
@@ -166,32 +153,6 @@ export function wantedSheet() {
   return new T.MeshStandardMaterial({map,roughness:1});
 }
 
-export function travelerMantle(rig) {
-  const positions=[],uv=[],indices=[];
-  const rows=14,cols=15;
-  for(let j=0;j<=rows;j++)for(let i=0;i<=cols;i++){
-    const t=j/rows,u=i/cols*2-1;
-    positions.push(u*(.22+t*.16)+.10*t*t,1.53-1.04*t+.065*Math.cos(i*2)*t**8,
-      -.21-.13*t-.033*Math.cos(u*13+t)*t+.07*u*u);
-    uv.push(i/cols,1-t);
-    if(i&&j){const k=j*(cols+1)+i;indices.push(k,k-1,k-cols-2,k,k-cols-2,k-cols-1);}
-  }
-  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(positions,3));g.setAttribute('uv',new T.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();
-  const cloth=new T.Mesh(g,new T.MeshStandardMaterial({map:paintedSurface('linen').map,color:0x85827a,side:T.DoubleSide,roughness:1}));
-  cloth.castShadow=true;rig.add(cloth);rig.userData.travelCloth=cloth;
-}
-
-export function strawHat(head) {
-  const hat=garment(head,[[.61,.39],[.62,.405],[.46,.445],[.24,.55],[.075,.63],[.024,.636]],0xb59767,1,.012);
-  const straw=new T.MeshStandardMaterial({color:0x82643d,roughness:1});
-  const loops=[];
-  for(let j=0;j<7;j++){
-    const r=.12+j*.078, y=.61-(r-.12)*.43;
-    for(let i=0;i<48;i++){const a=i*Math.PI/24,b=(i+1)*Math.PI/24;loops.push(r*Math.sin(a),y,r*Math.cos(a),r*Math.sin(b),y,r*Math.cos(b));}
-  }
-  const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(loops,3));hat.add(new T.LineSegments(geometry,new T.LineBasicMaterial({color:straw.color})));straw.dispose();return hat;
-}
-
 export function gateBanners(gate) {
   const silk=new T.MeshStandardMaterial({map:texture('gate-silk.jpg'),roughness:1,side:T.DoubleSide});
   const banners=[];
@@ -213,32 +174,4 @@ export function windAtGate(banners,time) {
     }
     p.needsUpdate=true;
   }
-}
-
-// Profile rings narrow at the temples and chin. The hairline drops behind the ears.
-export function portrait(head, female) {
-  const skin=0xcb9d7c,ink=0x292729;
-  garment(head,[[.047,-.065],[.105,-.038],[.155,.018],[.19,.107],[.20,.20],[.184,.29],[.122,.34],[.035,.36]],skin,.87,.009);
-  const detail=(color,x,y,z,sx,sy,sz)=>{
-    const m=new T.Mesh(new T.SphereGeometry(1,10,7),new T.MeshStandardMaterial({color,roughness:.98}));
-    m.scale.set(sx,sy,sz);m.position.set(x,y,z);head.add(m);return m;
-  };
-  for(const side of [-1,1]){
-    detail(skin,side*.187,.113,-.008,.031,.047,.022);
-    const brow=detail(ink,side*.082,.171,.154,.050,.008,.009);
-    brow.rotation.z=side*.09;
-    detail(0x4a3731,side*.08,.146,.164,.033,.009,.008);
-    detail(0x302826,side*.08,.145,.168,.013,.012,.008);
-  }
-  detail(skin,0,.108,.166,.030,.055,.033);
-  detail(0x8d5e51,0,.048,.149,.043,.008,.009);
-  const crown=garment(head,[[.207,.17],[.208,.22],[.19,.285],[.13,.34],[.04,.36]],ink,.91,.015);
-  const p=crown.geometry.attributes.position;
-  for(let i=0;i<p.count;i++){
-    const y=p.getY(i),back=(1-Math.cos(Math.atan2(p.getX(i),p.getZ(i))))*.5;
-    p.setY(i,y+.061*(1-back)*Math.max(0,(.27-y)/.1)-back*.19*Math.max(0,(.28-y)/.11));
-  }
-  crown.geometry.computeVertexNormals();
-  detail(ink,0,.36,-.047,.092,.089,.091);
-  if(female)detail(ink,0,.095,-.139,.155,.216,.073);
 }

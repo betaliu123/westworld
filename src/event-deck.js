@@ -1,3 +1,5 @@
+import {rememberDeedHarm,rememberToldHarm} from './npc-bonds.js';
+import {believedIdentity,spreadIdentityRumor,changeRelation,identityName} from './appearance.js';
 import {PEOPLE} from './data.js';
 import {persona} from './npc-persona.js';
 import {learnedFootwork} from './gate-society.js';
@@ -81,8 +83,6 @@ export const EVENTS=[
  {id:'aid_tea',card:'aid',stage:'town',title:'阿青敷药',lead:'阿青替你洗净伤口，敷了草药。',heal:12,
   lines:{tea:'别动，伤口得先洗净再敷药。'}}
 ];
-const QUIET={trade:'今日的茶钱，比昨日少了几文。',law:'风大，夜里关门要早些。',blade:'刀擦净了，今晚睡得踏实。',artist:'雨要来了，弦都松了。',wary:'天黑前得找个避风的地方。',courtly:'茶凉了，倒也有凉的滋味。'};
-export const quietLine=id=>QUIET[persona(id)[0]]||QUIET.wary;
 export const WIND={rumor_spread:'有人把你做过的事，说给了旁人。',grudge:'有人记下了这笔账。',thanks_letter:'有人记着你的好。'};
 const name=id=>PEOPLE.find(p=>p.id===id)?.name||'路人';
 export function stageOf(s){return s.facts.enteredCity||s.event?.type!=='gate'&&!s.facts.entryStarted?'town':'gate';}
@@ -93,7 +93,8 @@ export function chronicle(s){const c=s.chronicle??={};c.deeds??=[];c.diaries??=[
 function zoneOf(id){return GATE_PEOPLE.includes(id)?'gate':'town';}
 function alive(s,id){const n=s.people[id];return !!n&&n.hp>0&&!n.awareness?.caseOpen;}
 const CHAPTER_EVENTS={
- merchant_escort:{title:'黄旗下的役夫',lead:'花石纲在辰时、申时点役夫。找城门外的脚夫问短褂与点名的事。',place:{person:'porter'},requires:()=>true,known:s=>!!s.facts.convoySchedule,lines:{tea_host:'那脚夫替应奉局抬箱子。辰时、申时黄旗一点，人就往里走。',porter:'缺个搭手的。辰时、申时点名，你别误了时候。'}},
+ aid_tea_host:null,aid_tea:null,
+ merchant_escort:{title:'黄旗下的役夫',lead:'花石纲役夫随队过关。周大石管着名额，先问他肯不肯通融，再换好短褂等挑夫装束。',place:{person:'porter'},requires:()=>true,known:s=>!!s.facts.convoySchedule,lines:{tea_host:'役夫的名额归周大石管。他肯带谁，自有他的考量，你去问问。'}},
  guard_vouch:{title:'一份担保',lead:'锦衣客留意关外的人情。肯替宋家母女解围，或照料病人，或许能请他作保。',place:{person:'traveler'},known:s=>s.facts.entryRoute==='royal',lines:{old_constable:'那位锦衣公子看了宋家母女许久，像是有话要说。',tea_host:'公子替我挡过一回催逼，关上也肯听他说话。'}},
  footwork:{title:'老捕的指法',lead:'杜老捕能教正面擒拿的点穴手法；关外替人解围之后，还能进一步请教哑穴。',known:s=>(s.player.skills?.pressure.tier||0)>=2,lines:{gate_relief:'杜老捕拿人不用蛮力，手往筋骨上一搭，人就不动了。',tea_host:'杜老捕那双手，拿过人，也救过人。'}},
  seal_lesson:{title:'刻刀之外',lead:'刻字人的伤疤不寻常。先向西墙的瘸张学眼力，再辨他的来历。',known:s=>!!s.facts.scribeIdentity,lines:{old_constable:'西墙那瘸子看人很准。你问他刻字人的手。',tea_host:'刻字师傅不肯挽袖。瘸张瞧过一眼，没再问。'}},
@@ -108,31 +109,35 @@ const CHAPTER_EVENTS={
 export function eventsFor(s){return s.chapterVersion===2?EVENTS.filter(e=>CHAPTER_EVENTS[e.id]!==null).map(e=>({...e,...CHAPTER_EVENTS[e.id]})):EVENTS;}
 export function eventCandidates(s,card,speaker){
  const d=deckState(s),st=stageOf(s);
- return eventsFor(s).filter(e=>e.card===card&&e.stage===st&&e.lines[speaker]&&!d.used[e.id]&&!e.known?.(s)&&(e.requires?.(s)??true));
+ // 自己的提议走人物情境选项，不发成让玩家回头找自己的传闻。
+ return eventsFor(s).filter(e=>e.card===card&&e.stage===st&&e.place?.person!==speaker&&e.lines[speaker]&&!d.used[e.id]&&!e.known?.(s)&&(e.requires?.(s)??true));
 }
 function deliverableEchoes(s,speaker,channel){
- return deckState(s).echoes.filter(e=>!e.delivered&&e.due<=s.day&&e.channel===channel&&(channel==='mail'||e.who===speaker)&&alive(s,e.who));
+ return deckState(s).echoes.filter(e=>!e.delivered&&e.due<=s.day&&e.channel===channel&&(channel==='mail'||e.who===speaker)&&(e.subject||'player')===believedIdentity(s,e.who)&&alive(s,e.who));
 }
 // 只看不抽：同一状态下结果确定，供预取 AI 台词与判断是否撤下"打听"入口。
 export function peek(s,dealer,speaker){
+ if(speaker&&s.people[speaker]?.restraint)return null;
  const d=deckState(s),st=stageOf(s),deck=DECKS[st];
  if(dealer==='talk'){
-  if(!speaker||!alive(s,speaker)||d.heard[speaker]===s.day)return null;
-  if(s.player.hp<40){const aid=eventCandidates(s,'aid',speaker);if(aid.length)return {card:'aid',candidates:aid,urgent:true,index:d.pointer[st],skipped:[]};}
+  if(!speaker||!alive(s,speaker))return null;
   const echo=deliverableEchoes(s,speaker,'talk');if(echo.length)return {card:'echo',echo:echo[0],urgent:true,index:d.pointer[st],skipped:[]};
+  if(d.heard[speaker]===s.day)return null;
+  if(s.player.hp<40){const aid=eventCandidates(s,'aid',speaker);if(aid.length)return {card:'aid',candidates:aid,urgent:true,index:d.pointer[st],skipped:[]};}
  }
  const drought=st==='gate'&&!d.leads.some(l=>l.card==='route'&&l.stage==='gate')&&d.cards.length>=2;
  if(drought&&speaker){const c=eventCandidates(s,'route',speaker);if(c.length)return {card:'route',candidates:c,urgent:true,index:d.pointer[st],skipped:[]};}
  const skipped=[];
  for(let i=0;i<deck.length;i++){
   const index=(d.pointer[st]+i)%deck.length,card=deck[index];
-  if(card==='rest')return {card,candidates:[],index,skipped};
+  // Rest is a pacing beat for resting, not news an NPC asks the player to click through.
+  if(card==='rest'){if(dealer!=='talk')return {card,candidates:[],index,skipped};skipped.push(card);continue;}
   if(card==='echo'){const e=dealer==='talk'?deliverableEchoes(s,speaker,'talk'):[];if(e.length)return {card,echo:e[0],index,skipped};skipped.push(card);continue;}
   const c=speaker?eventCandidates(s,card,speaker):[];
   if(c.length)return {card,candidates:c,index,skipped};
   skipped.push(card);
  }
- return {card:'rest',candidates:[],index:d.pointer[st],skipped};
+ return dealer==='talk'?null:{card:'rest',candidates:[],index:d.pointer[st],skipped};
 }
 const BANNED=/任务|检定|系统|玩家|概率|奖励|好感|属性|后生|小子|小哥|兄台|小娘子|NPC|AI|[A-Za-z0-9０-９]/;
 export function validLine(line,max=48){
@@ -156,9 +161,11 @@ export function dealContext(s,draw,speaker){
 }
 function nextId(d){return ++d.seq;}
 export function commitDeal(sim,draw,speaker,pick={}){
+ if(speaker&&sim.s.people[speaker]?.restraint)return null;
+ if(!draw||(draw.card!=='rest'&&!draw.echo&&!pick.event))return null;
  const s=sim.s,d=deckState(s),st=stageOf(s),deck=DECKS[st];
  if(!draw.urgent)d.pointer[st]=(draw.index+1)%deck.length;
- if(speaker)d.heard[speaker]=s.day;
+ if(speaker&&!['echo','rest'].includes(draw.card))d.heard[speaker]=s.day;
  const card={id:nextId(d),day:s.day,at:s.day*1000+(s.time||0),clock:clockText(s),card:draw.card,stage:st,speaker:speaker||null,skipped:draw.skipped||[],urgent:!!draw.urgent,ai:!!pick.ai,reason:pick.reason||''};
  if(draw.card==='echo'&&draw.echo){
   const e=draw.echo;e.delivered=true;e.deliveredDay=s.day;
@@ -170,7 +177,7 @@ export function commitDeal(sim,draw,speaker,pick={}){
   if(e.heal){s.player.hp=Math.min(100,s.player.hp+e.heal);const n=s.people[speaker];if(n){n.memories.push('替你包扎过伤口。');n.memories=n.memories.slice(-12);n.favorOwed=(n.favorOwed||0)+1;}}
   else d.leads.push({id:card.id,event:e.id,card:e.card,stage:st,title:e.title,lead:e.lead,source:speaker,day:s.day,place:e.place||null,ai:card.ai,reason:card.reason});
  }else{
-  Object.assign(card,{title:'闲话',lead:'',line:pick.line||(speaker?quietLine(speaker):'')});
+  Object.assign(card,{title:'喘息',lead:'',line:''});
  }
  d.cards.push(card);d.cards=d.cards.slice(-60);sim.save?.();return card;
 }
@@ -183,15 +190,20 @@ export function recordDeed(sim,type,data){
   const tag=String(data.actionId||'')+' '+String(data.kind||'');
   deed={title:data.label,text:data.text,target:data.dialogue?.[0]?.id||data.target||null,valence:CRIME.test(tag)?'crime':HELP.test(tag)&&data.success!==false?'help':'deed',witnesses:[]};
  }else if(type==='actionWitnessed'&&data){
-  deed={title:'被人看见',text:data.text,target:null,valence:'crime',witnesses:[...new Set((data.dialogue||[]).map(x=>x.id).filter(id=>s.people[id]))]};
+  // A complaint and its world witness notification describe the same incident.
+  // Keep one cause and each observer's original identification through later disguises.
+  const existing=data.cause!=null?c.deeds.find(d=>d.id===data.cause&&d.valence==='crime'):null;
+  if(existing){existing.witnesses=[...new Set([...(existing.witnesses||[]),...(data.witnesses||[]).filter(id=>s.people[id])])];existing.identities={...data.identities,...existing.identities};existing.incidentType=data.incidentType;existing.method=data.method;existing.harmedTarget=data.target||existing.harmedTarget||existing.target;rememberDeedHarm(s,existing);return existing;}
+  deed={title:({assault:'当街伤人',theft:'取走物件',tamper:'动过吃喝',damage:'损坏物件'}[data.incidentType]||'被人看见'),text:data.text,target:data.target||null,valence:'crime',incidentType:data.incidentType,method:data.method,identities:{...data.identities},witnesses:[...new Set((data.witnesses||[]).map(id=>({id})).concat(data.dialogue||[]).map(x=>x.id).filter(id=>s.people[id]))]};
  }else if(type==='entry'){
   deed={title:'入城',text:{uniform:'穿差役服过关',papers:'持他人路引过关',friend:'校尉担保入城',merchant:'随货队入城',river:'破河栅涉水入城',breach:'破门闯入',prison:'刑满出狱入城'}[data]||'进了临溪镇',target:null,valence:'deed',witnesses:[]};
  }else if(type==='npc'&&data?.id){
-  deed={title:'送物',text:data.text||'',target:data.id,valence:'help',witnesses:[]};
+  deed={title:'送物',subject:believedIdentity(s,data.id),text:data.text||'',target:data.id,valence:'help',witnesses:[]};
  }
  if(!deed||!deed.text)return null;
+ if(deed.valence==='help'&&deed.target)deed.subject??=believedIdentity(s,deed.target);
  deed={id:++c.seq,day:s.day,at:s.day*1000+(s.time||0),clock:clockText(s),...deed,title:String(deed.title||'').slice(0,24),text:String(deed.text).slice(0,80)};
- c.deeds.push(deed);c.deeds=c.deeds.slice(-80);return deed;
+ c.deeds.push(deed);rememberDeedHarm(s,deed);c.deeds=c.deeds.slice(-80);return deed;
 }
 export function deedsSinceRest(s){const c=chronicle(s);return c.deeds.filter(d=>d.id>(c.restSeq||0));}
 function hearers(s,witness){
@@ -203,24 +215,26 @@ export function echoOptions(s){
  const d=deckState(s),done=new Set(d.echoes.map(e=>e.key)),out=[];
  for(const deed of deedsSinceRest(s)){
   if(deed.valence==='crime')for(const w of deed.witnesses){
-   for(const h of hearers(s,w))out.push({key:'rumor_spread:'+deed.id+':'+h,template:'rumor_spread',cause:deed.id,teller:w,who:h,channel:'talk',delta:-2});
-   out.push({key:'grudge:'+deed.id+':'+w,template:'grudge',cause:deed.id,who:w,channel:'talk',delta:0});
+   for(const h of hearers(s,w))out.push({key:'rumor_spread:'+deed.id+':'+h,template:'rumor_spread',subject:deed.identities?.[w]||deed.subject||'player',cause:deed.id,teller:w,who:h,channel:'talk',delta:-2});
+   out.push({key:'grudge:'+deed.id+':'+w,template:'grudge',subject:deed.identities?.[w]||deed.subject||'player',cause:deed.id,who:w,channel:'talk',delta:0});
   }
   if(deed.valence==='help'&&deed.target&&alive(s,deed.target)){
-   out.push({key:'thanks_letter:'+deed.id,template:'thanks_letter',cause:deed.id,who:deed.target,channel:'mail',delta:0});
+   out.push({key:'thanks_letter:'+deed.id,template:'thanks_letter',subject:deed.subject||'player',cause:deed.id,who:deed.target,channel:'mail',delta:0});
   }
  }
  return out.filter(o=>!done.has(o.key));
 }
 function localEchoLine(o,deed){
+ if(o.template==='thanks_letter')return (o.subject&&o.subject!=='player'?identityName(o.subject)+'，':'')+deed.title+'的事，多谢。我一直记着。';
+ if(o.subject&&o.subject!=='player')return identityName(o.subject)+'，'+(o.template==='grudge'?'那天动手脚的事，我可没忘。':name(o.teller)+'说的那件事，你不解释解释？');
  if(o.template==='rumor_spread')return name(o.teller)+'说，'+deed.title+'那会儿，看见的就是你。';
  if(o.template==='grudge')return '那天的事，我还记得。';
  return deed.title+'的事，多谢。我一直记着。';
 }
 export function aftermathContext(s){
  const deeds=deedsSinceRest(s),options=echoOptions(s);
- return {mode:'aftermath',day:s.day,deeds:deeds.map(d=>({id:d.id,clock:d.clock,title:d.title,text:d.text,target:d.target&&name(d.target),witnesses:d.witnesses.map(name),valence:d.valence})),
-  options:options.map((o,i)=>({i,template:o.template,who:name(o.who),teller:o.teller&&name(o.teller),cause:o.cause,channel:o.channel})),
+ return {mode:'aftermath',day:s.day,deeds:deeds.map(d=>({id:d.id,clock:d.clock,title:d.title,text:d.text,target:d.target&&name(d.target),witnesses:d.witnesses.map(name),valence:d.valence,believedIdentities:d.identities})),
+  options:options.map((o,i)=>({i,template:o.template,who:name(o.who),teller:o.teller&&name(o.teller),cause:o.cause,subject:o.subject||'player',subjectName:identityName(o.subject||'player'),channel:o.channel})),
   people:[...new Set(options.flatMap(o=>[o.who,o.teller].filter(Boolean)))].map(id=>({name:name(id),title:PEOPLE.find(p=>p.id===id)?.title||'',style:persona(id)[0],relation:s.people[id]?.relation||0}))};
 }
 function localDiary(deeds){
@@ -244,9 +258,10 @@ export function applyAftermath(sim,ai,upTo=chronicle(sim.s).seq){
   const deed=deeds.find(x=>x.id===o.cause);if(!deed)continue;
   const n=s.people[o.who];if(!n)continue;
   const memory=o.template==='rumor_spread'?'听'+name(o.teller)+'说起：'+deed.text:o.template==='grudge'?'亲眼看见：'+deed.text:'受过你的照顾：'+deed.title;
-  n.memories.push(memory.slice(0,60));n.memories=n.memories.slice(-12);
-  if(o.delta)sim.relation(o.who,o.delta);
-  const echo={id:nextId(d),key:o.key,template:o.template,cause:deed.id,causeTitle:deed.title,who:o.who,teller:o.teller||null,channel:o.channel,line,wind:WIND[o.template],title:{rumor_spread:'传开了',grudge:'记仇',thanks_letter:'一封谢帖'}[o.template],due:s.day+(o.channel==='mail'?1:0),delivered:false,ai:fromAI,reason,day:s.day,at:s.day*1000+(s.time||0),delta:o.delta};
+  n.memories.push(((o.subject&&o.subject!=='player'?identityName(o.subject)+'：':'')+memory).slice(0,80));n.memories=n.memories.slice(-12);
+  if(o.template==='rumor_spread')rememberToldHarm(s,o.who,deed,o.subject||'player',o.teller);
+  if(o.delta)changeRelation(sim,o.who,o.delta,o.subject||'player');if(o.template!=='thanks_letter'&&o.subject&&o.subject!=='player')spreadIdentityRumor(s,o.subject,12,line,o.who);
+  const echo={id:nextId(d),key:o.key,template:o.template,subject:o.subject||'player',cause:deed.id,causeTitle:deed.title,who:o.who,teller:o.teller||null,channel:o.channel,line,wind:WIND[o.template],title:{rumor_spread:'传开了',grudge:'记仇',thanks_letter:'一封谢帖'}[o.template],due:s.day+(o.channel==='mail'?1:0),delivered:false,ai:fromAI,reason,day:s.day,at:s.day*1000+(s.time||0),delta:o.delta};
   d.echoes.push(echo);made.push(echo);
  }
  d.echoes=d.echoes.slice(-40);

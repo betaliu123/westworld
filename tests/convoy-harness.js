@@ -1,0 +1,19 @@
+// Local fixtures only. Every tested choice uses the production conversation/action UI.
+import {convoyState,CART,CONVOY_GATE} from '../src/convoy.js';
+import {equipAppearance} from '../src/appearance.js';
+import {Simulation,newArrival} from '../src/simulation.js';
+export function mountConvoyHarness({getSim,world,environment,save}){
+ const el=document.createElement('details');el.id='convoy-qa';el.open=true;el.style.cssText='position:fixed;top:8px;right:8px;z-index:1500;background:#eee6d6;color:#302b25;font:14px serif;max-width:280px;padding:6px';el.innerHTML='<summary>车队验收 · 独立存档</summary><nav></nav><output style="display:block;white-space:pre-wrap"></output>';document.body.append(el);
+ const errors=[];addEventListener('error',e=>errors.push(e.message));addEventListener('unhandledrejection',e=>errors.push(String(e.reason)));let frozen=true,follow=false;
+ function player(x,z){const s=getSim().s;Object.assign(s.player,{x,z,hp:100,energy:100,crouched:false,stealing:false});world.hero.position.set(x,0,z);world.keys.clear();world.auto=null;world.clearReady();world.quietUntil=0;world.yaw=0;world.pitch=.35;world.distance=8;}
+ function fixture(){const sim=getSim(),s=sim.s,c=convoyState(s);world.dialogue.finish(true);environment.close();document.getElementById('drawer').hidden=true;Object.assign(c,{...CONVOY_GATE,heading:0,phase:'gate',route:0,approved:{},attempts:{},banned:{},incidents:{},posts:{},asked:false,closed:false,coatIssued:false});delete c.pendingStrength;for(const i of environment.eco.s.items.filter(i=>i.convoyCargo)){i.location='object:'+CART;i.hp=100;}s.facts.enteredCity=false;delete s.facts.convoyArrived;delete s.facts.entryRoute;s.event=new Simulation(newArrival()).s.event;s.time=35;s.wanted=0;s.complaint=null;s.player.money=12;sim.rng=()=>0;
+  for(const [id,x,z]of [['porter',5,31],['fu',8,29]]){Object.assign(s.people[id],{x,z,hp:100,awareness:null,stunnedUntil:0,sickUntil:0,life:{activity:'idle'}});world.npcs.get(id).actor.position.set(x,0,z);environment.eco.positions[id]={x,z};}environment.eco.s.objects['convoy-trial-stone'].hp=260;
+  world.syncEvent();player(3.5,30);const skirt=environment.eco.items('player').find(i=>i.name==='验收罗裙')||environment.eco.create('验收罗裙','clothing','player',{identityRole:'女装行客',discovered:true});equipAppearance(sim,skirt.id,'body');frozen=true;follow=false;save();
+ }
+ const actions=[['布置 · 招工',fixture],['布置 · 车货',()=>{const c=convoyState(getSim().s);player(c.x-2.15,c.z);world.yaw=-1.5;follow=false;}],['穿上短褂',()=>{const i=environment.eco.items('player').find(i=>i.name==='役夫短褂');if(i)equipAppearance(getSim(),i.id,'body');}],['跟看车队',()=>{follow=true;el.open=false;}],['布置 · 城内',()=>{const s=getSim().s;s.facts.enteredCity=true;s.event=null;world.syncEvent();player(-5,20);follow=true;el.open=false;}],['饭点',()=>{frozen=false;const s=getSim().s;s.time=85;for(const id of ['porter','fu','scribe'])environment.eco.s.hunger[id]=90;}],['掷骰取 100',()=>getSim().rng=()=>.999],['收起验收',()=>el.open=false]];
+ for(const [label,fn]of actions){const b=document.createElement('button');b.textContent=label;b.onclick=fn;el.querySelector('nav').append(b);}
+ setInterval(()=>{const s=getSim().s,c=convoyState(s);if(frozen)s.time=35;if(follow&&!world.dialogue.active){player(c.x-4,c.z+4);world.yaw=0;}
+  const n=id=>{const p=world.npcs.get(id).actor.position;return `${id} ${p.x.toFixed(1)},${p.z.toFixed(1)} ${s.people[id].life?.activity||'-'}`;};
+  el.querySelector('output').textContent=`${innerWidth}×${innerHeight} / ${errors.length} 错误\n相机 ${world.camera.position.toArray().map(x=>x.toFixed(1)).join(',')} / 人 ${world.hero.position.toArray().map(x=>x.toFixed(1)).join(',')}\n车 ${c.phase} ${c.x.toFixed(1)},${c.z.toFixed(1)} 路段 ${c.route}\n${n('porter')}\n${n('fu')}\n入城 ${!!s.facts.enteredCity} / 允诺 ${JSON.stringify(c.approved)}\n钱 ${s.player.money} / 嫌疑 ${s.wanted} / 封车 ${!!c.closed}\n物品 ${environment.eco.items('object:'+CART).length}\n${errors.slice(-2).join('\n')}`;
+ },250);
+}

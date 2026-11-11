@@ -1,21 +1,31 @@
 /* 江湖录、右上角图标坞、江湖牌与夜里发牌。色与字只取 ink-ui.css 的变量。 */
 
-/* —— 右上角：小地图、时辰、三枚图标 —— */
-#hud-right-stack{width:auto;align-items:flex-end}
-#hud-right-stack #corner-dock{display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:auto}
-#hud-right-stack #corner-dock #minimap{position:relative;display:block;width:132px;height:132px;margin:0;transform:none}
+/* —— 右上角：小地图、时辰、金钱与嫌疑、三枚图标 —— */
+#hud-right-stack{top:8px;width:auto;align-items:flex-end}
+#hud-right-stack #corner-dock{display:grid;grid-template-columns:max-content max-content;justify-items:center;gap:4px 16px;pointer-events:auto}
+#hud-right-stack #corner-dock #minimap{grid-column:2;grid-row:1;position:relative;display:block;width:132px;height:132px;margin:0;transform:none}
 #hud-right-stack #corner-dock #minimap canvas{width:132px;height:132px}
 #corner-dock .corner-map{position:absolute;left:-6px;bottom:-4px;width:30px;height:30px}
 #corner-dock .corner-map svg{width:18px;height:18px}
-#hud-right-stack #corner-dock .corner-clock{position:static;display:block;width:auto;margin:0;font:var(--fs-3)/1.2 var(--font-body);letter-spacing:.12em;color:var(--ink-1);
+#hud-right-stack #corner-dock .corner-clock{grid-column:2;grid-row:2;position:static;display:block;width:auto;margin:0;font:var(--fs-3)/1.2 var(--font-body);letter-spacing:.12em;color:var(--ink-1);
   text-shadow:0 0 2px var(--paper),0 0 6px var(--paper),0 0 12px #ece3cfcc;text-align:center}
 body.ink-night #hud-right-stack #corner-dock .corner-clock{color:var(--paper);text-shadow:0 0 2px var(--ink-0),0 0 8px var(--ink-0)}
-#corner-dock .corner-row{display:flex;gap:6px}
+#corner-dock .corner-resources{grid-column:1;grid-row:1;align-self:start;justify-self:end;display:flex;justify-content:flex-end;flex-wrap:wrap;gap:4px 12px;max-width:180px;color:var(--ink-1);text-shadow:var(--halo);font:600 var(--fs-2)/1.4 var(--font-data);font-variant-numeric:tabular-nums}
+#corner-dock .corner-resources>span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+#corner-dock .corner-resources>span[hidden]{display:none}
+#corner-dock .corner-resources svg{width:18px;height:18px;filter:drop-shadow(0 0 2px var(--paper))}
+#corner-dock .corner-resources b{font:inherit}
+#corner-money svg{color:var(--ochre)}
+#corner-wanted svg{color:var(--cinnabar)}
+body.ink-night #corner-dock .corner-resources{color:var(--paper)}
+#corner-dock .corner-row{grid-column:2;grid-row:3;display:flex;gap:6px}
 #corner-dock .corner-row .icon-button{width:36px;height:36px}
 #corner-dock .news-dot{display:none;position:absolute;top:3px;right:3px;width:7px;height:7px;border-radius:50%;background:var(--cinnabar)}
 #codex-button.has-news .news-dot{display:block}
 body.hud-detail-open #corner-dock,body.cinematic #corner-dock,body.checking #corner-dock,body.night-open #corner-dock{visibility:hidden}
+body.cinematic #corner-dock{display:none!important}
 @media (max-width:820px){#hud-right-stack #corner-dock #minimap,#hud-right-stack #corner-dock #minimap canvas{width:104px;height:104px}}
+@media (max-width:820px){#corner-dock .corner-resources{flex-direction:column;align-items:flex-end}.field-compass{width:24vw}}
 
 /* —— 江湖录：沿用 #drawer，展宽成一卷 —— */
 #drawer[data-view="codex"]{top:16px;bottom:16px;right:16px;left:auto;width:min(980px,calc(100vw - 32px));max-height:none;padding:16px 30px 30px}

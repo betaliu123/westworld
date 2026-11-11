@@ -1,4 +1,6 @@
+import {rememberDeedHarm} from './npc-bonds.js';
 import {PEOPLE} from './data.js';
+import {believedIdentity} from './appearance.js';
 const who=id=>PEOPLE.find(p=>p.id===id)?.name||'失主';
 export function provenance(item,from,to,s,method='transfer',witnesses=[]){
  item.provenance??={originalOwner:item.ownerId||item.owner||(from?.startsWith('npc:')?from.slice(4):null),history:[]};
@@ -15,7 +17,7 @@ export function itemMeaning(s,id,item){
  return null;
 }
 export function meaningCheck(s,item,answer){const theft=item.provenance?.history.find(h=>h.to==='player'&&h.method==='stolen');return {certain:answer!=='found',chance:answer==='found'?Math.max(5,Math.min(95,Math.round(s.player.stats.charm+25-(theft?.witnesses.length?25:0)))):100,score:s.player.stats.charm,blocked:false,reason:answer==='found'?'谎称拾得；目击者仍可能揭穿':'如实交代，不需检定'};}
-export function addCausalDeed(s,{key,title,text,target,valence='neutral',witnesses=[],cause=null}){s.chronicle??={deeds:[],diaries:[],seq:0};const c=s.chronicle;c.deeds??=[];c.diaries??=[];c.seq??=0;valence=({kind:'help',harm:'crime',neutral:'deed'}[valence]||valence);if(key&&c.deeds.some(d=>d.key===key))return c.deeds.find(d=>d.key===key);const d={id:++c.seq,key,day:s.day,at:s.day*1000+(s.time||0),clock:'此时',title,text,target,valence,witnesses,cause};c.deeds.push(d);return d;}
+export function addCausalDeed(s,{key,title,text,target,valence='neutral',witnesses=[],cause=null,subject,identities,incidentType,method,harmedTarget}){s.chronicle??={deeds:[],diaries:[],seq:0};const c=s.chronicle;c.deeds??=[];c.diaries??=[];c.seq??=0;valence=({kind:'help',harm:'crime',neutral:'deed'}[valence]||valence);if(key&&c.deeds.some(d=>d.key===key))return c.deeds.find(d=>d.key===key);const d={id:++c.seq,key,day:s.day,at:s.day*1000+(s.time||0),clock:'此时',title,text,target,valence,witnesses,cause,...(incidentType?{incidentType,method,harmedTarget}:{}),subject:subject||(target?believedIdentity(s,target):'player'),...(identities?{identities:{...identities}}:{})};c.deeds.push(d);rememberDeedHarm(s,d);return d;}
 // Called by conversation, drag/drop and the item picker; never awards a second time.
 export function settleMeaning(sim,eco,id,item,answer='truth'){
  const s=sim.s,n=s.people[id],meaning=itemMeaning(s,id,item);if(!meaning)return null;

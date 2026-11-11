@@ -11,9 +11,17 @@ import {isDirectReply} from '../src/dialogue.js';
 import {consumeFood,detectsPoison,poisonStep} from '../src/npc-life.js';
 import {probeNpc,insightEvidence} from '../src/npc-discovery.js';
 import {chapterOptions} from '../src/chapter.js';
+import {appearanceTime} from '../src/appearance.js';
 const setup=()=>{const sim=new Simulation(newArrival(),()=>0),eco=new Ecosystem(sim,[]);chapterOptions(sim,'beggar');return {sim,eco,s:sim.s,p:sim.s.player};};
 function observe(g,id,a,tier){const r=requestApprenticeship(g.sim,g.eco,id,`ap_observe_${a}_${tier}`);assert.ok(r.training,JSON.stringify(r));finishDemonstration(g.sim,r.training);}
 function finish(g,t){finishDemonstration(g.sim,t);for(let step=0;step<3;step++)assert.ok(attemptLesson(g.sim,t,{step,phase:.6}));return completeLesson(g.sim,g.eco,t);}
+
+test('completed teaching freezes the identity the teacher recognised',()=>{
+ const g=setup();Object.assign(g.s.facts,{nestSlept:true,beggarInfoBought:true,beggarPorterSeen:true});g.p.face={id:'gate_merchant',serial:42,until:appearanceTime(g.s)+100};
+ observe(g,'beggar','insight',2);const t=requestApprenticeship(g.sim,g.eco,'beggar','ap_train_insight_2').training;assert.ok(t);assert.ok(finish(g,t).success);
+ g.p.face=null;const record=g.s.apprenticeships.records['beggar:insight:2'];assert.equal(record.learnerSubject,'gate_merchant');
+ const restored=new Simulation(JSON.parse(JSON.stringify(g.s)));assert.equal(restored.s.apprenticeships.records[record.key].learnerSubject,'gate_merchant');
+});
 
 test('Du requires observed demonstration, real entrusted medicine, and performed practice',()=>{const g=setup();assert.ok(requestApprenticeship(g.sim,g.eco,'old_constable','ap_train_pressure_2').error);observe(g,'old_constable','pressure',2);assert.match(lessonPreview(g.sim,'old_constable','pressure',2).reason,/伤药/);requestApprenticeship(g.sim,g.eco,'relay','ap_medicine_get');const med=g.eco.items('player').find(i=>i.storyId==='du-medicine');assert.ok(med);const r=requestApprenticeship(g.sim,g.eco,'old_constable','ap_medicine_give');assert.equal(med.location,'npc:old_constable');assert.ok(isDirectReply(r),'handover must play reply and continue the lesson menu');assert.ok(contactFollowups(g.sim,'old_constable',r).some(a=>a.id==='ap_train_pressure_2'));const t=requestApprenticeship(g.sim,g.eco,'old_constable','ap_train_pressure_2').training;assert.ok(completeLesson(g.sim,g.eco,t).error);assert.equal(skill(g.p,'pressure').tier,1);assert.ok(finish(g,t).success);assert.equal(skill(g.p,'pressure').tier,2);assert.equal(factionRep(g.s,'court'),3);assert.equal(cityRep(g.s),0);assert.ok(g.s.apprenticeships.guides.some(x=>x.ability==='pressure'&&!x.seen));assert.ok(completeLesson(g.sim,g.eco,t).error);assert.equal(factionRep(g.s,'court'),3);});
 test('interrupted lessons and wrong beats cannot grant experience or mastery',()=>{const g=setup();g.s.chapter.done.su_wish=g.s.chapter.done.shen_space=true;observe(g,'su','music',2);const t=requestApprenticeship(g.sim,g.eco,'su','ap_train_music_2').training;assert.equal(attemptLesson(g.sim,t,{step:0,phase:.6}),false);finishDemonstration(g.sim,t);assert.equal(attemptLesson(g.sim,t,{step:0,phase:.1}),false);assert.equal(attemptLesson(g.sim,t,{step:1,phase:.6}),false);assert.equal(skill(g.p,'music').tier,0);for(let step=0;step<3;step++)attemptLesson(g.sim,t,{step,phase:.6});g.s.people.su.awareness={state:'fight'};assert.ok(completeLesson(g.sim,g.eco,t).error);assert.equal(skill(g.p,'music').tier,0);});

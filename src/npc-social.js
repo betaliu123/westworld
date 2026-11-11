@@ -3,11 +3,11 @@ import {careBonus} from './care-rule.js';
 import {princeSocial} from './prince-voice.js';
 import {growthBonus,earnGrowth} from './growth.js';
 import {admitFriend} from './gate-scene.js';
-export function socialOptions(sim,id){const n=sim.s.people[id],alert=n?.awareness;return [
+export function socialOptions(sim,id){if(sim.s.people[id]?.restraint)return [];const n=sim.s.people[id],alert=n?.awareness;return [
  {id:'befriend',label:careBonus(sim.s,id,'befriend')?`问问${personPronoun(id)}身子可好些了，坐下叙谈`:`聊聊${personPronoun(id)}的近况，试着结交`,stat:'charm',difficulty:45,mode:'social',kind:'listen'},
  {id:'gift',label:'请喝茶，送一份心意',stat:'charm',difficulty:30,cost:4,mode:'social',kind:'support'},
  ...(alert?.caseOpen?[{id:'apology',label:alert.severe?'收刀道歉，缓和敌意（仍须担责）':'收刀赔礼，赔付修缮钱',stat:'charm',difficulty:40,cost:alert.severe?0:8,mode:'social',kind:'listen'}]:id==='gate_guard'&&sim.event?.type==='gate'?[{id:'vouch',label:(n.relation<8||(n.trust||0)<5)?'请他担保（还需增进信任）':'请他担保，让自己先进城',stat:'charm',difficulty:65,mode:'social',kind:'listen'}]:[])];}
-export function socialPreview(sim,id,a){const n=sim.s.people[id],p=sim.s.player,tries=n.socialAttempts?.[sim.s.day+':'+a.id]||0;const chance=Math.max(5,Math.min(95,p.stats.charm+40-a.difficulty+Math.round(n.relation/3)+growthBonus(p,'charm')+Math.min(0,Math.round((n.trust||0)/2))+careBonus(sim.s,id,a.id)-tries*18));return {score:p.stats.charm,chance,certain:false,blocked:p.money<(a.cost||0)||(a.id==='vouch'&&((n.relation<8||(n.trust||0)<5)||!!n.awareness?.caseOpen))};}
+export function socialPreview(sim,id,a){if(sim.s.people[id]?.restraint)return {blocked:true,certain:true,chance:0,reason:'对方还被绑着，先松绑再谈。'};const n=sim.s.people[id],p=sim.s.player,tries=n.socialAttempts?.[sim.s.day+':'+a.id]||0;const chance=Math.max(5,Math.min(95,p.stats.charm+40-a.difficulty+Math.round(n.relation/3)+growthBonus(p,'charm')+Math.min(0,Math.round((n.trust||0)/2))+careBonus(sim.s,id,a.id)-tries*18));return {score:p.stats.charm,chance,certain:false,blocked:p.money<(a.cost||0)||(a.id==='vouch'&&((n.relation<8||(n.trust||0)<5)||!!n.awareness?.caseOpen))};}
 export function socialResolve(sim,id,kind){const n=sim.s.people[id],a=socialOptions(sim,id).find(a=>a.id===kind);if(!a||!n||n.hp<=0)return {error:'对方无法应答。'};const p=sim.s.player,alert=n.awareness;if(alert?.state==='fight')return {error:'先收刀拉开距离，对方正在交战。'};
  if(kind==='vouch'&&((n.relation<8||(n.trust||0)<5)||alert?.caseOpen))return {error:alert?.caseOpen?'眼前的冲突还没解决，他不肯为你担保。':'他还不够信任你，不肯承担这个责任。'};
  const check=socialPreview(sim,id,a);if(check.blocked)return {error:'盘缠不够。'};n.socialAttempts??={};const key=sim.s.day+':'+kind,tries=n.socialAttempts[key]||0;n.socialAttempts[key]=tries+1;p.money-=a.cost||0;

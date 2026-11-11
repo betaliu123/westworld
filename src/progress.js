@@ -1,4 +1,6 @@
 import {ATTR,PEOPLE} from './data.js';
+import {knownFaces} from './appearance.js';
+import {CITIES,HEADQUARTERS,reputation,factionRep,knownHQ} from './reputation.js';
 export function entryObjective(s){
  if(s.event?.type!=='gate'||s.facts.enteredCity)return '';
  const phase=s.event.gate?.phase,bag=s.player.inventory;
@@ -19,17 +21,20 @@ export function syncQuests(s){
 }
 export function mainPlayer(s){return s.party?.members?.main||s.player;}
 export function progressSnapshot(s){const p=mainPlayer(s),v={...p.stats,hp:Math.round(p.hp),energy:Math.round(p.energy),money:p.money,xp:p.xp,reputation:s.reputation,wanted:s.wanted};
+ v.faces=knownFaces(s).length;
+ if(s.chapterVersion===2){const r=reputation(s);delete v.reputation;for(const id of Object.keys(CITIES))v['city:'+id]=r.cities[id]||0;for(const h of HEADQUARTERS)v['faction:'+h.id]=factionRep(s,h.id);}
  for(const [id,n]of Object.entries(s.people))v['relation:'+id]=n.relation;
  for(const id of ['social','theft','combat'])v['growth:'+id]=p.growth?.[id]?.xp||0;
  for(const item of p.inventory)v['item:'+item]=(v['item:'+item]||0)+1;
  for(const item of s.ecosystem?.items||[])if(item.location==='player'&&!item.storyId&&item.type!=='ring')v['item:'+item.name]=(v['item:'+item.name]||0)+1;
  return v;
 }
-const LABELS={...ATTR,hp:'气血',energy:'体力',money:'盘缠',xp:'阅历',reputation:'声望',wanted:'嫌疑'};
-export function actorDeltas(changes){return changes.flatMap(({key,delta})=>(key==='reputation'||Object.hasOwn(ATTR,key))?[{id:'player',label:LABELS[key],delta}]:key.startsWith('relation:')?[{id:key.slice(9),label:'好感',delta}]:[]);}
+const LABELS={...ATTR,hp:'气血',energy:'体力',money:'盘缠',xp:'阅历',reputation:'声望',wanted:'嫌疑',faces:'可易容面貌'};
+function progressLabel(s,key){return LABELS[key]||(key.startsWith('city:')?(CITIES[key.slice(5)]||'地方')+'声望':key.startsWith('faction:')?(knownHQ(s).find(h=>h.id===key.slice(8))?.name||'势力')+'声望':key.startsWith('item:')?key.slice(5):key.startsWith('relation:')?(PEOPLE.find(n=>n.id===key.slice(9))?.name||'人物')+'好感':({social:'交涉历练',theft:'偷窃历练',combat:'战斗历练'}[key.slice(7)]||'历练'));}
+export function actorDeltas(changes){return changes.flatMap(({key,delta,label})=>(['reputation','faces'].includes(key)||key.startsWith('city:')||key.startsWith('faction:')||Object.hasOwn(ATTR,key))?[{id:'player',label:label||LABELS[key],delta}]:key.startsWith('relation:')?[{id:key.slice(9),label:'好感',delta}]:[]);}
 export function observeProgress(sim,reason){
  const s=sim.s,next=progressSnapshot(s),prev=sim.progressBaseline||next;sim.progressBaseline=next;
- const changes=[...new Set([...Object.keys(prev),...Object.keys(next)])].map(k=>[k,next[k]??0]).filter(([k,v])=>Number.isFinite(v)&&v!==(prev[k]??0)).map(([key,value])=>({key,value,delta:value-(prev[key]??0),label:LABELS[key]||(key.startsWith('item:')?key.slice(5):key.startsWith('relation:')?(PEOPLE.find(n=>n.id===key.slice(9))?.name||'人物')+'好感':({social:'交涉历练',theft:'偷窃历练',combat:'战斗历练'}[key.slice(7)]||'历练'))}));
+ const changes=[...new Set([...Object.keys(prev),...Object.keys(next)])].map(k=>[k,next[k]??0]).filter(([k,v])=>Number.isFinite(v)&&v!==(prev[k]??0)).map(([key,value])=>({key,value,delta:value-(prev[key]??0),label:progressLabel(s,key)}));
  if(changes.length){s.consequences??=[];s.consequences.push({id:(s.consequenceSeq=(s.consequenceSeq||0)+1),day:s.day,reason,changes});s.consequences=s.consequences.slice(-60);const deltas=actorDeltas(changes);if(deltas.length)sim.emit?.('actorDeltas',deltas);}
  syncQuests(s);return changes;
 }
