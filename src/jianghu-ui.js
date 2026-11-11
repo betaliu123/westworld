@@ -1,3 +1,4 @@
+import {knownHQ,reputationHTML,cityRep,factionRep,reputationName} from './reputation.js';
 import {PEOPLE} from './data.js';
 import {icon,iconButton} from './ui-icons.js';
 import {CARDS,DECKS,eventsFor,stageOf,deckState,chronicle} from './event-deck.js';
@@ -15,7 +16,7 @@ function goalsHTML(s,esc){
  const st=stageOf(s),d=deckState(s),lead=e=>d.leads.find(l=>l.event===e.id);
  const sticks=stage=>eventsFor(s).filter(e=>e.card==='route'&&e.stage===stage).map(e=>{const l=lead(e),self=!l&&e.known?.(s);return l||self?`<button class="jh-stick" ${e.place?`data-lead="${esc(e.id)}"`:'disabled'} title="${esc(e.lead)}"><b>${esc(e.title)}</b><small>${l?esc(who(l.source)):'亲历'}</small></button>`:'<span class="jh-stick unknown" aria-label="尚未听说的门路">？</span>';}).join('');
  const entered=!!s.facts.enteredCity;
- return `<section class="jh-goals"><article class="${entered?'done':''}"><h3>入城</h3><small>门路 ${eventsFor(s).filter(e=>e.card==='route'&&e.stage==='gate'&&(lead(e)||e.known?.(s))).length}/${eventsFor(s).filter(e=>e.card==='route'&&e.stage==='gate').length}</small><p>${entered?esc(ROUTE_NAME[s.facts.entryRoute]||'已入城'):esc(entryObjective(s)||'城门未开')}</p>${entered?'<span class="ink-seal small stamp">过</span>':`<div class="jh-sticks">${sticks('gate')}</div>`}</article><article class="${st==='town'?'':'locked'}"><h3>艮岳</h3><p>${st==='town'?'城中的门路':'入城之后'}</p>${st==='town'?`<div class="jh-sticks">${sticks('town')}</div>`:''}</article><article><h3>名号</h3><p>${esc(s.chapter?.titles?.join('、')||'尚无名号')}</p>${s.chapter?`<small>关外 ${s.chapter.fame.gate} · 城中 ${s.chapter.fame.town}</small>`:''}<div class="jh-fame"><span title="声望">${icon('Badge')}<b>${s.reputation}</b></span><span title="嫌疑">${icon('Eye')}<b>${s.wanted}</b></span></div></article></section>`;
+ return `<section class="jh-goals"><article class="${entered?'done':''}"><h3>入城</h3><small>门路 ${eventsFor(s).filter(e=>e.card==='route'&&e.stage==='gate'&&(lead(e)||e.known?.(s))).length}/${eventsFor(s).filter(e=>e.card==='route'&&e.stage==='gate').length}</small><p>${entered?esc(ROUTE_NAME[s.facts.entryRoute]||'已入城'):esc(entryObjective(s)||'城门未开')}</p>${entered?'<span class="ink-seal small stamp">过</span>':`<div class="jh-sticks">${sticks('gate')}</div>`}</article><article class="${st==='town'?'':'locked'}"><h3>艮岳</h3><p>${st==='town'?'城中的门路':'入城之后'}</p>${st==='town'?`<div class="jh-sticks">${sticks('town')}</div>`:''}</article><article><h3>名号</h3><p>${esc(s.chapter?.titles?.join('、')||'尚无名号')}</p>${s.chapter?`<small>临溪镇 ${cityRep(s,'linxi')}</small>`:''}<div class="jh-fame"><span title="声望">${icon('Badge')}<b>${cityRep(s)}</b></span><span title="嫌疑">${icon('Eye')}<b>${s.wanted}</b></span></div></article></section>`;
 }
 function deckStrip(s,esc){
  const st=stageOf(s),deck=DECKS[st],p=deckState(s).pointer[st];
@@ -34,9 +35,9 @@ function mapHTML(s,esc){
   {id:'gate',name:'临溪关',x:5.6,y:54,live:true,here:st==='gate'},
   {id:'town',name:'临溪镇',x:13.5,y:48,live:true,here:st==='town',up:true},
   {id:'capital',name:'汴京',x:51,y:33},{id:'genyue',name:'艮岳',x:72.5,y:9,end:true,live:!!s.facts.demoComplete,here:!!s.facts.demoComplete}];
- return `<figure class="jh-map"><img src="assets/ui/bianjing-map.jpg" alt="汴京全图" draggable="false">${places.map(p=>`<span class="jh-place${p.live?' live':' far'}${p.here?' here':''}${p.end?' end':''}${p.up?' up':''}" style="left:${p.x}%;top:${p.y}%"><i class="jh-dot" aria-hidden="true"></i><b>${p.name}</b>${p.live?'':'<small>未至</small>'}</span>`).join('')}</figure><div class="jh-map-legend"><span>${icon('Eye')} 嫌疑 <b>${s.wanted}</b></span><span>${icon('Badge')} 声望 <b>${s.reputation}</b></span></div>`;
+ return `<section class="hq-map"><h3>临溪 · 驻地</h3><div>${knownHQ(s).map(h=>`<button data-headquarters="${h.id}" style="--faction-color:${h.color}"><b>${h.glyph}</b><span>${h.name}<small>${h.place}</small></span><strong>${factionRep(s,h.id)}<small>${reputationName(factionRep(s,h.id))}</small></strong></button>`).join('')}</div></section>${reputationHTML(s,esc)}<figure class="jh-map"><img src="assets/ui/bianjing-map.jpg" alt="汴京全图" draggable="false">${places.map(p=>`<span class="jh-place${p.live?' live':' far'}${p.here?' here':''}${p.end?' end':''}${p.up?' up':''}" style="left:${p.x}%;top:${p.y}%"><i class="jh-dot" aria-hidden="true"></i><b>${p.name}</b>${p.live?'':'<small>未至</small>'}</span>`).join('')}</figure><div class="jh-map-legend"><span>${icon('Eye')} 嫌疑 <b>${s.wanted}</b></span><span>${icon('Badge')} 声望 <b>${cityRep(s)}</b></span></div>`;
 }
-export function mountCodex({drawer,getSim,esc,profileHTML,organizationHTML,questsHTML,onLead,onSound,onGuide,onTrack}){
+export function mountCodex({drawer,getSim,esc,profileHTML,organizationHTML,questsHTML,onLead,onSound,onGuide,onTrack,onTeacher,onHeadquarters}){
  let tab='affairs',orgTab,showDeck=false;
  const el=()=>document.getElementById('drawer');
  function body(s){
@@ -53,6 +54,8 @@ export function mountCodex({drawer,getSim,esc,profileHTML,organizationHTML,quest
   for(const b of d.querySelectorAll('[data-codex-tab]'))b.onclick=()=>open(b.dataset.codexTab);
   for(const b of d.querySelectorAll('[data-org-tab]'))b.onclick=()=>open('people',b.dataset.orgTab);
   for(const b of d.querySelectorAll('[data-lead]'))b.onclick=()=>onLead(b.dataset.lead);
+  for(const b of d.querySelectorAll('[data-teacher]'))b.onclick=()=>onTeacher?.(b.dataset.teacher);
+  for(const b of d.querySelectorAll('[data-headquarters]'))b.onclick=()=>onHeadquarters?.(b.dataset.headquarters);
   for(const b of d.querySelectorAll('[data-track]'))b.onclick=()=>{onTrack(b.dataset.track);open('affairs');};
   const toggle=d.querySelector('[data-deck-view]');if(toggle)toggle.onclick=()=>{showDeck=!showDeck;open('affairs');};
   const sound=d.querySelector('[data-codex-sound]'),guide=d.querySelector('[data-codex-guide]');

@@ -8,7 +8,7 @@ export function bookAction(eco,kind,item){
  const sim=eco.sim,p=sim.s.player,w=wares[item?.sku];if(!w||item.hp<=0)return '这件物品已不在。';
  const ground=item.location==='ground',reachable=ground&&eco.range(item.x,item.z,2.8)&&visibleBetween(p,item,(eco.obstacles||[]).filter(o=>o.id!=='book-desk'),eco.s.objects);
  if(!reachable&&item.location!=='player')return '靠近物品才能操作。';
- if(kind==='study'&&item.type==='book'){p.lessons??={};const first=!p.lessons[item.sku];p.lessons[item.sku]=true;if(p.skills&&first){const id=item.sku==='boxing'?'combat':'music';learnSkill(p,id,item.sku==='boxing'?2:1,item.name);practice(p,id,5,'book:'+item.sku);}eco.log(w.tip+(first?'（已记下）':'（重温）'));return;}
+ if(kind==='study'&&item.type==='book'){p.lessons??={};const first=!p.lessons[item.sku];p.lessons[item.sku]=true;if(p.skills&&first){const id=item.sku==='boxing'?'combat':'music';learnSkill(p,id,1,item.name);practice(p,id,5,'book:'+item.sku);}eco.log(w.tip+(first?'（已记下）':'（重温）'));return;}
  if(kind==='equipFlute'&&item.type==='instrument'&&item.location==='player'){p.flute=p.flute===item.id?null:item.id;eco.log(p.flute?'你将紫竹笛系在腰间。':'你把紫竹笛收回行囊。');return;}
  if(!reachable||!item.forSale)return '这件商品已不在案上。';
  if(kind==='bookBuy'){const n=sim.s.people.bookseller,q=eco.positions.bookseller;if(!q||n.hp<=0||n.inCustody||n.stunnedUntil>(sim.s.npcClock||0)||Math.hypot(q.x-item.x,q.z-item.z)>5)return '温掌柜不在案边，等她回来再结账。';

@@ -1,4 +1,5 @@
 import {chapterOptions,chapterPreview,chapterResolve,chapterFollowups} from './chapter.js';
+import {apprenticeshipOptions,apprenticeshipPreview,requestApprenticeship} from './apprenticeship.js';
 import {VOICE_LINES} from './voice-lines.js';
 import {placePayment} from './cash-transfers.js';
 import {askIdentity,answerIdentity} from './conversation-memory.js';
@@ -17,7 +18,7 @@ export function learnedFootwork(sim,id='old_constable'){
  const learned=n.learnedFootwork||Object.keys(sim.s.player.growthClaims||{}).some(k=>k.startsWith('lesson:')&&k.endsWith(':'+id))||sim.s.history.some(r=>r.success&&r.actionId==='training'&&r.eventId?.endsWith(':'+id+':training'));
  if(learned)n.learnedFootwork=true;return !!learned;
 }
-export function contactOptions(sim,id){if(sim.s.chapterVersion===2)return [...chapterOptions(sim,id),...(sim.s.people[id]?.sickUntil>(sim.s.ecosystem?.time||0)?[option('care','递水照看')]:[])];const n=sim.s.people[id],k=knowledge(sim);return [
+export function contactOptions(sim,id){if(sim.s.chapterVersion===2)return [...chapterOptions(sim,id),...apprenticeshipOptions(sim,id),...(sim.s.people[id]?.sickUntil>(sim.s.ecosystem?.time||0)?[option('care','递水照看')]:[])];const n=sim.s.people[id],k=knowledge(sim);return [
  ...careerOptions(sim,id),
  ...(id==='bookseller'?[option('binding','你怎么知道一本书被抽过页？')]:[]),
  ...(id==='scribe'&&outfit(sim)?[option('identity_paper','按身上这身衣服的身份刻制名帖','wit',knowsName(sim,outfit(sim).ownerId)?40:80)]:[]),
@@ -35,12 +36,12 @@ export function contactOptions(sim,id){if(sim.s.chapterVersion===2)return [...ch
  ...(n.sickUntil>(sim.s.ecosystem?.time||0)?[option('care','递水照看')]:[])
  ];}
 export function contactFollowups(sim,id,result){
- if(sim.s.chapterVersion===2)return chapterFollowups(sim,id,result);
+ if(sim.s.chapterVersion===2){const next=chapterFollowups(sim,id,result);if(!result?.success)return next;const linked=['ap_herbs','ap_medicine_give','ap_bread','ch_scribe_secret','ch_yan_release','ch_su_wish','ch_shen_space','ch_convoy_peace','ch_help_mother'];if(!linked.includes(result.actionId)&&!result.actionId?.startsWith('ap_news_'))return next;const lessons=apprenticeshipOptions(sim,id).filter(a=>result.actionId==='ap_herbs'?['ap_brew','ap_poison','ap_delayed'].includes(a.id):!a.id.startsWith('ap_practice_'));if(result.actionId==='ap_herbs'&&lessons.length===3)return lessons;return [...next.filter(a=>a.mode!=='endTalk'),...lessons].slice(0,2).concat({id:'ap_end',label:'先告辞',mode:'endTalk',kind:'listen'});}
  if(!result?.success||result.actionId!=='ink_sign')return [];
  const buy=contactOptions(sim,id).find(a=>a.id==='ink_buy');return buy?[buy,{id:'ink_decline',label:'这包先留着，我不要。',mode:'endTalk',kind:'listen'}]:[];
 }
-export function contactPreview(sim,id,a){if(a.id.startsWith('ch_'))return chapterPreview(sim,id,a);const n=sim.s.people[id],p=sim.s.player,tries=n.contactAttempts?.[sim.s.day+':'+a.id]||0;return {score:p.stats[a.stat]||0,chance:a.stat?Math.floor(Math.max(5,Math.min(95,p.stats[a.stat]+40-a.difficulty+(n.trust||0)/3-tries*20))):100,certain:!a.stat,blocked:(a.id==="ink_buy"&&p.money<5)||!!careerBlock(sim,id,a)||a.id==='training'&&p.energy<10||a.id==='escort'&&(!!n.awareness?.caseOpen||(!sim.s.facts.merchantContract&&(n.purse||0)<6))};}
-export function contactResolve(sim,eco,id,action){if(action.startsWith('ch_'))return chapterResolve(sim,eco,id,action);if(action==='training'&&learnedFootwork(sim,id))action='training_review';const n=sim.s.people[id],a=contactOptions(sim,id).find(a=>a.id===action);if(!n||n.hp<=0||!a||n.stunnedUntil>(sim.s.npcClock||0)||['fight','flee'].includes(n.awareness?.state))return {error:'对方现在无法应答。'};
+export function contactPreview(sim,id,a){if(a.id.startsWith('ap_'))return apprenticeshipPreview(sim,id,a);if(a.id.startsWith('ch_'))return chapterPreview(sim,id,a);const n=sim.s.people[id],p=sim.s.player,tries=n.contactAttempts?.[sim.s.day+':'+a.id]||0;return {score:p.stats[a.stat]||0,chance:a.stat?Math.floor(Math.max(5,Math.min(95,p.stats[a.stat]+40-a.difficulty+(n.trust||0)/3-tries*20))):100,certain:!a.stat,blocked:(a.id==="ink_buy"&&p.money<5)||!!careerBlock(sim,id,a)||a.id==='training'&&p.energy<10||a.id==='escort'&&(!!n.awareness?.caseOpen||(!sim.s.facts.merchantContract&&(n.purse||0)<6))};}
+export function contactResolve(sim,eco,id,action){if(action.startsWith('ap_'))return requestApprenticeship(sim,eco,id,action);if(action.startsWith('ch_'))return chapterResolve(sim,eco,id,action);if(action==='training'&&learnedFootwork(sim,id))action='training_review';const n=sim.s.people[id],a=contactOptions(sim,id).find(a=>a.id===action);if(!n||n.hp<=0||!a||n.stunnedUntil>(sim.s.npcClock||0)||['fight','flee'].includes(n.awareness?.state))return {error:'对方现在无法应答。'};
  const check=contactPreview(sim,id,a);if(check.blocked)return {error:(action==='ink_buy'?'得付五文钱。':null)||careerBlock(sim,id,a)||'眼下还做不到。'};meet(sim,id);n.contactAttempts??={};const stamp=sim.s.day+':'+action;n.contactAttempts[stamp]=(n.contactAttempts[stamp]||0)+1;
  const roll=a.stat?Math.floor(sim.rng()*100)+1:null,success=check.certain||roll<=check.chance;let text=id==='traveler'?'一块玉佩，未必说明得了什么。咱们还是说眼前的事吧。':'眼下还信不过你，改日再谈。',changes=[];
  if(success){const career=careerResolve(sim,eco,id,action);if(career?.error)return career;if(career){text=career.text;changes=career.changes;}switch(action){

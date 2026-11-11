@@ -1,4 +1,6 @@
-import {npcHitDamage} from './skills.js';
+import {defend} from './martial.js';
+import {lessonCamera} from './lesson-camera.js';
+import {skill} from './skills.js';
 import {inkPost} from './ink-post.js';
 import {mountHeroModel} from './hero-model.js';
 import {HeroCombat} from './hero-combat.js';
@@ -192,8 +194,8 @@ export class World{
  if(r.state==='flee'){target={x:a.position.x+(a.position.x-p.x),z:a.position.z+(a.position.z-p.z)};speed=3;}
  if(r.state==='notice')speed=0;
  const dx=target.x-a.position.x,dz=target.z-a.position.z,d=Math.hypot(dx,dz);a.rotation.y=turnToward(a.rotation.y,Math.atan2(dx,dz),dt);const step=arriveStep(d,speed,dt,stop);if(d>.01)this.move(a,dx/d*step,dz/d*step);
- this.animateActor(a,step>0?1:0,dt,r.state==='warn'?'talk':'');a.userData.sword.visible=r.state==='fight';if(r.state==='warn')a.userData.arms[0].rotation.x=-1.3;
- if(!this.locked&&r.state==='fight'&&canSee&&a.position.distanceTo(p)<1.8&&this.t>(n.nextHit||0)&&s.player.hp>0){n.nextHit=this.t+1.3;a.userData.arms[1].rotation.x=-1.8;s.player.hp=Math.max(0,s.player.hp-npcHitDamage(s,id));this.burst(p.x,1,p.z,0xb85f47,6);if(id==='gate_guard'&&s.player.hp<=25&&s.event?.type==='gate'){s.player.hp=Math.max(1,s.player.hp);detainAtGate(this.sim);for(const person of Object.values(s.people))if(person.awareness){person.awareness.state='return';person.awareness.caseOpen=false;}}this.onHurt?.();}
+ this.animateActor(a,step>0?1:0,dt,r.state==='warn'?'talk':'');a.userData.sword.visible=r.state==='fight'&&!(state.disarmedUntil>s.npcClock);if(r.state==='warn')a.userData.arms[0].rotation.x=-1.3;
+ if(!this.locked&&r.state==='fight'&&canSee&&a.position.distanceTo(p)<1.8&&this.t>(n.nextHit||0)&&s.player.hp>0){n.nextHit=this.t+1.3;a.userData.arms[1].rotation.x=-1.8;const defended=this.receiveHit(id);if(defended.damage)this.burst(p.x,1,p.z,0xb85f47,6);if(id==='gate_guard'&&s.player.hp<=25&&s.event?.type==='gate'){s.player.hp=Math.max(1,s.player.hp);detainAtGate(this.sim);for(const person of Object.values(s.people))if(person.awareness){person.awareness.state='return';person.awareness.caseOpen=false;}}if(defended.damage)this.onHurt?.();}
  return true;
  }
  lifeFeedback(id,n){if(id==='gate_merchant'){if(!n.cargo)n.cargo=box(n.actor,.55,.6,.45,0x8a6346,0,1.1,-.4);n.cargo.visible=this.sim.s.people[id].life?.activity==='escort'&&this.sim.s.ecosystem?.items.some(i=>i.type==='cargo'&&i.location==='npc:'+id);}
@@ -297,6 +299,7 @@ gateRoof(gate);this.banners=gateBanners(gate);this.registerObject(gate,'town-gat
  const line=response(this.sim.s,id,'draw');markEncounter(this.sim.s,id,'draw');n.drawCooldown=this.t+12;n.actor.userData.startledUntil=this.t+.8;n.lookUntil=this.t+3;
  if(!said&&!state.awareness?.caseOpen){said=true;this.onLifeSpeech?.({id,text:line});this.onSound?.('notice');}
  }}
+ receiveHit(id){const q=this.npcs.get(id).actor.position.clone().sub(this.hero.position).normalize(),front=q.dot(new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y)))>.3;const r=defend(this.sim,id,{guarding:this.combatReady&&this.keys.has('KeyR'),front,perfect:this.t-(this.guardStarted??-10)<.45});if(r.blocked)this.onSound?.('wood',{gain:.4});return r;}
  get combatReady(){return this.readyUntil===Infinity;}
  toggleWeapon(){if(!this.playing||this.locked||this.performance||this.sim.s.player.hp<=0)return;if(this.combatReady)this.clearReady();else this.readyUntil=Infinity;if(this.combatReady)this.reactToDraw();this.onReady?.();}
  clearReady(){this.readyUntil=0;this.heroCombat?.cancel();this.heroModel?.motion?.cancelAttack();this.attackTime=0;}
@@ -317,7 +320,7 @@ gateRoof(gate);this.banners=gateBanners(gate);this.registerObject(gate,'town-gat
  strike(objectId=null){
  this.onSound?.('attack');const h=this.hero.position,front=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));
  this.burst(h.x+front.x,1,h.z+front.z,0xdfd2a2,8);
- const targets=[...this.npcs].filter(([id,n])=>{const d=n.actor.position.clone().sub(h);return d.length()<2.6&&d.normalize().dot(front)>.1&&this.sim.s.people[id].hp>0;}).sort((a,b)=>a[1].actor.position.distanceTo(h)-b[1].actor.position.distanceTo(h));
+ const targets=[...this.npcs].filter(([id,n])=>{const d=n.actor.position.clone().sub(h);return d.length()<(this.sim.s.player.combatSchool==='qing'?3.1:2.6)&&d.normalize().dot(front)>.1&&this.sim.s.people[id].hp>0;}).sort((a,b)=>a[1].actor.position.distanceTo(h)-b[1].actor.position.distanceTo(h));
  if(this.ecology?.hit(front,objectId?Infinity:targets[0]?.[1].actor.position.distanceTo(h)??Infinity,objectId))return;
  if(objectId)return;
  if(targets.length){const [id,n]=targets[0];this.sim.attack(id);this.burst(n.actor.position.x,1,n.actor.position.z,0xdba77e,10);}
@@ -339,7 +342,7 @@ gateRoof(gate);this.banners=gateBanners(gate);this.registerObject(gate,'town-gat
  const age=this.t-a.start;if(age>=a.duration||this.sim.s.player.hp<=0){this.performance=null;this.onPerformanceEnd?.();return;}
  const blend=Math.min(1,age/.22,(a.duration-age)/.3),wave=Math.sin(age*7),mix=(part,key,value)=>part.rotation[key]=T.MathUtils.lerp(part.rotation[key],value,blend);
  const target=this.npcs.get(a.targetId)?.actor;
- if(target&&!speed)this.hero.rotation.y=turnToward(this.hero.rotation.y,Math.atan2(target.position.x-this.hero.position.x,target.position.z-this.hero.position.z),dt);
+ const facing=a.targetPoint||target?.position;if(facing&&!speed)this.hero.rotation.y=turnToward(this.hero.rotation.y,Math.atan2(facing.x-this.hero.position.x,facing.z-this.hero.position.z),dt);
  switch(a.motion){
  case 'pressure':{const thrust=Math.max(0,1-Math.abs(age-.46)/.32);mix(u.arms[1],'x',-.55-thrust*(a.point==='mute'?1.65:1.25));mix(u.arms[0],'x',-.9);mix(u.rig,'x',.12+thrust*.32);if(age>=.44&&a.onStrike){const strike=a.onStrike;a.onStrike=null;strike();}break;}
  case 'crouch':u.rig.position.y-=.3*blend;mix(u.rig,'x',.24);for(const leg of u.legs)mix(leg,'x',-.65);mix(u.arms[1],'x',-1.5);break;
@@ -451,20 +454,20 @@ gateRoof(gate);this.banners=gateBanners(gate);this.registerObject(gate,'town-gat
  this.jumpV-=18*dt;this.hero.position.y=Math.max(0,this.hero.position.y+this.jumpV*dt);if(this.hero.position.y===0){if(this.jumpV<-2){this.landing={at:this.t,impact:Math.min(1,-this.jumpV/8)};this.onSound?.('step',{gain:1.4});}this.jumpV=0;}
  if(!this.hero.userData.runnerVest)this.hero.userData.runnerVest=box(this.hero.userData.rig,.67,.48,.4,0x344764,0,1.38,0);this.hero.userData.runnerVest.visible=['runner','borrowed'].includes(s.player.disguise);if(!this.hero.userData.runnerVest.userData.ownMaterial){this.hero.userData.runnerVest.material=this.hero.userData.runnerVest.material.clone();this.hero.userData.runnerVest.userData.ownMaterial=true;}this.hero.userData.runnerVest.material.color.setHex(s.player.disguise==='borrowed'?(s.ecosystem?.items.find(i=>i.id===s.player.wornOutfit)?.color??0x657f89):0x344764);
  this.animateActor(this.hero,speed||this.objectMoving?1:0,dt,s.player.hp<=0?'down':'');if(s.player.hp>0)this.heroGait(this.objectMoving&&!speed?3.3:speed,dt);if(this.combatReady){this.hero.userData.arms[1].rotation.x=-.7;this.hero.userData.arms[1].rotation.z=.35;}if(this.attackTime){this.hero.userData.arms[1].rotation.x=-1.5;this.hero.userData.arms[1].rotation.z=-2+this.attackTime*7;}
- this.animatePerformance(speed,dt);this.actionCoins.visible=this.performance?.motion==='gamble';this.actionBowl.visible=!!this.performance&&['eat','drink'].includes(this.performance.motion);this.actionFlute.visible=this.performance?.motion==='flute';this.actionStool.visible=this.performance?.motion==='eat'&&!speed&&this.actionStool.position.distanceTo(this.hero.position)<.3;this.hero.userData.sword.visible=this.combatReady||this.performance?.motion==='sword';
+ const guarding=this.combatReady&&this.keys.has('KeyR')&&skill(s.player,'combat').tier>=2&&!this.attackTime;if(guarding){this.hero.userData.arms[1].rotation.x=-1.35;this.hero.userData.arms[1].rotation.z=-.55;this.hero.userData.arms[0].rotation.x=-.9;}this.animatePerformance(speed,dt);this.actionCoins.visible=this.performance?.motion==='gamble';this.actionBowl.visible=!!this.performance&&['eat','drink'].includes(this.performance.motion);this.actionFlute.visible=this.performance?.motion==='flute';this.actionStool.visible=this.performance?.motion==='eat'&&!speed&&this.actionStool.position.distanceTo(this.hero.position)<.3;this.hero.userData.sword.visible=this.combatReady||this.performance?.motion==='sword';
  s.player.x=this.hero.position.x;s.player.z=this.hero.position.z;
  this.heroCombat.step(dt,this.playing&&!this.locked&&!this.performance&&s.player.hp>0&&this.combatReady,id=>this.strike(id),id=>this.attack(id));this.attackTime=this.heroCombat.remaining;
  if(this.playing){const hp=s.player.hp,was=s.player.drowning;environmentStep(s.player,dt,s.ecosystem?.objects);document.body.classList.toggle('drowning',s.player.drowning&&s.player.hp>0);if(s.player.drowning&&!was)this.onThought?.('脚踩不到底，喘不上气……得赶紧找岸。');if(hp>0&&s.player.hp<=0)this.onHurt?.();if(s.player.hp>0&&s.player.z<19.5&&inDeepWater(s.player.x,s.player.z))enterRiver(this.sim);else if(s.player.z<20.5)enterBrokenGate(this.sim);}
  if(this.sceneId!==this.sim.event?.id&&this.sim.event)this.syncEvent();
  if(this.playing&&!this.locked)s.npcClock=(s.npcClock||0)+dt;
  if(this.playing&&!this.locked&&!this.cinematic)encounterStep(this.sim,Object.fromEntries([...this.npcs].map(([id,n])=>[id,n.actor.position])),this.obstacles);
- for(const [id,n]of this.npcs){this.lifeFeedback(id,n);n.actor.userData.sword.visible=false;if(this.playing&&!this.cinematic&&this.territoryMotion(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&this.complaintMotion(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&this.reactNpc(id,n,this.locked?0:dt))continue;const state=s.people[id],a=n.actor;let moving=0,gesture='';const beforeMove=a.position.clone(),dist=Math.hypot(a.position.x-this.hero.position.x,a.position.z-this.hero.position.z);
+ for(const [id,n]of this.npcs){if(this.trainingActor===id){this.animateActor(n.actor,0,dt,'');n.actor.userData.sword.visible=false;continue;}this.lifeFeedback(id,n);n.actor.userData.sword.visible=false;if(this.playing&&!this.cinematic&&this.territoryMotion(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&this.complaintMotion(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&this.reactNpc(id,n,this.locked?0:dt))continue;const state=s.people[id],a=n.actor;let moving=0,gesture='';const beforeMove=a.position.clone(),dist=Math.hypot(a.position.x-this.hero.position.x,a.position.z-this.hero.position.z);
  n.chasing=this.playing&&this.sim.isPursuing(id,dist-(n.chasing?2:0));n.fleeing=state.fear>0&&(n.fleeing?dist<10:dist<7);
  if(this.cinematic){const other=this.npcs.get(this.cinematic.speaker===id?this.cinematic.listener:this.cinematic.speaker)?.actor.position||this.hero.position;a.rotation.y=turnToward(a.rotation.y,Math.atan2(other.x-a.position.x,other.z-a.position.z),dt);gesture=this.cinematic.speaker===id?'talk':'';}
  else if(state.hp<=0){gesture='down';}
  else if(n.chasing){
   const dir=this.hero.position.clone().sub(a.position);dir.y=0;dir.normalize();a.rotation.y=turnToward(a.rotation.y,Math.atan2(dir.x,dir.z),dt);const step=arriveStep(dist,2,dt,1.2);this.move(a,dir.x*step,dir.z*step);moving=1;gesture='talk';
-  if(dist<1.6&&this.t>(n.nextHit||0)){n.nextHit=this.t+1.5;s.player.hp=Math.max(0,s.player.hp-npcHitDamage(s,id));this.burst(this.hero.position.x,1,this.hero.position.z,0xb85f47,6);this.onHurt?.();}
+  if(dist<1.6&&this.t>(n.nextHit||0)){n.nextHit=this.t+1.5;const defended=this.receiveHit(id);if(defended.damage){this.burst(this.hero.position.x,1,this.hero.position.z,0xb85f47,6);this.onHurt?.();}}
  }else if(n.fleeing){const dir=a.position.clone().sub(this.hero.position).normalize();this.move(a,dir.x*3*dt,dir.z*3*dt);a.rotation.y=turnToward(a.rotation.y,Math.atan2(dir.x,dir.z),dt);moving=1;}
  else if(this.ecology?.steer(id,this.locked?0:dt)){}
  else if(this.sim.event?.type==='gate'&&['gate_guard','relay','gate_merchant','scribe','prisoner'].includes(id)){gesture=this.sim.event.gate?.phase==='fight'?'talk':'';}
@@ -481,7 +484,7 @@ gateRoof(gate);this.banners=gateBanners(gate);this.registerObject(gate,'town-gat
  for(const p of this.props)p.group.visible=!s.broken.includes(p.id)&&s.ecosystem?.objects[p.id]?.hp!==0;
  for(let i=this.particles.length-1;i>=0;i--){const p=this.particles[i];p.life-=dt;p.m.position.addScaledVector(p.v,dt);p.v.y-=10*dt;p.m.rotation.x+=dt*8;if(p.life<=0){this.scene.remove(p.m);p.m.geometry.dispose();this.particles.splice(i,1);}}
  for(const [i,leaf]of this.petals.entries()){leaf.position.y-=dt*.2;leaf.position.x+=Math.sin(this.t+i)*dt*.12;leaf.rotation.x=this.t+i;if(leaf.position.y<.1)leaf.position.y=4;}
- this.objectPose?.(dt);
+ this.objectPose?.(dt);this.lessonTick?.(dt);
  const perf=this.performance,shot=perf?.camera?Math.sin(Math.PI*Math.min(1,(this.t-perf.start)/perf.duration))*.28:0,viewYaw=this.yaw+shot,viewDistance=this.distance*(this.aimMode?.65:1)*(1-shot*.6);
  const heroY=this.hero.position.y;this.cameraY=(this.cameraY??heroY)+(heroY-(this.cameraY??heroY))*(1-Math.exp(-dt*(heroY>.02?2.5:10)));
  const target=this.hero.position.clone().setY(this.cameraY+1.45),offset=new T.Vector3(Math.sin(viewYaw)*Math.cos(this.pitch)*viewDistance,Math.sin(this.pitch)*viewDistance,Math.cos(viewYaw)*Math.cos(this.pitch)*viewDistance);
@@ -495,6 +498,12 @@ gateRoof(gate);this.banners=gateBanners(gate);this.registerObject(gate,'town-gat
  // The cell conversation is filmed from inside, never through the bars at z=17.
  if(c.speaker==='prisoner'&&['prison','testimony'].includes(this.sim.event?.gate?.phase)){eye.set(23,2.3,-20.3);}
  this.camera.position.copy(clearDialogueCamera(look,eye,this.obstacles,s.ecosystem?.objects));this.camera.fov=shot.fov;this.camera.lookAt(look);
+ }else if(this.trainingActor){
+ const teacher=this.npcs.get(this.trainingActor)?.actor;
+ const look=this.hero.position.clone().lerp(teacher?.position||this.hero.position,.5).setY(1.1);
+ this.trainingView??=lessonCamera(this,teacher);
+ for(const asset of this.trainingView.cutaway)asset.group.visible=false;
+ this.camera.position.lerp(this.trainingView.eye,1-Math.exp(-dt*6));this.camera.fov=48;this.camera.lookAt(look);
  }else if(this.objectFocus){const focus=this.objectFocus;this.camera.position.lerp(focus.clone().add(new T.Vector3(4,3,5)),1-Math.exp(-dt*4));this.camera.fov=48;this.camera.lookAt(focus);}else{
  const shoulder=this.aimMode?.35:0;target.x+=Math.cos(viewYaw)*shoulder;target.z-=Math.sin(viewYaw)*shoulder;
  followOrbit(this.camera,target,target.clone().add(offset),this.obstacles,s.ecosystem?.objects,dt,this.aimMode?44:48+Math.min(4,speed*.65));
@@ -528,12 +537,16 @@ gateRoof(gate);this.banners=gateBanners(gate);this.registerObject(gate,'town-gat
  this.updateNpcChecks();this.updateActorDeltas();this.updateActivityCaption();
  for(const [id,n] of this.npcs){
   const a=n.actor,u=a.userData,st=s.people[id],clock=s.ecosystem?.time||0;
+  if(id==='porter'){
+   if(!n.ironCargo){const cargo=n.ironCargo=new T.Group(),bar=new T.Mesh(new T.BoxGeometry(.12,.08,1.8),new T.MeshStandardMaterial({color:0x73583c,roughness:1}));bar.position.set(-.3,1.35,0);cargo.add(bar);for(const z of [-.72,.72]){const bag=new T.Mesh(new T.BoxGeometry(.35,.4,.35),new T.MeshStandardMaterial({color:0x7c705b,roughness:1}));bag.position.set(-.3,.95,z);cargo.add(bag);const iron=new T.Mesh(new T.CylinderGeometry(.035,.035,.55,6),new T.MeshStandardMaterial({color:0x474846,metalness:.4,roughness:.75}));iron.position.set(-.3,1.15,z);cargo.add(iron);}a.add(cargo);}
+   n.ironCargo.visible=st.hp>0&&s.ecosystem?.items.some(i=>i.storyId==='porter-iron'&&i.location==='npc:porter'&&i.hp>0);
+  }
   const actualSpeed=n.motionPosition?a.position.distanceTo(n.motionPosition)/Math.max(dt,.001):0;
   n.motionPosition??=a.position.clone();n.motionPosition.copy(a.position);
   const target=st.life?.target,atSeat=target&&Math.hypot(a.position.x-target.x,a.position.z-target.z)<.6;
-  const seated=['tea','rest'].includes(st.life?.activity)&&atSeat;
+  const seated=this.trainingActor!==id&&['tea','rest'].includes(st.life?.activity)&&atSeat;
   const upperKind=st.sickUntil>clock?'sick':st.drinkingUntil>clock?'drink':st.eatingUntil>clock?'eat':st.pouringUntil>clock?'pour':st.collectUntil>clock||st.payingUntil>clock?'reach':n.heldKettle?.visible?'pour':s.ecosystem?.show?.audience.includes(id)&&actualSpeed<.12?'clap':null;
-  const upperBody=upperKind?{kind:upperKind}:this.ecology?.upperBody?.(id)||u.npcUpperBody;
+  const upperBody=this.trainingActor===id?{kind:this.trainingPose}:upperKind?{kind:upperKind}:this.ecology?.upperBody?.(id)||u.npcUpperBody;
   const choreography=(st.life?.activity==='privacy'&&atSeat)||n.kneel>.01||u.npcPoseOverride||u.hurtUntil>this.t||u.startledUntil>this.t||(this.performance?.motion==='pressure'&&this.performance.targetId===id);
   n.model.sync(n.person.color,{dt,hp:st.hp,speed:actualSpeed>6?0:actualSpeed,seated,upperBody,
    talking:this.speaking===id||this.cinematic?.speaker===id||u.npcTalking,
@@ -545,6 +558,6 @@ gateRoof(gate);this.banners=gateBanners(gate);this.registerObject(gate,'town-gat
   u.npcPoseOverride=false;u.npcTalking=false;u.npcUpperBody=null;
  }
  this.ecology?.afterPose?.();
- this.heroModel.sync({dt,hatOn:!!s.player.hat,disguised:['runner','borrowed'].includes(s.player.disguise),hp:s.player.hp,hurt:oldHp!==undefined&&s.player.hp<oldHp,armed:this.combatReady,speed:this.objectMoving&&!speed?3.3:speed,airborne:this.hero.position.y>.02,crouched:s.player.crouched||s.player.stealing,fallback:!!this.performance});this.ink.render(this.daylight);
+ this.heroModel.sync({dt,hatOn:!!s.player.hat,disguised:['runner','borrowed'].includes(s.player.disguise),hp:s.player.hp,hurt:oldHp!==undefined&&s.player.hp<oldHp,armed:this.combatReady,speed:this.objectMoving&&!speed?3.3:speed,airborne:this.hero.position.y>.02,crouched:s.player.crouched||s.player.stealing,fallback:!!this.performance||guarding});this.ink.render(this.daylight);
  }
 }

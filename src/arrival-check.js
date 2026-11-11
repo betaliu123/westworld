@@ -14,8 +14,8 @@ export function identityCheck(s,{uniform=false,owner='gate_merchant'}={}){
  if(!uniform&&(n?.passReported||s.facts.passReported||pass?.reported)){chance=0;reasons.push('路引已经报失');}
  if(!uniform&&originalNearby){chance=0;reasons.push('原主就在眼前');}
  if(!uniform&&(n?.passMissingNoticed||s.facts.passMissingNoticed)&&chance>0){chance-=25;reasons.push('失主正在寻找路引');}
- if((p.gender==='female')&&skill(p,'disguise').tier<2){chance=Math.min(chance,35);reasons.push('年貌与凭据不合，尚未学会修饰');}
- if(p.age&&Math.abs(p.age-36)>15&&skill(p,'disguise').tier<2){chance=Math.min(chance,35);reasons.push('年岁明显不合');}
+ if((p.gender==='female')&&skill(p,'disguise').tier<3){chance=Math.min(chance,35);reasons.push('年貌与凭据不合，尚未学会修饰');}
+ if(p.age&&Math.abs(p.age-36)>15&&skill(p,'disguise').tier<3){chance=Math.min(chance,35);reasons.push('年岁明显不合');}
  if(!known&&chance>0)chance+=Math.round((p.stats.charm-40)/2);
  chance=Math.max(0,Math.min(100,chance));
  return {blocked:false,chance,certain:chance===100||chance===0,score:p.stats.charm,reason:reasons.join('；'),reasons};

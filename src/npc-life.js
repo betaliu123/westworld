@@ -35,10 +35,12 @@ export function canReceiveFood(sim,eco,id,item){const n=sim.s.people[id];
 export function inspectFood(sim,id,item){
  if(!item.poisoned)return true;item.examinedBy??={};
  if(item.knownPoisonBy?.includes(id))return false;
- if(!(id in item.examinedBy)){const wit=sim.s.people[id]?.stats?.wit??35;item.examinedBy[id]=sim.rng()*100<Math.min(85,Math.max(0,wit*.6));sim.emit('npcCheck',{id,label:'识毒',success:item.examinedBy[id]});}
+ if(!(id in item.examinedBy)){const actor=sim.s.people[id],wit=actor?.stats?.wit??35,tier=actor?.skills?.medicine?.tier||0;item.examinedBy[id]=detectsPoison(actor,item)||sim.rng()*100<Math.min(85,Math.max(5,wit*.6-(item.poisonConceal||0)*10+(tier>=2?15:0)));sim.emit('npcCheck',{id,label:'识毒',success:item.examinedBy[id]});}
  if(item.examinedBy[id]){item.knownPoisonBy??=[];if(!item.knownPoisonBy.includes(id))item.knownPoisonBy.push(id);return false;}return true;
 }
-export function consumeFood(actor,item,now=0){if(item.type!=='food'||item.hp<=0||item.location==='consumed')return false;item.location='consumed';actor.energy=Math.min(100,(actor.energy??100)+18);actor.eatingUntil=now+3;if(item.poisoned){actor.hp=Math.max(0,actor.hp-25);actor.sickUntil=now+90;}else actor.hp=Math.min(100,actor.hp+20);return true;}
+export function detectsPoison(actor,item){return !!item?.poisoned&&(actor.skills?.medicine?.tier||0)>=(item.poisonDelay>0?4:item.poisonConceal>0?3:2);}
+export function poisonStep(actor,now){if(!actor.pendingPoison||actor.hp<=0||now<actor.pendingPoison.at)return false;actor.hp=Math.max(0,actor.hp-25);actor.sickUntil=now+90;actor.pendingPoison=null;return true;}
+export function consumeFood(actor,item,now=0){if(item.type!=='food'||item.hp<=0||item.location==='consumed')return false;item.location='consumed';actor.energy=Math.min(100,(actor.energy??100)+18);actor.eatingUntil=now+3;if(item.poisoned){if(item.poisonDelay>0)actor.pendingPoison={at:now+item.poisonDelay,itemId:item.id};else{actor.hp=Math.max(0,actor.hp-25);actor.sickUntil=now+90;}}else actor.hp=Math.min(100,actor.hp+20);return true;}
 export function lifeStep(sim,eco,dt,positions){ensureLife(sim,eco);const now=eco.s.time,watch=sim.s.watch;
  for(const [id,q] of Object.entries(positions)){const n=sim.s.people[id];if(!n)continue;n.x=q.x;n.z=q.z;
   const body={x:q.x,z:q.z,hp:n.hp};environmentStep(body,dt,eco.s.objects);n.hp=body.hp;n.drowning=body.drowning;
