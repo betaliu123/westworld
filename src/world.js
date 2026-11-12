@@ -14,7 +14,9 @@ import {registerLantern,furnishHouse,updateHomes} from './night-scene.js';
 import {isSleeping,wakeForIncident,roomAt,nightTime,HOMES} from './night-life.js';
 import {skill} from './skills.js';
 import {damageSound} from './world-audio.js';
-import {inkPost} from './ink-post.js';
+import {inkPost,inkEnabled} from './ink-post.js';
+import {renderQuality,qualityMode} from './render-quality.js';
+import {obstaclesNear} from './obstacle-grid.js';
 import {mountAppearanceModel} from './appearance-model.js';
 import {mountHeroModel} from './hero-model.js';
 import {HeroCombat} from './hero-combat.js';
@@ -84,11 +86,13 @@ export function character(color,hero=false,female=false,variant=null){
  }
  return root;
 }
+// The cart collides by its own outline rather than its box, so it is checked wherever the query lands.
+const cartObstacle=o=>o.id===CART;
 export class World{
  constructor(canvas,sim){
- this.sim=sim;this.canvas=canvas;this.scene=new T.Scene();this.scene.background=new T.Color(0xadc5c3);this.scene.fog=new T.FogExp2(0xadc5c3,.014);this.renderer=new T.WebGLRenderer({canvas,antialias:true});this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFSoftShadowMap;this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.2;
+ this.sim=sim;this.canvas=canvas;this.scene=new T.Scene();this.scene.background=new T.Color(0xadc5c3);this.scene.fog=new T.FogExp2(0xadc5c3,.014);this.renderer=new T.WebGLRenderer({canvas,antialias:!inkEnabled()});this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFSoftShadowMap;this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.2;
  this.camera=new T.PerspectiveCamera(48,innerWidth/innerHeight,.1,180);this.ink=inkPost(this.renderer,this.scene,this.camera);this.daylight=1;this.yaw=0;this.pitch=.24;this.distance=6.8;this.t=0;this.gatePlaced=!!sim.s.watch;this.keys=new Set();this.obstacles=[];this.environmentAssets=[];this.npcs=new Map();this.props=[];this.particles=[];this.auto=null;this.locked=false;this.attackTime=0;this.readyUntil=0;this.jumpV=0;this.ground=0;this.heroVel=new T.Vector3();this.heroTurnRate=0;this.heroCombat=new HeroCombat();
- this.skyLight=new T.HemisphereLight(0xdaedf0,0x626348,2);this.scene.add(this.skyLight);const sun=new T.DirectionalLight(0xffe3b0,3.2);this.sun=sun;sun.position.set(-20,32,14);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-35,right:35,top:35,bottom:-35,far:100});sun.shadow.bias=-.0002;sun.shadow.normalBias=.035;this.scene.add(sun);
+ this.skyLight=new T.HemisphereLight(0xdaedf0,0x626348,2);this.scene.add(this.skyLight);const sun=new T.DirectionalLight(0xffe3b0,3.2);this.sun=sun;sun.position.set(-20,32,14);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-35,right:35,top:35,bottom:-35,far:100});sun.shadow.bias=-.0002;sun.shadow.normalBias=.035;this.scene.add(sun);this.quality=renderQuality(qualityMode(globalThis.location?.search));
  this.horizon=landscape(this.scene);this.build();this.hero=character(0x385953,true);this.hero.rotation.y=Math.PI;this.hero.position.set(sim.s.player.x,0,sim.s.player.z);this.scene.add(this.hero);this.heroModel=mountHeroModel(this.hero,new URL('./models/hero.glb',import.meta.url).href);this.appearanceModel=mountAppearanceModel(this.heroModel,this.hero);
  this.actionBowl=new T.Group();cyl(this.actionBowl,.14,.075,.12,0xd8d8bd);cyl(this.actionBowl,.12,.12,.02,0x8d6245,0,.06,0);this.hero.userData.arms[1].add(this.actionBowl);this.actionBowl.position.set(0,-.58,0);this.actionBowl.visible=false;
  this.actionFlute=box(this.hero.userData.rig,.64,.035,.035,0xb99c61,0,1.72,.3);this.actionFlute.visible=false;this.actionCoins=new T.Group();for(let i=0;i<3;i++)cyl(this.actionCoins,.045,.045,.018,0xe5bc60,i*.07,-.58,0);this.hero.userData.arms[0].add(this.actionCoins);this.actionCoins.visible=false;
@@ -116,7 +120,8 @@ export class World{
  const age=f.age;if(age>=1.65){f.actor.remove(f.sprite);f.sprite.material.map.dispose();f.sprite.material.dispose();this.deltaSprites.delete(id);continue;}
  f.sprite.visible=visible;f.sprite.position.y=(id==='player'?2.55:3.1)+(f.reducedMotion?0:age*.22);f.sprite.material.opacity=Math.min(1,age/.12,(1.65-age)/.55);
  // Keep the short caption readable when the camera zooms or the viewport shrinks.
- if(this.camera&&this.canvas?.clientHeight){const h=18*96/30*2*Math.tan(this.camera.fov*Math.PI/360)*this.camera.position.distanceTo(f.actor.position)/this.canvas.clientHeight;f.sprite.scale.set(h*512/96,h,1);}}
+ // viewHeight is the canvas height noted at resize; asking the canvas here would force a layout pass every frame.
+ const viewHeight=this.viewHeight||this.canvas?.clientHeight;if(this.camera&&viewHeight){const h=18*96/30*2*Math.tan(this.camera.fov*Math.PI/360)*this.camera.position.distanceTo(f.actor.position)/viewHeight;f.sprite.scale.set(h*512/96,h,1);}}
  if(quiet||!this.deltaQueue?.size)return;
  for(const [key,r] of this.deltaQueue){const n=this.npcs.get(r.id),actor=r.id==='player'?this.hero:n?.actor;if(!actor||(r.id!=='player'&&(actor.position.distanceTo(this.hero.position)>10||!visibleBetween(actor.position,this.hero.position,this.obstacles,this.sim.s.ecosystem?.objects)))){this.deltaQueue.delete(key);continue;}
  if(this.deltaSprites.has(r.id)||n?.checkFlash?.visible||n?.alert?.visible||this.speaking===r.id)continue;
@@ -218,6 +223,8 @@ export class World{
  const remaining=Math.hypot(target.x-a.position.x,target.z-a.position.z);
  if(dt>0&&speed>0&&remaining>stop&&(!n.reactionPath||this.t>=(n.reactionRepath||0)||n.reactionState!==r.state)){
   n.reactionRepath=this.t+.65;n.reactionState=r.state;n.reactionPath=encounterPath(a.position,target,(x,z)=>this.collides(x,z,0,false),.5);
+  // A search that found no route is the costly kind; outside a fight it is not repeated at the usual rate.
+  if(!n.reactionPath.length&&r.state!=='fight')n.reactionRepath=this.t+2;
  }
  while(n.reactionPath?.length&&Math.hypot(n.reactionPath[0].x-a.position.x,n.reactionPath[0].z-a.position.z)<.18)n.reactionPath.shift();
  const next=n.reactionPath?.[0]||target,dx=next.x-a.position.x,dz=next.z-a.position.z,d=Math.hypot(dx,dz);
@@ -238,7 +245,17 @@ export class World{
  }
  }
 
- resize(){this.renderer.setSize(innerWidth,innerHeight);this.ink.setSize(innerWidth,innerHeight);this.camera.aspect=innerWidth/innerHeight;this.camera.updateProjectionMatrix();}
+ // Render resolution and shadow detail follow the measured frame rate (render-quality.js). Only the drawing
+ // buffers change: the canvas keeps its size on the page, so HUD placement and picking are unaffected.
+ applyQuality(){
+  const q=this.quality,base=Math.min(devicePixelRatio,1.6),ratio=Math.max(Math.min(base,.6),base*q.scale),size=q.lightShadows?1024:2048,shadow=this.sun.shadow;
+  if(this.renderer.getPixelRatio()!==ratio)this.renderer.setPixelRatio(ratio);
+  this.ink.setSize(innerWidth,innerHeight);
+  if(shadow.mapSize.x!==size){shadow.mapSize.set(size,size);shadow.map?.dispose();shadow.map=null;}
+  // With light shadows the map is redrawn every other frame (see update); redraw now so a new map is never read empty.
+  this.renderer.shadowMap.autoUpdate=!q.lightShadows;this.renderer.shadowMap.needsUpdate=true;
+ }
+ resize(){this.viewHeight=innerHeight;this.renderer.setSize(innerWidth,innerHeight);this.applyQuality();this.camera.aspect=innerWidth/innerHeight;this.camera.updateProjectionMatrix();}
  registerObject(group,id,name,material='wood',hp=100,extra={}){group.updateWorldMatrix(true,true);const bounds=new T.Box3().setFromObject(group),c=bounds.getCenter(new T.Vector3()),size=bounds.getSize(new T.Vector3());const asset={id,kind:'prop',name,material,max:hp,x:c.x,z:c.z,w:size.x,d:size.z,y:c.y,group,...extra};this.environmentAssets=this.environmentAssets.filter(a=>a.id!==id);this.environmentAssets.push(asset);return asset;}
  lantern(p,x,y,z,light){const g=new T.Group();g.position.set(x,y,z);p.add(g);const shade=cyl(g,.2,.23,.38,0xece3cf);registerLantern(this,g,shade,light);cyl(g,.2,.2,.045,0x4f4b42,0,.22,0);cyl(g,.2,.2,.045,0x4f4b42,0,-.22,0);cyl(g,.018,.018,.23,0x9c6d3c,0,-.36,0);return g;}
  tree(x,z,blossom=false,scale=1){const g=new T.Group();g.position.set(x,0,z);g.scale.setScalar(scale);this.scene.add(g);pine(g,x*.33+z);this.obstacles.push({id:`tree:${x}:${z}`,x,z,w:.6,d:.6});this.environmentAssets.push({id:`tree:${x}:${z}`,kind:'tree',name:blossom?'花树':'果树',fruit:!blossom,x,z,group:g});}
@@ -315,7 +332,7 @@ gateRoof(gate);this.banners=gateBanners(gate);
  if(['banquet','truce'].includes(e.type)){for(let i=0;i<3;i++)this.table(x+(i-1)*2.5,z+2.3,'feast-'+i,true);for(const [i,id]of ['tea','porter','elder'].entries()){const guest=this.npcs.get(id);guest.base.set(x-3+i*3,0,z-1.5);guest.actor.position.copy(guest.base);}}
  if(e.type==='proposal'){const ring=mesh(new T.TorusGeometry(.12,.027,8,20),0xe9c778,this.eventGroup,x-.6,1.3,z+.2);ring.rotation.x=.6;this.ring=ring;}
  }
- collides(x,z,feet=0,player=true,ignoreId=null){return (player&&this.sim.event?.type==='gate'&&['prison','testimony'].includes(this.sim.event.gate?.phase)&&(x<PRISON.bounds.minX||x>PRISON.bounds.maxX||z<PRISON.bounds.minZ||z>PRISON.bounds.maxZ))||(player&&this.sim.event?.type==='gate'&&this.sim.event.gate?.phase!=='prison'&&this.sim.event.gate?.phase!=='testimony'&&z<21&&!(roomAt({x,z})?.z===21&&roomAt(this.hero.position)?.id===roomAt({x,z})?.id)&&!(Math.abs(x)<2.7&&this.sim.s.ecosystem?.objects['town-gate']?.hp===0)&&!(x>-25.5&&x< -18.5&&this.sim.s.ecosystem?.objects['river-fence']?.hp===0))||Math.abs(x)>31||z< -34||z>SOUTH_WALK_LIMIT||(feet<1.05&&this.props.some(p=>!this.sim.s.broken.includes(p.id)&&this.sim.s.ecosystem?.objects[p.id]?.hp!==0&&Math.abs(x-p.x)<1.15&&Math.abs(z-p.z)<.8))||this.obstacles.some(o=>o.id!==ignoreId&&this.sim.s.ecosystem?.objects[o.id]?.hp!==0&&!this.sim.s.ecosystem?.objects[o.id]?.open&&(o.id===CART?convoyPointCollision(this.sim.s,x,z):Math.abs(x-o.x)<o.w/2+.3&&Math.abs(z-o.z)<o.d/2+.3));}
+ collides(x,z,feet=0,player=true,ignoreId=null){return (player&&this.sim.event?.type==='gate'&&['prison','testimony'].includes(this.sim.event.gate?.phase)&&(x<PRISON.bounds.minX||x>PRISON.bounds.maxX||z<PRISON.bounds.minZ||z>PRISON.bounds.maxZ))||(player&&this.sim.event?.type==='gate'&&this.sim.event.gate?.phase!=='prison'&&this.sim.event.gate?.phase!=='testimony'&&z<21&&!(roomAt({x,z})?.z===21&&roomAt(this.hero.position)?.id===roomAt({x,z})?.id)&&!(Math.abs(x)<2.7&&this.sim.s.ecosystem?.objects['town-gate']?.hp===0)&&!(x>-25.5&&x< -18.5&&this.sim.s.ecosystem?.objects['river-fence']?.hp===0))||Math.abs(x)>31||z< -34||z>SOUTH_WALK_LIMIT||(feet<1.05&&this.props.some(p=>Math.abs(x-p.x)<1.15&&Math.abs(z-p.z)<.8&&!this.sim.s.broken.includes(p.id)&&this.sim.s.ecosystem?.objects[p.id]?.hp!==0))||obstaclesNear(this.obstacles,x,z,.3,cartObstacle).some(o=>o.id!==ignoreId&&this.sim.s.ecosystem?.objects[o.id]?.hp!==0&&!this.sim.s.ecosystem?.objects[o.id]?.open&&(o.id===CART?convoyPointCollision(this.sim.s,x,z):Math.abs(x-o.x)<o.w/2+.3&&Math.abs(z-o.z)<o.d/2+.3));}
  move(actor,dx,dz){if(actor===this.hero){const positions=Object.fromEntries([...this.npcs].map(([id,n])=>[id,n.actor.position]));if(!ropeAllowsMove(this.sim.s,actor.position,{x:actor.position.x+dx,z:actor.position.z+dz},positions,this.obstacles))return;}if(actor!==this.hero&&Math.hypot(dx,dz)>.00001){actor.userData.attemptedMove=true;
  const u=actor.userData,dt=this.npcMoveDt||1/60,length=Math.hypot(dx,dz),previous=this.t-(u.travelAt??-1)<dt*1.5?u.travelSpeed||0:0;
  const step=npcTravelStep(length,previous,dt);u.travelSpeed=step/dt;u.travelAt=this.t;dx*=step/length;dz*=step/length;
@@ -599,6 +616,9 @@ gateRoof(gate);this.banners=gateBanners(gate);
  }
  this.ecology?.afterPose?.();
  playerBedPose(this);
- this.heroModel.sync({dt,bedPose:this.hero.userData.bedPose,hatOn:!!s.player.hat,disguised:['runner','borrowed'].includes(s.player.disguise),hp:s.player.hp,hurt:oldHp!==undefined&&s.player.hp<oldHp,armed:this.combatReady,speed:this.objectMoving&&!speed?3.3:speed,airborne:this.hero.position.y>.02,crouched:s.player.crouched||s.player.stealing,fallback:!!this.performance||guarding||!!this.hero.userData.bedPose});this.appearanceModel.update(s);drawLassos(this);this.ink.render(this.daylight);
+ this.heroModel.sync({dt,bedPose:this.hero.userData.bedPose,hatOn:!!s.player.hat,disguised:['runner','borrowed'].includes(s.player.disguise),hp:s.player.hp,hurt:oldHp!==undefined&&s.player.hp<oldHp,armed:this.combatReady,speed:this.objectMoving&&!speed?3.3:speed,airborne:this.hero.position.y>.02,crouched:s.player.crouched||s.player.stealing,fallback:!!this.performance||guarding||!!this.hero.userData.bedPose});this.appearanceModel.update(s);drawLassos(this);
+  const now=performance.now();if(this.playing&&this.quality.frame(now-this.frameAt))this.applyQuality();this.frameAt=now;
+  if(this.quality.lightShadows&&(this.shadowTurn=!this.shadowTurn))this.renderer.shadowMap.needsUpdate=true;
+  this.ink.render(this.daylight);
  }
 }

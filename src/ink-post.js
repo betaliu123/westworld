@@ -82,8 +82,12 @@ void main(){
   gl_FragColor=vec4(c,1.);
 }`;
 
+// With the ink pass on, the scene is drawn into an off-screen target and the canvas only receives one
+// full-screen rectangle, so canvas multisampling has no edges to smooth and the renderer leaves it off.
+export const inkEnabled = () => !/[?&]ink=0\b/.test(globalThis.location?.search || '');
+
 export function inkPost(renderer, scene, camera) {
-  const enabled = !/[?&]ink=0\b/.test(globalThis.location?.search || '');
+  const enabled = inkEnabled();
   const depthTexture = new T.DepthTexture(1, 1);
   depthTexture.type = T.UnsignedIntType;
   const target = new T.WebGLRenderTarget(1, 1, {type: T.HalfFloatType, depthTexture});

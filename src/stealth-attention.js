@@ -34,7 +34,8 @@ export function mountStealthAttention(world,getEco){
   }
   for(const el of markers.values())el.hidden=true;
   // These are world-anchored marks, never a new fixed HUD stack or a name leak.
-  const occupied=[...document.querySelectorAll('#object-actions,#panel,#drawer,#environment-panel,#dialogue,#hud-left-stack,#hud-info-stack,#hud-context-stack,#minimap')].filter(el=>!el.hidden&&!el.classList.contains('hud-obscured')&&el.getBoundingClientRect().width).map(el=>el.getBoundingClientRect());
+  // Measuring the HUD forces a layout pass, so it is only done on frames that have a mark to place.
+  const occupied=!candidates.length?[]:[...document.querySelectorAll('#object-actions,#panel,#drawer,#environment-panel,#dialogue,#hud-left-stack,#hud-info-stack,#hud-context-stack,#minimap')].filter(el=>!el.hidden&&!el.classList.contains('hud-obscured')&&el.getBoundingClientRect().width).map(el=>el.getBoundingClientRect());
   let count=0;
   for(const {id,n,o} of candidates.sort((a,b)=>Number(b.o.state==='watching')-Number(a.o.state==='watching')||a.o.distance-b.o.distance)){
    const point=world.screenPoint(n.actor.position.clone().add({x:0,y:(n.model?.height||2)+(n.actor.userData.rig?.position.y||0)+.16,z:0}));
