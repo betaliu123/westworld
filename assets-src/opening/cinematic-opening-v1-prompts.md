@@ -1,0 +1,58 @@
+# 电影式开场 · 三张补全图提示词
+
+日期：2026-11-12。用户选择「第二张更好一点，继续生成」，本轮沿用 `linxi-gate-cinematic-v1.png` 的城门近景质感，制作其余三个分镜。
+
+生成方式：内置 image_gen，一张一调用，共用城门图作为服饰与美术参考。工具未提供具体模型选择参数。目标 2048×1152；实际尺寸以成品记录为准。全部为独立二维静帧，不含字幕或 UI。
+
+参考图：`linxi-gate-cinematic-v1.png`。城门图的原始提示词见 `linxi-gate-cinematic-v1-prompt.md`。
+
+成品核验：三张均为 1672×941 RGB PNG，已复制到本目录，原始生成文件保留。未进行图像缩放、滤镜或拼图。逐张查看了手部、角色服饰、城门形制、无嵌入文字和场景连续性；尚未接入游戏。
+
+| 文件 | 字节数 | SHA-256 前 16 位 |
+| --- | --- | --- |
+| `01-gu-poison-cinematic-v1.png` | 2292175 | `4e7d00d7f96903b2` |
+| `02-genyue-cinematic-v1.png` | 2552719 | `1dacad1f664c68dc` |
+| `03-linxi-wharf-cinematic-v1.png` | 2701192 | `e569f9587abf7ec5` |
+
+## 蛊毒发作
+
+成品文件：`01-gu-poison-cinematic-v1.png`
+
+```text
+Use case: stylized-concept. Deliver ONE polished cinematic wuxia opening cutscene still as a flat 2D raster image, landscape 16:9, preferably 2048x1152. The attached selected gate image is the approved ART DIRECTION and COSTUME CONTINUITY reference. Match its dimensional premium cinematic CG / digital matte-painting finish, detailed natural cloth/stone/wood, convincing film lighting, restrained cool slate-blue shadows and warm muted sunlight, shallow-to-moderate depth of field, rich readable dark tones. No parchment, no ink illustration, no etched outlines, no illustration-page look, no cartoon or plastic rendering. Northern Song inspired world. Each image is a new camera setup in the same opening sequence, not a recoloring of the reference. No UI, typography, Chinese writing, captions, logos, watermarks, frames or black bars. Full bleed; lower center should be quiet enough for separately overlaid subtitles, without an artificial blank strip. Characters and physical materials must remain anatomically and spatially credible. All composition must read as an ongoing scene, not a promotional character portrait.
+
+SHOT 01 — A PRIVATE PANG OF GU POISON, IN A ROADSIDE INN.
+An intimate 65mm cinematic insert. Crop the traveler from the collarbones to the lap; their face and gender are entirely out of frame, their torso in the left half, their two hands near center. Camera is close at the edge of a worn wooden table, looking slightly upward across the table into the folded charcoal robe. The traveler's left forearm extends diagonally toward the lower right, palm relaxed but fingers subtly trembling; their right hand grips the left wrist just above the wrist joint to steady it. Both hands clearly belong to the same person; exactly two natural hands, appropriate fingers, no tangled or duplicated digits. A loosened narrow cloth wrap exposes only a small patch of inner left wrist; a restrained faint dusky discoloration beneath otherwise normal skin suggests lingering illness, NOT a glowing tattoo, open wound, worm, blood or horror effect. Gesture conveys controlled pain and exhaustion, not a dramatic death scene.
+MATCH the approved traveler: the same intact charcoal/slate layered woven cross-collar robe with subtle chevron weave, dark cloth wrist wraps and restrained weathered leather belt. Skin light natural with visible texture, not waxy. The straw hat rests partly cropped on the table at far right; the same compact knotted gray cloth pack is softly visible on the bench behind. No recognizable face, no fixed male/female body traits.
+In the right middle ground of the table: one small unadorned dark ceramic bowl of herbal medicine with a delicate wisp of steam, and a modest folded medicine-paper packet containing a few indistinct dried herb pieces. Nothing readable. No fancy apothecary clutter, no medicine countdown or evidence that this is the last dose.
+Worn timber window and pale plaster wall fade into soft background. A narrow shaft of warm late-afternoon window light grazes the gripping fingers, exposed wrist, medicine steam and sleeve weave; cool reflected sky light preserves the robe folds. The room remains dim but not black. Cinematic tactile detail, nuanced soft highlights, focus on the hands rather than the bowl. Compose powerful diagonal wrist and sleeve lines with an intimate sense that this is the player's body. Emotional tone: quietly enduring another familiar attack, still determined to find a cure. No additional people, no modern furniture or glass bottles.
+```
+
+## 艮岳传闻
+
+成品文件：`02-genyue-cinematic-v1.png`
+
+```text
+Use case: stylized-concept. Deliver ONE polished cinematic wuxia opening cutscene still as a flat 2D raster image, landscape 16:9, preferably 2048x1152. The attached selected gate image is the approved ART DIRECTION and COSTUME CONTINUITY reference. Match its dimensional premium cinematic CG / digital matte-painting finish, detailed natural cloth/stone/wood, convincing film lighting, restrained cool slate-blue shadows and warm muted sunlight, shallow-to-moderate depth of field, rich readable dark tones. No parchment, no ink illustration, no etched outlines, no illustration-page look, no cartoon or plastic rendering. Northern Song inspired world. Each image is a new camera setup in the same opening sequence, not a recoloring of the reference. No UI, typography, Chinese writing, captions, logos, watermarks, frames or black bars. Full bleed; lower center should be quiet enough for separately overlaid subtitles, without an artificial blank strip. Characters and physical materials must remain anatomically and spatially credible. All composition must read as an ongoing scene, not a promotional character portrait.
+
+SHOT 02 — GENYUE, AN UNREACHABLE HOPE SEEN IN RUMOR.
+A breathtaking environmental establishing shot for a rumor of a cure. NO TRAVELER appears: the player has NOT already reached this destination. The visual is a distant imagined glimpse of Genyue, an imposing Northern Song imperial mountain garden with layered stone hills and timber palaces, not proof of supernatural magic.
+Use a low, dramatically framed 28mm wide cinematic camera from outside the garden boundary: a huge dark weathered garden rock and cropped old cypress trunk in the near left foreground, a substantial stone wall rising diagonally across the lower right. Through this foreground aperture, an elegant enormous landscape of sculpted rocky hills, deep green pines, a mist-filled ravine, narrow stone stairs and three or four carefully grouped dark-timber and restrained warm-roofed Song pavilions recedes upward into clouds. One main elevated palace roof is the unmistakable focal point in the upper right-center. Tiny distant terrace details provide scale, no visible identifiable people. The garden's gate is closed and remote, suggesting access is difficult, but avoid a literal dungeon or military fortress.
+Worldbuilding stays physical: all hills and buildings stand on ground; structurally plausible terraces and stairs, no hovering rocks, no god, no magic beam, no heavenly figures, no glowing runes, no alpine fantasy city. Large scholar-rock forms and cultivated gardens make this feel like the Emperor's extravagantly constructed paradise. Distant ornamental water can glint in a quiet cascade but do not fill the frame with waterfalls.
+A break in dense slate clouds allows a broad low warm light to skim one palace roof and a pale rock ridge, while the nearest wall and cypress are cool and shadowed. Layers of thin mist divide foreground, sculpted hills and palace distance. The light should create longing and unease at once. Luminous natural atmosphere, exquisite but restrained architecture, selected crisp details only at the focal palace and near rock, distant forms softened by air. Preserve the approved reference's material realism and cinematic warm/cool harmony. Avoid a symmetrical postcard panorama, overly detailed city carpet, bright gold fantasy palace, huge sun disc, oversaturated teal-orange or antique painting finish. No text of any kind.
+```
+
+## 临溪河埠
+
+成品文件：`03-linxi-wharf-cinematic-v1.png`
+
+```text
+Use case: stylized-concept. Deliver ONE polished cinematic wuxia opening cutscene still as a flat 2D raster image, landscape 16:9, preferably 2048x1152. The attached selected gate image is the approved ART DIRECTION and COSTUME CONTINUITY reference. Match its dimensional premium cinematic CG / digital matte-painting finish, detailed natural cloth/stone/wood, convincing film lighting, restrained cool slate-blue shadows and warm muted sunlight, shallow-to-moderate depth of field, rich readable dark tones. No parchment, no ink illustration, no etched outlines, no illustration-page look, no cartoon or plastic rendering. Northern Song inspired world. Each image is a new camera setup in the same opening sequence, not a recoloring of the reference. No UI, typography, Chinese writing, captions, logos, watermarks, frames or black bars. Full bleed; lower center should be quiet enough for separately overlaid subtitles, without an artificial blank strip. Characters and physical materials must remain anatomically and spatially credible. All composition must read as an ongoing scene, not a promotional character portrait.
+
+SHOT 03 — FOLLOWING THE STONE TRIBUTE INTO LINXI.
+A cinematic character-driven harbor moment. Show the SAME traveler from the approved reference reaching the outside-town river wharf where imperial stone tribute goods are unloaded. This supplies the practical lead to finding a way to Genyue, without showing the player already admitted to town.
+Change the camera axis from the gate reference: use a medium-close over-the-shoulder view with the traveler occupying the RIGHT foreground, cropped at shoulder and mid-back, face entirely hidden by the identical broad woven straw hat and angle. Match tied dark hair, intact charcoal/slate woven layered traveling robe, cloth arm wraps, leather belt and compact knotted gray cloth shoulder pack exactly. Gender stays ambiguous. The traveler has paused and slightly turns toward the activity, one relaxed hand visible against the strap of the pack. Not a heroic portrait, not posed square to camera.
+A massive coarse mooring rope crosses the LEFT foreground in a strong diagonal from a cropped wet bollard, partially obscuring the scene. Between rope and shoulder we see, at close middle distance, two or three working porters actively guiding a wooden handcart holding a heavy pale perforated ornamental scholar's rock up a broad stable gangplank from a low wooden barge. The hauling is physically plausible: rope attached to cart, wheels resting on planks, steadying porter at the side; no worker lifting a giant boulder with bare hands, no floating loads. Exactly one dominant rock shipment, not a harbor catalogue of boats. A second stone remains lashed on the barge under a restrained ochre official banner with no legible writing. Banner shape and rock material match the selected gate image.
+Near the far end of the ramp, the cobbled quay curves along the river bank toward the same substantial gray masonry gate with a dark timber-and-tile gatehouse seen in the reference. The gate should be a subtle but recognizable destination in the left background, softened by mist; do not replace it with a round arch or fantasy palace. The quay and gate are on the same connected land bank. No army or crowd.
+Wet planks, a low glinting river, selected warm light on taut rope, pale stone and the traveler's shoulder. Cool cloud reflections and a little waterfront mist. After-rain late-afternoon daylight, same time and season as the approved gate image, natural muted greens. The eye follows rope to the actual moving shipment and then the road into town. Visually arresting depth, asymmetrical framing, fine film-like material polish, emotionally present traveler rather than distant scenery. Keep lower middle uncluttered without making a blank strip. No river panorama, flat ink wash, ragged beggar clothing, modern cranes or text/UI.
+```

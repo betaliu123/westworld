@@ -1,0 +1,539 @@
+[
+  {
+    "case": "full-1280",
+    "first": {
+      "shot": "genyue",
+      "copy": {
+        "x": 120,
+        "y": 645,
+        "right": 1160,
+        "bottom": 765,
+        "width": 1040,
+        "height": 120
+      },
+      "skip": {
+        "x": 1164.8125,
+        "y": 24,
+        "right": 1228.8125,
+        "bottom": 68,
+        "width": 64,
+        "height": 44
+      },
+      "next": {
+        "x": 1060,
+        "y": 781,
+        "right": 1160,
+        "bottom": 826,
+        "width": 100,
+        "height": 45
+      },
+      "art": {
+        "x": -1.73944091796875,
+        "y": -1.15509033203125,
+        "right": 1281.7395629882812,
+        "bottom": 851.1550903320312,
+        "width": 1283.47900390625,
+        "height": 852.3101806640625
+      },
+      "fonts": [
+        {
+          "text": "跳过",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "你身中蛊毒，寻医无果。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 22
+        },
+        {
+          "text": "听闻道君皇帝营建仙山艮岳，招聚天下异人，仙山上必有解毒之法。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 22
+        },
+        {
+          "text": "继续",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        }
+      ],
+      "text": [
+        "你身中蛊毒，寻医无果。",
+        "听闻道君皇帝营建仙山艮岳，招聚天下异人，仙山上必有解毒之法。"
+      ],
+      "image": "assets/opening/genyue-ink-v4.png",
+      "animation": "opening-drift"
+    },
+    "second": {
+      "shot": "linxi",
+      "copy": {
+        "x": 120,
+        "y": 645,
+        "right": 1160,
+        "bottom": 765,
+        "width": 1040,
+        "height": 120
+      },
+      "skip": {
+        "x": 1164.8125,
+        "y": 24,
+        "right": 1228.8125,
+        "bottom": 68,
+        "width": 64,
+        "height": 44
+      },
+      "next": {
+        "x": 1060,
+        "y": 781,
+        "right": 1160,
+        "bottom": 826,
+        "width": 100,
+        "height": 45
+      },
+      "art": {
+        "x": -1.6820068359375,
+        "y": -1.116943359375,
+        "right": 1281.6820068359375,
+        "bottom": 851.116943359375,
+        "width": 1283.364013671875,
+        "height": 852.23388671875
+      },
+      "fonts": [
+        {
+          "text": "跳过",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "替艮岳运货、办差的人，常在临溪落脚。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 22
+        },
+        {
+          "text": "你循线而来，想寻一条上山的路，却撞上了花石纲封关。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 22
+        },
+        {
+          "text": "入临溪",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        }
+      ],
+      "text": [
+        "替艮岳运货、办差的人，常在临溪落脚。",
+        "你循线而来，想寻一条上山的路，却撞上了花石纲封关。"
+      ],
+      "image": "assets/opening/linxi-gate-ink-v2.png",
+      "animation": "opening-drift"
+    },
+    "projection": {
+      "role": "wanderer",
+      "stats": {
+        "might": 50,
+        "agility": 60,
+        "charm": 40,
+        "wit": 50
+      },
+      "money": 12,
+      "hp": 100,
+      "inventory": [],
+      "opening": {
+        "version": 1,
+        "completed": true
+      },
+      "gu": true,
+      "cure": true,
+      "chapterVersion": 2
+    },
+    "errors": []
+  },
+  {
+    "case": "full-1024",
+    "first": {
+      "shot": "genyue",
+      "copy": {
+        "x": 61.4375,
+        "y": 563,
+        "right": 962.5625,
+        "bottom": 683,
+        "width": 901.125,
+        "height": 120
+      },
+      "skip": {
+        "x": 919.046875,
+        "y": 24,
+        "right": 983.046875,
+        "bottom": 68,
+        "width": 64,
+        "height": 44
+      },
+      "next": {
+        "x": 862.5625,
+        "y": 699,
+        "right": 962.5625,
+        "bottom": 744,
+        "width": 100,
+        "height": 45
+      },
+      "art": {
+        "x": -1.42218017578125,
+        "y": -1.066650390625,
+        "right": 1025.4220581054688,
+        "bottom": 769.066650390625,
+        "width": 1026.84423828125,
+        "height": 770.13330078125
+      },
+      "fonts": [
+        {
+          "text": "跳过",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "你身中蛊毒，寻医无果。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 22
+        },
+        {
+          "text": "听闻道君皇帝营建仙山艮岳，招聚天下异人，仙山上必有解毒之法。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 22
+        },
+        {
+          "text": "继续",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        }
+      ],
+      "text": [
+        "你身中蛊毒，寻医无果。",
+        "听闻道君皇帝营建仙山艮岳，招聚天下异人，仙山上必有解毒之法。"
+      ],
+      "image": "assets/opening/genyue-ink-v4.png",
+      "animation": "opening-drift"
+    },
+    "second": {
+      "shot": "linxi",
+      "copy": {
+        "x": 61.4375,
+        "y": 563,
+        "right": 962.5625,
+        "bottom": 683,
+        "width": 901.125,
+        "height": 120
+      },
+      "skip": {
+        "x": 919.046875,
+        "y": 24,
+        "right": 983.046875,
+        "bottom": 68,
+        "width": 64,
+        "height": 44
+      },
+      "next": {
+        "x": 862.5625,
+        "y": 699,
+        "right": 962.5625,
+        "bottom": 744,
+        "width": 100,
+        "height": 45
+      },
+      "art": {
+        "x": -1.2996826171875,
+        "y": -0.974761962890625,
+        "right": 1025.2996826171875,
+        "bottom": 768.9747009277344,
+        "width": 1026.599365234375,
+        "height": 769.949462890625
+      },
+      "fonts": [
+        {
+          "text": "跳过",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "替艮岳运货、办差的人，常在临溪落脚。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 22
+        },
+        {
+          "text": "你循线而来，想寻一条上山的路，却撞上了花石纲封关。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 22
+        },
+        {
+          "text": "入临溪",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        }
+      ],
+      "text": [
+        "替艮岳运货、办差的人，常在临溪落脚。",
+        "你循线而来，想寻一条上山的路，却撞上了花石纲封关。"
+      ],
+      "image": "assets/opening/linxi-gate-ink-v2.png",
+      "animation": "opening-drift"
+    },
+    "projection": {
+      "role": "wanderer",
+      "stats": {
+        "might": 50,
+        "agility": 60,
+        "charm": 40,
+        "wit": 50
+      },
+      "money": 12,
+      "hp": 100,
+      "inventory": [],
+      "opening": {
+        "version": 1,
+        "completed": true
+      },
+      "gu": true,
+      "cure": true,
+      "chapterVersion": 2
+    },
+    "errors": []
+  },
+  {
+    "case": "full-800",
+    "first": {
+      "shot": "genyue",
+      "copy": {
+        "x": 24,
+        "y": 419,
+        "right": 776,
+        "bottom": 531,
+        "width": 752,
+        "height": 112
+      },
+      "skip": {
+        "x": 720,
+        "y": 12,
+        "right": 784,
+        "bottom": 56,
+        "width": 64,
+        "height": 44
+      },
+      "next": {
+        "x": 676,
+        "y": 539,
+        "right": 776,
+        "bottom": 584,
+        "width": 100,
+        "height": 45
+      },
+      "art": {
+        "x": -1.110992431640625,
+        "y": -0.833251953125,
+        "right": 801.1109313964844,
+        "bottom": 600.833251953125,
+        "width": 802.221923828125,
+        "height": 601.66650390625
+      },
+      "fonts": [
+        {
+          "text": "跳过",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "你身中蛊毒，寻医无果。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "听闻道君皇帝营建仙山艮岳，招聚天下异人，仙山上必有解毒之法。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "继续",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        }
+      ],
+      "text": [
+        "你身中蛊毒，寻医无果。",
+        "听闻道君皇帝营建仙山艮岳，招聚天下异人，仙山上必有解毒之法。"
+      ],
+      "image": "assets/opening/genyue-ink-v4.png",
+      "animation": "opening-drift"
+    },
+    "second": {
+      "shot": "linxi",
+      "copy": {
+        "x": 24,
+        "y": 419,
+        "right": 776,
+        "bottom": 531,
+        "width": 752,
+        "height": 112
+      },
+      "skip": {
+        "x": 720,
+        "y": 12,
+        "right": 784,
+        "bottom": 56,
+        "width": 64,
+        "height": 44
+      },
+      "next": {
+        "x": 676,
+        "y": 539,
+        "right": 776,
+        "bottom": 584,
+        "width": 100,
+        "height": 45
+      },
+      "art": {
+        "x": -1.003326416015625,
+        "y": -0.752471923828125,
+        "right": 801.0032653808594,
+        "bottom": 600.7524108886719,
+        "width": 802.006591796875,
+        "height": 601.5048828125
+      },
+      "fonts": [
+        {
+          "text": "跳过",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "替艮岳运货、办差的人，常在临溪落脚。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "你循线而来，想寻一条上山的路，却撞上了花石纲封关。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "入临溪",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        }
+      ],
+      "text": [
+        "替艮岳运货、办差的人，常在临溪落脚。",
+        "你循线而来，想寻一条上山的路，却撞上了花石纲封关。"
+      ],
+      "image": "assets/opening/linxi-gate-ink-v2.png",
+      "animation": "opening-drift"
+    },
+    "projection": {
+      "role": "wanderer",
+      "stats": {
+        "might": 50,
+        "agility": 60,
+        "charm": 40,
+        "wit": 50
+      },
+      "money": 12,
+      "hp": 100,
+      "inventory": [],
+      "opening": {
+        "version": 1,
+        "completed": true
+      },
+      "gu": true,
+      "cure": true,
+      "chapterVersion": 2
+    },
+    "errors": []
+  },
+  {
+    "case": "skip-button",
+    "errors": []
+  },
+  {
+    "case": "skip-escape",
+    "errors": []
+  },
+  {
+    "case": "skip-second",
+    "errors": []
+  },
+  {
+    "case": "existing-and-cancel-restart",
+    "errors": []
+  },
+  {
+    "case": "ingame-restart",
+    "errors": []
+  },
+  {
+    "case": "reduced-motion",
+    "layout": {
+      "shot": "genyue",
+      "copy": {
+        "x": 24,
+        "y": 419,
+        "right": 776,
+        "bottom": 531,
+        "width": 752,
+        "height": 112
+      },
+      "skip": {
+        "x": 720,
+        "y": 12,
+        "right": 784,
+        "bottom": 56,
+        "width": 64,
+        "height": 44
+      },
+      "next": {
+        "x": 676,
+        "y": 539,
+        "right": 776,
+        "bottom": 584,
+        "width": 100,
+        "height": 45
+      },
+      "art": {
+        "x": 0,
+        "y": 0,
+        "right": 800,
+        "bottom": 600,
+        "width": 800,
+        "height": 600
+      },
+      "fonts": [
+        {
+          "text": "跳过",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "你身中蛊毒，寻医无果。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "听闻道君皇帝营建仙山艮岳，招聚天下异人，仙山上必有解毒之法。",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "继续",
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        }
+      ],
+      "text": [
+        "你身中蛊毒，寻医无果。",
+        "听闻道君皇帝营建仙山艮岳，招聚天下异人，仙山上必有解毒之法。"
+      ],
+      "image": "assets/opening/genyue-ink-v4.png",
+      "animation": "none"
+    }
+  },
+  {
+    "case": "image-retry",
+    "errors": []
+  }
+]

@@ -1,0 +1,40 @@
+/* The opening stays on the painting: ink captions, a paper wash, two actions. */
+#welcome .start-card{background:none;border:0;box-shadow:none;width:300px;padding:24px 0}
+#welcome .welcome-art h1{font:400 var(--fs-6)/1.35 var(--font-title)}
+#welcome .eyebrow{font:var(--fs-1)/1.7 var(--font-body)}
+#welcome .seal{font:var(--fs-5)/1.1 var(--font-title)}
+#welcome .start-card button{font:var(--fs-3)/1.6 var(--font-body);min-height:48px}
+#welcome .save-notice{font:var(--fs-2)/1.8 var(--font-body);color:var(--ink-2)}
+#opening-sequence{position:fixed;inset:0;z-index:100;background:var(--paper);color:var(--ink-1);font:var(--fs-4)/1.8 var(--font-body);overflow:hidden;isolation:isolate;touch-action:manipulation}
+#opening-sequence[hidden]{display:none}
+#opening-sequence .opening-art{position:absolute;inset:0;overflow:hidden}
+#opening-sequence .opening-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 400ms ease-out;pointer-events:none}
+#opening-sequence .opening-art img.current{opacity:1;animation:opening-drift 22s ease-out both}
+#opening-sequence .opening-content{position:absolute;inset:auto 0 0;padding:72px 6vw 24px;background:linear-gradient(to top,var(--paper),color-mix(in srgb,var(--paper) 94%,transparent) 52%,transparent);pointer-events:none}
+#opening-sequence .opening-copy{max-width:1040px;margin:0 auto 16px;min-height:120px;text-shadow:0 1px 3px var(--paper),0 0 12px var(--paper)}
+#opening-sequence .opening-copy p{margin:0;font:inherit;letter-spacing:.04em}
+#opening-sequence .opening-copy p+p{margin-top:8px;opacity:0;transition:opacity 300ms ease-out}
+#opening-sequence[data-revealed="true"] .opening-copy p+p{opacity:1}
+#opening-sequence .opening-footer{max-width:1040px;margin:auto;display:flex;align-items:center;gap:20px;min-height:44px}
+#opening-sequence button{pointer-events:auto;background:none;border:0;border-radius:0;box-shadow:none;color:var(--ink-1);font:var(--fs-3)/1.5 var(--font-body);padding:8px 14px;min-height:44px;cursor:pointer;transition:color 180ms ease-out}
+#opening-sequence button:hover{color:var(--ochre);background:none}
+#opening-sequence button:focus-visible{outline:2px solid var(--ink-3);outline-offset:3px}
+#opening-sequence .opening-skip{position:absolute;top:24px;right:4vw;text-shadow:0 0 4px var(--paper),0 0 10px var(--paper)}
+#opening-sequence .opening-next{margin-left:auto;border-bottom:2px solid var(--ink-3);min-width:100px}
+#opening-sequence .opening-progress{display:flex;gap:12px;align-items:center}
+#opening-sequence .opening-progress i{width:6px;height:6px;background:var(--ink-4);transform:rotate(-8deg)}
+#opening-sequence .opening-progress i.current{width:18px;background:var(--ink-2)}
+#opening-sequence .opening-image-error{font:var(--fs-1)/1.4 var(--font-body)}
+#opening-sequence .opening-retry{font-size:var(--fs-1);padding:4px}
+body.opening-active #welcome{visibility:hidden}
+@keyframes opening-drift{from{transform:scale(1)}to{transform:scale(1.025)}}
+@media(max-aspect-ratio:3/2){#opening-sequence .opening-art img{object-fit:contain;object-position:center 30%}}
+@media(max-width:900px){
+  #opening-sequence{font-size:var(--fs-3)}
+  #opening-sequence .opening-content{padding:60px 24px 16px}
+  #opening-sequence .opening-copy{min-height:112px;margin-bottom:8px}
+  #opening-sequence .opening-skip{top:12px;right:16px}
+  #opening-sequence .opening-footer{gap:12px}
+}
+@media(max-width:550px){#welcome{flex-direction:column;justify-content:center;gap:24px}#welcome .start-card{width:min(100%,300px)}#opening-sequence .opening-content{padding-inline:18px}#opening-sequence .opening-copy{min-height:160px}}
+@media(prefers-reduced-motion:reduce){#opening-sequence .opening-art img.current{animation:none}#opening-sequence .opening-art img,#opening-sequence .opening-copy p+p{transition:none}}

@@ -65,6 +65,7 @@ import {BONUS} from './action-contracts.js';
 import {GROUPS,groupActions,bubbleLayout} from './interaction.js';
 import {ATTR,ROLES,PEOPLE,SCENES} from './data.js';
 import {saveKey,loadCurrentSave,obsoleteSavePresent} from './save-state.js';
+import {mountOpeningSequence,recordOpeningBackground} from './opening-sequence.js';
 import {npcActionAccess} from './npc-action-access.js';
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const gatePreview=new URLSearchParams(location.search).get('preview')==='gate';
@@ -74,7 +75,7 @@ const legacySave=!saved&&obsoleteSavePresent(localStorage,saveScope);
 if(legacySave){const note=document.createElement('p');note.className='save-notice';note.textContent='初始属性与技艺规则已更新，旧存档已作废，请开启新档。';$('start').before(note);}
 let restartConfirmed=false,selectedNpc=null,pendingProbe=null;
 function createSoloWorld(game){switchMember(game.s,'main');return new World($('world'),game);}
-let role='wanderer',sim=new Simulation(saved||newArrival()),world=createSoloWorld(sim),started=false,panelTarget=null,more=false,ranked=null,epoch=0,sound=true,resultTimer,aiStatus='正在连接',aiReady=false,sleepingThrough=false;
+let sim=new Simulation(saved||newArrival()),world=createSoloWorld(sim),started=false,panelTarget=null,more=false,ranked=null,epoch=0,sound=true,resultTimer,aiStatus='正在连接',aiReady=false,sleepingThrough=false;
 try{sound=localStorage.getItem('jianghu-sound')!=='off';}catch{}
 const worldAudio=new WorldAudio();worldAudio.setEnabled(sound);worldAudio.init();
 const npcVoice=new NpcVoice({createContext:()=>worldAudio.getContext(),canSpeak:line=>started&&!document.hidden&&sim.s.player.hp>0&&!!spokenActor(line,sim.s)});
@@ -145,25 +146,22 @@ function bind(){sim.listeners.push((type,data)=>{
  if(type==='npc'){journal.add('system','交互',data.reaction?.text||data.text);tone('mail');if(data.reaction)generateReaction(data.reaction);else queueSpeech([{id:data.id,text:data.text}]);}
  });world.onPerformanceEnd=()=>{checkReveal.stop();if(pendingProbe){const probe=pendingProbe;pendingProbe=null;if(probe.success&&(!sim.s.player.skills||sim.s.people[probe.id].probedTier>=2))showUnlock(probe.id,probe.insight);else if(probe.success)queueSpeech([{id:'hero',text:'（'+probe.insight+'）'}]);else queueSpeech([{id:probe.id,text:probe.insight}]);}if(visualResult){const r=visualResult;visualResult=null;checkReveal.play(r,()=>dialogue.play(r.dialogue||[],cancelled=>{if(cancelled)return;if(continuesSceneDialogue(sim,r)&&world.nearbyEvent()){panelTarget='scene';bubbleEvent=sim.event.id;$('result').hidden=true;$('panel').hidden=false;renderBubbles();}else showResult(r);},(SCENES[r.type]?.name||r.label)+(r.roll!=null?` · ${r.grade||checkGrade(r.roll,r.check.chance)}`:'')));}};world.onReady=()=>{tone(world.combatReady?'draw':'sheath');toast(world.combatReady?'拔刀':'收刀');};world.onSound=tone;world.onArrive=()=>{};world.onHurt=()=>{if(sim.s.player.hp===0){endPlayerPursuit(sim.s);closePanel();closeDrawer();world.clearReady();world.attackTime=0;world.keys.clear();world.auto=null;save();toast('你受伤倒地。按 R 调息至天明，再入江湖。');}};}
 bind();
-function roleCards(){$('roles').innerHTML=Object.entries(ROLES).map(([id,r])=>`<button class="role ${role===id?'active':''}" data-role="${id}"><b>${r.name}</b><small>${r.desc}</small></button>`).join('');}
-roleCards();$('roles').onclick=e=>{const b=e.target.closest('[data-role]');if(b){role=b.dataset.role;roleCards();}};
+const openingSequence=mountOpeningSequence();
 $('continue').hidden=!saved;
 if(saved){
- const card=$('start').parentElement;
- card.querySelector('.eyebrow').textContent='临溪 / 已有存档';card.querySelector('h2').textContent='再入江湖';
- card.querySelector('h2 + p').textContent='前尘未了，接着走。';
- $('roles').hidden=true;$('continue').textContent=`继续游戏 · ${clockText(saved)}`;$('continue').className='primary';
+ $('continue').textContent=`继续游戏 · ${clockText(saved)}`;$('continue').className='primary';
  $('start').before($('continue'));$('start').className='quiet';$('start').textContent='另起新局';
 }
 let entering=false;
 async function begin(resume,fresh=false){
  if(entering||started)return;
  npcVoice.stop();worldAudio.unlock();npcVoice.unlock();
- if(!resume&&saved&&!restartConfirmed){restartConfirmed=true;$('roles').hidden=false;$('start').parentElement.querySelector('h2 + p').textContent='选择新出身。确认重开将覆盖当前存档；继续游戏可保留原进度。';$('start').textContent='确认重开并覆盖存档';return;}
+ if(!resume&&saved&&!restartConfirmed){restartConfirmed=true;$('restart-notice').hidden=false;$('restart-notice').textContent='重开将覆盖当前存档；继续游戏可保留原进度。';$('start').textContent='确认重开并覆盖存档';return;}
  entering=true;const entry=resume?$('continue'):$('start'),entryText=entry.textContent;entry.textContent='入画中…';$('start').disabled=$('continue').disabled=true;
- const ready=await world.modelsReady;entry.textContent=entryText;$('start').disabled=$('continue').disabled=false;entering=false;
- if(!ready){toast('人物资源未能载入，请刷新后重试。');return;}
- if(!resume){sim=new Simulation(newArrival(role));world.sim=sim;world.gatePlaced=false;world.hero.position.set(sim.s.player.x,0,sim.s.player.z);world.syncEvent();bind();}
+ const ready=await world.modelsReady;
+ if(!ready){entry.textContent=entryText;$('start').disabled=$('continue').disabled=false;entering=false;toast('人物资源未能载入，请刷新后重试。');return;}
+ if(!resume||fresh){world.keys.clear();await openingSequence.play();sim=new Simulation(newArrival());recordOpeningBackground(sim.s);world.sim=sim;world.gatePlaced=false;world.hero.position.set(sim.s.player.x,0,sim.s.player.z);world.syncEvent();bind();}
+ world.keys.clear();world.auto=null;entry.textContent=entryText;$('start').disabled=$('continue').disabled=false;entering=false;
  started=true;journal.restore();$('welcome').hidden=true;for(const id of ['hud','vitals','controls','minimap'])$(id).hidden=false;save();toast(resume&&!fresh?'旧日的人情与风波都还在。继续你的江湖。':(sim.event?.type==='gate'?'黄旗封住了关口。先看一看，再找自己的门路。':'你来到临溪。桥头传来争执声……按 E 介入。'));
 }
 $('start').onclick=()=>begin(false);$('continue').onclick=()=>begin(true);
@@ -338,10 +336,10 @@ function restMenu(){
  drawer('歇息与等待',`<p>现在是 ${clockText(sim.s)}。选择下一次抵达的时刻。</p><label>到 <input id="rest-until" type="time" value="06:00" required></label><div class="rest-options"><button data-night ${sim.s.chapterVersion===2&&!restingPlace(sim.s)?'disabled':''}>${icon('Moon')}${restingPlace(sim.s)?.name||'需到落脚处'} · 睡到此时</button><button data-wait>原地等待</button><button data-restart>${icon('RotateCcw')}重开 · 从城外入城</button></div>`);$('drawer').dataset.view='rest';
  $('drawer').querySelector('[data-night]').onclick=()=>skipTime(true);$('drawer').querySelector('[data-wait]').onclick=()=>skipTime(false);
  $('drawer').querySelector('[data-restart]').onclick=()=>{
-  drawer('重新开始？','<p>本局的物品、人情和江湖见闻将被清空，以当前出身，从十二文、尚无案底的花石纲开场重新开始。</p><div class="rest-options"><button data-confirm-restart>确认重开</button><button data-cancel-restart>返回</button></div>');$('drawer').dataset.view='rest';
+  drawer('重新开始？','<p>本局的物品、人情和江湖见闻将被清空，以初始属性，从十二文、尚无案底的花石纲开场重新开始。</p><div class="rest-options"><button data-confirm-restart>确认重开</button><button data-cancel-restart>返回</button></div>');$('drawer').dataset.view='rest';
   $('drawer').querySelector('[data-cancel-restart]').onclick=restMenu;
   $('drawer').querySelector('[data-confirm-restart]').onclick=()=>{
-   try{sessionStorage.setItem('jianghu-restart','1');localStorage.setItem(SAVE,JSON.stringify(newArrival(sim.s.role)));}catch{sessionStorage.removeItem('jianghu-restart');toast('无法保存新进度，暂时没有重开。');return;}
+   try{sessionStorage.setItem('jianghu-restart','1');localStorage.setItem(SAVE,JSON.stringify(newArrival()));}catch{sessionStorage.removeItem('jianghu-restart');toast('无法保存新进度，暂时没有重开。');return;}
    started=false;location.reload();
   };
  };

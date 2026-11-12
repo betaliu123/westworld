@@ -1,0 +1,260 @@
+TAP version 13
+# Subtest: static publishing keeps recorded audio under the board path and preserves request options
+ok 1 - static publishing keeps recorded audio under the board path and preserves request options
+  ---
+  duration_ms: 17.6176
+  ...
+# Subtest: configured Drop relay forwards only the three AI APIs and omits cookies
+ok 2 - configured Drop relay forwards only the three AI APIs and omits cookies
+  ---
+  duration_ms: 1.1102
+  ...
+# Subtest: relay preserves Request payloads and abort signals
+ok 3 - relay preserves Request payloads and abort signals
+  ---
+  duration_ms: 2.1305
+  ...
+# Subtest: invalid relay configuration remains offline
+ok 4 - invalid relay configuration remains offline
+  ---
+  duration_ms: 3.434
+  ...
+# Subtest: static publishing uses local API fallbacks and loads the real hero animation pack
+ok 5 - static publishing uses local API fallbacks and loads the real hero animation pack
+  ---
+  duration_ms: 1.1725
+  ...
+# Subtest: every entry route receives the persistent main objective, respecting untracking and old v1
+ok 6 - every entry route receives the persistent main objective, respecting untracking and old v1
+  ---
+  duration_ms: 6.5366
+  ...
+# Subtest: both optional offers are heard before discovery, decline does not commit, and lookup is a tracking choice
+ok 7 - both optional offers are heard before discovery, decline does not commit, and lookup is a tracking choice
+  ---
+  duration_ms: 4.8919
+  ...
+# Subtest: old v2 goals recover stale tracking without inventing the revised royal promise
+ok 8 - old v2 goals recover stale tracking without inventing the revised royal promise
+  ---
+  duration_ms: 1.594
+  ...
+# Subtest: prior acquisition, read and reload all lead to one exclusive delivery and no forced search replay
+ok 9 - prior acquisition, read and reload all lead to one exclusive delivery and no forced search replay
+  ---
+  duration_ms: 6.2362
+  ...
+# Subtest: unknown route conditions stay out of HTML; heard offers show exact requirements
+ok 10 - unknown route conditions stay out of HTML; heard offers show exact requirements
+  ---
+  duration_ms: 2.0857
+  ...
+# Subtest: court route checks reputation, referral, unsettled cases and physical pass independently
+ok 11 - court route checks reputation, referral, unsettled cases and physical pass independently
+  ---
+  duration_ms: 1.181
+  ...
+# Subtest: gang purchase rechecks money, distance and condition; pays once, persists identity and original ticket
+ok 12 - gang purchase rechecks money, distance and condition; pays once, persists identity and original ticket
+  ---
+  duration_ms: 1.3691
+  ...
+# Subtest: interrupted visible handover never pays or grants a ticket
+ok 13 - interrupted visible handover never pays or grants a ticket
+  ---
+  duration_ms: 2.3639
+  ...
+# Subtest: a confirmed departure cannot be overwritten by a competing ending
+ok 14 - a confirmed departure cannot be overwritten by a competing ending
+  ---
+  duration_ms: 1.2389
+  ...
+# Subtest: crime reputation follows real news, not wanted counters, discovery or current disguise
+ok 15 - crime reputation follows real news, not wanted counters, discovery or current disguise
+  ---
+  duration_ms: 1.6569
+  ...
+# Subtest: reporting testimony changes court standing once; prison does not restore it
+ok 16 - reporting testimony changes court standing once; prison does not restore it
+  ---
+  duration_ms: 1.0892
+  ...
+# Subtest: walls, distance and incapacitation prevent propagation; civilian abuse earns no gang standing
+ok 17 - walls, distance and incapacitation prevent propagation; civilian abuse earns no gang standing
+  ---
+  duration_ms: 0.4116
+  ...
+# Subtest: earned court path reaches 50 through physical custody and propagated wage mediation, without ledger
+ok 18 - earned court path reaches 50 through physical custody and propagated wage mediation, without ledger
+  ---
+  duration_ms: 1.3971
+  ...
+# Subtest: each origin starts with its approved attributes and the same 200 point budget
+ok 19 - each origin starts with its approved attributes and the same 200 point budget
+  ---
+  duration_ms: 1.845
+  ...
+# Subtest: new saves use v3 keys with isolated preview and sanitized playtest scopes
+ok 20 - new saves use v3 keys with isolated preview and sanitized playtest scopes
+  ---
+  duration_ms: 0.2296
+  ...
+# Subtest: loading accepts only current chapter and balance versions with object player and people
+ok 21 - loading accepts only current chapter and balance versions with object player and people
+  ---
+  duration_ms: 0.3311
+  ...
+# Subtest: old progress remains intact and is never used as a fallback for a new opening
+ok 22 - old progress remains intact and is never used as a fallback for a new opening
+  ---
+  duration_ms: 0.5237
+  ...
+# Subtest: v1 and v2 are independently detected without needing parseable old facts
+ok 23 - v1 and v2 are independently detected without needing parseable old facts
+  ---
+  duration_ms: 0.1573
+  ...
+# Subtest: a current save round-trips without importing old rewards or mutating either record
+ok 24 - a current save round-trips without importing old rewards or mutating either record
+  ---
+  duration_ms: 0.1221
+  ...
+# Subtest: obsolete-save notices respect preview and playtest isolation
+ok 25 - obsolete-save notices respect preview and playtest isolation
+  ---
+  duration_ms: 0.1667
+  ...
+# Subtest: an incompatible current record is reported without deleting it
+ok 26 - an incompatible current record is reported without deleting it
+  ---
+  duration_ms: 0.0909
+  ...
+# Subtest: missing or inaccessible browser storage does not prevent a fresh start
+ok 27 - missing or inaccessible browser storage does not prevent a fresh start
+  ---
+  duration_ms: 0.3013
+  ...
+# Subtest: combat damage respects the same training, weapon and actual worn armor for both sides
+ok 28 - combat damage respects the same training, weapon and actual worn armor for both sides
+  ---
+  duration_ms: 4.3249
+  ...
+# Subtest: harming untrained townsfolk does not farm martial progress and reload cannot heal them
+ok 29 - harming untrained townsfolk does not farm martial progress and reload cannot heal them
+  ---
+  duration_ms: 1.154
+  ...
+# Subtest: new opening initializes gate, skills and a clean criminal record; no old proposal after dawn
+ok 30 - new opening initializes gate, skills and a clean criminal record; no old proposal after dawn
+  ---
+  duration_ms: 0.8801
+  ...
+# Subtest: free nest sleep restores needs and unlocks instruction, not flat attributes
+ok 31 - free nest sleep restores needs and unlocks instruction, not flat attributes
+  ---
+  duration_ms: 2.7742
+  ...
+# Subtest: learning advances practical probe capability and does not reuse the coarse observation cache
+ok 32 - learning advances practical probe capability and does not reuse the coarse observation cache
+  ---
+  duration_ms: 2.8042
+  ...
+# Subtest: conversation navigation never speaks and every branch fits three choices
+ok 33 - conversation navigation never speaks and every branch fits three choices
+  ---
+  duration_ms: 0.694
+  ...
+# Subtest: ring return through dialogue and gift share settlement and a single linked dawn reply
+ok 34 - ring return through dialogue and gift share settlement and a single linked dawn reply
+  ---
+  duration_ms: 2.188
+  ...
+# Subtest: stolen property remembers witnesses: a successful lie has a later consequence
+ok 35 - stolen property remembers witnesses: a successful lie has a later consequence
+  ---
+  duration_ms: 0.7969
+  ...
+# Subtest: returning a purse transfers the actual money once, not a generic gift
+ok 36 - returning a purse transfers the actual money once, not a generic gift
+  ---
+  duration_ms: 0.8354
+  ...
+# Subtest: actual ledger is evidence while a lead alone does not complete the investigation
+ok 37 - actual ledger is evidence while a lead alone does not complete the investigation
+  ---
+  duration_ms: 1.6373
+  ...
+# Subtest: identity check uses name, duty guard, original holder, report and appearance; preview matches settlement
+ok 38 - identity check uses name, duty guard, original holder, report and appearance; preview matches settlement
+  ---
+  duration_ms: 3.2097
+  ...
+# Subtest: certain zero identity chance is failure even with the lowest roll
+ok 39 - certain zero identity chance is failure even with the lowest roll
+  ---
+  duration_ms: 0.4716
+  ...
+# Subtest: convoy entry requires wearing the outfit, with no rollcall hours or extra check
+ok 40 - convoy entry requires wearing the outfit, with no rollcall hours or extra check
+  ---
+  duration_ms: 15.3383
+  ...
+# Subtest: a prepared outfit is recognized when negotiating, including after reload at a former closed hour
+ok 41 - a prepared outfit is recognized when negotiating, including after reload at a former closed hour
+  ---
+  duration_ms: 2.2717
+  ...
+# Subtest: convoy execution rechecks clothing after preview without duplicating borrowed clothes
+ok 42 - convoy execution rechecks clothing after preview without duplicating borrowed clothes
+  ---
+  duration_ms: 2.0101
+  ...
+# Subtest: royal sponsorship requires witnessed meaningful care; instruction does not farm reputation
+ok 43 - royal sponsorship requires witnessed meaningful care; instruction does not farm reputation
+  ---
+  duration_ms: 1.1813
+  ...
+# Subtest: skill lessons change combat and pressure abilities but repeated practice cannot grind stats
+ok 44 - skill lessons change combat and pressure abilities but repeated practice cannot grind stats
+  ---
+  duration_ms: 0.615
+  ...
+# Subtest: new dealer cards describe implemented routes and do not advertise old escort or wedding
+ok 45 - new dealer cards describe implemented routes and do not advertise old escort or wedding
+  ---
+  duration_ms: 0.3389
+  ...
+# Subtest: dialogue camera finds the clear side of a speaker instead of stopping against a tea pillar
+ok 46 - dialogue camera finds the clear side of a speaker instead of stopping against a tea pillar
+  ---
+  duration_ms: 0.5365
+  ...
+# Subtest: practice caps inside a tier; only instruction advances it
+ok 47 - practice caps inside a tier; only instruction advances it
+  ---
+  duration_ms: 0.291
+  ...
+# Subtest: royal introduction is a real token and must be shown before court admission
+ok 48 - royal introduction is a real token and must be shown before court admission
+  ---
+  duration_ms: 1.2484
+  ...
+# Subtest: custody only rewards physical delivery and cannot be cashed repeatedly
+ok 49 - custody only rewards physical delivery and cannot be cashed repeatedly
+  ---
+  duration_ms: 1.2008
+  ...
+# Subtest: court evidence shares one ending while other earned routes keep distinct outcomes and consumed choices stay gone
+ok 50 - court evidence shares one ending while other earned routes keep distinct outcomes and consumed choices stay gone
+  ---
+  duration_ms: 2.6206
+  ...
+1..50
+# tests 50
+# suites 0
+# pass 50
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 410.7095

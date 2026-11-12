@@ -1,0 +1,52 @@
+{
+  "assets": [
+    {
+      "file": "index.html",
+      "sha256": "a5354b65535048fe815239e6e21bff89c989cbc08a26c44102f565a649ff3ffc",
+      "matches": true
+    },
+    {
+      "file": "src/main.js",
+      "sha256": "d4a19b753edad6dcab99ad2b38f2f0144972b139be32e8e78caa45f8a3c919f6",
+      "matches": true
+    },
+    {
+      "file": "src/opening-sequence.js",
+      "sha256": "82ee1c42d22c2833eeabaa6b61e429be469d2a1961d8d4ac5a52b6b44d15b821",
+      "matches": true
+    },
+    {
+      "file": "opening.css",
+      "sha256": "01b7f0621e1c9ce618a694f5825cea22db0f2893818a403b6997ba48bfa89423",
+      "matches": true
+    },
+    {
+      "file": "assets/opening/genyue-ink-v4.png",
+      "sha256": "f0323bd3dd4afe05c41846ed8b28ba0d5885a38e5715fef23156fe7fb8dff453",
+      "matches": true
+    },
+    {
+      "file": "assets/opening/linxi-gate-ink-v2.png",
+      "sha256": "9b37c87713a5ecb2cca87cbc04800e6e44d8b0bce5558c782218a1e2dbeef474",
+      "matches": true
+    }
+  ],
+  "shots": [
+    {
+      "id": "genyue",
+      "lines": [
+        "你身中蛊毒，寻医无果。",
+        "听闻道君皇帝营建仙山艮岳，招聚天下异人，仙山上必有解毒之法。"
+      ]
+    },
+    {
+      "id": "linxi",
+      "lines": [
+        "替艮岳运货、办差的人，常在临溪落脚。",
+        "你循线而来，想寻一条上山的路，却撞上了花石纲封关。"
+      ]
+    }
+  ],
+  "errors": [],
+  "checkedAt": "2026-11-12T13:53:35.045Z"
+}
