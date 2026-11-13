@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from '../vendor/three.module.js';
-import {HeroCombat,SWINGS,SWING_COST,SPRINT,GUARD,guardChip,guardWindow,WAVE,DODGE,dodgeTravel,LUNGE,lungeStep,BODY_GAP,standOff,IMPACT,ImpactFeel} from '../src/hero-combat.js';
+import {HeroCombat,SWINGS,SPRINT,GUARD,guardChip,guardWindow,WAVE,DODGE,dodgeTravel,LUNGE,lungeStep,BODY_GAP,standOff,IMPACT,ImpactFeel} from '../src/hero-combat.js';
 import {ViewPress,DRAG_START,DRAG_START_ARMED} from '../src/view-drag.js';
 import {stepVitality,VITALITY} from '../src/npc-vitality.js';
 import {NPC_SWING,NPC_REACH,inNpcReach,CROWD,crowdSlots,stepNpcCombat} from '../src/npc-combat.js';
@@ -30,12 +30,12 @@ function armed(extra={}){
   return w;
 }
 
-test('a press with the blade drawn always cuts; being too tired to is said once, not on every press',()=>{
-  let told=0;const w=armed({onSpent(){told++;}});w.attack();assert.ok(w.heroCombat.swing);assert.equal(w.sim.s.player.energy,30-SWING_COST);
+test('a press with the blade drawn always cuts, however tired; being too tired to step is said once, not on every press',()=>{
+  let told=0;const w=armed({onSpent(){told++;}});w.attack();assert.ok(w.heroCombat.swing);assert.equal(w.sim.s.player.energy,30,'cuts leave the stamina for stepping and guarding');
   assert.equal(World.prototype.takeBackSwing,undefined,'a press that turns into a view drag keeps its cut');
-  const tired=armed({onSpent(){told++;}});tired.sim.s.player.energy=SWING_COST-1;
-  tired.attack();tired.attack();assert.equal(tired.heroCombat.swing,null);assert.equal(tired.sim.s.player.energy,SWING_COST-1);assert.equal(told,1);
-  tired.t+=1;tired.attack();assert.equal(told,2);
+  const tired=armed({onSpent(){told++;}});tired.sim.s.player.energy=0;
+  tired.attack();assert.ok(tired.heroCombat.swing);assert.equal(told,0);tired.heroCombat.cancel();tired.dodge();tired.dodge();assert.equal(tired.dodging,null);assert.equal(tired.sim.s.player.energy,0);assert.equal(told,1);
+  tired.t+=1;tired.dodge();assert.equal(told,2);
   const winded=armed({onSpent(){told++;}});winded.sim.s.player.energy=DODGE.cost-1;assert.equal(winded.dodge(),false);assert.equal(told,3);
 });
 
@@ -44,9 +44,9 @@ test('the quick step covers its distance, costs stamina once and cannot be chain
   assert.ok(dodgeTravel(DODGE.time/2)>DODGE.distance*.7,'most of the ground is covered early');
   const w=armed();w.attack();
   assert.equal(w.dodge(),true);assert.equal(w.heroCombat.swing,null,'the step abandons the swing');
-  assert.equal(w.sim.s.player.energy,30-SWING_COST-DODGE.cost);
+  assert.equal(w.sim.s.player.energy,30-DODGE.cost);
   assert.ok(Math.abs(w.dodging.z+1)<1e-9&&Math.abs(w.dodging.x)<1e-9,'with no direction held it goes straight back');
-  assert.equal(w.dodge(),false);w.dodging=null;assert.equal(w.dodge(),false,'still cooling down');assert.equal(w.sim.s.player.energy,30-SWING_COST-DODGE.cost);
+  assert.equal(w.dodge(),false);w.dodging=null;assert.equal(w.dodge(),false,'still cooling down');assert.equal(w.sim.s.player.energy,30-DODGE.cost);
   w.t+=DODGE.cooldown;w.keys.add('KeyD');assert.equal(w.dodge(),true);assert.ok(Math.abs(w.dodging.x-1)<1e-9,'a held direction is followed');
 });
 

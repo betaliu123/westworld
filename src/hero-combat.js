@@ -6,8 +6,6 @@ export const SWINGS = [
   {duration: .68, strike: .21, chain: .54, skip: .14},
 ];
 
-export const SWING_COST = 4;
-
 // Running speed in metres a second. With a blade drawn it is the fastest the armed run clip can follow without the feet sliding.
 export const SPRINT = {plain: 6.2, armed: 5.2};
 
@@ -24,7 +22,9 @@ export const WAVE = {cooldown: 12, cast: .62, release: .2, speed: 16, range: 12,
 
 // A quick step out of reach. It grants no immunity: a blow misses only because, at its contact frame,
 // the body really is somewhere else. It starts fast and settles: dodgeTravel is the ground covered by a given age.
-export const DODGE = {time: .26, distance: 3.1, cost: 10, cooldown: .55};
+// Stamina (which returns at 3 a second) is spent on stepping, guarding and running, not on cuts: at `cost` a step every
+// two seconds can be kept up for a whole fight, where cuts that drew on the same pool left none to step with.
+export const DODGE = {time: .26, distance: 3.1, cost: 6, cooldown: .55};
 export const dodgeTravel = age => { const k = Math.min(1, Math.max(0, age / DODGE.time)); return DODGE.distance * (1 - (1 - k) ** 2); };
 
 // A swing at an opponent standing just out of reach steps in during its wind-up, and keeps after them if they give ground.

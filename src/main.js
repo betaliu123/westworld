@@ -456,7 +456,7 @@ function renderBubbles(){
 
  }
  $('panel').classList.toggle('npc-action-menu',panelTarget!=='scene');
- if(panelTarget!=='scene'){const id=panelTarget,options=npcMenuPages.at(-1)?.target===id?npcMenuPages.at(-1).options:npcOptions(id);$('panel').hidden=false;$('panel').innerHTML=`<header>${npcMenuPages.length?'<button data-menu-back aria-label="返回话题" title="返回话题">'+icon('RotateCcw')+'</button>':''}<b>${esc(npcInfo(sim,environment.eco,id)?.name||'？？？')}</b><button data-close aria-label="关闭" title="关闭">${icon('X')}</button></header><div class="npc-actions">${options.map(a=>{const p=bubblePreview(a);return `<button data-action="${a.id}" ${isStoryChoice(a)?'class="quest-needed" title="主线相关" aria-label="'+esc(a.label)+'（主线相关）"':''} ${p.blocked?'disabled':''}><b>${esc(a.label)}</b>${a.stat||a.cost?`<small>${esc(choiceCheckText(a,p))}${a.cost?' · '+a.cost+' 文':''}${a.mode==='pressure'&&!p.blocked?' · 敌对行动 · 体力 10':''}</small>`:''}</button>`;}).join('')}</div>`;$('panel').querySelector('[data-close]').onclick=closePanel;const back=$('panel').querySelector('[data-menu-back]');if(back)back.onclick=()=>{npcMenuPages.pop();renderBubbles();};for(const b of $('panel').querySelectorAll('[data-action]'))b.onclick=()=>runBubbleAction(options.find(a=>a.id===b.dataset.action));positionBubbles();return;}
+ if(panelTarget!=='scene'){const id=panelTarget,options=npcMenuPages.at(-1)?.target===id?npcMenuPages.at(-1).options:npcOptions(id);$('panel').hidden=false;$('panel').innerHTML=`<header>${npcMenuPages.length?'<button data-menu-back aria-label="返回话题" title="返回话题">'+icon('RotateCcw')+'</button>':''}<b>${esc(npcInfo(sim,environment.eco,id)?.name||'？？？')}</b><button data-close aria-label="关闭" title="关闭">${icon('X')}</button></header><div class="npc-actions">${options.map(a=>{const p=bubblePreview(a);return `<button data-action="${a.id}" ${isStoryChoice(a)?'class="quest-needed" title="主线相关" aria-label="'+esc(a.label)+'（主线相关）"':''} ${p.blocked?'disabled':''}><b>${esc(a.label)}</b>${p.blocked&&p.reason?`<small>${esc(p.reason)}</small>`:a.stat||a.cost?`<small>${esc(choiceCheckText(a,p))}${a.cost?' · '+a.cost+' 文':''}${a.mode==='pressure'&&!p.blocked?' · 敌对行动 · 体力 10':''}</small>`:''}</button>`;}).join('')}</div>`;$('panel').querySelector('[data-close]').onclick=closePanel;const back=$('panel').querySelector('[data-menu-back]');if(back)back.onclick=()=>{npcMenuPages.pop();renderBubbles();};for(const b of $('panel').querySelectorAll('[data-action]'))b.onclick=()=>runBubbleAction(options.find(a=>a.id===b.dataset.action));positionBubbles();return;}
  const scene=panelTarget==='scene',e=sim.event;if(scene&&(!e||e.id!==bubbleEvent)){closePanel();return;}
  const options=bubbleOptions(),groups=groupActions(options),group=groups.find(g=>g.id===bubbleGroup);
  if(!group){bubbleGroup=null;bubblePage=0;}
@@ -611,7 +611,8 @@ function runBubbleAction(a,spoken=false){
  else if(a.mode==='rest'){rest();return;}
  else if(a.mode==='leave'){r={};queueSpeech([{id:target,text:'江湖路远，后会有期。'}]);toast('你拱手告辞。');}
  else r=sim.npcAction(target,a.id==='gift-tea'?'gift':a.id);
- if(r?.error){if(a.id.startsWith('if_'))checkReveal.cancel();toast(r.error);return;}
+ // A refusal the preview did not foresee is also written on the entry that was pressed: the journal sits behind the open menu.
+ if(r?.error){if(a.id.startsWith('if_'))checkReveal.cancel();toast(r.error);const pressed=$('panel').hidden?null:[...$('panel').querySelectorAll('[data-action]')].find(b=>b.dataset.action===a.id);if(pressed){pressed.disabled=true;(pressed.querySelector('small')||pressed.appendChild(document.createElement('small'))).textContent=r.error;}return;}
  if(r?.training){closePanel();lessons.start(r.training);return;}
  if(r?.needsItem){closePanel();environment.openGift(target,{task:r.task});return;}
  if(r?.needsOrigin){originChoice(target,r.itemKey,r.line);return;}
@@ -684,7 +685,7 @@ world.onItemAction=(id,key,mode,options={})=>{
  itemReactionSerial++;return itemActions.start(id,key,mode,options);
 };
 world.onGift=(id,key,answer=null)=>world.onItemAction(id,key,'gift',{answer});
-$('interact').onclick=interact;world.onGateTalk=interact;world.onNpcSelected=id=>{selectedNpc=id;};
+$('interact').onclick=interact;world.onGateTalk=interact;world.onNpcSelected=id=>{selectedNpc=id;};{const select=world.onSelectObject;world.onSelectObject=e=>{const open=!$('panel').hidden;return select?.(e)||open;};}/* a click beside an open talk menu is not a draw */
 window.addEventListener('keydown',e=>{
  if(!started||e.isComposing||e.repeat)return;
  if(e.code==='Escape'&&!$('conversation').hidden){e.preventDefault();e.stopImmediatePropagation();collapseConversation();return;}

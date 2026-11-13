@@ -113,7 +113,9 @@ export function mountEnvironment(world,getSim,notify,escape){
  selected=null;selectedItem=null;
  const hit=hits[0];if(hit){for(const a of world.environmentAssets){let n=hit.object;while(n&&n!==a.group)n=n.parent;if(n){selected=a.id;if(['teapot','teacup'].includes(a.kind))selectedItem=eco.items('object:'+a.id).find(i=>i.drink)?.id;const foods=eco.items('object:'+a.id);const index=a.foods?.indexOf(hit.object)??-1;if(index>=0)selectedItem=foods[index]?.id;break;}}
  if(!selected)for(const [id,m]of foodMeshes)if(hit.object===m||hit.object.parent===m){selectedItem=id;break;}}
- giftRecipient=null;packMode=false;panel.hidden=!target();lastHTML='';render();
+ const open=!panel.hidden;giftRecipient=null;packMode=false;panel.hidden=!target();lastHTML='';render();
+ // Whether the click was for something: it picked a thing, or put away what was open.
+ return open||!panel.hidden;
  };
  function renderGift(){
  const physical=eco.items('player'),quest=storyItems(sim.s.player).filter(q=>!physical.some(i=>q.id===i.storyId||(q.id==='ring'&&i.type==='ring'))),items=[...quest.map(i=>({...i,key:'story:'+i.id})),...physical.map(i=>({...i,key:i.id,icon:itemIcon(i)}))];

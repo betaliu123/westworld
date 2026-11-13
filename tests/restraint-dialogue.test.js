@@ -17,6 +17,16 @@ function fixture(id='scribe'){
  eco.positions[id]={x:0,z:1.5,facing:Math.PI};
  return {sim,eco,s,n,id,bind:()=>resolveRestraint(sim,eco,id),release:()=>resolveRestraint(sim,eco,id,'release')};
 }
+test('what someone caught up in a fight would refuse is shown as refused, with the reason, not left to do nothing when pressed',()=>{
+ for(const [name,upset,spared] of [['running',n=>{n.awareness={state:'flee'};},[]],['an open case',n=>{n.awareness={state:'calm',caseOpen:true};},['appearance_paste']]]){
+  const f=fixture(),{sim,eco,s,n,id}=f;s.player.money=20;n.probedTier=2;
+  const options=contactOptions(sim,id).filter(a=>['appearance_paste','ch_scribe_secret'].includes(a.id));assert.equal(options.length,2,name);
+  for(const a of options)assert.equal(contactPreview(sim,id,a,eco).blocked,false,name+': offered while calm');
+  upset(n);
+  for(const a of options){const preview=contactPreview(sim,id,a,eco),refused=!!contactResolve(sim,eco,id,a.id).error;
+   assert.equal(refused,!spared.includes(a.id),name+': '+a.id);assert.equal(preview.blocked,refused,name+': '+a.id+' is previewed as it settles');if(refused)assert.ok(preview.reason,name+': '+a.id+' says why');}
+ }
+});
 test('ordinary proposals become bound replies; stale purchases, clues and lessons cannot settle',()=>{
  const f=fixture(),{sim,eco,s,id}=f;
  const purchase=contactOptions(sim,id).find(a=>a.id==='appearance_paste');assert.ok(purchase);

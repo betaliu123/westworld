@@ -36,9 +36,11 @@ import {World} from '../src/world.js';
 test('buildings and intact tables block walking; jumping clears low tables',()=>{const w={obstacles:[{x:4,z:0,w:2,d:2}],props:[{id:'table',x:0,z:0}],sim:{s:{broken:[]}}};assert.equal(World.prototype.collides.call(w,0,0),true);assert.equal(World.prototype.collides.call(w,0,0,1.2),false);assert.equal(World.prototype.collides.call(w,4,0,1.2),true);w.sim.s.broken=['table'];assert.equal(World.prototype.collides.call(w,0,0),false);});
 test('navigation finds a walkable path around solid obstacles',()=>{const w={hero:{position:{x:0,z:8}},obstacles:[{x:0,z:3,w:4,d:3}],props:[],sim:{s:{broken:[]}}};w.collides=(...p)=>World.prototype.collides.call(w,...p);assert.equal(World.prototype.routeTo.call(w,[0,-3]),true);assert.ok(w.auto.every(p=>!w.collides(...p)));assert.ok(w.auto.some(p=>Math.abs(p[0])>=3));});
 
-test('only explicit draw enables left-click attacks and sheathing cancels it',()=>{
- const sim=setup(),w=Object.create(World.prototype);Object.assign(w,{sim,playing:true,locked:false,t:10,readyUntil:0,npcs:new Map()});let strikes=0;w.attack=()=>strikes++;
- w.primaryAction();w.primaryAction();assert.equal(strikes,0);assert.equal(w.combatReady,false);
+test('unarmed, a click on nothing draws the blade and a click on someone or something does not; only a drawn blade cuts',()=>{
+ const sim=setup(),w=Object.create(World.prototype);Object.assign(w,{sim,playing:true,locked:false,t:10,readyUntil:0,npcs:new Map()});let strikes=0,picked=true;w.attack=()=>strikes++;w.onSelectObject=()=>picked;
+ w.primaryAction();w.primaryAction();assert.equal(strikes,0);assert.equal(w.combatReady,false,'the click was for what it landed on');
+ picked=false;sim.s.player.stealing=true;w.primaryAction();assert.equal(w.combatReady,false,'not while sneaking');sim.s.player.stealing=false;
+ w.primaryAction();assert.equal(w.combatReady,true);assert.equal(strikes,0,'the click that draws does not also cut');w.toggleWeapon();picked=true;
  w.toggleWeapon();assert.equal(w.combatReady,true);w.t+=100;w.primaryAction();assert.equal(strikes,1);
  w.toggleWeapon();w.primaryAction();assert.equal(strikes,1);w.locked=true;w.toggleWeapon();assert.equal(w.combatReady,false);
  w.locked=false;sim.s.player.hp=0;w.toggleWeapon();assert.equal(w.combatReady,false);

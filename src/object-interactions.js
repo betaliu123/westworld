@@ -83,9 +83,9 @@ export function mountObjectInteractions(world,getSim,environment,notify,closePan
  const rect=world.renderer.domElement.getBoundingClientRect();ray.setFromCamera(new T.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),world.camera);
  const hit=ray.intersectObjects(world.scene.children,true).find(h=>{if(!h.object.isMesh)return false;for(let n=h.object;n;n=n.parent)if(!n.visible||n.userData.environmentEffect)return false;return true;});
  const contains=root=>{for(let n=hit?.object;n;n=n.parent)if(n===root)return true;return false;};
- if(hit){for(const [id,n]of world.npcs)if(contains(n.actor)){world.onNpcSelected?.(id);environment.close();closePanel();visitGate(getSim(),id);if(!getSim().s.player.stealing){world.onGateTalk?.(id);return;}openTheft(id,id==='gate_merchant'&&contains(pass));return;}
- for(const [id,root]of [['runner-clothes',rack],['scribe-table',table]])if(contains(root)){environment.close();visitGate(getSim(),id);theftTarget=null;selected=id;pinned=id;dismissed=null;render(entries.get(id));return;}}
- theftTarget=null;dismissed=selected;panel.hidden=true;selectObject?.(e);
+ if(hit){for(const [id,n]of world.npcs)if(contains(n.actor)){world.onNpcSelected?.(id);environment.close();closePanel();visitGate(getSim(),id);if(!getSim().s.player.stealing){world.onGateTalk?.(id);return true;}openTheft(id,id==='gate_merchant'&&contains(pass));return true;}
+ for(const [id,root]of [['runner-clothes',rack],['scribe-table',table]])if(contains(root)){environment.close();visitGate(getSim(),id);theftTarget=null;selected=id;pinned=id;dismissed=null;render(entries.get(id));return true;}}
+ const open=!panel.hidden;theftTarget=null;dismissed=selected;panel.hidden=true;return selectObject?.(e)||open;
  };
  // A standing control like the other action buttons: Z or a click crouches and stands; it stays visible while playing.
  const mode=document.createElement('button');mode.type='button';mode.id='stealth-mode';mode.hidden=true;mode.textContent='蹲行';document.body.append(mode);

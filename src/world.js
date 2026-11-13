@@ -31,7 +31,7 @@ import {inkPost,inkEnabled} from './ink-post.js';
 import {renderQuality,qualityMode} from './render-quality.js';
 import {mountAppearanceModel} from './appearance-model.js';
 import {mountHeroModel} from './hero-model.js';
-import {HeroCombat,SWING_COST,SPRINT,GUARD,guardWindow,WAVE,DODGE,dodgeTravel,LUNGE,IMPACT,ImpactFeel,objectReach,lungeStep,standOff} from './hero-combat.js';
+import {HeroCombat,SPRINT,GUARD,guardWindow,WAVE,DODGE,dodgeTravel,LUNGE,IMPACT,ImpactFeel,objectReach,lungeStep,standOff} from './hero-combat.js';
 import {ViewPress} from './view-drag.js';
 import {InkFx,bladeEnds} from './ink-fx.js';
 import {mountVitality} from './npc-vitality.js';
@@ -413,7 +413,8 @@ gateRoof(gate);this.banners=gateBanners(gate);
  if(this.aimMode){this.onAimPick?.(e);return;}
  if(this.sim.s.player.bedRest)return;
  if(!this.playing||this.locked||this.performance||this.sim.s.player.hp<=0)return;
- if(this.combatReady)this.attack();else this.onSelectObject?.(e);
+ // Unarmed, a click on a person or a thing is for them (onSelectObject answers whether it was); a click on nothing draws the blade.
+ if(this.combatReady)this.attack();else if(!this.onSelectObject?.(e)&&!this.sim.s.player.crouched&&!this.sim.s.player.stealing)this.toggleWeapon();
  }
  resetAfterRest(){
  this.clearReady();this.heroModel?.motion?.reset();this.heroVel?.set(0,0,0);this.cameraY=0;this.performance=null;this.attackTime=0;this.jumpV=0;this.auto=null;this.keys.clear();this.reaction=null;
@@ -422,10 +423,9 @@ gateRoof(gate);this.banners=gateBanners(gate);
  }
  attack(objectId=null){
  if(!this.combatReady||this.performance||this.locked||this.cast||this.sim.s.player.hp<=0)return;
- if(this.sim.s.player.energy<SWING_COST){this.spent();return;}
  if(this.sim.s.surrender)abandonSurrender(this.sim);
  this.heroCombat??=new HeroCombat();const swing=this.heroCombat.begin(objectId);if(!swing)return;
- this.attackTime=swing.duration;this.sim.s.player.energy-=SWING_COST;this.lunge=this.aimSwing(swing);this.dodging=null;this.heroModel?.motion?.cue('attack_'+(swing.index+1),swing.duration,false,{skip:swing.skip,fade:.07});
+ this.attackTime=swing.duration;this.lunge=this.aimSwing(swing);this.dodging=null;this.heroModel?.motion?.cue('attack_'+(swing.index+1),swing.duration,false,{skip:swing.skip,fade:.07});
  }
  // Too tired for what was asked: said once, not on every press.
  spent(){if(this.t<(this.spentUntil||0))return;this.spentUntil=this.t+.7;this.onSpent?.();}

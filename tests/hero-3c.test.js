@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from '../vendor/three.module.js';
-import {HeroCombat,SWINGS,SWING_COST} from '../src/hero-combat.js';
+import {HeroCombat,SWINGS} from '../src/hero-combat.js';
 import {HeroMotion} from '../src/hero-motion.js';
 import {clearCameraPosition,followOrbit} from '../src/orbit-camera.js';
 import {World} from '../src/world.js';
@@ -38,11 +38,11 @@ test('an impact may open dialogue and cancel its own chain',()=>{
   assert.equal(c.swing,null);
 });
 
-test('world attack spends stamina once, defers damage, and sheathing cancels it',()=>{
+test('world attack costs no stamina, defers damage, and sheathing cancels it',()=>{
   const w=Object.create(World.prototype);let hits=0;
   Object.assign(w,{readyUntil:Infinity,playing:true,heroCombat:new HeroCombat(),sim:{s:{player:{energy:30,hp:100}}},strike(){hits++;}});
-  w.attack();assert.equal(w.sim.s.player.energy,30-SWING_COST);assert.equal(hits,0);
-  w.heroCombat.step(.12,true,()=>w.strike(),()=>{});w.attack();assert.equal(w.sim.s.player.energy,30-SWING_COST);
+  w.attack();assert.equal(w.sim.s.player.energy,30);assert.equal(hits,0);
+  w.heroCombat.step(.12,true,()=>w.strike(),()=>{});w.attack();assert.equal(w.sim.s.player.energy,30);
   w.clearReady();w.heroCombat.step(1,false,()=>w.strike(),()=>{});assert.equal(hits,0);
 });
 
