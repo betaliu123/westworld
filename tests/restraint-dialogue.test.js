@@ -38,7 +38,7 @@ test('lead, fixed and lawful custody have factual replies, without invented guil
  resolveRestraint(f.sim,f.eco,f.id,'fix');assert.match(restraintConversation(f.s,f.id).dialogue[0].text,/手脚都捆着/);
  const porter=fixture('porter');porter.bind();assert.match(restraintConversation(porter.s,porter.id).dialogue[0].text,/没法干活/);
  const artist=fixture('su');artist.bind();assert.doesNotMatch(restraintConversation(artist.s,artist.id).dialogue[0].text,/好感|赠|奖励|王爷/);
- const unlawful=fixture('thief');unlawful.bind();unlawful.s.facts.publicWarrant=true;
+ const unlawful=fixture('thief');unlawful.s.law={served:['linxi-yan-theft']};unlawful.bind();unlawful.s.law.served=[];unlawful.s.facts.publicWarrant=true;
  assert.doesNotMatch(restraintConversation(unlawful.s,unlawful.id).dialogue[0].text,/既是押我到案/,'later paperwork does not rewrite the original restraint');
 });
 test('cancelled/browsed dialogue remains available; heard dialogue deduplicates across reload',()=>{

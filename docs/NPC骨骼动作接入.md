@@ -54,6 +54,14 @@
 
 ## 重建
 
+2026-11-12 日常摊手姿势修复：捕头 `constable`、赤砂帮 `sandgang` 和钦差 `envoy` 的绑定骨架是弯肘 A 姿势。旧的 Mixamo T 姿势旋转差会在这三种骨架上重复弯肘并翻转掌心，普通待机也出现双手外摊。现在先用源骨架关节位置对齐肩、上臂、前臂和手指方向，再用掌心的第二根轴校正手腕扭转，最后叠加原始动画。
+
+- `export-mixamo.py` 导出 `restPositions`；缺失该数据时重建明确报错，不能静默继续使用错误的绑定姿势。
+- 仅重建上述三类模型的 33 条日常片段。旧四类 NPC、主角和战斗包保持原资源；没有删除说话、受惊或持物能力。
+- 针对性重建：`python tools/retarget-npc-motion.py --only constable sandgang envoy`。
+- 输出记录 `restAlignment` 与实际目标 GLB 的 SHA-256，便于更换模型后追查是否重建。
+- `tests/npc-rest-alignment.test.js` 使用三类真实骨架与成品轨道，检查整个待机循环及走路、说话、受惊、受击和战斗后的归位。预览可用 `tests/npc-motion-preview.html?kinds=constable,sandgang,envoy`。
+
 1. 将对应 FBX 放到 `assets-src/animations/mixamo/`，命名与表中片段一致。
 2. Blender 后台执行：
    `blender --background --factory-startup --python tools/export-mixamo.py -- assets-src/animations/mixamo assets-src/animations/samples`

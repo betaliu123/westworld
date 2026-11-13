@@ -1,4 +1,15 @@
+import {qingheJourneyFrame,qingheJourneyMotion} from './qinghe-journey.js';
+import {bountyOfficerMotion} from './bounty-world.js';
+import {publicWantedNotices} from './wanted-records.js';
+import {beginPlayerCapture,captureFrame,captureMotion,captureCamera,captureHeroPose,captureOfficerPose} from './player-capture.js';
+import {objectPresent} from './materials.js';
+import {obstaclesNear} from './obstacle-grid.js';
+import {bundleGiftFrame,bundleGiftMotion} from './travel-bundle-gift.js';
+import {identityConsequenceFrame,identityConsequenceMotion} from './identity-consequences.js';
+import {npcName} from './npc-names.js';
+import {propertyStopMotion} from './property-motion.js';
 import {observeConcerns,concernMotion} from './npc-concerns.js';
+import {escortReactionFrame,escortReactionMotion} from './restraint-witnesses.js';
 import {convoyAftermathFrame,convoyAftermathMotion} from './convoy-aftermath.js';
 import {recordCrimeScene} from './crime-investigation.js';
 import {investigationMotion,investigationFrame} from './investigation-world.js';
@@ -10,20 +21,29 @@ import {CART} from './convoy.js';
 import {convoyPointCollision,convoyPenetration} from './convoy-scene.js';
 import {lessonCamera} from './lesson-camera.js';
 import {npcBedPose,moveToBed,playerBedPose} from './bed-pose.js';
+import {atStool,npcGroundSeat} from './ground-seat.js';
+import {bunMesh,placeStallBuns} from './food-model.js';
 import {registerLantern,furnishHouse,updateHomes} from './night-scene.js';
 import {isSleeping,wakeForIncident,roomAt,nightTime,HOMES} from './night-life.js';
 import {skill} from './skills.js';
 import {damageSound} from './world-audio.js';
 import {inkPost,inkEnabled} from './ink-post.js';
 import {renderQuality,qualityMode} from './render-quality.js';
-import {obstaclesNear} from './obstacle-grid.js';
 import {mountAppearanceModel} from './appearance-model.js';
 import {mountHeroModel} from './hero-model.js';
-import {HeroCombat} from './hero-combat.js';
+import {HeroCombat,SWING_COST,DODGE,dodgeTravel,LUNGE,IMPACT,ImpactFeel} from './hero-combat.js';
+import {ViewPress} from './view-drag.js';
+import {InkFx,bladeEnds} from './ink-fx.js';
+import {mountVitality} from './npc-vitality.js';
+import {stepNpcCombat,npcArmed} from './npc-combat.js';
 import {followOrbit,clearDialogueCamera} from './orbit-camera.js';
 import {landscape,paintedSurface,pine,gateRoof,roadVerge,wantedSheet,gateBanners,windAtGate} from './ink-landscape.js';
 import {ambientLine} from './ambient-lines.js';
+import {nearbyWorldNews} from './world-news.js';
 import {officials,startComplaint,receiveReport} from './complaints.js';
+import {abandonSurrender} from './complaints.js';
+import {conflictCapable} from './combat-conflict.js';
+import {surrenderFrame,surrenderMotion} from './surrender.js';
 import {pendingFactionReport,deliverFactionReport} from './faction-discipline.js';
 import {response,markEncounter,persona} from './npc-persona.js';
 import {encounterStep,encounterFor} from './npc-territory.js';
@@ -41,8 +61,9 @@ import {ALERT_EMOJI,LIFE_LINES,lifeCue,FeedbackBudget} from './npc-feedback.js';
 import {visibleBetween,theftVisibleBetween,perceiveIncident,witnessEvent,advanceAwareness} from './npc-awareness.js';
 import {theftObserver} from './theft-sight.js';
 import {inDeepWater,environmentStep} from './world-rules.js';
-import {enterBrokenGate,enterRiver,detainAtGate,detainByOfficer} from './gate-scene.js';
+import {enterBrokenGate,enterRiver} from './gate-scene.js';
 import {shotPlan} from './dialogue.js';
+import {SceneDetails} from './scene-details.js';
 import * as T from '../vendor/three.module.js';
 import {PEOPLE,SCENES} from './data.js';
 import {fitSword,mountActorModel,npcLook} from './actor-model.js';
@@ -52,6 +73,10 @@ import {npcArriveStep as arriveStep,npcTravelStep} from './npc-locomotion.js';
 // The southern verge shares the 100-unit ground plane; leave only body clearance
 // at its edge, rather than cutting off the road and the convoy at z=34.
 const SOUTH_WALK_LIMIT=50-.3;
+// Length of the NPC startle clip; they neither travel nor turn away before it has played.
+const STARTLE_HOLD=.7;
+// The cart collides by its own outline rather than its box, so it is checked wherever the query lands.
+const cartObstacle=o=>o.id===CART;
 const matCache=new Map();const material=(color)=>{if(!matCache.has(color))matCache.set(color,new T.MeshStandardMaterial({color,roughness:.85}));return matCache.get(color);};
 const finishes={0xd0bda0:"limewall",0x909a89:"limestone",0x604b3c:"timber",0x493b32:"timber",0x4c6062:"slate",0x76503d:"timber",0x685447:"timber"};
 function mesh(g,c,parent,x=0,y=0,z=0){const m=new T.Mesh(g,finishes[c]?paintedSurface(finishes[c]):material(c));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;}
@@ -86,24 +111,31 @@ export function character(color,hero=false,female=false,variant=null){
  }
  return root;
 }
-// The cart collides by its own outline rather than its box, so it is checked wherever the query lands.
-const cartObstacle=o=>o.id===CART;
 export class World{
  constructor(canvas,sim){
  this.sim=sim;this.canvas=canvas;this.scene=new T.Scene();this.scene.background=new T.Color(0xadc5c3);this.scene.fog=new T.FogExp2(0xadc5c3,.014);this.renderer=new T.WebGLRenderer({canvas,antialias:!inkEnabled()});this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=T.PCFSoftShadowMap;this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.2;
  this.camera=new T.PerspectiveCamera(48,innerWidth/innerHeight,.1,180);this.ink=inkPost(this.renderer,this.scene,this.camera);this.daylight=1;this.yaw=0;this.pitch=.24;this.distance=6.8;this.t=0;this.gatePlaced=!!sim.s.watch;this.keys=new Set();this.obstacles=[];this.environmentAssets=[];this.npcs=new Map();this.props=[];this.particles=[];this.auto=null;this.locked=false;this.attackTime=0;this.readyUntil=0;this.jumpV=0;this.ground=0;this.heroVel=new T.Vector3();this.heroTurnRate=0;this.heroCombat=new HeroCombat();
  this.skyLight=new T.HemisphereLight(0xdaedf0,0x626348,2);this.scene.add(this.skyLight);const sun=new T.DirectionalLight(0xffe3b0,3.2);this.sun=sun;sun.position.set(-20,32,14);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-35,right:35,top:35,bottom:-35,far:100});sun.shadow.bias=-.0002;sun.shadow.normalBias=.035;this.scene.add(sun);this.quality=renderQuality(qualityMode(globalThis.location?.search));
  this.horizon=landscape(this.scene);this.build();this.hero=character(0x385953,true);this.hero.rotation.y=Math.PI;this.hero.position.set(sim.s.player.x,0,sim.s.player.z);this.scene.add(this.hero);this.heroModel=mountHeroModel(this.hero,new URL('./models/hero.glb',import.meta.url).href);this.appearanceModel=mountAppearanceModel(this.heroModel,this.hero);
+ this.feel=new ImpactFeel(!!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches);this.inkFx=new InkFx(this.scene,{wet:inDeepWater});this.vitality=mountVitality(this);this.jolt=new T.Vector3();this.fovKick=0;this.shoves=[];
  this.actionBowl=new T.Group();cyl(this.actionBowl,.14,.075,.12,0xd8d8bd);cyl(this.actionBowl,.12,.12,.02,0x8d6245,0,.06,0);this.hero.userData.arms[1].add(this.actionBowl);this.actionBowl.position.set(0,-.58,0);this.actionBowl.visible=false;
  this.actionFlute=box(this.hero.userData.rig,.64,.035,.035,0xb99c61,0,1.72,.3);this.actionFlute.visible=false;this.actionCoins=new T.Group();for(let i=0;i<3;i++)cyl(this.actionCoins,.045,.045,.018,0xe5bc60,i*.07,-.58,0);this.hero.userData.arms[0].add(this.actionCoins);this.actionCoins.visible=false;
  this.actionStool=new T.Group();box(this.actionStool,.7,.08,.55,0x806047,0,.5,0);for(const x of [-.25,.25])box(this.actionStool,.08,.5,.4,0x604c3b,x,.25,0);this.scene.add(this.actionStool);this.actionStool.visible=false;
 
- for(const person of PEOPLE){const actor=character(person.color,false,person.gender==='female',person.id==='traveler'?'prince':null);actor.position.set(sim.s.people[person.id]?.x??person.x,0,sim.s.people[person.id]?.z??person.z);if(person.id==='tea_host'){const q=nearestWalkable(actor.position,(x,z)=>this.collides(x,z,0,false));if(q){actor.position.x=q.x;actor.position.z=q.z;sim.s.people[person.id].x=q.x;sim.s.people[person.id].z=q.z;}}this.scene.add(actor);const label=textSprite(person.name);label.position.y=2.7;actor.add(label);this.npcs.set(person.id,{actor,person,label,base:new T.Vector3(person.x,0,person.z),phase:Math.random()*10,model:mountActorModel(actor,npcLook(person.id))});}
+ for(const person of PEOPLE){const actor=character(person.color,false,person.gender==='female',person.id==='traveler'?'prince':null);actor.position.set(sim.s.people[person.id]?.x??person.x,0,sim.s.people[person.id]?.z??person.z);if(person.id==='tea_host'){const q=nearestWalkable(actor.position,(x,z)=>this.collides(x,z,0,false));if(q){actor.position.x=q.x;actor.position.z=q.z;sim.s.people[person.id].x=q.x;sim.s.people[person.id].z=q.z;}}this.scene.add(actor);const labelName=npcName(sim.s,person.id),label=textSprite(labelName);label.position.y=2.7;actor.add(label);this.npcs.set(person.id,{actor,person,label,labelName,base:new T.Vector3(person.x,0,person.z),phase:Math.random()*10,model:mountActorModel(actor,npcLook(person.id))});}
  // Enter play only when every initial skin and weapon has finished loading.
  this.modelsReady=Promise.all([this.heroModel.loaded,...[...this.npcs.values()].map(n=>n.model.loaded),this.hero.userData.swordLoaded]).then(results=>results.at(-1)!==false&&this.heroModel.ready&&[...this.npcs.values()].every(n=>n.model.ready));
  this.eventGroup=new T.Group();this.scene.add(this.eventGroup);this.syncEvent();this.resize();window.addEventListener('resize',()=>this.resize());
  this.camera.position.copy(this.hero.position).add(new T.Vector3(0,1.45+this.distance*Math.sin(this.pitch),this.distance*Math.cos(this.pitch)));this.camera.lookAt(this.hero.position.clone().add(new T.Vector3(0,1.45,0)));
- canvas.addEventListener('contextmenu',e=>e.preventDefault());canvas.addEventListener('pointerdown',e=>{if(e.button===2){if(this.performance)this.performance.camera=false;this.drag=true;canvas.setPointerCapture(e.pointerId);}else if(e.button===0)this.primaryAction(e);});canvas.addEventListener('pointerup',()=>this.drag=false);canvas.addEventListener('pointermove',e=>{if(this.drag){this.yaw-=e.movementX*(this.aimMode?.003:.006);this.pitch=Math.max(.045,Math.min(1.05,this.pitch+e.movementY*.004));}});canvas.addEventListener('wheel',e=>{e.preventDefault();if(this.performance)this.performance.camera=false;this.distance=Math.max(3.8,Math.min(18,this.distance+e.deltaY*.01));},{passive:false});
+ canvas.addEventListener('contextmenu',e=>e.preventDefault());// Right-drag turns the view; so does a left-drag, because some browsers keep right-drags for their own gestures.
+ // A left click acts on release. With the weapon drawn it strikes on press, and a drag that starts before contact takes the swing back.
+ this.press=new ViewPress();
+ canvas.addEventListener('pointerdown',e=>{if(e.button===2){if(this.performance)this.performance.camera=false;this.drag=true;canvas.setPointerCapture(e.pointerId);}else if(e.button===0){const armed=this.combatReady,before=this.heroCombat.swing;if(armed)this.primaryAction(e);
+  // While the right button already turns the view, a left press is only ever a strike.
+  if(!this.drag){this.press.down(e.clientX,e.clientY,armed);this.pressSwing=this.heroCombat.swing!==before?this.heroCombat.swing:null;canvas.setPointerCapture(e.pointerId);}}});
+ canvas.addEventListener('pointerup',e=>{if(e.button===0){if(this.press.up())this.primaryAction(e);}else this.drag=false;});
+ const release=()=>{this.drag=false;this.press.cancel();};canvas.addEventListener('pointercancel',release);window.addEventListener('blur',release);
+ canvas.addEventListener('pointermove',e=>{const left=this.press.move(e.clientX,e.clientY);if(left.began){if(this.performance)this.performance.camera=false;this.takeBackSwing();}if(this.drag||left.turn){this.yaw-=e.movementX*(this.aimMode?.003:.006);this.pitch=Math.max(.045,Math.min(1.05,this.pitch+e.movementY*.004));}});canvas.addEventListener('wheel',e=>{e.preventDefault();if(this.performance)this.performance.camera=false;this.distance=Math.max(3.8,Math.min(18,this.distance+e.deltaY*.01));},{passive:false});
  window.addEventListener('blur',()=>{this.keys.clear();this.clearReady();});
  }
  showNpcCheck({id,label,success,observation=false,income=false,priority=false}){
@@ -159,14 +191,14 @@ export class World{
  if(seen&&['theft','assault'].includes(event.type))markEncounter(this.sim.s,id,event.type);
  if(seen&&id==='traveler'&&['theft','tamper','assault','damage'].includes(event.type)&&this.sim.s.chapterVersion===2)this.sim.s.facts.royalSawHarm=true;
  witnessEvent(this.sim,id,event,seen,n.base);
- if(seen&&event.type==='assault'&&event.target===id&&persona(id)[0]==='blade')state.awareness.state='fight';
+ if(this.sim.s.chapterVersion!==2&&seen&&event.type==='assault'&&event.target===id&&persona(id)[0]==='blade')state.awareness.state='fight';
  if(seen&&event.type==='assault'&&id===event.target)this.sim.s.people[id].awareness.severe=true;
- }const investigation=recordCrimeScene(this.sim,event);event.locallyHandled=startComplaint(this.sim,event);if(investigation&&event.cause)investigation.cause=event.cause;if(event.locallyHandled&&this.sim.s.complaint)this.sim.s.complaint.place={x:event.x,z:event.z};if(event.type==='warrant'){for(const r of replies.sort((a,b)=>Number(['chi','gang_boss'].includes(b.id))-Number(['chi','gang_boss'].includes(a.id))).slice(0,2))this.sim.emit('npcRoutine',r);return;}if(event.witnesses.length)this.sim.emit('actionWitnessed',{cause:event.cause,incidentType:event.type,method:event.method,target:this.sim.s.people[event.target]?event.target:event.owner||event.target,identities:event.identities,witnesses:event.witnesses,text:event.witnesses.map(id=>this.npcs.get(id).person.name).join('、')+'目击'+({tamper:'动过吃喝',theft:'伸手取物',assault:'攻击他人'}[event.type]||'破坏物件'),dialogue:replies.sort((a,b)=>Number(b.id===(event.owner||event.target))-Number(a.id===(event.owner||event.target))).slice(0,2)});this.sim.save();
+ }const investigation=recordCrimeScene(this.sim,event);event.locallyHandled=startComplaint(this.sim,event);if(investigation&&event.cause)investigation.cause=event.cause;if(event.locallyHandled&&this.sim.s.complaint)this.sim.s.complaint.place={x:event.x,z:event.z};if(event.type==='warrant'){for(const r of replies.sort((a,b)=>Number(['chi','gang_boss'].includes(b.id))-Number(['chi','gang_boss'].includes(a.id))).slice(0,2))this.sim.emit('npcRoutine',r);return;}if(event.witnesses.length)this.sim.emit('actionWitnessed',{cause:event.cause,incidentType:event.type,method:event.method,target:this.sim.s.people[event.target]?event.target:event.owner||event.target,identities:event.identities,identitySerials:event.identitySerials,witnesses:event.witnesses,text:event.witnesses.map(id=>npcName(this.sim.s,id)).join('、')+'目击'+({tamper:'动过吃喝',theft:'伸手取物',assault:'攻击他人'}[event.type]||'破坏物件'),dialogue:replies.sort((a,b)=>Number(b.id===(event.owner||event.target))-Number(a.id===(event.owner||event.target))).slice(0,2)});this.sim.save();
  }
- complaintMotion(id,n,dt){const sim=this.sim,s=sim.s,c=s.complaint;if(!c)return false;const victim=s.people[c.id];if(victim.hp<=0||victim.stunnedUntil>s.npcClock||s.player.hp<=0){delete s.complaint;return false;}if(id!==c.id)return c.phase!=='report'&&(c.officers||[]).includes(id);
+ complaintMotion(id,n,dt){const sim=this.sim,s=sim.s,c=s.complaint;if(!c||['conflict','surrender'].includes(c.phase))return false;if(s.chapterVersion===2&&c.type==='assault'&&['ask','approach'].includes(c.phase)&&!s.surrender){c.phase='conflict';return false;}const victim=s.people[c.id];if(!conflictCapable(s,c.id)||s.player.hp<=0){delete s.complaint;delete s.surrender;return false;}if(id!==c.id)return c.phase!=='report'&&(c.officers||[]).includes(id);
  const a=n.actor,pos=a.position;if(c.phase!=='report'){const p=this.hero.position;a.rotation.y=turnToward(a.rotation.y,Math.atan2(p.x-pos.x,p.z-pos.z),dt||0.016);}
  if(!dt||this.performance)return true;let other=null;
- if(c.phase==='pause'){if(s.npcClock<c.until){this.animateActor(a,0,dt,'');return true;}c.phase='approach';c.since=s.npcClock;}
+ if(c.phase==='pause'){if(s.npcClock<c.until){this.animateActor(a,0,dt,'');return true;}c.phase=s.chapterVersion===2&&c.type==='assault'?'conflict':'approach';c.since=s.npcClock;if(c.phase==='conflict')return false;}
  if(c.phase!=='report'&&s.npcClock-c.since>15){c.phase='report';c.since=s.npcClock;this.showNpcCheck({id,label:'去报官',observation:true,priority:true});}
  if(c.phase==='report'){other=officials.filter(k=>k!==id&&s.people[k]?.hp>0&&!s.people[k].inCustody&&!(s.people[k].stunnedUntil>s.npcClock)&&this.npcs.has(k)).map(k=>this.npcs.get(k)).sort((l,r)=>pos.distanceTo(l.actor.position)-pos.distanceTo(r.actor.position))[0];
  if(!other||s.npcClock-c.since>60){delete s.complaint;victim.awareness=null;victim.mood='afraid';this.showNpcCheck({id,label:'求援无果',observation:true,priority:true});return false;}}
@@ -180,7 +212,7 @@ export class World{
  // Once the dispute has ended, a real report takes priority over returning home.
  // Danger reactions still run first; the report method independently checks both people.
  if((!phase||phase==='idle'||phase==='return')&&this.factionReportMotion(id,n,dt))return true;
- return this.reactNpc(id,n,dt)||this.factionReportMotion(id,n,dt);
+ return this.reactNpc(id,n,dt)||propertyStopMotion(this,id,n,dt)||this.factionReportMotion(id,n,dt);
  }
  factionReportMotion(id,n,dt){
  const s=this.sim.s,r=pendingFactionReport(s,id),state=s.people[id];if(!r||!dt||this.performance||s.complaint?.id===id)return false;
@@ -202,12 +234,15 @@ export class World{
  this.animateActor(a,walking?1:0,dt,'');u.sword.visible=e.phase==='bout';if(e.phase==='bout'){const beat=((s.npcClock-e.at)*2+(id===e.host?0:.5))*Math.PI*2;u.arms[1].rotation.x=-1.15-.9*Math.sin(beat);u.arms[0].rotation.x=-.8+.35*Math.sin(beat);u.rig.rotation.z=.095*Math.sin(beat);}else u.rig.rotation.z=0;return true;
  }
  reactNpc(id,n,dt){const s=this.sim.s,a=n.actor,p=this.hero.position,state=s.people[id];
+ if(s.chapterVersion===2&&!conflictCapable(s,id))return false;
  if(state.stunnedUntil>(s.npcClock||0)){this.animateActor(a,0,dt,'');a.userData.arms[0].rotation.x=-.4;if(n.alert)n.alert.visible=false;return true;}
  const canSee=visibleBetween(a.position,p,this.obstacles,s.ecosystem?.objects);const r=advanceAwareness(this.sim,id,a.position,canSee,dt,this.combatReady);
  this.alertBudget??=new FeedbackBudget();
  const glyph=ALERT_EMOJI[r?.state],near=a.position.distanceTo(p)<10;
  const flash=this.alertBudget.change(id,glyph?r.state:null,this.t,!!glyph&&state.hp>0&&near&&canSee&&!this.locked,1.8,6,true);
  if(!r||state.hp<=0){if(n.alert)n.alert.visible=false;return false;}
+ if(r.state==='flee'&&n.previousDangerState!=='flee'&&!(state.hp<a.userData.lastHp)&&this.t>=(n.drawCooldown||0)){a.userData.startledAt=this.t;a.userData.startledUntil=this.t+.55;n.drawCooldown=this.t+12;}
+ n.previousDangerState=r.state;
  if(flash){
   for(const other of this.npcs.values())if(other.alert)other.alert.visible=false;
   if(n.alert){a.remove(n.alert);n.alert.material.map.dispose();n.alert.material.dispose();}
@@ -218,8 +253,8 @@ export class World{
  n.alert.material.opacity=Math.min(1,Math.max(0,(1.8-age)/.45));const scale=.48*(1+Math.max(0,1-age/.25)*.15);n.alert.scale.set(scale,scale,1);n.alert.position.y=3.05+Math.min(age,.3)*.2;}
  n.label.visible=false;
  let target=r.state==='return'?r.home:r.lastKnown;let speed=r.state==='fight'?2.6:1.6,stop=r.state==='fight'?1.3:r.state==='warn'?2.2:.3;
- if(r.state==='flee'){target={x:a.position.x+(a.position.x-p.x),z:a.position.z+(a.position.z-p.z)};speed=3;}
- if(r.state==='notice')speed=0;
+ if(r.state==='flee'){const threat=canSee?p:r.lastKnown,dx=a.position.x-threat.x,dz=a.position.z-threat.z,len=Math.hypot(dx,dz)||1;target={x:a.position.x+dx/len*5,z:a.position.z+dz/len*5};speed=3;}
+ if(r.state==='notice'||n.combat?.swing||this.t<(n.recoilUntil||0)||this.t<(a.userData.startledAt??-10)+STARTLE_HOLD)speed=0;
  const remaining=Math.hypot(target.x-a.position.x,target.z-a.position.z);
  if(dt>0&&speed>0&&remaining>stop&&(!n.reactionPath||this.t>=(n.reactionRepath||0)||n.reactionState!==r.state)){
   n.reactionRepath=this.t+.65;n.reactionState=r.state;n.reactionPath=encounterPath(a.position,target,(x,z)=>this.collides(x,z,0,false),.5);
@@ -228,9 +263,9 @@ export class World{
  }
  while(n.reactionPath?.length&&Math.hypot(n.reactionPath[0].x-a.position.x,n.reactionPath[0].z-a.position.z)<.18)n.reactionPath.shift();
  const next=n.reactionPath?.[0]||target,dx=next.x-a.position.x,dz=next.z-a.position.z,d=Math.hypot(dx,dz);
- a.rotation.y=turnToward(a.rotation.y,Math.atan2(dx,dz),dt);const step=remaining>stop?Math.min(d,arriveStep(remaining,speed,dt,stop)):0;if(d>.01)this.move(a,dx/d*step,dz/d*step);
- this.animateActor(a,step>0?1:0,dt,r.state==='warn'?'talk':'');a.userData.sword.visible=r.state==='fight'&&!(state.disarmedUntil>s.npcClock);if(r.state==='warn')a.userData.arms[0].rotation.x=-1.3;
- if(!this.locked&&r.state==='fight'&&canSee&&a.position.distanceTo(p)<1.8&&this.t>(n.nextHit||0)&&s.player.hp>0){n.nextHit=this.t+1.3;a.userData.arms[1].rotation.x=-1.8;const defended=this.receiveHit(id);if(defended.damage)this.burst(p.x,1,p.z,0xb85f47,6);if(['guard','gate_guard','gate_relief','inspector'].includes(id)&&s.player.hp<=25){s.player.hp=Math.max(1,s.player.hp);detainByOfficer(this.sim,id);this.clearReady?.();}if(defended.damage)this.onHurt?.();}
+ if((!n.combat?.swing||n.combat.swing.age<.18)&&this.t>=(a.userData.startledAt??-10)+STARTLE_HOLD)a.rotation.y=turnToward(a.rotation.y,Math.atan2(dx,dz),dt);
+ const step=remaining>stop?Math.min(d,arriveStep(remaining,speed,dt,stop)):0;if(d>.01)this.move(a,dx/d*step,dz/d*step);
+ this.animateActor(a,step>0?1:0,dt,r.state==='warn'?'talk':'');a.userData.sword.visible=r.state==='fight'&&npcArmed(s,id);if(r.state==='warn')a.userData.arms[0].rotation.x=-1.3;
  return true;
  }
  lifeFeedback(id,n){if(id==='gate_merchant'){if(!n.cargo)n.cargo=box(n.actor,.55,.6,.45,0x8a6346,0,1.1,-.4);n.cargo.visible=this.sim.s.people[id].life?.activity==='escort'&&this.sim.s.ecosystem?.items.some(i=>i.type==='cargo'&&i.location==='npc:'+id);}
@@ -240,8 +275,8 @@ export class World{
  const active=s.hp>0&&!(s.stunnedUntil>(this.sim.s.npcClock||0))&&!this.locked&&!this.cinematic&&!this.performance&&a.position.distanceTo(this.hero.position)<8&&!s.awareness?.caseOpen&&visibleBetween(a.position,this.hero.position,this.obstacles,this.sim.s.ecosystem?.objects);
  if(this.lifeBudget.change(id,state,this.t,active,12,45))this.onLifeSpeech?.({id,text:(id==='traveler'?PRINCE_LIFE_LINES[state]:null)||LIFE_LINES[state]});
  if(active&&!s.life?.night&&!state&&this.playing&&!this.sim.s.complaint&&this.t>(this.nextAmbient??10)&&this.t>(n.nextAmbient||0)&&this.screenPoint(a.position).visible){
- const line=ambientLine(id,s.life?.activity,n.ambientIndex||0);
- if(line&&this.onLifeSpeech?.({id,text:line,ambient:true})){n.ambientIndex=(n.ambientIndex||0)+1;n.nextAmbient=this.t+80;this.nextAmbient=this.t+22;}
+ const line=nearbyWorldNews(this.sim.s,key=>this.npcs.get(key)?.actor.position,this.obstacles)?null:ambientLine(id,s.life?.activity,n.ambientIndex||0,this.sim.s);
+ if(line&&(s.life?.activity!=='riverside'||s.life.target&&Math.hypot(a.position.x-s.life.target.x,a.position.z-s.life.target.z)<.6)&&this.onLifeSpeech?.({id,text:line,ambient:true})){n.ambientIndex=(n.ambientIndex||0)+1;n.nextAmbient=this.t+80;this.nextAmbient=this.t+22;}
  }
  }
 
@@ -276,7 +311,7 @@ export class World{
  for(const side of [-1,1])part('lantern'+side,'灯笼','paper',35,p=>this.lantern(p,side*1.55,2.6,d/2+.5));
  furnishHouse(this,g,base,box);
  }
- table(x,z,id,feast=false){const g=new T.Group();g.position.set(x,0,z);this.scene.add(g);box(g,1.8,.14,1,0x806047,0,.91,0);for(const xx of [-.65,.65])for(const zz of [-.32,.32])box(g,.1,.85,.1,0x604c3b,xx,.43,zz);if(feast)box(g,1.7,.025,.4,0xae5245,0,1,0);for(const xx of [-.5,0,.5]){cyl(g,.14,.1,.06,0xc5c9b4,xx,1.04,.12);cyl(g,.06,.05,.13,0xcccbb8,xx,1.08,-.22);}this.props.push({id,group:g,hp:2,x,z});this.registerObject(g,id,'木桌与杯盘','wood',80,{kind:'table',owner:'inn'});return g;}
+ table(x,z,id,feast=false){const g=new T.Group();g.position.set(x,0,z);this.scene.add(g);box(g,1.8,.14,1,0x806047,0,.91,0);for(const xx of [-.65,.65])for(const zz of [-.32,.32])box(g,.1,.85,.1,0x604c3b,xx,.43,zz);if(feast)box(g,1.7,.025,.4,0xae5245,0,1,0);for(const xx of [-.5,0,.5]){cyl(g,.14,.1,.06,0xc5c9b4,xx,1.04,.12);cyl(g,.06,.05,.13,0xcccbb8,xx,1.08,-.22);}this.props.push({id,group:g,hp:2,x,z});this.registerObject(g,id,'木桌与杯盘','wood',80,{kind:'table',owner:id.startsWith('outer-tea-')?'tea_host':'inn'});return g;}
  build(){
  box(this.scene,100,.4,100,0x7e967b,0,-.3,0).material=paintedSurface("earth",22);box(this.scene,27,.12,45,0xb3b49b,0,-.06,0).material=paintedSurface("earth",12);box(this.scene,38,.13,5,0xbfc1aa,-4,-.025,12);
  const geo=new T.BoxGeometry(.88,.035,.63),paving=new T.InstancedMesh(geo,paintedSurface("limestone"),1050);const dummy=new T.Object3D();let i=0;for(let x=-11;x<=11;x++)for(let z=-19;z<=25;z++){dummy.position.set(x+(z%2)*.45,.015,z*.82);dummy.rotation.y=((x*17+z*3)%5)*.025;dummy.updateMatrix();paving.setMatrixAt(i++,dummy.matrix);}paving.count=i;paving.receiveShadow=true;this.scene.add(paving);
@@ -284,12 +319,12 @@ export class World{
  for(const x of [-26,-18])for(let z=-27;z<=27;z+=6){const bank=box(this.scene,.7,.55,6,0x8e9989,x,.03,z);this.registerObject(bank,`bank:${x}:${z}`,'河岸石栏','stone',700);}
  const bridge=new T.Group();bridge.position.set(-22,.35,12);this.scene.add(bridge);box(bridge,9,.3,4.3,0xbac0ad);for(const z of [-1.9,1.9]){box(bridge,9,.15,.16,0x938b6f,0,.85,z);for(let x=-4;x<=4;x++)cyl(bridge,.11,.14,1.2,0xaaa58a,x,.45,z);}
  this.registerObject(bridge,'bridge','石桥与桥栏','stone',2400);
- const board=new T.Group();board.position.set(3.3,0,29.5);this.scene.add(board);box(board,2.3,1.35,.14,0x694731,0,1.65,0);for(const x of [-.92,.92])box(board,.15,2.55,.2,0x63432d,x,1.25,0);const poster=box(board,1.2,.82,.025,0xd7bf8f,0,1.57,.085);poster.material=wantedSheet();const notice=textSprite('通 缉 榜','#f8deaa',34,'sign');board.add(notice);notice.position.set(0,2.18,.11);this.registerObject(board,'wanted-board','城外通缉榜','wood',150,{kind:'noticeboard'});this.obstacles.push({id:'wanted-board',x:3.3,z:29.5,w:2.3,d:.18});
+ const board=new T.Group();board.position.set(3.3,0,29.5);this.scene.add(board);box(board,2.3,1.35,.14,0x694731,0,1.65,0);for(const x of [-.92,.92])box(board,.15,2.55,.2,0x63432d,x,1.25,0);const poster=box(board,1.2,.82,.025,0xd7bf8f,0,1.57,.085);poster.material=wantedSheet(publicWantedNotices(this.sim.s));this.wantedPoster=poster;const notice=textSprite('通 缉 榜','#f8deaa',34,'sign');board.add(notice);notice.position.set(0,2.18,.11);this.registerObject(board,'wanted-board','城外通缉榜','wood',150,{kind:'noticeboard'});this.obstacles.push({id:'wanted-board',x:3.3,z:29.5,w:2.3,d:.18});
  const desk=new T.Group();desk.position.set(-11,0,7.5);this.scene.add(desk);box(desk,3.3,.12,.96,0x76503d,0,.96,0);for(const x of [-1.4,1.4])for(const z of [-.36,.36])box(desk,.12,.9,.12,0x604333,x,.46,z);this.registerObject(desk,'book-desk','墨香斋书案','wood',120,{kind:'table',owner:'bookseller'});this.obstacles.push({id:'book-desk',x:-11,z:7.5,w:3.3,d:.96});
  this.house(-11,-12,7,6,'听雨楼');this.house(12,-13,6,5,'回春堂');this.house(-12,3,5,5,'墨香斋');this.house(13,5,5,5,'云来客栈');this.house(-10,21,6,4,'临溪人家');this.house(11,21,6,4,'青竹会');this.house(0,-23,8,5,'镇公所');
  for(const [x,z,b,s]of [[-6.2,23.6,false,1.72],[-13,28,false,1.55],[15,27,false,1.65],[-6,-9,true,1.2],[7,-10,true,1.1],[-16,10,false,1.2],[8,10,true,1.1],[-14,-21,false,1.6],[17,-5,false,1.5],[18,17,true,1.4],[-17,22,true,1.2],[-31,3,false,1.6]])this.tree(x,z,b,s);
  
- for(const [x,z]of [[8,-5],[-7,8],[7,17],[-10,27]]){const g=new T.Group();g.position.set(x,0,z);this.scene.add(g);box(g,2.8,.18,1.5,0x917858,0,.9,0);for(const xx of [-1.3,1.3])box(g,.1,2.8,.1,0x5e5140,xx,1.4,0);const canopy=box(g,3.1,.13,2,0x9a6555,0,2.7,0);canopy.userData.canopy=true;const foods=[];for(let i=-2;i<=2;i++)foods.push(mesh(new T.SphereGeometry(.14,7,6),0xd8a45c,g,i*.35,1.1,0));fitProp(g,'stall.glb',{height:2.4,keep:o=>o.geometry?.type==='SphereGeometry'});this.environmentAssets.push({id:`stall:${x}:${z}`,kind:'stall',name:'食摊',owner:z===27?'tea_host':'inn',x,z,group:g,foods});this.obstacles.push({id:`stall:${x}:${z}`,x,z,w:2.8,d:1.5});}
+ for(const [x,z]of [[8,-5],[-7,8],[7,17],[-10,27]]){const g=new T.Group();g.position.set(x,0,z);this.scene.add(g);box(g,2.8,.18,1.5,0x917858,0,.9,0);for(const xx of [-1.3,1.3])box(g,.1,2.8,.1,0x5e5140,xx,1.4,0);const canopy=box(g,3.1,.13,2,0x9a6555,0,2.7,0);canopy.userData.canopy=true;const foods=[];for(let i=-2;i<=2;i++){const bun=bunMesh();bun.position.set(i*.35,1.1,0);g.add(bun);foods.push(bun);}fitProp(g,'stall.glb',{height:2.4,keep:o=>o.userData.foodModel==='bun',onFit:model=>placeStallBuns(model,foods)});this.environmentAssets.push({id:`stall:${x}:${z}`,kind:'stall',name:'食摊',owner:z===27?'tea_host':'inn',x,z,group:g,foods});this.obstacles.push({id:`stall:${x}:${z}`,x,z,w:2.8,d:1.5});}
  for(const x of [-5,5])for(const z of [-15,9,19]){const pole=new T.Group();pole.position.set(x,0,z);this.scene.add(pole);cyl(pole,.06,.08,3.4,0x675340,0,1.7,0);box(pole,.8,.07,.08,0x675340,.3,3.38,0);this.lantern(pole,.6,3.08,0);this.registerObject(pole,`lamp:${x}:${z}`,'街边灯柱','wood',100);}
  for(let j=0;j<14;j++){const x=(j%2?-1:1)*(15+(j%4)*1.5),z=-18+j*3;const rock=mesh(new T.DodecahedronGeometry(.35+(j%3)*.18),0x859082,this.scene,x,.2,z);this.registerObject(rock,'rock:'+j,'路边石块','stone',260);}
  this.petals=[];for(let i=0;i<28;i++){const leaf=mesh(new T.PlaneGeometry(.09,.16),0xe4b6a8,this.scene,7+Math.sin(i)*5,1+(i%7)*.5,7+Math.cos(i)*5);leaf.material.side=T.DoubleSide;this.petals.push(leaf);}
@@ -304,7 +339,7 @@ export class World{
  this.table(7,13,'tea-table');this.table(-7,10,'street-table');
  const gate=new T.Group();gate.position.set(0,0,23);this.scene.add(gate);for(const x of [-3,3]){box(gate,.32,4.6,.32,0x685447,x,2.3,0);box(gate,.6,.3,.6,0x999c88,x,.15,0);}box(gate,7,.5,.4,0x776044,0,4.5,0);box(gate,7.5,.24,1.12,0x685447,0,4.91,0);box(gate,7.45,.24,1.5,0x493b32,0,5.08,0);const sign=textSprite('临 溪 镇','#eee3be',36,'sign');sign.position.set(0,4.55,.28);gate.add(sign);
  for(const [x,w] of [[-28.25,5.5],[-15.8,5.4],[-4.95,3.9],[5.45,4.9],[22.55,16.9]]){const wall=box(this.scene,w,3.2,.5,0x909a89,x,1.6,21);wall.material=paintedSurface("courses",w/4.8);wall.material.map.repeat.y=1;box(this.scene,w+.12,.15,.72,0x5e625b,x,3.24,21);this.obstacles.push({id:'city-wall:'+x,x,z:21,w,d:.5});}
- const riverFence=new T.Group();riverFence.position.set(-22,0,21);this.scene.add(riverFence);for(let x=-3;x<=3;x+=.6)box(riverFence,.15,2.1,.16,0x72543b,x,.95,0);for(const y of [.4,1.4])box(riverFence,7,.14,.18,0x72543b,0,y,0);this.registerObject(riverFence,'river-fence','河道木栅栏','wood',120);this.obstacles.push({id:'river-fence',x:-22,z:21,w:7,d:.2});
+ const riverFence=new T.Group();riverFence.position.set(-22,0,21);this.scene.add(riverFence);for(let x=-3,index=0;x<=3;x+=.6,index++){const slat=box(riverFence,.15,index===2?1.72:2.1,.16,index===2?0x474846:0x72543b,x,index===2?.76:.95,0);if(index===2)slat.rotation.z=.06;}for(const y of [.4,1.4])box(riverFence,7,.14,.18,0x72543b,0,y,0);this.registerObject(riverFence,'river-fence','河道木栅栏','wood',120);this.obstacles.push({id:'river-fence',x:-22,z:21,w:7,d:.2});
  this.gateBar=new T.Group();this.gateBar.position.set(0,0,21);this.scene.add(this.gateBar);for(const x of [-2,-1,0,1,2])box(this.gateBar,.12,2.8,.12,0x504d40,x,1.4,0);box(this.gateBar,6,.16,.16,0x504d40,0,1.7,0);
  gate.attach(this.gateBar);
  for(const side of [-1,1]){
@@ -332,10 +367,21 @@ gateRoof(gate);this.banners=gateBanners(gate);
  if(['banquet','truce'].includes(e.type)){for(let i=0;i<3;i++)this.table(x+(i-1)*2.5,z+2.3,'feast-'+i,true);for(const [i,id]of ['tea','porter','elder'].entries()){const guest=this.npcs.get(id);guest.base.set(x-3+i*3,0,z-1.5);guest.actor.position.copy(guest.base);}}
  if(e.type==='proposal'){const ring=mesh(new T.TorusGeometry(.12,.027,8,20),0xe9c778,this.eventGroup,x-.6,1.3,z+.2);ring.rotation.x=.6;this.ring=ring;}
  }
- collides(x,z,feet=0,player=true,ignoreId=null){return (player&&this.sim.event?.type==='gate'&&['prison','testimony'].includes(this.sim.event.gate?.phase)&&(x<PRISON.bounds.minX||x>PRISON.bounds.maxX||z<PRISON.bounds.minZ||z>PRISON.bounds.maxZ))||(player&&this.sim.event?.type==='gate'&&this.sim.event.gate?.phase!=='prison'&&this.sim.event.gate?.phase!=='testimony'&&z<21&&!(roomAt({x,z})?.z===21&&roomAt(this.hero.position)?.id===roomAt({x,z})?.id)&&!(Math.abs(x)<2.7&&this.sim.s.ecosystem?.objects['town-gate']?.hp===0)&&!(x>-25.5&&x< -18.5&&this.sim.s.ecosystem?.objects['river-fence']?.hp===0))||Math.abs(x)>31||z< -34||z>SOUTH_WALK_LIMIT||(feet<1.05&&this.props.some(p=>Math.abs(x-p.x)<1.15&&Math.abs(z-p.z)<.8&&!this.sim.s.broken.includes(p.id)&&this.sim.s.ecosystem?.objects[p.id]?.hp!==0))||obstaclesNear(this.obstacles,x,z,.3,cartObstacle).some(o=>o.id!==ignoreId&&this.sim.s.ecosystem?.objects[o.id]?.hp!==0&&!this.sim.s.ecosystem?.objects[o.id]?.open&&(o.id===CART?convoyPointCollision(this.sim.s,x,z):Math.abs(x-o.x)<o.w/2+.3&&Math.abs(z-o.z)<o.d/2+.3));}
- move(actor,dx,dz){if(actor===this.hero){const positions=Object.fromEntries([...this.npcs].map(([id,n])=>[id,n.actor.position]));if(!ropeAllowsMove(this.sim.s,actor.position,{x:actor.position.x+dx,z:actor.position.z+dz},positions,this.obstacles))return;}if(actor!==this.hero&&Math.hypot(dx,dz)>.00001){actor.userData.attemptedMove=true;
- const u=actor.userData,dt=this.npcMoveDt||1/60,length=Math.hypot(dx,dz),previous=this.t-(u.travelAt??-1)<dt*1.5?u.travelSpeed||0:0;
- const step=npcTravelStep(length,previous,dt);u.travelSpeed=step/dt;u.travelAt=this.t;dx*=step/length;dz*=step/length;
+ collides(x,z,feet=0,player=true,ignoreId=null){return (player&&this.sim.event?.type==='gate'&&['prison','testimony'].includes(this.sim.event.gate?.phase)&&(x<PRISON.bounds.minX||x>PRISON.bounds.maxX||z<PRISON.bounds.minZ||z>PRISON.bounds.maxZ))||(player&&this.sim.event?.type==='gate'&&this.sim.event.gate?.phase!=='prison'&&this.sim.event.gate?.phase!=='testimony'&&z<21&&!(roomAt({x,z})?.z===21&&roomAt(this.hero.position)?.id===roomAt({x,z})?.id)&&!(Math.abs(x)<2.7&&this.sim.s.ecosystem?.objects['town-gate']?.hp===0)&&!(x>-25.5&&x< -18.5&&this.sim.s.ecosystem?.objects['river-fence']?.hp===0))||Math.abs(x)>31||z< -34||z>SOUTH_WALK_LIMIT||(feet<1.05&&this.props.some(p=>Math.abs(x-p.x)<1.15&&Math.abs(z-p.z)<.8&&!this.sim.s.broken.includes(p.id)&&this.sim.s.ecosystem?.objects[p.id]?.hp!==0&&objectPresent(this.sim.s.ecosystem?.objects[p.id])))||obstaclesNear(this.obstacles,x,z,.3,cartObstacle).some(o=>o.id!==ignoreId&&objectPresent(this.sim.s.ecosystem?.objects[o.id])&&this.sim.s.ecosystem?.objects[o.id]?.hp!==0&&!this.sim.s.ecosystem?.objects[o.id]?.open&&(o.id===CART?convoyPointCollision(this.sim.s,x,z):Math.abs(x-o.x)<o.w/2+.3&&Math.abs(z-o.z)<o.d/2+.3));}
+ move(actor,dx,dz,free=false){if(actor===this.hero){const positions=Object.fromEntries([...this.npcs].map(([id,n])=>[id,n.actor.position]));if(!ropeAllowsMove(this.sim.s,actor.position,{x:actor.position.x+dx,z:actor.position.z+dz},positions,this.obstacles))return;}if(actor!==this.hero&&Math.hypot(dx,dz)>.00001){
+ const u=actor.userData,dt=this.npcMoveDt||1/60,length=Math.hypot(dx,dz);
+ // Feet stay planted until the startle has played, and a body facing away pivots before it travels.
+ // free: rope-led captives and side-stepping escorts keep following their own constraint.
+ if(!free&&this.t<(u.startledAt??-10)+STARTLE_HOLD)return;
+ u.attemptedMove=true;
+ if(!free&&length/dt>.3&&Number.isFinite(actor.rotation?.y)){
+  const off=Math.atan2(dx,dz)-actor.rotation.y,turn=Math.atan2(Math.sin(off),Math.cos(off)),facing=Math.cos(turn);
+  if(Math.abs(turn)>.2)actor.rotation.y+=Math.sign(turn)*Math.min(Math.abs(turn),(facing<.5?7:4)*dt);
+  if(facing<.5){u.pivotHeld=(this.t-(u.pivotAt??-1)<dt*1.5?u.pivotHeld||0:0)+dt;u.pivotAt=this.t;if(u.pivotHeld<=.6)return;}
+  else{u.pivotHeld=0;dx*=facing;dz*=facing;}
+ }
+ const stride=Math.hypot(dx,dz),previous=this.t-(u.travelAt??-1)<dt*1.5?u.travelSpeed||0:0;
+ const step=npcTravelStep(stride,previous,dt);u.travelSpeed=step/dt;u.travelAt=this.t;dx*=step/stride;dz*=step/stride;
  }const canStep=(x,z)=>!this.collides(x,z,actor.position.y,actor===this.hero)||(actor!==this.hero&&convoyPenetration(this.sim.s,actor.position.x,actor.position.z)>0&&convoyPenetration(this.sim.s,x,z)<convoyPenetration(this.sim.s,actor.position.x,actor.position.z)&&!this.collides(x,z,actor.position.y,false,CART));
  if(canStep(actor.position.x+dx,actor.position.z))actor.position.x+=dx;if(canStep(actor.position.x,actor.position.z+dz))actor.position.z+=dz;}
  nearest(){let nearest=null,d=3.3;for(const [id,n]of this.npcs){const dist=n.actor.position.distanceTo(this.hero.position);if(dist<d&&visibleBetween(this.hero.position,n.actor.position,this.obstacles,this.sim.s.ecosystem?.objects)){nearest={id,npc:n,distance:dist};d=dist;}}return nearest;}
@@ -346,15 +392,24 @@ gateRoof(gate);this.banners=gateBanners(gate);
  if(!goal)return false;const route=[];for(let p=goal;p;p=seen.get(p.join(',')))route.unshift(p);this.auto=route.slice(1);return true;
  }
  jump(){if(!this.sim.s.player.bedRest&&canJump(this)){this.jumpV=7;this.onSound?.('jump');}}
- reactToDraw(){let said=false;for(const [id,n]of [...this.npcs].sort((a,b)=>a[1].actor.position.distanceTo(this.hero.position)-b[1].actor.position.distanceTo(this.hero.position))){const state=this.sim.s.people[id];if(!seesDraw(n.actor,this.hero,state,this.sim.s.npcClock||0,visibleBetween(n.actor.position,this.hero.position,this.obstacles,this.sim.s.ecosystem?.objects))||this.t<(n.drawCooldown||0))continue;
- const line=response(this.sim.s,id,'draw');markEncounter(this.sim.s,id,'draw');n.drawCooldown=this.t+12;n.actor.userData.startledUntil=this.t+.8;n.lookUntil=this.t+3;
+ reactToDraw(){let said=false;for(const [id,n]of [...this.npcs].sort((a,b)=>a[1].actor.position.distanceTo(this.hero.position)-b[1].actor.position.distanceTo(this.hero.position))){const state=this.sim.s.people[id];if(!conflictCapable(this.sim.s,id)||state.awareness?.state==='fight'||!seesDraw(n.actor,this.hero,state,this.sim.s.npcClock||0,visibleBetween(n.actor.position,this.hero.position,this.obstacles,this.sim.s.ecosystem?.objects))||this.t<(n.drawCooldown||0))continue;
+ const line=response(this.sim.s,id,'draw');markEncounter(this.sim.s,id,'draw');n.drawCooldown=this.t+12;n.actor.userData.startledAt=this.t;n.actor.userData.startledUntil=this.t+.7;n.lookUntil=this.t+3;
  if(!said&&!state.awareness?.caseOpen){said=true;this.onLifeSpeech?.({id,text:line});this.onSound?.('notice');}
  }}
  receiveHit(id){const q=this.npcs.get(id).actor.position.clone().sub(this.hero.position).normalize(),front=q.dot(new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y)))>.3;const r=defend(this.sim,id,{guarding:this.combatReady&&this.keys.has('KeyR'),front,perfect:this.t-(this.guardStarted??-10)<.45});if(r.blocked)this.onSound?.('wood',{gain:.4});return r;}
+ npcImpact(id){const s=this.sim.s,r=this.receiveHit(id);if(r.damage||r.blocked)this.combatImpact(this.hero,this.npcs.get(id)?.actor.position||this.hero.position,r.blocked?'guard':'hurt');if(r.damage>0&&officials.includes(id)&&s.player.hp<=0)beginPlayerCapture(this,id);if(r.damage)this.onHurt?.();return r;}
  get combatReady(){return this.readyUntil===Infinity;}
  toggleWeapon(){if(this.sim.s.player.bedRest||!this.playing||this.locked||this.performance||this.sim.s.player.hp<=0)return;if(this.combatReady)this.clearReady();else this.readyUntil=Infinity;if(this.combatReady)this.reactToDraw();this.onReady?.();}
  clearReady(){this.readyUntil=0;this.heroCombat?.cancel();this.heroModel?.motion?.cancelAttack();this.attackTime=0;}
+ // The press turned out to be a view drag: a swing it started is withdrawn before contact, with its stamina.
+ takeBackSwing(){
+ const swing=this.heroCombat.swing;this.heroCombat.queued=undefined;
+ if(!swing||swing!==this.pressSwing||swing.hit)return;
+ this.heroCombat.cancel();this.heroModel?.motion?.cancelAttack();this.attackTime=0;this.inkFx?.trailEnd();
+ const p=this.sim.s.player;p.energy=Math.min(100,p.energy+SWING_COST);
+ }
  primaryAction(e){
+ if(this.aimMode){this.onAimPick?.(e);return;}
  if(this.sim.s.player.bedRest)return;
  if(!this.playing||this.locked||this.performance||this.sim.s.player.hp<=0)return;
  if(this.combatReady)this.attack();else this.onSelectObject?.(e);
@@ -365,24 +420,51 @@ gateRoof(gate);this.banners=gateBanners(gate);
  for(const n of this.npcs.values()){n.nextHit=0;n.actor.position.copy(n.base);}
  }
  attack(objectId=null){
- if(!this.combatReady||this.performance||this.sim.s.player.energy<8||this.locked||this.sim.s.player.hp<=0)return;
+ if(!this.combatReady||this.performance||this.sim.s.player.energy<SWING_COST||this.locked||this.sim.s.player.hp<=0)return;
+ if(this.sim.s.surrender)abandonSurrender(this.sim);
  this.heroCombat??=new HeroCombat();const swing=this.heroCombat.begin(objectId);if(!swing)return;
- this.attackTime=swing.duration;this.sim.s.player.energy-=8;this.heroModel?.motion?.cue('attack_'+(swing.index+1),swing.duration);
+ this.attackTime=swing.duration;this.sim.s.player.energy-=SWING_COST;this.lunge=this.aimSwing(swing);this.dodging=null;this.heroModel?.motion?.cue('attack_'+(swing.index+1),swing.duration,false,{skip:swing.skip,fade:.07});
+ }
+ // A new swing faces the held direction at once; with no direction held it faces a nearby opponent who is already fighting the player.
+ // If that opponent stands just out of reach, the wind-up carries the body in: the returned step closes to striking distance.
+ aimSwing(swing){
+ const k=this.keys,h=this.hero;if(!k||!h)return null;
+ const sx=(k.has('KeyD')?1:0)-(k.has('KeyA')?1:0),sz=(k.has('KeyS')?1:0)-(k.has('KeyW')?1:0),held=!!(sx||sz);
+ if(held)h.rotation.y=Math.atan2(sx*Math.cos(this.yaw)+sz*Math.sin(this.yaw),-sx*Math.sin(this.yaw)+sz*Math.cos(this.yaw));
+ const fx=Math.sin(h.rotation.y),fz=Math.cos(h.rotation.y);let foe=null,near=LUNGE.sight;
+ for(const [id,n] of this.npcs){const p=this.sim.s.people[id];if(!(p?.hp>0)||!(p.awareness?.state==='fight'||n.chasing))continue;const x=n.actor.position.x-h.position.x,z=n.actor.position.z-h.position.z,d=Math.hypot(x,z);
+  // A held direction is the player's own aim; only an opponent already in that direction is closed on.
+  if(d<near&&(!held||(x*fx+z*fz)/Math.max(d,.01)>.8)){near=d;foe=n.actor.position;}}
+ if(!foe)return null;
+ if(!held)h.rotation.y=Math.atan2(foe.x-h.position.x,foe.z-h.position.z);
+ const gap=near-LUNGE.keep;if(gap<=.05||!swing)return null;
+ return {x:(foe.x-h.position.x)/near,z:(foe.z-h.position.z)/near,speed:Math.min(gap,LUNGE.reach)/swing.strike,swing};
+ }
+ // A quick step out of reach: toward the held direction, or straight back. See DODGE: it grants no immunity.
+ dodge(){
+ const p=this.sim.s.player,h=this.hero;
+ if(!this.combatReady||!this.playing||this.locked||this.performance||p.hp<=0||p.bedRest||p.crouched||p.stealing||h.position.y>.02||this.dodging||this.t<(this.dodgeReadyAt||0)||p.energy<DODGE.cost||inDeepWater(h.position.x,h.position.z))return false;
+ const k=this.keys,sx=(k.has('KeyD')?1:0)-(k.has('KeyA')?1:0),sz=(k.has('KeyS')?1:0)-(k.has('KeyW')?1:0),held=!!(sx||sz),len=Math.hypot(sx,sz)||1;
+ const x=held?(sx*Math.cos(this.yaw)+sz*Math.sin(this.yaw))/len:-Math.sin(h.rotation.y),z=held?(-sx*Math.sin(this.yaw)+sz*Math.cos(this.yaw))/len:-Math.cos(h.rotation.y);
+ p.energy-=DODGE.cost;this.heroCombat.cancel();this.attackTime=0;this.lunge=null;this.auto=null;this.inkFx?.trailEnd();
+ if(held)h.rotation.y=Math.atan2(x,z);
+ this.dodging={x,z,age:0,from:h.position.clone()};this.dodgeReadyAt=this.t+DODGE.cooldown;
+ this.heroModel?.motion?.cue(held?'ink_step':'dodge',DODGE.time+.1,false,{fade:.05});this.onSound?.('attack',{gain:.45,rate:1.5});
+ return true;
  }
  strike(objectId=null){
- this.onSound?.('attack');const h=this.hero.position,front=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));
- this.burst(h.x+front.x,1,h.z+front.z,0xdfd2a2,8);
+ const h=this.hero.position,front=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));
  const targets=[...this.npcs].filter(([id,n])=>{const d=n.actor.position.clone().sub(h);return d.length()<(this.sim.s.player.combatSchool==='qing'?3.1:2.6)&&d.normalize().dot(front)>.1&&this.sim.s.people[id].hp>0;}).sort((a,b)=>a[1].actor.position.distanceTo(h)-b[1].actor.position.distanceTo(h));
  if(this.ecology?.hit(front,objectId?Infinity:targets[0]?.[1].actor.position.distanceTo(h)??Infinity,objectId))return;
  if(objectId)return;
- if(targets.length){const [id,n]=targets[0];this.sim.attack(id);this.burst(n.actor.position.x,1,n.actor.position.z,0xdba77e,10);}
+ if(targets.length){const [id,n]=targets[0],before=this.sim.s.people[id].hp;this.sim.attack(id);if(this.sim.s.people[id].hp<before)this.combatImpact(n.actor,h,this.sim.s.people[id].hp<=0?'down':'light');}
  else for(const prop of this.props){const d=new T.Vector3(prop.x,0,prop.z).sub(h);if(d.length()<2.8&&d.normalize().dot(front)>.1&&!this.sim.s.broken.includes(prop.id)){prop.hp--;this.onSound?.('wood',prop);if(prop.hp<=0){this.sim.breakProp(prop.id);this.burst(prop.x,1,prop.z,0xa28152,18);}break;}}
  }
  perform(action,targetId){
  this.clearReady();this.auto=null;this.attackTime=0;
  this.actionStool.position.copy(this.hero.position);this.actionStool.rotation.y=this.hero.rotation.y;
  if(motionFor(action)==='flourish'&&this.hero.position.y<.02)this.jumpV=5;
- this.performance={motion:motionFor(action),start:this.t,duration:action.kind==='eat'?3.6:2.6,targetId,camera:true};
+ this.performance={motion:motionFor(action),start:this.t,duration:action.duration??(action.kind==='eat'?3.6:2.6),targetId,camera:action.camera!==false};
  }
  interactionPoint(id){
  if(id==='scene'&&this.sim.event){const [x,z]=this.sim.event.point||SCENES[this.sim.event.type].point;return new T.Vector3(x,1.7,z);}
@@ -412,6 +494,7 @@ gateRoof(gate);this.banners=gateBanners(gate);
  case 'bow':mix(u.rig,'x',.4*Math.sin(Math.PI*age/a.duration));mix(u.arms[0],'x',-1.1);mix(u.arms[1],'x',-1.1);mix(u.arms[0],'z',-.5);mix(u.arms[1],'z',.5);break;
  case 'clap':mix(u.arms[0],'x',-1.25);mix(u.arms[1],'x',-1.25);mix(u.arms[0],'z',-.7+wave*.2);mix(u.arms[1],'z',.7-wave*.2);break;
  case 'reach':case 'offer':mix(u.arms[1],'x',-1.55+Math.sin(age*3)*.25);mix(u.rig,'x',.15);break;
+ case 'present':case 'handover':mix(u.arms[0],'x',-.85);mix(u.arms[1],'x',-.95);break;
  case 'force':mix(u.arms[1],'x',-1.8+Math.sin(age*5)*.7);mix(u.arms[0],'x',-.9);mix(u.rig,'z',Math.sin(age*5)*.12);break;
  case 'sword':case 'flourish':mix(u.arms[1],'x',-1.5);mix(u.arms[1],'z',Math.sin(age*6)*1.4);mix(u.arms[0],'z',-.9);break;
  case 'flute':mix(u.arms[0],'x',-2);mix(u.arms[1],'x',-2);mix(u.arms[0],'z',-.4);mix(u.arms[1],'z',.6);break;
@@ -419,6 +502,25 @@ gateRoof(gate);this.banners=gateBanners(gate);
  }
  }
  burst(x,y,z,color,count){for(let i=0;i<count;i++){const m=mesh(new T.BoxGeometry(.05,.05,.22),color,this.scene,x,y,z);this.particles.push({m,life:.6,v:new T.Vector3((Math.random()-.5)*6,Math.random()*4,(Math.random()-.5)*6)});}}
+ // Shows a blow that has already been settled: thrown ink, a held frame, a short shove. It decides nothing.
+ // kind: light | down (the blow felled them) | hurt (the player was hit) | guard (the player's blade caught it).
+ combatImpact(actor,from,kind='light'){
+ const p=actor.position,away=new T.Vector3(p.x-from.x,0,p.z-from.z);if(away.lengthSq()<1e-6)away.set(0,0,1);away.normalize();
+ this.feel?.hit(IMPACT[kind]);
+ const detail=this.quality?.step>1?.5:1,point=new T.Vector3(p.x-away.x*(kind==='guard'?.55:.2),kind==='guard'?1.25:1.15,p.z-away.z*(kind==='guard'?.55:.2));
+ if(kind==='guard')this.inkFx?.clash(this.camera,point,away,detail);else this.inkFx?.impact(this.camera,point,away,kind==='down'?1.6:kind==='hurt'?.75:1,detail);
+ this.shove(actor,away,kind==='down'?.55:kind==='guard'?.12:.32);
+ }
+ shove(actor,away,distance){
+ const u=actor.userData;if(u.bedPose||u.groundPose||!this.shoves)return;
+ this.shoves.push({actor,x:away.x,z:away.z,left:distance,rate:distance/.11});
+ }
+ stepShoves(dt){
+ for(let i=this.shoves.length-1;i>=0;i--){const q=this.shoves[i],step=Math.min(q.left,q.rate*dt),a=q.actor;q.left-=step;
+  if(a===this.hero)this.move(a,q.x*step,q.z*step);
+  else{const x=a.position.x+q.x*step,z=a.position.z+q.z*step;if(!this.collides(x,z,a.position.y,false)){a.position.x=x;a.position.z=z;}else q.left=0;}
+  if(q.left<=1e-4)this.shoves.splice(i,1);}
+ }
  updateAmbientNpc(n,dist,dt){
  const a=n.actor;
  // Different enter/leave radii prevent walking and facing from alternating at the boundary.
@@ -480,6 +582,8 @@ gateRoof(gate);this.banners=gateBanners(gate);
   u.rig.rotation.x=(.04+.13*run)*weight*ground+.1*u.airK+.12*land;u.rig.rotation.z=u.lean;
  }
  update(dt){
+ // A landed blow holds the world for a few hundredths of a second; the frame clock itself keeps running.
+ const frameDt=dt;if(this.feel)dt=this.feel.step(dt);
  this.npcMoveDt=dt;
  const angle=this.sim.s.time*Math.PI/120,daylight=Math.max(0,Math.min(1,Math.sin(angle)*2+.45));
  // Keep shaded faces and the walkable ground readable after sunset. Day peaks stay unchanged.
@@ -490,42 +594,53 @@ gateRoof(gate);this.banners=gateBanners(gate);
  const night=nightTime(this.sim.s);if(night!==this.nightUi){this.nightUi=night;globalThis.document?.body.classList.toggle('ink-night',night);}
  this.daylight=daylight;this.scene.background.setHSL(.11,.24,.26+.56*daylight);this.horizon.position.x=this.hero.position.x;this.horizon.position.z=this.hero.position.z;this.horizon.material.color.setScalar(.20+.80*daylight);for(const layer of this.horizon.children)layer.material.color.setScalar(.28+.72*daylight);this.scene.fog.color.copy(this.scene.background);
  this.t+=dt;
- windAtGate(this.banners,this.t);for(const h of this.factionRoofs||[])h.roof.visible=Math.hypot(this.hero.position.x-h.x,this.hero.position.z-h.z)>8;const s=this.sim.s;this.gateBar.visible=this.sim.event?.type==='gate';this.jailBars.visible=true;this.jailRoof.visible=!jailed(s)&&Math.hypot(this.hero.position.x-22,this.hero.position.z+22)>9;if(this.locked||s.player.hp<=0)this.clearReady();let dx=0,dz=0,speed=0;
+ windAtGate(this.banners,this.t);for(const h of this.factionRoofs||[])h.roof.visible=Math.hypot(this.hero.position.x-h.x,this.hero.position.z-h.z)>8;const s=this.sim.s;captureFrame(this,dt);const custodyPose=captureHeroPose(this);if(custodyPose&&this.captureShot.direction)this.hero.rotation.y=turnToward(this.hero.rotation.y,this.captureShot.direction.yaw,dt);this.gateBar.visible=this.sim.event?.type==='gate';this.jailBars.visible=true;this.jailRoof.visible=!jailed(s)&&Math.hypot(this.hero.position.x-22,this.hero.position.z+22)>9;if(this.locked||s.player.hp<=0)this.clearReady();let dx=0,dz=0,speed=0;
  if(!this.locked&&s.player.hp>0&&!s.player.bedRest){const k=this.keys;let sx=(k.has('KeyD')?1:0)-(k.has('KeyA')?1:0),sz=(k.has('KeyS')?1:0)-(k.has('KeyW')?1:0);
  if(sx||sz)this.auto=null;
  if(this.auto?.length){const [x,z]=this.auto[0],d=Math.hypot(x-this.hero.position.x,z-this.hero.position.z);if(d<.3)this.auto.shift();else{dx=(x-this.hero.position.x)/d;dz=(z-this.hero.position.z)/d;}}
  else if(this.auto){this.auto=null;this.onArrive?.();}
  if(sx||sz){const len=Math.hypot(sx,sz);sx/=len;sz/=len;dx=sx*Math.cos(this.yaw)+sz*Math.sin(this.yaw);dz=-sx*Math.sin(this.yaw)+sz*Math.cos(this.yaw);}
- const want=dx||dz?(inDeepWater(this.hero.position.x,this.hero.position.z)?1.4:(s.player.stealing||s.player.crouched)?1.6:k.has('ShiftLeft')&&s.player.energy>1?6.2:3.3)*(this.attackTime>0?.28:1):0;
+ const dodge=this.dodging;if(dodge)dx=dz=0;
+ const want=dx||dz?(inDeepWater(this.hero.position.x,this.hero.position.z)?1.4:(s.player.stealing||s.player.crouched)?1.6:k.has('ShiftLeft')&&s.player.energy>1?6.2:3.3)*(this.heroCombat?.swing?(this.heroCombat.swing.hit?.85:.5):1):0;
  if(want>4)s.player.energy=Math.max(0,s.player.energy-dt*5);else if(!(this.performance?.motion==='flute'&&this.performance.duration===3600))s.player.energy=Math.min(100,s.player.energy+dt*3);
  const v=this.heroVel,ease=1-Math.exp(-(want?9:13)*dt);v.x+=(dx*want-v.x)*ease;v.z+=(dz*want-v.z)*ease;speed=Math.hypot(v.x,v.z);if(!want&&speed<.08){v.set(0,0,0);speed=0;}
+ // The quick step replaces walking for its length, and ends early where something solid is in the way.
+ if(dodge){const step=dodgeTravel(dodge.age+dt)-dodgeTravel(dodge.age);dodge.age+=dt;v.set(dodge.x*step/Math.max(dt,1e-4),0,dodge.z*step/Math.max(dt,1e-4));}
+ const lunge=this.lunge;if(lunge&&(this.heroCombat.swing!==lunge.swing||lunge.swing.hit))this.lunge=null;
  const fromX=this.hero.position.x,fromZ=this.hero.position.z;this.move(this.hero,v.x*dt,v.z*dt);
+ if(this.lunge)this.move(this.hero,lunge.x*lunge.speed*dt,lunge.z*lunge.speed*dt);
+ if(dodge){const at=this.hero.position;this.inkFx?.smearAdd(new T.Vector3(at.x,.45,at.z),new T.Vector3(at.x,1.35,at.z));
+  if(dodge.age>=DODGE.time){this.dodging=null;this.inkFx?.smearEnd();this.inkFx?.streak(dodge.from,at);}}
  speed=Math.hypot(this.hero.position.x-fromX,this.hero.position.z-fromZ)/Math.max(dt,.001);
  const before=this.hero.rotation.y;if(want)this.hero.rotation.y=heroTurn(before,Math.atan2(dx,dz),dt);this.heroTurnRate=Math.atan2(Math.sin(this.hero.rotation.y-before),Math.cos(this.hero.rotation.y-before))/Math.max(dt,.001);
- }else{this.heroVel.set(0,0,0);this.heroTurnRate=0;}
+ }else{this.heroVel.set(0,0,0);this.heroTurnRate=0;this.dodging=this.lunge=null;}
+ this.stepShoves(dt);
  if(s.player.bedRest)speed=moveToBed(this,dt);
  if(s.player.hp<=0){this.jumpV=0;this.hero.position.y=0;this.attackTime=0;this.auto=null;this.keys.clear();s.player.crouched=false;s.player.stealing=false;}
  this.jumpV-=18*dt;this.hero.position.y=Math.max(0,this.hero.position.y+this.jumpV*dt);if(this.hero.position.y===0){if(this.jumpV<-2){this.landing={at:this.t,impact:Math.min(1,-this.jumpV/8)};this.onSound?.('step',{gain:1.4});}this.jumpV=0;}
 
- this.animateActor(this.hero,speed||this.objectMoving?1:0,dt,s.player.hp<=0?'down':'');if(s.player.hp>0)this.heroGait(this.objectMoving&&!speed?3.3:speed,dt);if(this.combatReady){this.hero.userData.arms[1].rotation.x=-.7;this.hero.userData.arms[1].rotation.z=.35;}if(this.attackTime){this.hero.userData.arms[1].rotation.x=-1.5;this.hero.userData.arms[1].rotation.z=-2+this.attackTime*7;}
+ if(custodyPose)speed=custodyPose.speed;this.animateActor(this.hero,speed||this.objectMoving?1:0,dt,s.player.hp<=0?'down':'');if(s.player.hp>0)this.heroGait(this.objectMoving&&!speed?3.3:speed,dt);if(this.combatReady){this.hero.userData.arms[1].rotation.x=-.7;this.hero.userData.arms[1].rotation.z=.35;}if(this.attackTime){this.hero.userData.arms[1].rotation.x=-1.5;this.hero.userData.arms[1].rotation.z=-2+this.attackTime*7;}
  const guarding=this.combatReady&&this.keys.has('KeyR')&&skill(s.player,'combat').tier>=2&&!this.attackTime;if(guarding){this.hero.userData.arms[1].rotation.x=-1.35;this.hero.userData.arms[1].rotation.z=-.55;this.hero.userData.arms[0].rotation.x=-.9;}restraintBeat(this);this.animatePerformance(speed,dt);this.actionCoins.visible=this.performance?.motion==='gamble';this.actionBowl.visible=!!this.performance&&['eat','drink'].includes(this.performance.motion);this.actionFlute.visible=this.performance?.motion==='flute';this.actionStool.visible=this.performance?.motion==='eat'&&!speed&&this.actionStool.position.distanceTo(this.hero.position)<.3;this.hero.userData.sword.visible=this.combatReady||this.performance?.motion==='sword';
  s.player.x=this.hero.position.x;s.player.z=this.hero.position.z;
  this.heroCombat.step(dt,this.playing&&!this.locked&&!this.performance&&s.player.hp>0&&this.combatReady,id=>this.strike(id),id=>this.attack(id));this.attackTime=this.heroCombat.remaining;
+ // The blade is heard once it is moving, so a press that turns out to be a view drag makes no sound.
+ const heard=this.heroCombat.swing;if(heard&&!heard.heard&&heard.age>=.05){heard.heard=true;this.onSound?.('attack');}
  let environmentDamage=0;
  if(this.playing){const hp=s.player.hp,was=s.player.drowning;environmentStep(s.player,dt,s.ecosystem?.objects);environmentDamage=Math.max(0,hp-s.player.hp);document.body.classList.toggle('drowning',s.player.drowning&&s.player.hp>0);if(s.player.drowning&&!was)this.onThought?.('脚踩不到底，喘不上气……得赶紧找岸。');if(hp>0&&s.player.hp<=0)this.onHurt?.();if(s.player.hp>0&&s.player.z<19.5&&inDeepWater(s.player.x,s.player.z))enterRiver(this.sim);else if(s.player.z<20.5)enterBrokenGate(this.sim);}
  if(this.sceneId!==this.sim.event?.id&&this.sim.event)this.syncEvent();
  if(this.playing&&!this.locked)s.npcClock=(s.npcClock||0)+dt;
  if(this.playing&&!this.locked&&!this.cinematic)encounterStep(this.sim,Object.fromEntries([...this.npcs].map(([id,n])=>[id,n.actor.position])),this.obstacles);
  if(this.playing&&!this.locked&&!this.cinematic)observeConcerns(this.sim,Object.fromEntries([...this.npcs].map(([id,n])=>[id,{x:n.actor.position.x,z:n.actor.position.z,facing:n.actor.rotation.y}])),this.obstacles);
- investigationFrame(this);convoyAftermathFrame(this);actionCardFrame(this,dt);
- for(const [id,n]of this.npcs){if(restraintMotion(this,id,n,this.playing&&!this.locked&&!this.cinematic?dt:0))continue;if(this.playing&&!this.cinematic&&investigationMotion(this,id,n,this.locked?0:dt))continue;if(this.trainingActor===id){this.animateActor(n.actor,0,dt,'');n.actor.userData.sword.visible=false;continue;}if(actionCardMotion(this,id,n,dt))continue;this.lifeFeedback(id,n);n.actor.userData.sword.visible=false;if(this.playing&&!this.cinematic&&this.territoryMotion(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&this.complaintMotion(id,n,this.locked?0:dt))continue;if(concernMotion(this,id,n,dt))continue;if(this.playing&&!this.cinematic&&this.reportOrReactionMotion(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&convoyAftermathMotion(this,id,n,this.locked?0:dt))continue;const state=s.people[id],a=n.actor;let moving=0,gesture='';const beforeMove=a.position.clone(),dist=Math.hypot(a.position.x-this.hero.position.x,a.position.z-this.hero.position.z);
+ const boardNotices=publicWantedNotices(s),boardSignature=JSON.stringify(boardNotices.map(w=>[w.id,w.status,w.charges]));if(this.wantedPoster&&this.wantedBoardSignature!==boardSignature){this.wantedBoardSignature=boardSignature;this.wantedPoster.material.map?.dispose();this.wantedPoster.material.dispose();this.wantedPoster.material=wantedSheet(boardNotices);}
+ surrenderFrame(this);escortReactionFrame(this);investigationFrame(this);identityConsequenceFrame(this);bundleGiftFrame(this,dt);qingheJourneyFrame(this,dt);convoyAftermathFrame(this);actionCardFrame(this,dt);
+ for(const [id,n]of this.npcs){if(s.people[id].hp<=0){n.chasing=n.fleeing=false;n.actor.position.y=0;delete n.actor.userData.bedPose;delete n.actor.userData.groundPose;this.animateActor(n.actor,0,dt,'down');n.actor.userData.sword.visible=false;if(n.alert)n.alert.visible=false;continue;}if(captureMotion(this,id,n,dt))continue;if(this.playing&&!this.cinematic&&surrenderMotion(this,id,n,this.locked?0:dt))continue;if(restraintMotion(this,id,n,this.playing&&!this.locked&&!this.cinematic?dt:0))continue;if(escortReactionMotion(this,id,n,dt))continue;if(s.chapterVersion===2&&this.playing&&!this.cinematic&&!this.sim.s.surrender&&['fight','flee','search'].includes(this.sim.s.people[id]?.awareness?.state)&&this.reactNpc(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&bountyOfficerMotion(this,id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&investigationMotion(this,id,n,this.locked?0:dt))continue;if(this.t<(n.actor.userData.startledAt??-10)+STARTLE_HOLD&&conflictCapable(s,id)){this.animateActor(n.actor,0,dt,'');n.actor.userData.sword.visible=false;continue;}if(this.trainingActor===id){this.animateActor(n.actor,0,dt,'');n.actor.userData.sword.visible=false;continue;}if(bundleGiftMotion(this,id,n,dt))continue;if(qingheJourneyMotion(this,id,n,dt))continue;if(actionCardMotion(this,id,n,dt))continue;this.lifeFeedback(id,n);n.actor.userData.sword.visible=false;if(this.playing&&!this.cinematic&&this.territoryMotion(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&this.complaintMotion(id,n,this.locked?0:dt))continue;if(concernMotion(this,id,n,dt))continue;if(this.playing&&identityConsequenceMotion(this,id,n,dt))continue;if(this.playing&&!this.cinematic&&this.reportOrReactionMotion(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&convoyAftermathMotion(this,id,n,this.locked?0:dt))continue;const state=s.people[id],a=n.actor;let moving=0,gesture='';const beforeMove=a.position.clone(),dist=Math.hypot(a.position.x-this.hero.position.x,a.position.z-this.hero.position.z);
  n.chasing=this.playing&&this.sim.isPursuing(id,dist-(n.chasing?2:0));n.fleeing=state.fear>0&&(n.fleeing?dist<10:dist<7);
  if(this.cinematic){const other=this.npcs.get(this.cinematic.speaker===id?this.cinematic.listener:this.cinematic.speaker)?.actor.position||this.hero.position;a.rotation.y=turnToward(a.rotation.y,Math.atan2(other.x-a.position.x,other.z-a.position.z),dt);gesture=this.cinematic.speaker===id?'talk':'';}
  else if(state.hp<=0){gesture='down';}
  else if(n.chasing){
-  const dir=this.hero.position.clone().sub(a.position);dir.y=0;dir.normalize();a.rotation.y=turnToward(a.rotation.y,Math.atan2(dir.x,dir.z),dt);const step=arriveStep(dist,2,dt,1.2);this.move(a,dir.x*step,dir.z*step);moving=1;gesture='talk';
-  if(dist<1.6&&this.t>(n.nextHit||0)){n.nextHit=this.t+1.5;const defended=this.receiveHit(id);if(defended.damage){this.burst(this.hero.position.x,1,this.hero.position.z,0xb85f47,6);this.onHurt?.();}}
+  const dir=this.hero.position.clone().sub(a.position);dir.y=0;dir.normalize();if(!n.combat?.swing||n.combat.swing.age<.18)a.rotation.y=turnToward(a.rotation.y,Math.atan2(dir.x,dir.z),dt);const step=arriveStep(dist,n.combat?.swing?0:2,dt,1.2);this.move(a,dir.x*step,dir.z*step);moving=step>0?1:0;gesture='';a.userData.sword.visible=npcArmed(s,id);
  }else if(n.fleeing){const dir=a.position.clone().sub(this.hero.position).normalize();this.move(a,dir.x*3*dt,dir.z*3*dt);a.rotation.y=turnToward(a.rotation.y,Math.atan2(dir.x,dir.z),dt);moving=1;}
+ else if(this.itemExchange?.targetId===id){a.rotation.y=turnToward(a.rotation.y,Math.atan2(this.hero.position.x-a.position.x,this.hero.position.z-a.position.z),dt);gesture=this.itemExchange.phase==='talk'?'talk':'';}
  else if(n.echoFacingUntil>this.t){a.rotation.y=turnToward(a.rotation.y,Math.atan2(this.hero.position.x-a.position.x,this.hero.position.z-a.position.z),dt);gesture=this.speaking===id?'talk':'';}
  else if(n.bedWeight>.01&&!isSleeping(state)){}
  else if(this.stealthTurn?.(id,n,this.locked?0:dt)){}
@@ -539,7 +654,7 @@ gateRoof(gate);this.banners=gateBanners(gate);
  moving=Math.min(1.5,a.position.distanceTo(beforeMove)/Math.max(dt,.001)/2);
  if(this.speaking===id&&state.hp>0)gesture='talk';this.animateActor(a,moving,dt,gesture);if(this.reaction&&this.t<this.reaction.until&&['shen','su'].includes(id)&&state.hp>0){if(this.reaction.success&&['support','eat','favor'].includes(this.reaction.kind)){a.userData.arms[0].rotation.x=-1.1;a.userData.arms[1].rotation.x=-1.1;}else if(!this.reaction.success){a.userData.rig.rotation.z=Math.sin(this.t*5)*.08;a.userData.arms[1].rotation.x=-.7;}}n.kneel=(n.kneel||0)+(Number(id==='shen'&&this.sim.event?.type==='proposal'&&(!this.sim.event.proposal||this.sim.event.proposal.phase==='opening')&&moving===0&&!state.fear&&state.mood!=='angry')-(n.kneel||0))*(1-Math.exp(-8*dt));if(n.kneel>.001){a.userData.rig.position.y-=.25*n.kneel;a.userData.legs[0].rotation.x=T.MathUtils.lerp(a.userData.legs[0].rotation.x,-1.1,n.kneel);a.userData.arms[1].rotation.x=T.MathUtils.lerp(a.userData.arms[1].rotation.x,-1.2,n.kneel);}
  if(id==='gate_guard'){const fighting=this.sim.event?.gate?.phase==='fight'&&!this.cinematic;a.userData.sword.visible=fighting;if(fighting){a.rotation.y=turnToward(a.rotation.y,Math.atan2(this.hero.position.x-a.position.x,this.hero.position.z-a.position.z),dt);a.userData.arms[1].rotation.x=-.8-Math.max(0,Math.sin((this.sim.event.gate.fightTime||0)*Math.PI/1.5))*1.1;}}
- state.facing=a.rotation.y;if(!this.cinematic||isSleeping(state))this.ecology?.pose(id);const labelWorld=Math.min(2.7,this.camera.position.distanceTo(a.position)*.13);n.label.scale.set(labelWorld,labelWorld*.187,1);n.label.visible=!this.cinematic&&visibleBetween(this.hero.position,a.position,this.obstacles,s.ecosystem?.objects)&&dist<(this.keys.has("AltLeft")||this.keys.has("AltRight")?12:6.6);n.label.material.opacity=Math.min(1,(13-dist)/3);
+ const labelName=npcName(s,id);if(n.labelName!==labelName){a.remove(n.label);n.label.material.map.dispose();n.label.material.dispose();n.label=textSprite(labelName);n.label.position.y=2.7;a.add(n.label);n.labelName=labelName;}state.facing=a.rotation.y;if(!this.cinematic||isSleeping(state))this.ecology?.pose(id);const labelWorld=Math.min(2.7,this.camera.position.distanceTo(a.position)*.13);n.label.scale.set(labelWorld,labelWorld*.187,1);n.label.visible=!this.cinematic&&visibleBetween(this.hero.position,a.position,this.obstacles,s.ecosystem?.objects)&&dist<(this.keys.has("AltLeft")||this.keys.has("AltRight")?12:6.6);n.label.material.opacity=Math.min(1,(13-dist)/3);
  }
  this.updateStealth?.(dt);
  if(this.ring)this.ring.visible=!s.facts.missing;
@@ -550,11 +665,14 @@ gateRoof(gate);this.banners=gateBanners(gate);
  const perf=this.performance,shot=perf?.camera?Math.sin(Math.PI*Math.min(1,(this.t-perf.start)/perf.duration))*.28:0,viewYaw=this.yaw+shot,viewDistance=this.distance*(this.aimMode?.65:1)*(1-shot*.6);
  const heroY=this.hero.position.y;this.cameraY=(this.cameraY??heroY)+(heroY-(this.cameraY??heroY))*(1-Math.exp(-dt*(heroY>.02?2.5:10)));
  const target=this.hero.position.clone().setY(this.cameraY+1.45),offset=new T.Vector3(Math.sin(viewYaw)*Math.cos(this.pitch)*viewDistance,Math.sin(this.pitch)*viewDistance,Math.cos(viewYaw)*Math.cos(this.pitch)*viewDistance);
- if(this.cinematic){
+ // Last frame's jolt is taken off before the camera is placed, so it never feeds the follow smoothing.
+ this.camera.position.sub(this.jolt);this.jolt.set(0,0,0);this.camera.fov+=this.fovKick;this.fovKick=0;
+ if(captureCamera(this,dt)){}else if(this.cinematic){
  const c=this.cinematic,speaker=this.npcs.get(c.speaker)?.actor||this.hero,listener=this.npcs.get(c.listener)?.actor||this.hero;
  const focus=c.template==='reaction'?listener:speaker,other=c.template==='reaction'?speaker:listener;
  const shot=shotPlan(focus.position,other.position,c.template==='reaction'?'close':c.template,this.camera.aspect);
  const eye=new T.Vector3(shot.position.x,shot.position.y,shot.position.z),look=new T.Vector3(shot.target.x,shot.target.y,shot.target.z);
+ const seatedOffset=focus.userData.groundPose?focus.userData.rig.position.y:0;look.y+=seatedOffset*(c.template==='two'?.5:1);eye.y+=seatedOffset*(c.template==='two'?.35:.7);
  // Avoid putting the camera inside a building; a tighter view stays with the speaker.
  if(this.collides(eye.x,eye.z,0,false)){eye.lerp(look,.55);eye.y=2.4;}
  // The cell conversation is filmed from inside, never through the bars at z=17.
@@ -569,6 +687,7 @@ gateRoof(gate);this.banners=gateBanners(gate);
  }else if(this.objectFocus){const focus=this.objectFocus;this.camera.position.lerp(focus.clone().add(new T.Vector3(4,3,5)),1-Math.exp(-dt*4));this.camera.fov=48;this.camera.lookAt(focus);}else{
  const shoulder=this.aimMode?.35:0;target.x+=Math.cos(viewYaw)*shoulder;target.z-=Math.sin(viewYaw)*shoulder;
  followOrbit(this.camera,target,target.clone().add(offset),this.obstacles,s.ecosystem?.objects,dt,this.aimMode?44:48+Math.min(4,speed*.65));
+ const feel=this.feel;if(feel.shake||feel.punch){this.jolt.set(Math.sin(this.t*91)*.8+Math.sin(this.t*57+1.3)*.4,Math.sin(this.t*73+.7)*.7,0).multiplyScalar(feel.shake*.3).applyQuaternion(this.camera.quaternion);this.camera.position.add(this.jolt);this.fovKick=feel.punch*2.6;this.camera.fov-=this.fovKick;}
  }
  this.camera.updateProjectionMatrix();
  // Temporarily cull only unrelated foreground actors that could cover the speaker.
@@ -582,15 +701,16 @@ gateRoof(gate);this.banners=gateBanners(gate);
  }
  // Detect blocked attempts after movement, not long-lived idle positions.
  for(const [id,n]of this.npcs)recoverNpc(this,id,n,dt);
+ for(const [id,n]of this.npcs)stepNpcCombat(this,id,n,dt,k=>this.npcImpact(k));
  const oldHp=this.hero.userData.lastHp;bodyFeedback(this.hero,s.player.hp,this.t,dt);
  if(oldHp!==undefined&&s.player.hp<oldHp){this.heroCombat.cancel();this.attackTime=0;const cue=damageSound(oldHp,s.player.hp,environmentDamage);if(cue)this.onSound?.(cue);if(s.player.hp<=0&&oldHp>0)this.onHurt?.();}
  dressActor(this.hero,0x385953,outfit(this.sim)?.color??0x385953);
  for(const [id,n]of this.npcs){if(s.people[id].wardrobeInitialized)dressActor(n.actor,n.person.color,s.ecosystem.items.some(i=>i.type==='clothing'&&i.ownerId===id&&i.location==='npc:'+id&&i.hp>0)?n.person.color:0xb6b09b);const st=s.people[id],a=n.actor,d=a.position.distanceTo(this.hero.position),available=st.hp>0&&!(st.stunnedUntil>(s.npcClock||0));const visible=available&&d<6&&visibleBetween(a.position,this.hero.position,this.obstacles,s.ecosystem?.objects);const dx=this.hero.position.x-a.position.x,dz=this.hero.position.z-a.position.z;const front=Math.sin(a.rotation.y)*dx+Math.cos(a.rotation.y)*dz>0;
- if(id==='scribe'&&this.playing&&!this.locked&&!this.cinematic&&!this.performance&&s.player.hp>0&&!st.probed&&!s.facts.scribeScarsSeen&&visible&&d<3.8&&this.onThought?.('刻刀磨的是指腹。他虎口那几道疤，倒像是替人挡过刀……趁他翻印时，再看仔细些。')){s.facts.scribeScarsSeen=true;this.sim.save();}
+ if(id==='scribe'&&this.playing&&!this.locked&&!this.cinematic&&!this.performance&&s.player.hp>0&&!st.probed&&!s.facts.scribeScarsSeen&&visible&&d<3.8&&this.onThought?.('（他虎口的疤，倒不像刻刀伤的。）')){s.facts.scribeScarsSeen=true;this.sim.save();}
  const watching=!isSleeping(st)&&this.playing&&!this.locked&&!this.cinematic&&s.player.hp>0&&s.player.crouched&&visible&&front&&d<4&&!st.awareness?.caseOpen;
  n.skulkTime=watching?(n.skulkTime||0)+dt:0;if(n.skulkTime>=5&&this.t>(this.skulkNext||0)&&st.impressions?.skulk!=='skulk:'+s.day){this.skulkNext=this.t+9;n.lookUntil=this.t+2;const text=response(s,id,'skulk');markEncounter(s,id,'skulk');this.onLifeSpeech?.({id,text});}
  const target=n.musicLookUntil>this.t?n.musicPoint:visible&&(front||this.t<n.lookUntil)?this.hero.position:null;bodyFeedback(a,st.hp,this.t,dt,target);const beat=this.performance;if(beat?.motion==='pressure'&&beat.targetId===id&&beat.hit!==undefined&&st.hp>0){const recoil=pressureReaction(beat,this.t);a.userData.rig.rotation.z+=(beat.hit?.16:-.24)*recoil;if(beat.hit&&beat.point==='mute')a.userData.arms[0].rotation.x=-2.35*recoil;}}
- this.updateNpcChecks();this.updateActorDeltas();this.updateActivityCaption();
+ this.updateNpcChecks();this.updateActorDeltas();this.updateActivityCaption();this.sceneDetails??=new SceneDetails(this);this.sceneDetails.update(dt);
  for(const [id,n] of this.npcs){
   const a=n.actor,u=a.userData,st=s.people[id],clock=s.ecosystem?.time||0;
   if(id==='porter'){
@@ -600,23 +720,32 @@ gateRoof(gate);this.banners=gateBanners(gate);
   const actualSpeed=n.motionPosition?a.position.distanceTo(n.motionPosition)/Math.max(dt,.001):0;
   n.motionPosition??=a.position.clone();n.motionPosition.copy(a.position);
   const target=st.life?.target,atSeat=target&&Math.hypot(a.position.x-target.x,a.position.z-target.z)<.6;
-  const seated=!st.restraint&&this.trainingActor!==id&&['tea','rest'].includes(st.life?.activity)&&atSeat;
+  const seated=st.hp>0&&!st.restraint&&!n.chasing&&!n.fleeing&&!st.awareness?.caseOpen&&this.trainingActor!==id&&['tea','rest','doze','meal'].includes(st.life?.activity)&&atSeat&&atStool(a.position);
   const upperKind=st.sickUntil>clock?'sick':st.drinkingUntil>clock?'drink':st.eatingUntil>clock?'eat':st.pouringUntil>clock?'pour':st.collectUntil>clock||st.payingUntil>clock?'reach':n.heldKettle?.visible?'pour':s.ecosystem?.show?.audience.includes(id)&&actualSpeed<.12?'clap':null;
-  const upperBody=st.restraint&&st.hp>0?{kind:'bound'}:this.trainingActor===id?{kind:this.trainingPose}:upperKind?{kind:upperKind}:this.ecology?.upperBody?.(id)||u.npcUpperBody;
+  const itemAttention=this.itemExchange?.targetId===id&&!n.chasing&&!n.fleeing&&!st.awareness?.caseOpen;
+  const custodyUpper=captureOfficerPose(this,id);const upperBody=custodyUpper|| (st.restraint&&st.hp>0?{kind:'bound'}:this.trainingActor===id?{kind:this.trainingPose}:itemAttention?(this.itemExchange.phase==='inspect'?{kind:'inspect'}:null):upperKind?{kind:upperKind}:this.ecology?.upperBody?.(id)||u.npcUpperBody||n.detailPose);
   if(st.restraint)delete u.bedPose;else npcBedPose(this,id,dt);
-  const choreography=(st.life?.activity==='privacy'&&atSeat)||n.kneel>.01||u.npcPoseOverride||u.hurtUntil>this.t||u.startledUntil>this.t||(this.performance?.targetId===id&&pressureReaction(this.performance,this.t)>0);
-  n.model.sync(n.person.color,{dt,bedPose:u.bedPose,hp:st.hp,speed:actualSpeed>6?0:actualSpeed,seated,upperBody,
-   talking:this.speaking===id||this.cinematic?.speaker===id||u.npcTalking,
+  npcGroundSeat(this,id,dt,actualSpeed);
+  // A resting porter sets the carried bundle beside him; it remains his real item.
+  if(n.ironCargo){const k=u.groundPose?.weight||0;n.ironCargo.position.set(-.5*k,-.71*k,0);}
+  const choreography=(st.life?.activity==='privacy'&&atSeat)||n.kneel>.01||u.npcPoseOverride||(this.performance?.targetId===id&&pressureReaction(this.performance,this.t)>0);
+  const danger=['fight','flee','search'].includes(st.awareness?.state)||n.chasing||n.fleeing;
+  n.model.sync(n.person.color,{dt,bedPose:u.bedPose,groundPose:u.groundPose,dozing:seated&&st.life?.activity==='doze',hp:st.hp,speed:actualSpeed>6?0:actualSpeed,seated,upperBody:custodyUpper|| (danger?null:upperBody),flee:st.awareness?.state==='flee'||n.fleeing,hurtAt:u.hurtAt,startleAt:u.startledAt,
+   talking:itemAttention?this.itemExchange.phase==='talk':this.speaking===id||this.cinematic?.speaker===id||u.npcTalking,
    angry:st.mood==='angry'||st.awareness?.state==='warn'||s.complaint?.id===id,
    armed:u.sword.visible,stunned:!st.restraint&&st.stunnedUntil>s.npcClock,fallback:!st.restraint&&!!choreography});
   // Keep food and vessels on the animated hand, including while carrying tea.
   const hand=n.model.handPoint?.(1);
   if(hand)for(const prop of [n.heldFood,n.heldCup,n.heldKettle])if(prop?.visible){prop.parent.updateWorldMatrix(true,false);prop.position.copy(prop.parent.worldToLocal(hand.clone()));if(prop===n.heldKettle)prop.position.y-=.17;}
-  u.npcPoseOverride=false;u.npcTalking=false;u.npcUpperBody=null;
+  this.sceneDetails.afterPose(id);n.detailSpeed=actualSpeed;u.npcPoseOverride=false;u.npcTalking=false;u.npcUpperBody=null;
  }
  this.ecology?.afterPose?.();
  playerBedPose(this);
- this.heroModel.sync({dt,bedPose:this.hero.userData.bedPose,hatOn:!!s.player.hat,disguised:['runner','borrowed'].includes(s.player.disguise),hp:s.player.hp,hurt:oldHp!==undefined&&s.player.hp<oldHp,armed:this.combatReady,speed:this.objectMoving&&!speed?3.3:speed,airborne:this.hero.position.y>.02,crouched:s.player.crouched||s.player.stealing,fallback:!!this.performance||guarding||!!this.hero.userData.bedPose});this.appearanceModel.update(s);drawLassos(this);
+ this.heroModel.sync({dt,custody:custodyPose,bedPose:this.hero.userData.bedPose,hatOn:!!s.player.hat,disguised:['runner','borrowed'].includes(s.player.disguise),hp:s.player.hp,hurt:oldHp!==undefined&&s.player.hp<oldHp,armed:this.combatReady,speed:this.objectMoving&&!speed?3.3:speed,airborne:this.hero.position.y>.02,crouched:s.player.crouched||s.player.stealing,upperBody:custodyPose?.phase!=='lift'&&custodyPose?{kind:'bound'}:['present','handover'].includes(this.performance?.motion)?{kind:this.performance.motion}:null,fallback:!!this.performance&&!['present','handover'].includes(this.performance.motion)||guarding||!!this.hero.userData.bedPose});this.appearanceModel.update(s);drawLassos(this);
+ // The blade's stroke is taken from where the sword really is, over the cutting part of the swing only.
+ const swing=this.heroCombat.swing,sword=this.hero.userData.sword;
+ if(swing&&sword.visible&&swing.age>swing.strike-.11&&swing.age<swing.strike+.15&&(this.bladeEnds??=bladeEnds(sword))){sword.updateWorldMatrix(true,false);this.inkFx.trailAdd(this.bladeEnds.near.clone().applyMatrix4(sword.matrixWorld),this.bladeEnds.far.clone().applyMatrix4(sword.matrixWorld));}else this.inkFx.trailEnd();
+ this.inkFx.update(dt);this.vitality.update(frameDt);
   const now=performance.now();if(this.playing&&this.quality.frame(now-this.frameAt))this.applyQuality();this.frameAt=now;
   if(this.quality.lightShadows&&(this.shadowTurn=!this.shadowTurn))this.renderer.shadowMap.needsUpdate=true;
   this.ink.render(this.daylight);

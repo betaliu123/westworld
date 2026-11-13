@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>坐地与包子预览</title><link rel="stylesheet" href="../ink-ui.css">
+<style>body{margin:0;background:#ece3cf}canvas{display:block}nav{position:absolute;top:16px;left:16px;display:flex;gap:8px;align-items:center;font:16px KaiTi,serif}button,select,output{font:inherit}output{max-width:500px}</style>
+<nav><select aria-label="人物"><option value="beggar">瘸张</option><option value="porter">周大石</option><option value="fu">符祥</option><option value="tea_host">茶娘</option></select><button id="sit">坐地</button><button id="doze">打盹</button><button id="stand">起身</button><button id="down">倒地</button><button id="side">侧面</button><button id="food">包子近看</button><output>加载中</output></nav>
+<script>addEventListener('error',e=>document.querySelector('output').textContent=e.message);addEventListener('unhandledrejection',e=>document.querySelector('output').textContent=String(e.reason));</script>
+<script type="module">
+import * as T from '../vendor/three.module.js';
+import {mountActorModel,npcLook} from '../src/actor-model.js';
+import {npcGroundSeat} from '../src/ground-seat.js';
+import {bunMesh} from '../src/food-model.js';
+function character(){const root=new T.Group(),rig=new T.Group();root.add(rig);const arms=[new T.Group(),new T.Group()],legs=[new T.Group(),new T.Group()],head=new T.Group(),sword=new T.Group();rig.add(...arms,...legs,head);sword.visible=false;root.userData={rig,arms,legs,head,sword};return root;}
+const scene=new T.Scene(),camera=new T.PerspectiveCamera(35,innerWidth/innerHeight,.01,60),renderer=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(devicePixelRatio);renderer.shadowMap.enabled=true;document.body.append(renderer.domElement);scene.background=new T.Color(0xece3cf);scene.add(new T.HemisphereLight(0xece3cf,0x4f4b42,2));const light=new T.DirectionalLight(0xece3cf,3);light.position.set(-3,6,4);light.castShadow=true;scene.add(light);
+const floor=new T.Mesh(new T.PlaneGeometry(50,50),new T.MeshStandardMaterial({color:0xc0ae88,roughness:1}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+const buns=[];for(let i=0;i<3;i++){const bun=bunMesh();bun.position.set(1.2+i*.24,.07,.4);scene.add(bun);buns.push(bun);}
+let id='beggar',actor,model,mode='sit',side=false,close=false,world;
+function view(){camera.position.set(close?1.7:side?3.6:2,close?.7:2.1,close?1.5:4.4);camera.lookAt(close?1.5:0,close?.12:.75,close?.4:0);}
+async function select(value){id=value;if(actor)scene.remove(actor);actor=character(0x8a7350);scene.add(actor);model=mountActorModel(actor,npcLook(id));world={sim:{s:{people:{[id]:{hp:100,life:{activity:'doze',target:{x:0,z:0}}}},npcClock:0,ecosystem:{time:0}}},npcs:new Map([[id,{actor}]]),t:0};await model.loaded;}
+document.querySelector('select').onchange=e=>select(e.target.value);
+for(const key of ['sit','doze','stand','down'])document.getElementById(key).onclick=()=>{mode=key;close=false;view();};
+document.getElementById('side').onclick=()=>{side=!side;view();};document.getElementById('food').onclick=()=>{close=!close;view();};
+view();await select(id);let last=performance.now();
+function frame(now){requestAnimationFrame(frame);const dt=Math.min(.04,(now-last)/1000);last=now;if(!model.ready)return;world.t+=dt;const st=world.sim.s.people[id],u=actor.userData;st.hp=mode==='down'?0:100;st.life.activity=mode==='stand'?'awake':mode==='down'?'down':mode==='sit'?'rest':'doze';
+u.npcPoseOverride=false;u.rig.position.set(0,0,0);u.rig.rotation.set(mode==='down'?-Math.PI/2:0,0,0);u.head.rotation.set(0,0,0);u.arms.forEach(a=>a.rotation.set(0,0,0));u.legs.forEach(a=>a.rotation.set(0,0,0));if(mode==='down')u.rig.position.set(0,.12,1);
+if(mode==='stand')world.npcs.get(id).groundRising=true;
+npcGroundSeat(world,id,dt);model.sync(0x8a7350,{dt,hp:st.hp,groundPose:u.groundPose,fallback:!!u.groundPose||mode==='down'});document.querySelector('output').textContent=model.error?String(model.error):`${mode} · ${u.groundPose?'坐地 '+u.groundPose.weight.toFixed(2):model.activeClip}`;renderer.render(scene,camera);}
+requestAnimationFrame(frame);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>

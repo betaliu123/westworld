@@ -8,6 +8,7 @@ import {appearanceState,appearanceTime} from '../src/appearance.js';
 import {defend} from '../src/martial.js';
 import {lifeStep} from '../src/npc-life.js';
 import {recoverNpc} from '../src/npc-recovery.js';
+import {actionCardMotion} from '../src/action-cards-view.js';
 import {apprenticeshipOptions,requestApprenticeship,finishDemonstration,attemptLesson,completeLesson} from '../src/apprenticeship.js';
 
 function setup(template='food'){
@@ -23,6 +24,14 @@ function setup(template='food'){
 function waitNearby(f){f.positions[f.id]=f.id==='qing'?{x:0,z:-1.6}:{x:1.1,z:.3};f.s.people[f.id].facing=Math.atan2(-f.positions[f.id].x,-f.positions[f.id].z);f.step();}
 function answer(f,choice='action_card_accept',cardId=f.s.deck.actions.active.cardId){return answerActionCard(f.sim,f.id,cardId,choice,f.positions);}
 function arrive(f){waitNearby(f);assert.equal(f.s.deck.actions.active.phase,'waiting');assert.ok(!answer(f).error);}
+
+test('an active visitor lets the ordinary movement controller carry out wagon yielding',()=>{
+ const f=setup(),e=f.start(),n=f.s.people[f.id];n.life={activity:'yieldConvoy',target:{x:3.1,z:-5}};
+ const actor={userData:{}},world={sim:f.sim,playing:true};
+ assert.equal(actionCardMotion(world,f.id,{actor},.1),false);
+ assert.equal(f.s.deck.actions.active,e);assert.equal(e.settled,undefined);
+ assert.equal(f.eco.s.items.find(i=>i.id===e.item).location,'npc:'+f.id);
+});
 test('hungry aid walks in before transferring one actual item; receiving never consumes it',()=>{
  const f=setup(),{s,eco,start,step}=f,e=start(),food=eco.s.items.find(i=>i.id===e.item),pointer={...s.deck.pointer};
  assert.equal(e.phase,'approach');step(1);assert.equal(food.location,'npc:old_constable');

@@ -269,6 +269,186 @@
     "aiGenerated": true,
     "generatedAt": "2026-11-11T02:54:32.497352+00:00"
   },
+  "npc-gasp-male": {
+    "title": "男子·受惊吸气",
+    "src": "/assets/audio/world/npc-gasp-male-985c922409814bf7.wav",
+    "raw": "npc-gasp-male-985c922409814bf7-raw.wav",
+    "seconds": 1.893,
+    "normalizationGainDb": 23.86,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成2秒游戏人物反应音效。只有一名成年男子突然看到近处有人拔刀，短促地倒吸一口气，接一个压低的非语言惊呼，克制真实、不滑稽。反应只发生一次，集中在前一秒，随后安静。近距离干声，无清晰字句，无旁白、朗读、音乐、脚步、兵器、背景人群和长混响。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-12T04:50:42.435670+00:00"
+  },
+  "npc-gasp-female": {
+    "title": "女子·受惊吸气",
+    "src": "/assets/audio/world/npc-gasp-female-c040e629719abfb8.wav",
+    "raw": "npc-gasp-female-c040e629719abfb8-raw.wav",
+    "seconds": 1.885,
+    "normalizationGainDb": 21.37,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成2秒游戏人物反应音效。只有一名成年女子突然看到近处有人拔刀，短促地倒吸一口气，接一个压低的非语言惊呼，克制真实、有力量、不尖锐刺耳。反应只发生一次，集中在前一秒，随后安静。近距离干声，无清晰字句，无旁白、朗读、音乐、脚步、兵器、背景人群和长混响。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-12T04:50:52.946474+00:00"
+  },
+  "npc-pain-male": {
+    "title": "男子·受击闷哼",
+    "src": "/assets/audio/world/npc-pain-male-714b78fda42249bb.wav",
+    "raw": "npc-pain-male-714b78fda42249bb-raw.wav",
+    "seconds": 1.266,
+    "normalizationGainDb": 9.03,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成2秒游戏人物反应音效。只有一名成年男子被打中后突然呼气并发出一次短促低沉的痛哼，身体一缩的真实呼吸感，克制、不夸张、不血腥。只反应一次，集中在前一秒，之后安静。不持续呻吟，不哭喊。近距离干声，只有非语言人声，无清晰字句，无撞击、音乐、脚步、其他人声和长混响。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-12T04:51:01.976442+00:00"
+  },
+  "npc-pain-female": {
+    "title": "女子·受击闷哼",
+    "src": "/assets/audio/world/npc-pain-female-757cd56b57b9c6a2.wav",
+    "raw": "npc-pain-female-757cd56b57b9c6a2-raw.wav",
+    "seconds": 1.622,
+    "normalizationGainDb": 12.58,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成2秒武侠游戏动作音效。一名成年女武者在练武对招中挨了一下，突然呼气并发出一次短促低沉的闷哼，克制、坚韧、自然。前一秒发生一次呼气声，随后安静，不重复、不延长。近距离干声，只包含这一人的非语言反应，不包含可辨认的字句、旁白、音乐、碰撞、脚步、其他人声和长混响。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-12T04:51:38.734979+00:00"
+  },
+  "npc-alarm-male": {
+    "title": "男子·目击惊叫",
+    "src": "/assets/audio/world/npc-alarm-male-f8b934cda56f0f0e.wav",
+    "raw": "npc-alarm-male-f8b934cda56f0f0e-raw.wav",
+    "seconds": 0.693,
+    "normalizationGainDb": -0.37,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成2秒游戏人物反应音效。只有一名成年男子亲眼看到近处突然发生打斗，发出一次短而急促的非语言惊叫，随后收声避让。真实的惊吓和紧迫感，不恐怖、不戏剧化，不连续尖叫。反应集中在前一秒。近距离干声，无任何清晰字句，无旁白、朗读、打斗撞击、脚步、音乐、其他人声和长混响。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-12T04:51:49.307452+00:00"
+  },
+  "npc-alarm-female": {
+    "title": "女子·目击惊叫",
+    "src": "/assets/audio/world/npc-alarm-female-9ddb4d60960575ae.wav",
+    "raw": "npc-alarm-female-9ddb4d60960575ae-raw.wav",
+    "seconds": 1.861,
+    "normalizationGainDb": 14.35,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成2秒游戏人物反应音效。只有一名成年女子亲眼看到近处突然发生打斗，发出一次短而急促的非语言惊叫，随后收声避让。真实的惊吓和紧迫感，有力量，不尖锐刺耳、不恐怖、不戏剧化，不连续尖叫。反应集中在前一秒。近距离干声，无任何清晰字句，无旁白、朗读、打斗撞击、脚步、音乐、其他人声和长混响。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-12T04:52:01.106384+00:00"
+  },
+  "npc-murmur-male": {
+    "title": "男子二人·低声议论",
+    "src": "/assets/audio/world/npc-murmur-male-3d08af983b2665d2.wav",
+    "raw": "npc-murmur-male-3d08af983b2665d2-raw.wav",
+    "seconds": 2.884,
+    "normalizationGainDb": 32.68,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成3秒游戏现场反应音效。两名成年男子看到街上有人被绳子牵着走，先轻微惊讶吸气，再互相压低声音疑惑地议论两句。只有两个人的模糊非语言嘀咕声，听不清任何字词，不要生成可辨认的语言、名字或叫喊。声音短暂自然起伏，结尾收声。近距离干声，无音乐、脚步、器物、其他人群、笑声和长混响。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-12T04:52:43.461548+00:00"
+  },
+  "npc-murmur-female": {
+    "title": "女子二人·低声议论",
+    "src": "/assets/audio/world/npc-murmur-female-a7475a0804c9f27e.wav",
+    "raw": "npc-murmur-female-a7475a0804c9f27e-raw.wav",
+    "seconds": 2.885,
+    "normalizationGainDb": 9.08,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成3秒游戏现场反应音效。两名成年女子看到街上有人被绳子牵着走，先轻微惊讶吸气，再互相压低声音疑惑地议论两句。只有两个人的模糊非语言嘀咕声，听不清任何字词，不要生成可辨认的语言、名字或叫喊。声音短暂自然起伏，结尾收声。近距离干声，无音乐、脚步、器物、其他人群、笑声和长混响。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-12T04:52:56.604748+00:00"
+  },
+  "npc-murmur-mixed": {
+    "title": "男女二人·低声议论",
+    "src": "/assets/audio/world/npc-murmur-mixed-1f69d93d3ed1730a.wav",
+    "raw": "npc-murmur-mixed-1f69d93d3ed1730a-raw.wav",
+    "seconds": 2.881,
+    "normalizationGainDb": 27.07,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成3秒游戏现场反应音效。一名成年男子和一名成年女子看到街上有人被绳子牵着走，先轻微惊讶吸气，再互相压低声音疑惑地议论两句。只有这两个人的模糊非语言嘀咕声，听不清任何字词，不要生成可辨认的语言、名字或叫喊。声音短暂自然起伏，结尾收声。近距离干声，无音乐、脚步、器物、其他人群、笑声和长混响。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-12T04:53:06.490180+00:00"
+  },
+  "npc-qinghe-cry": {
+    "title": "宋青禾·石后低泣",
+    "src": "/assets/audio/world/npc-qinghe-cry-8fd7045ad1e73431.wav",
+    "raw": "npc-qinghe-cry-8fd7045ad1e73431-raw.wav",
+    "seconds": 2.195,
+    "normalizationGainDb": 41.42,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成6秒游戏人物音效。一名成年女子独自低声抽泣，努力平复情绪。中低音区的清润女声，两三次轻微哽咽、断续吸气，夹着自然停顿，结尾缓缓收声。表演克制、真实、有韧性，音量轻，不大声哭喊。单人近距离录音，干净干声。只有无词的抽泣和呼吸，不包含任何可辨认的字句、旁白、唱歌、音乐、环境底声或其他人的声音。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-12T07:26:15.663613+00:00"
+  },
   "music-opening": {
     "title": "开场·蛊与仙山",
     "src": "/assets/audio/world/music-opening-e1435f5cc44c408e.wav",

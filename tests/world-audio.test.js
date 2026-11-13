@@ -19,6 +19,30 @@ function fixture(){
 const state={started:true,x:0,z:0,time:0,hp:100};
 async function ready(){const f=fixture();f.audio.getContext();await f.audio.init();await Promise.all(Object.keys(f.audio.catalog).map(id=>f.audio.load(id)));f.audio.update(.016,state);return f;}
 
+test('SeedAudio reactions are single foreground voices and duck the world mix',async()=>{
+ const {audio}=await ready();audio.buffers.set('npc-gasp-male',{duration:1});
+ const options={position:()=>({x:0,z:2})},node=audio.playReaction('npc-gasp-male',options);assert.ok(node);
+ assert.equal(audio.playReaction('npc-gasp-male',options),null);
+ audio.update(.016,state);assert.ok(audio.mix.music<worldMix(state).music*.4);
+ node.source.onended();assert.equal(audio.reaction,null);assert.equal(audio.shots.has(node),false);
+});
+test('reaction source is interrupted by dialogue, mute, hidden, invalid speaker, or leaving range',async()=>{
+ for(const interrupt of [(a)=>a.update(.016,{...state,talking:true}),(a)=>a.setEnabled(false),(a)=>a.setHidden(true),(a)=>a.update(.016,{...state,x:30})]){
+  const {audio}=await ready();audio.buffers.set('npc-pain-male',{duration:1});const node=audio.playReaction('npc-pain-male',{position:()=>({x:0,z:0})});interrupt(audio);assert.equal(audio.reaction,null);assert.ok(node.source.stopped);
+ }
+ const {audio}=await ready();audio.buffers.set('npc-gasp-male',{duration:1});let alive=true;
+ const node=audio.playReaction('npc-gasp-male',{position:()=>({x:0,z:0}),valid:()=>alive});alive=false;audio.update(.016,state);assert.ok(node.source.stopped);
+});
+test('reaction playback uses static SeedAudio files without TTS requests or late playback',async()=>{
+ const {audio,requests}=await ready(),before=requests.length,opts={position:()=>({x:0,z:0})};
+ assert.equal(audio.playReaction('npc-gasp-male',opts),null);assert.equal(requests.length,before);
+ audio.buffers.set('npc-gasp-male',{duration:1});audio.update(.016,state);assert.equal(audio.reaction,undefined);
+ const manifest=JSON.parse(readFileSync(new URL('../assets/audio/world/manifest.json',import.meta.url)));
+ for(const kind of ['gasp','pain','alarm','murmur'])for(const sex of kind==='murmur'?['male','female','mixed']:['male','female']){
+  const row=manifest[`npc-${kind}-${sex}`];assert.ok(row);assert.equal(row.payload.model,'seed-audio-1.0');assert.ok(row.payload.text_prompt);assert.ok(!row.payload.voice_id);assert.ok(row.seconds>.1&&row.seconds<3.5);assert.ok(existsSync(new URL('..'+row.src,import.meta.url)));
+ }
+});
+
 test('music is audible in the initial scene; voices duck it and performance silences it',()=>{
  const base=worldMix();assert.ok(base.music>=.4);
  const spoken=worldMix({voice:true});assert.ok(spoken.music<base.music*.4);

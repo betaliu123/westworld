@@ -45,7 +45,7 @@ export function mountProgressUI(getSim,esc,onQuests,onCodex,onMap){
  if(current!==shown){shown=current;if(current)notice.innerHTML=`<b>${[...current.changes].sort((a,b)=>Number(['hp','energy'].includes(a.key))-Number(['hp','energy'].includes(b.key))).slice(0,3).map(c=>`<span class="${c.delta<0?'loss':'gain'}">${esc(c.label)} ${c.delta>0?'+':''}${c.delta}</span>`).join(' · ')}</b>${current.reason===GENERIC_REASON?'':`<small>${esc(current.reason)}</small>`}`;}
  notice.hidden=!current;
  board.title=(latest?latest.reason+'：'+latest.changes.map(c=>c.label+' '+(c.delta>0?'+':'')+c.delta).join('，'):'主角属性');
- const q=s.quests?.[s.trackedQuest];const entry=entryObjective(s);tracked.hidden=!q&&!entry;if(entry)tracked.innerHTML='<small>入城</small><span>'+esc(entry)+'</span>';if(q&&q.status!=='complete')tracked.innerHTML=(entry?tracked.innerHTML:'')+`<small>${esc(q.title)}</small><span>${esc(q.objective)}</span>`;else if(!entry)tracked.hidden=true;
+ const q=s.quests?.[s.trackedQuest];const entry=entryObjective(s);tracked.hidden=!q&&!entry;if(entry)tracked.innerHTML='<small>入城</small><span>'+esc(entry)+'</span>';if(q&&!['complete','closed'].includes(q.status))tracked.innerHTML=(entry?tracked.innerHTML:'')+`<small>${esc(q.title)}</small><span>${esc(q.objective)}</span>`;else if(!entry)tracked.hidden=true;
  if(tracked.dataset.key!==tracked.textContent){tracked.dataset.key=tracked.textContent;tracked.classList.add('fresh');clearTimeout(tracked.fadeTimer);tracked.fadeTimer=setTimeout(()=>tracked.classList.remove('fresh'),6000);}
  }};
 }

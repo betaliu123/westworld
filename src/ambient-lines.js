@@ -10,5 +10,17 @@
  tea:['头一道水烫碗，别把茶香糟蹋了。','壶盖不严，拿块布垫垫。'],
  porter:['左肩歇够了，回头换它挑。','扁担吱呀响，该上油了。']
 };
-export function ambientLine(id,activity,index){if(['gate_guard','gate_relief'].includes(id)&&activity!=='patrol')return null;
+import {convoyWaitingForQinghe} from './qinghe-leads.js';
+export function ambientLine(id,activity,index,s){
+ if(id==='fu'&&s?.chapterVersion===2){
+  const waiting=activity==='duty'&&convoyWaitingForQinghe(s)&&!s.facts.fuWaitingKnown&&!s.facts.qingheUnwillingKnown;
+  if(!waiting)return null;
+  const lines=['名册上这个宋青禾，约好的时候到了，怎么还没来？','叫她认着黄旗来会合，莫非寻错了地方？'];
+  return lines[index%lines.length];
+ }
+ if(id==='qinghe'&&activity==='riverside'){
+  const lines=s?.facts.qingheConsent?['等有了回信，我自己再拿主意。','娘有娘的怕，我也有我的打算。']:['认着黄旗，随车去汴京……他们只说得这样轻巧。','水绕过石头，就往前去了。','我想听听京里的曲子……可不是这样被催着走。','娘有娘的怕，我也有我的打算。'];
+  return lines[index%lines.length];
+ }
+ if(['gate_guard','gate_relief'].includes(id)&&activity!=='patrol')return null;
  if(!['patrol','tea','idle','duty'].includes(activity))return null;const pool=chatter[id];return pool?.[index%pool.length];}

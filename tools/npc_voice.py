@@ -9,6 +9,8 @@ import subprocess
 import threading
 import time
 import urllib.request
+import urllib.error
+from collections import Counter
 
 ROOT = Path(__file__).resolve().parents[1]
 EMOTIONS = {"happy", "sad", "angry", "fearful", "disgusted", "surprised", "calm"}
@@ -59,11 +61,11 @@ class VoiceUnavailable(Exception):
 
 
 class VoiceStore:
-    def __init__(self, root=ROOT, key=lambda: "", limit=12, synthesize=None):
+    def __init__(self, root=ROOT, key=lambda: "", limit=12, synthesize=None, request_timeout=55):
         self.root, self.key, self.limit = Path(root), key, limit
         self.lock = threading.RLock()
         self.generated = 0
-        self.synthesize = synthesize or self._remote
+        self.synthesize = synthesize or (lambda payload, credential: self._remote(payload, credential, timeout=request_timeout))
         self.failed = {}
 
     def config(self):
@@ -178,6 +180,15 @@ class VoiceStore:
                 temporary.replace(target)
                 return self._write(actor, text, payload, "/assets/audio/npc/" + target.name,
                                    duration, "minimax-generated")
+            except VoiceUnavailable:
+                self.failed[digest] = time.monotonic() + 60
+                raise
+            except urllib.error.HTTPError as error:
+                self.failed[digest] = time.monotonic() + 60
+                raise VoiceUnavailable('http_' + str(error.code)) from None
+            except (TimeoutError, urllib.error.URLError):
+                self.failed[digest] = time.monotonic() + 60
+                raise VoiceUnavailable('network_unavailable') from None
             except Exception:
                 self.failed[digest] = time.monotonic() + 60
                 raise VoiceUnavailable("generation_failed") from None
@@ -185,14 +196,15 @@ class VoiceStore:
                 credential = ""
 
     @staticmethod
-    def _remote(payload, credential):
+    def _remote(payload, credential, timeout=55):
         request = urllib.request.Request(ENDPOINT, json.dumps(payload, ensure_ascii=False).encode("utf-8"),
                                          {"Authorization": "Bearer " + credential,
                                           "Content-Type": "application/json"})
-        with urllib.request.urlopen(request, timeout=55) as response:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
             result = json.load(response)
-        if result.get("base_resp", {}).get("status_code") != 0:
-            raise VoiceUnavailable("upstream")
+        status = result.get("base_resp", {}).get("status_code")
+        if status != 0:
+            raise VoiceUnavailable("upstream_" + str(status) if isinstance(status, int) else "upstream")
         raw = bytes.fromhex(result["data"]["audio"])
         duration = result.get("extra_info", {}).get("audio_length", 0) / 1000
         if not (raw.startswith(b"ID3") or raw[:1] == b"\xff"):
@@ -205,7 +217,15 @@ def main():
     parser.add_argument("--limit", type=int, default=8, help="maximum new requests, cache hits cost nothing")
     parser.add_argument("--seed-only", action="store_true")
     parser.add_argument("--watch", action="store_true", help="recheck authored trial lines after edits")
+    parser.add_argument("--catalog", choices=("trial", "chapter"), default="trial")
+    parser.add_argument("--dry-run", action="store_true", help="list exact cache misses without calling the model or writing assets")
+    parser.add_argument("--report", type=Path, help="write the batch plan/results (never credentials)")
+    parser.add_argument("--timeout", type=int, default=180, help="offline request timeout in seconds")
     args = parser.parse_args()
+    if args.watch and (args.dry_run or args.catalog != "trial"):
+        parser.error("--watch only supports the trial catalog without --dry-run")
+    if args.dry_run and args.seed_only:
+        parser.error("--dry-run cannot import audition assets")
     env = {}
     if (ROOT / ".env").exists():
         for line in (ROOT / ".env").read_text(encoding="utf-8-sig").splitlines():
@@ -213,8 +233,9 @@ def main():
                 k, v = line.split("=", 1)
                 env[k.strip()] = v.strip()
     key = lambda: os.environ.get("TTS_API_KEY") or env.get("TTS_API_KEY") or os.environ.get("LLM_API_KEY") or env.get("LLM_API_KEY", "")
-    store = VoiceStore(key=key, limit=max(0, args.limit))
-    store.seed_audition()
+    store = VoiceStore(root=ROOT, key=key, limit=max(0, args.limit), request_timeout=max(1, min(300, args.timeout)))
+    if not args.dry_run:
+        store.seed_audition()
     if args.seed_only:
         print("Imported matching approved samples.")
         return
@@ -226,19 +247,45 @@ def main():
             time.sleep(2)
             continue
         previous = revision
-        script = "import {VOICE_TRIAL} from './src/voice-lines.js'; console.log(JSON.stringify(VOICE_TRIAL))"
+        script = ("import {chapterVoiceCatalog} from './tools/voice_catalog.mjs'; console.log(JSON.stringify(chapterVoiceCatalog()))"
+                  if args.catalog == "chapter" else
+                  "import {VOICE_TRIAL} from './src/voice-lines.js'; console.log(JSON.stringify(VOICE_TRIAL))")
         rows = json.loads(subprocess.check_output(["node", "--input-type=module", "-e", script], cwd=ROOT).decode("utf-8"))
+        config = store.config()
+        plan = []
         for row in rows:
+            text, payload = request_for(config, row["actor"], row["text"])
+            _, digest = identity(row["actor"], payload)
+            plan.append({**row, "hash": digest, "status": "cached" if store.cached(row["actor"], payload) else "missing"})
+        report = dict(schema=1, catalog=args.catalog, model=config["model"], endpoint=ENDPOINT,
+                      startedAt=time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+                      limit=store.limit, requestTimeout=max(1, min(300, args.timeout)), dryRun=args.dry_run, entries=plan)
+        def save_report():
+            report["attempts"] = store.generated
+            report["counts"] = dict(Counter(row["status"] for row in plan))
+            if args.report:
+                args.report.parent.mkdir(parents=True, exist_ok=True)
+                args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        save_report()
+        print(json.dumps(dict(catalog=args.catalog, total=len(plan), counts=report["counts"], limit=store.limit)), flush=True)
+        if args.dry_run:
+            return
+        for row in plan:
             before = store.generated
             try:
                 clip = store.get(row["actor"], row["text"])
-                print(json.dumps(dict(actor=row["actor"], status="generated" if store.generated > before else "cached",
+                row.update(status="generated" if store.generated > before else "cached", url=clip["url"], duration=clip["duration"])
+                print(json.dumps(dict(actor=row["actor"], status=row["status"],
                                       duration=clip["duration"]), ensure_ascii=False), flush=True)
             except VoiceUnavailable as error:
+                row["status"] = str(error)
                 print(json.dumps(dict(actor=row["actor"], status=str(error))), flush=True)
-                if str(error) in ("trial_limit", "not_configured"):
-                    return
+                save_report()
+                raise SystemExit(1)  # Resume explicitly after fixing the failure; never burn the rest of a batch.
+            save_report()
         if not args.watch:
+            if any(row["status"] not in ("cached", "generated") for row in plan):
+                raise SystemExit(1)
             break
         time.sleep(2)
 

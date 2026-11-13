@@ -3,11 +3,12 @@ import {visibleBetween} from './npc-awareness.js';
 import {inDeepWater} from './world-rules.js';
 
 const crew=new Set(['porter','fu']);
-const posts=new Set([...crew,'scribe']);
+const posts=new Set([...crew,'scribe','qinghe']);
 export const hasFixedPost=(s,id)=>s.chapterVersion===2&&posts.has(id);
 export const convoyTravelling=(s,id)=>hasFixedPost(s,id)&&crew.has(id)&&s.convoy?.phase==='travel'&&(!s.convoy.command||s.convoy.command.receiver===id);
 export function fixedPost(s,id){
  if(!hasFixedPost(s,id))return null;
+ if(id==='qinghe'&&s.qingheJourney?.delivered&&s.convoy?.posts?.qinghe)return {...s.convoy.posts.qinghe};
  if(crew.has(id)&&s.convoy){
   const q=s.convoy.posts?.[id];
   if(Number.isFinite(q?.x)&&Number.isFinite(q?.z))return {x:q.x,z:q.z};
@@ -36,7 +37,7 @@ function finishYield(n){
 export function yieldToConvoy(sim,eco,id,q,positions){
  const s=sim.s,n=s.people[id],c=s.convoy;let saved=n?.convoyYield;
  if(!n)return false;
- if(s.chapterVersion!==2||c?.phase!=='travel'||crew.has(id)){finishYield(n);return false;}
+ if(s.chapterVersion!==2||c?.phase!=='travel'||crew.has(id)||id==='qinghe'&&c.qinghePassenger){finishYield(n);return false;}
  if(n.hp<=0||n.restraint||n.stunnedUntil>(s.npcClock||0)||n.sickUntil>eco.s.time||n.drowning||n.inCustody||n.escortingBy||n.awareness?.caseOpen||['fight','warn','flee','investigate','search'].includes(n.awareness?.state)||['sleep','doze','escape','privacy'].includes(n.life?.activity))return false;
  const headingDirection={x:-Math.sin(c.heading||0),z:-Math.cos(c.heading||0)};
  if(saved){const offset={x:saved.target.x-c.x,z:saved.target.z-c.z},ahead=dot(offset,headingDirection),across=Math.abs(offset.x*headingDirection.z-offset.z*headingDirection.x);if(dot(saved.direction,headingDirection)<.9||ahead>=-1.4&&ahead<=7&&across<2.85){finishYield(n);saved=null;}}

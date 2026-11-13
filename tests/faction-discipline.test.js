@@ -1,3 +1,4 @@
+import {giveItem} from '../src/npc-actions.js';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {Simulation,newArrival,legacyArrival} from '../src/simulation.js';
@@ -42,10 +43,10 @@ test('report cannot be delivered remotely, through a wall, asleep, dead, restrai
 });
 
 test('one report invites an immediate three-choice inquiry; explanation or deferral does not establish guilt',()=>{
- const c=setup(),r=pressure(c);deliver(c,r);const base=cityRep(c.sim.s),rep=factionRep(c.sim.s,'court');
- c.sim.s.facts.ledgerDelivered=true;assert.ok(contactOptions(c.sim,c.leader).some(a=>a.id==='ch_court_end'));
+ const c=setup(),ledger=c.eco.s.items.find(i=>i.type==='ledger');c.eco.transfer(ledger,'player');assert.ok(!giveItem(c.sim,c.eco,c.leader,ledger.id).error);const r=pressure(c);deliver(c,r);const base=cityRep(c.sim.s),rep=factionRep(c.sim.s,'court');
+ assert.ok(contactOptions(c.sim,c.leader).some(a=>a.id==='ch_ledger_depart'));
  const explained=answer(c,r,'explain');assert.equal(explained.roll,null);assert.equal(explained.presentation,'dialogue');assert.equal(r.status,'disputed');assert.equal(factionStanding(c.sim.s,'court').count,0);assert.equal(contactFollowups(c.sim,c.leader,explained).length,3);
- assert.equal(answer(c,r,'later').disciplinePhase,'deferred');assert.ok(contactOptions(c.sim,c.leader).some(a=>a.id.endsWith('_review')));assert.ok(contactOptions(c.sim,c.leader).some(a=>a.id==='ch_court_end'));assert.equal(cityRep(c.sim.s),base);assert.equal(factionRep(c.sim.s,'court'),rep);
+ assert.equal(answer(c,r,'later').disciplinePhase,'deferred');assert.ok(contactOptions(c.sim,c.leader).some(a=>a.id.endsWith('_review')));assert.ok(contactOptions(c.sim,c.leader).some(a=>a.id==='ch_ledger_depart'));assert.equal(cityRep(c.sim.s),base);assert.equal(factionRep(c.sim.s,'court'),rep);
  const admitted=answer(c,r);assert.equal(admitted.disciplinePhase,'settled');assert.equal(factionStanding(c.sim.s,'court').status,'warned');assert.equal(factionAuthority(c.sim.s,'court'),true);assert.equal(cityRep(c.sim.s),base);assert.equal(factionRep(c.sim.s,'court'),rep-3);
  assert.ok(answer(c,r).error);assert.equal(factionStanding(c.sim.s,'court').count,1);
 });

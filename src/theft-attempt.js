@@ -2,8 +2,8 @@
 export function beginTheftAttempt(eco,id,itemId){
  const preview=eco.theftPreview(id,itemId);
  if(preview.blocked)return {error:preview.reason};
- const origin={x:eco.sim.s.player.x,z:eco.sim.s.player.z},seen=new Set();let done=false;
- const interrupted=()=>{const p=eco.sim.s.player;return p.hp<=0||!p.crouched||Math.hypot(p.x-origin.x,p.z-origin.z)>.35||!!eco.theftBlock(id);};
+ const origin={x:eco.sim.s.player.x,z:eco.sim.s.player.z},hp=eco.sim.s.player.hp,looting=eco.canLoot(id),seen=new Set();let done=false;
+ const interrupted=()=>{const p=eco.sim.s.player;return p.hp<hp||p.hp<=0||(looting?!eco.canLoot(id):!p.crouched)||Math.hypot(p.x-origin.x,p.z-origin.z)>.35||!!eco.theftBlock(id);};
  return {preview,id,itemId,
   sample(){if(!done)for(const witness of eco.theftRisk(id).witnesses)seen.add(witness);},
   interrupted,

@@ -25,7 +25,7 @@
 /* Compact, non-modal history; only the box itself receives mouse input. */
 #journal{position:fixed;z-index:24;left:16px;bottom:154px;width:310px;color:#f0ead5;background:rgba(17,40,36,.64);border:1px solid #cdbb8755;border-radius:9px;backdrop-filter:blur(5px);font-size:11px;box-shadow:0 4px 18px #181c2322}#journal[hidden]{display:none}#journal header{display:flex;align-items:center;gap:6px;padding:7px 9px;border-bottom:1px solid #e9d5a320}#journal header>b{font-weight:500;color:#e7d19e;white-space:nowrap}#journal nav{display:flex;gap:2px;margin-left:auto}#journal button{padding:3px 5px;font-size:10px;background:transparent;border:0;border-radius:4px;color:#c7d4c4}#journal button[aria-pressed=true]{color:#ffe4a4;background:#d6bd7d20}#journal-lines{height:150px;max-height:24vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#8b997d77 transparent;padding:4px 10px;outline-offset:-2px}#journal p{margin:5px 0;line-height:1.65;overflow-wrap:anywhere}#journal time{font-size:9px;color:#afbdad;margin-right:4px}#journal p b{font-weight:500;margin-right:5px;color:#d9c48f}#journal p span{white-space:pre-wrap}#journal .journal-system{color:#c1cdbc}#journal .journal-chat{color:#f4eddc}#journal .journal-chat b{color:#a8d5cb}#journal-latest{display:block!important;margin:2px auto 5px!important;background:#566e52!important;color:#ffebba!important}#journal-latest[hidden]{display:none!important}#journal.collapsed #journal-lines,#journal.collapsed nav{display:none}#journal.collapsed header{border-bottom:0}#journal.collapsed [data-collapse]{margin-left:auto}#result{left:auto;right:18px;bottom:224px}#controls{bottom:125px}#journal:focus-within{background:rgba(17,40,36,.86)}@media(max-width:850px){#journal{width:270px;left:12px;bottom:166px}#journal-lines{height:132px}#controls{display:none}#result{width:250px;right:12px;bottom:330px}}@media(max-height:600px){#journal-lines{height:92px}#journal{bottom:139px}}
 
-#environment-tools{position:fixed;right:18px;top:78px;display:flex;gap:6px;z-index:26}#environment-tools[hidden]{display:none}#environment-tools button{background:#353940e8;padding:8px 12px;font-size:var(--fs-1);border-radius:16px}#environment-panel{position:fixed;z-index:27;right:14px;top:120px;bottom:185px;width:285px;overflow:auto;padding:15px;border-radius:12px;border:1px solid #b8aa7755;background:#292d34e8;backdrop-filter:blur(8px);scrollbar-width:thin}#environment-panel header{display:flex;justify-content:space-between;align-items:center}#environment-panel h3{font-size:15px;margin:18px 0 9px;color:#e8ce96}#environment-panel small{font-size:10px;line-height:1.6;color:#abc2ae}#environment-panel p{font-size:12px;line-height:1.7}#environment-panel button{padding:7px;margin:4px 3px 2px 0;font-size:var(--fs-1,14px);border-radius:2px}#environment-panel select{width:100%;padding:8px;background:#353940;color:#f6e9c6}#environment-panel article{padding:8px 0;border-bottom:1px solid #a6b18b33;font-size:12px}#environment-panel summary{cursor:pointer;padding:8px 0;color:#d5ba7d}#object-health{position:fixed;top:115px;left:50%;transform:translateX(-50%);background:#30291dde;padding:8px 18px;border-radius:12px;color:#f2d89c;font-size:13px;pointer-events:none}
+#environment-tools{position:fixed;right:18px;top:78px;display:flex;gap:6px;z-index:26}#environment-tools[hidden]{display:none}#environment-tools button{background:#353940e8;padding:8px 12px;font-size:var(--fs-1);border-radius:16px}#environment-panel{position:fixed;z-index:27;right:14px;top:120px;bottom:185px;width:285px;overflow:auto;padding:15px;border-radius:12px;border:1px solid #b8aa7755;background:#292d34e8;backdrop-filter:blur(8px);scrollbar-width:thin}#environment-panel header{display:flex;justify-content:space-between;align-items:center}#environment-panel h3{font-size:15px;margin:18px 0 9px;color:#e8ce96}#environment-panel small{font-size:10px;line-height:1.6;color:#abc2ae}#environment-panel p{font-size:12px;line-height:1.7}#environment-panel button{padding:7px;margin:4px 3px 2px 0;font-size:var(--fs-1,14px);border-radius:2px}#environment-panel select{width:100%;padding:8px;background:#353940;color:#f6e9c6}#environment-panel article{padding:8px 0;border-bottom:1px solid #a6b18b33;font-size:var(--fs-1,14px)}#environment-panel summary{cursor:pointer;padding:8px 0;color:#d5ba7d}#object-health{position:fixed;top:115px;left:50%;transform:translateX(-50%);background:#30291dde;padding:8px 18px;border-radius:12px;color:#f2d89c;font-size:13px;pointer-events:none}
 
 #object-health meter{display:block;width:100%;height:8px;margin-top:5px}#environment-panel button:hover{background:#4f535a}#environment-tools{max-width:calc(100vw - 24px)}
 
@@ -415,11 +415,12 @@ body.ink-night #hud-context-actions>#interact:before{color:var(--paper);border-c
 #water-state{background:none!important;border:0!important;color:var(--cinnabar)!important}
 #toast .toast{font-size:var(--fs-2)!important;padding:4px 0!important;animation:ink-in .22s var(--ease) both}
 #attribute-change{font:600 var(--fs-2) var(--font-data)!important}
+#attribute-change small{font:400 var(--fs-1)/1.5 var(--font-body)!important}
 
 /* Speech: paper slips with a small tail. */
 #npc-speech,#party-speech{background:var(--ui-sheet)!important;color:var(--ink-1)!important;border:0!important;border-radius:2px!important;box-shadow:var(--sheet-shadow)!important;font:var(--fs-2)/1.7 var(--font-body)!important}
 #npc-speech:after{border-top-color:#e8ddc6!important}
-#npc-speech b{font:400 var(--fs-3)/1.2 var(--font-title)!important;color:var(--cinnabar)!important;letter-spacing:.08em}
+#npc-speech b{font:400 var(--fs-3)/1.2 var(--font-title)!important;color:var(--ink-1)!important;letter-spacing:.08em}
 
 /* Compass: one ink stroke with title-face directions. */
 .field-compass{height:34px;background:none}
@@ -499,7 +500,7 @@ meter{accent-color:var(--cinnabar)}
 #dialogue-stage{background:linear-gradient(#15140f40,transparent 16%,transparent 62%,#ece3cf55)!important}
 .dialogue-letterbox{background:#15140fe6!important;border:0!important}
 .dialogue-card h2{font-size:var(--fs-5)!important;color:var(--ink-0)!important;margin:4px 0 8px!important}
-.dialogue-card p{font-size:clamp(18px,1.6vw,22px)!important;color:var(--ink-1)!important;line-height:1.8!important}
+.dialogue-card p{font-size:var(--fs-4)!important;color:var(--ink-1)!important;line-height:1.8!important}
 .dialogue-meta{font-size:var(--fs-1)!important;letter-spacing:.14em!important}
 .dialogue-card button{color:var(--cinnabar)!important;border-color:#a63a2b66!important;background:none!important}
 
@@ -608,11 +609,12 @@ body.cinematic :is(#environment-tools,#minimap){display:none!important}
 #dialogue-stage.choosing.has-context .dialogue-card{grid-row:2;position:static;justify-self:end;transform:none;max-height:60vh}
 body.ink-night #dialogue-stage .dialogue-context{color:var(--paper);background:radial-gradient(ellipse,color-mix(in srgb,var(--ink-0) 80%,transparent) 45%,transparent 75%);text-shadow:0 0 3px var(--ink-0),0 0 7px var(--ink-0)}
 #dialogue-stage .cinematic-choices button.quest-needed,#panel .npc-actions button.quest-needed{border-color:var(--ochre)!important;box-shadow:inset 0 0 0 1px var(--ochre)!important}
-@media(max-width:900px){#dialogue-stage.choosing .dialogue-card{width:min(620px,92vw)}#dialogue-stage .dialogue-context{font-size:var(--fs-3);padding:8px 16px}}
+@media(max-width:900px){#dialogue-stage.choosing .dialogue-card{width:min(620px,92vw)}#dialogue-stage .dialogue-context{font-size:var(--fs-3);padding:8px 16px}.dialogue-card p{font-size:var(--fs-3)!important}}
 
 /* Quiet HUD: full vitals and settled objectives step back. */
 #combat-ready{background:none!important;border:0!important;font:var(--fs-2) var(--font-body)!important}
 #combat-ready kbd{margin:0 .3em 0 .9em}#combat-ready kbd:first-child{margin-left:0}
+#hud-context-stack>#combat-ready{position:static;inset:auto;transform:none;padding:0;margin:0;white-space:nowrap}
 #reply-status{display:none!important}
 #hud-info-stack .hero-vitals,#hud-info-stack #vitals,#vitals{transition:opacity .6s var(--ease)}
 body.vitals-full :is(#hud-info-stack .hero-vitals,#vitals){opacity:.35}

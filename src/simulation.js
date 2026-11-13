@@ -1,4 +1,6 @@
 import {restoreHarmKnowledge} from './npc-bonds.js';
+import {restoreNpcNames} from './npc-names.js';
+import {repairAssaultComplaint} from './complaints.js';
 import {abilityCheck,ABILITY_BALANCE_VERSION} from './ability-check.js';
 import {changeRelation,restoreKnownFaces} from './appearance.js';
 import {counterStrike} from './martial.js';
@@ -26,7 +28,7 @@ export function newGame(role='wanderer'){
 export function legacyArrival(role='wanderer'){const s=newGame(role);s.player.x=0;s.player.z=27;s.player.money=12;s.wanted=3;s.facts.entryStarted=true;s.event={id:1,type:'gate',status:'active',depth:0,point:[0,24],cast:['gate_guard']};return s;}
 export function newArrival(role='wanderer'){const s=newGame(role);s.player.x=0;s.player.z=27;s.version=2;s.chapterVersion=2;s.balanceVersion=ABILITY_BALANCE_VERSION;initSkills(s.player);initCombatants(s);s.player.money=12;s.wanted=0;s.facts.entryStarted=true;s.event={id:1,type:'gate',status:'active',depth:0,point:[0,24],cast:['gate_guard']};gateState(s.event);return s;}
 export class Simulation{
- constructor(state=newGame(),rng=Math.random){this.s=state;repairGateStage(state);initCombatants(state);state.time=(state.time||0)%240;state.player.satiety??=85;state.player.rested??=90;if(state.facts.princeLetter)recordRoyalLetter(state);if(state.player.hp<=0)endPlayerPursuit(state);if(state.facts.career==="court")registerCourt(state);retirePrinceEscorts(state);ensureParty(state);migrateLocations(state);repairStrandedRecovery(state);this.rng=rng;this.listeners=[];syncQuests(state);for(const p of PEOPLE)state.people[p.id]??={relation:p.relation,mood:'calm',fear:0,hp:100,memories:[]};restoreKnownFaces(state);restoreHarmKnowledge(state);this.progressBaseline=progressSnapshot(state);if(state.facts.missing&&state.event?.status==='active'&&state.event.type==='banquet'){state.event.type='inquiry';state.event.elapsed=0;state.facts.couple=false;}}
+ constructor(state=newGame(),rng=Math.random){this.s=state;repairGateStage(state);initCombatants(state);state.time=(state.time||0)%240;state.player.satiety??=85;state.player.rested??=90;if(state.facts.princeLetter)recordRoyalLetter(state);if(state.player.hp<=0)endPlayerPursuit(state);if(state.facts.career==="court")registerCourt(state);retirePrinceEscorts(state);ensureParty(state);migrateLocations(state);repairStrandedRecovery(state);this.rng=rng;this.listeners=[];syncQuests(state);for(const p of PEOPLE)state.people[p.id]??={relation:p.relation,mood:'calm',fear:0,hp:100,memories:[]};restoreNpcNames(state);restoreKnownFaces(state);restoreHarmKnowledge(state);repairAssaultComplaint(state);this.progressBaseline=progressSnapshot(state);if(state.facts.missing&&state.event?.status==='active'&&state.event.type==='banquet'){state.event.type='inquiry';state.event.elapsed=0;state.facts.couple=false;}}
  emit(type,data){if(['result','streetResult','npc','sandbox','entry','day','violence','save','actionWitnessed','fieldCheck','reputationChanged'].includes(type))observeProgress(this,type==='entry'?(data==='prison'?'刑满出狱：三日刑期结算':'进入城内'):type==='day'?'休息与日程推进':type==='violence'?'发生交战':type==='save'?'行动与身体状态变化':data?.label||data?.text||data?.reason||'大世界行动');for(const fn of this.listeners)fn(type,data);}
  save(){this.emit('save',this.s);}
  banquetOccurred(){return !!this.s.facts.couple||this.s.facts.banquetDay!=null||this.s.history.some(h=>h.type==='banquet');}
@@ -125,10 +127,10 @@ export class Simulation{
  this.save();return true;
  }
  direct(id,type,reason){const p=this.s.pending;if(!p||p.id!==id||!p.allowed?.includes(type)||(type==='banquet'&&this.banquetOccurred()))return false;p.type=type;p.directorReason=String(reason||'').slice(0,180);this.save();return true;}
- advanceDay(natural=false){
- if(this.s.chapterVersion===2){this.s.day++;this.s.time=0;nextChapterDay(this);this.save();return;}
+ advanceDay(natural=false,{silent=false}={}){
+ if(this.s.chapterVersion===2){this.s.day++;this.s.time=0;nextChapterDay(this,{notify:!silent});if(!silent)this.save();return;}
  if(isGate(this.event)){
-  if(natural){this.s.time=0;this.s.day++;this.emit('day',this.s.day);this.save();}
+  if(natural){this.s.time=0;this.s.day++;if(!silent){this.emit('day',this.s.day);this.save();}}
   return;
  }
  if(isProposal(this.event)&&proposalState(this.event).phase==='duel')finishProposalDuel(this,false);
@@ -203,7 +205,7 @@ export class Simulation{
  return s.player.hp>0&&!!n&&n.hp>0&&((id==='guard'&&s.wanted>0&&distance<14)||(n.mood==='angry'&&distance<7));
  }
  respawn(){
- if(this.s.player.hp>0)return false;
+ if(this.s.player.hp>0||this.s.capture)return false;
  // End the current fight, while retaining social memory and story consequences.
  endPlayerPursuit(this.s);this.s.wanted=0;this.advanceDay();
  const p=this.s.player;Object.assign(p,recoveryPoint(this.s),{hp:60,crouched:false,stealing:false,drowning:false,burning:false});delete p.bedRest;

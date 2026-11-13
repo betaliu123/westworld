@@ -1,4 +1,8 @@
 /* Ink-wash UI theme: tokens and shared components. Rules: docs/美术视觉与界面规范.md */
+.wanted-notice{padding:12px 0;border-bottom:1px solid var(--ink-4)}
+.wanted-notice>span{display:block;color:var(--ink-2);font-size:16px}
+.wanted-notice p{margin:6px 0}
+#environment-panel:has(.wanted-notices)>header{position:sticky;top:0;background:var(--paper);z-index:1}
 :root{
   --paper:#ece3cf;--paper-deep:#d8cbaf;
   --ink-0:#15140f;--ink-1:#2c2a24;--ink-2:#4f4b42;--ink-3:#7b766a;--ink-4:#b4ac9a;
@@ -14,6 +18,33 @@
   --brush-bar:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 20' preserveAspectRatio='none'%3E%3Cpath d='M4 9C3 5 9 2.6 22 3.2L150 4.6 284 3.4C293 3.6 298 6 297 9.6S292 16 280 16.4L150 15.2 26 17C10 17.4 5 13 4 9Z'/%3E%3C/svg%3E");
 }
 .ink-icon{display:inline-block;vertical-align:middle;flex:none}
+#aim-skills button,#aim-skills #stealth-mode{display:grid;justify-items:center;align-content:center;gap:3px;min-width:52px;padding:6px 8px}
+#aim-skills .aim-skill-label{font:600 var(--fs-2)/1.2 var(--font-body);letter-spacing:.02em;white-space:nowrap}
+#aim-skills .aim-skill-key{font:400 var(--fs-1)/1.2 var(--font-body);letter-spacing:0}
+#aim-skills #stealth-mode{position:static;inset:auto;transform:none;margin:0;pointer-events:auto;cursor:pointer}
+#aim-skills #stealth-mode svg{width:21px;height:21px;margin:0}
+@media(max-width:900px){#aim-skills{gap:3px}#aim-skills button,#aim-skills #stealth-mode{min-width:44px;padding:6px 4px}}
+#hud-bottom-actions{display:contents}
+/* First-use hints stay on the control itself, inside the existing action dock. */
+/* The control looks exactly as usual; a hand-brushed frame surrounds it and a wet ochre stroke travels round it until the hint is done. */
+@property --guide-turn{syntax:'<angle>';inherits:false;initial-value:0deg}
+#environment-tools .action-guided,#aim-skills .action-guided{position:relative;overflow:visible}
+#environment-tools .action-guided::before,#aim-skills .action-guided::before{content:'';position:absolute;inset:-5px -6px;pointer-events:none;z-index:1;
+ background:conic-gradient(from var(--guide-turn),color-mix(in srgb,var(--ink-1) 82%,transparent) 0 50%,color-mix(in srgb,var(--ochre) 60%,var(--ink-1)) 62%,var(--ochre) 74%,color-mix(in srgb,var(--ochre) 60%,var(--paper-deep)) 81%,color-mix(in srgb,var(--ink-1) 82%,transparent) 95%);
+ --brush-frame:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='2' seed='3'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='3.2'/%3E%3C/filter%3E%3Cg filter='url(%23r)'%3E%3Cpath d='M1 9C3 4 10 3.2 30 3.6S80 4.4 99 2.6L99.4 5C80 8.4 50 9.6 20 10.4S4 12 1 9Z'/%3E%3Cpath d='M.6 92C20 89 60 90.6 98 88.6C100 90 99.6 93.4 97 95C60 97.4 30 96.6 3 97.6Z'/%3E%3Cpath d='M3 1C7 0 8.6 3 8 20S7.6 70 9 96L4.4 99.4C3 70 4 40 2.4 18S1.6 3 3 1Z'/%3E%3Cpath d='M93 3C95 1 97.6 1.6 97.4 8C96.6 40 98 70 96.8 99L92.4 97C92.6 70 91.6 40 92.2 12Z'/%3E%3C/g%3E%3C/svg%3E");
+ -webkit-mask:var(--brush-frame) center/100% 100% no-repeat;mask:var(--brush-frame) center/100% 100% no-repeat;
+ animation:guide-run 2.6s linear infinite,guide-in 360ms ease-out both}
+@keyframes guide-run{to{--guide-turn:360deg}}
+@keyframes guide-in{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){#environment-tools .action-guided::before,#aim-skills .action-guided::before{animation:none;background:var(--ochre)}}
+@media(max-width:900px){
+ #hud-bottom-actions{position:fixed;left:180px;right:14px;bottom:12px;z-index:26;display:flex;align-items:flex-end;gap:16px;pointer-events:none}
+ #hud-bottom-actions>#environment-tools,#hud-bottom-actions>#aim-skills{position:static;inset:auto;transform:none;pointer-events:auto}
+ #hud-bottom-actions>#environment-tools{flex:1 1 auto;min-width:0;max-width:100%;width:auto;justify-content:flex-start;padding:0;gap:4px}
+ #hud-bottom-actions>#aim-skills{flex:none}
+ #hud-bottom-actions #inventory-slots{min-width:0;overflow-x:auto;scrollbar-width:thin}
+ #hud-bottom-actions>#environment-tools>button{flex-shrink:0}
+}
 #aim-points{max-width:min(340px,calc(100vw - 16px));max-height:calc(100vh - 16px);overflow:auto}
 #aim-points button{font-size:var(--fs-2)!important;white-space:normal;overflow-wrap:anywhere;text-align:left;background:var(--paper);color:var(--ink-1);border-color:var(--ink-4);border-radius:2px;box-shadow:none}
 body[data-aim] #corner-dock{visibility:hidden}
@@ -24,15 +55,21 @@ body[data-aim] #corner-dock{visibility:hidden}
 .ink-night .ink-float{color:var(--paper);text-shadow:0 0 2px var(--ink-0),0 0 8px var(--ink-0),0 0 16px #15140fcc}
 
 /* Investigation belongs to the shared context flow, above nearby actions. */
+#hud-context-actions{flex-wrap:wrap;max-width:100%}
+#hud-context-side{display:flex;justify-content:flex-end;align-self:flex-end;pointer-events:none}
+#hud-context-side>#surrender-action{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:4px 2px;pointer-events:auto;border:0;border-radius:0;background:none;color:var(--ink-2);box-shadow:none;font:var(--fs-1)/1.4 var(--font-body);cursor:pointer;opacity:.75;transition:opacity 160ms ease-out}
+#surrender-action .ink-icon{width:18px;height:18px}
+#surrender-action kbd{font:var(--fs-1)/1.4 var(--font-data);color:inherit;margin:0;border:0;padding:0;background:none;box-shadow:none}
+#hud-context-side>#surrender-action:hover,#hud-context-side>#surrender-action:focus-visible{background:none;opacity:1}
+#surrender-action:focus-visible{outline:1px solid var(--ink-2);outline-offset:3px}
+#surrender-action:disabled{cursor:default;opacity:.7}
+body.cinematic #surrender-action,body.checking #surrender-action,body.hud-detail-open #surrender-action{display:none!important}
+@media(prefers-reduced-motion:reduce){#surrender-action{transition:none}}
 #investigation-status{display:flex;align-items:center;gap:8px;max-width:100%;font:var(--fs-2)/1.4 var(--font-body);pointer-events:none}
-#investigation-status .investigation-mark{display:flex;color:var(--cinnabar)}
+#investigation-status .investigation-mark{display:flex;color:var(--cinnabar);opacity:var(--investigation-ink,1);transition:opacity 180ms ease-out}
 #investigation-status .investigation-mark svg{width:30px;height:30px;filter:drop-shadow(0 0 2px var(--paper))}
-#investigation-status .investigation-copy{min-width:0}
-#investigation-status .investigation-line{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
 #investigation-status b{font-weight:400}
-#investigation-status time{font:var(--fs-2)/1.4 var(--font-data);font-variant-numeric:tabular-nums}
-#investigation-status [data-hint]{display:block;font-size:var(--fs-1)}
-#investigation-status[data-state="ended"] .investigation-mark{color:var(--ink-2)}
+@media(prefers-reduced-motion:reduce){#investigation-status .investigation-mark{transition:none}}
 body.ink-night #investigation-status .investigation-mark svg{filter:drop-shadow(0 0 2px var(--ink-0))}
 body.night-open #investigation-status{visibility:hidden}
 
@@ -109,3 +146,32 @@ body.night-open #investigation-status{visibility:hidden}
 .ink-night .stealth-eye svg{filter:drop-shadow(0 0 2px var(--ink-1))}
 #object-actions .theft-sight{font:14px/1.6 var(--font-body);color:var(--ink-2);margin:0 0 8px}
 @media(prefers-reduced-motion:reduce){.stealth-eye{transition:none}}
+/* Selected object intentions share the existing paper panel and HUD lifecycle. */
+#environment-panel .item-exchange-actions,#environment-panel .item-trade-offers{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0}
+#environment-panel .item-exchange-actions button,#environment-panel .item-trade-offers button{flex:1 1 auto;min-width:64px;font-size:16px;color:var(--ink-1);background:transparent;border:0;border-bottom:2px solid var(--ink-4);border-radius:0;padding:6px 10px}
+#environment-panel .item-trade-offers{border-top:1px solid var(--ink-4)}
+#environment-panel .item-trade-offers button[data-accept-offer]{color:var(--ochre)}
+#environment-panel:not([hidden]):has(>.item-exchange-body){display:flex;flex-direction:column;height:min(55vh,550px);overflow:hidden}
+#environment-panel:has(>.item-exchange-body)>header{flex-shrink:0}
+#environment-panel>.item-exchange-body{min-height:32px;overflow:auto;scrollbar-width:thin}
+#environment-panel>.item-exchange-actions{flex-shrink:0;padding:4px 0}
+#environment-panel>.item-exchange-result{flex-shrink:0;min-height:0;max-height:140px;overflow:auto;scrollbar-width:thin}
+#environment-panel .item-exchange-result .item-trade-offers{padding:4px 0}
+#environment-panel .item-exchange-result p{font-size:14px;line-height:1.5;margin:6px 0}
+#environment-panel [role=status]:empty{display:none}
+body.hud-detail-open :is(#object-dots,#stealth-attention,#interact,#stealth-mode,#ambient){visibility:hidden!important;pointer-events:none}
+#environment-panel .item-exchange-check:empty{display:none}
+#environment-panel .item-exchange-check{flex-shrink:0}
+#check-reveal[data-inline]{position:static;inset:auto;padding:0;pointer-events:none}
+#check-reveal[data-inline] .check-card{width:100%;display:grid;grid-template-columns:44px 1fr;padding:4px 0;gap:4px;background:none!important}
+#check-reveal[data-inline] .check-emblem{width:44px;height:44px;grid-row:span 2}
+#check-reveal[data-inline] .check-label,#check-reveal[data-inline] .check-odds{font-size:14px!important;margin:0;padding:0}
+#check-reveal[data-inline] .check-seal{font-size:22px}
+#check-reveal[data-inline] button{display:none}
+#capture-fade{position:fixed;inset:0;z-index:1000;background:var(--ink-1);pointer-events:none}
+#prison-passage{position:fixed;inset:0;z-index:1001;display:grid;place-items:center;background:var(--grain),var(--fibre),var(--paper);color:var(--ink-0);text-align:center;pointer-events:auto}
+#prison-passage .prison-time{margin:0;padding-left:.3em;font:400 var(--fs-6)/1.6 var(--font-title);letter-spacing:.3em;animation:prison-ink 400ms ease-out both}
+@keyframes prison-ink{from{opacity:0;clip-path:inset(0 100% 0 0)}to{opacity:1;clip-path:inset(0)}}
+@media(prefers-reduced-motion:reduce){#prison-passage .prison-time{animation:none}}
+.time-passage #hud,.time-passage #hud-left-stack,.time-passage #hud-info-stack,.time-passage #hud-context-stack,.time-passage #npc-speech,.time-passage #minimap{visibility:hidden}
+.jh-inference{display:block;margin-top:8px;color:var(--ink-3);font:14px/1.6 var(--font-body)}

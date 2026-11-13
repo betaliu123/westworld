@@ -35,7 +35,7 @@ test('all directed acquaintances have distinct greetings and reachable actions w
 test('royal knowledge requires hearing the accepted greeting; names and sealed content remain separate',()=>{
  const g=setup();const r=act(g,'greet');assert.match(r.text,/王爷/);assert.equal(g.s.facts.princeRoyal,undefined);assert.equal(recognizedIdentity(g.s,'inspector'),false);
  confirmIdentityRecognition(g.sim,'inspector');assert.equal(g.s.facts.princeRoyal,true);assert.equal(g.s.facts.princeAlias,undefined);assert.equal(g.s.facts.princeLetter,undefined);assert.equal(g.s.facts.career,undefined);
- const org=knownOrganization(g.sim);assert.match(org.clues.find(c=>c.id==='royal-rank').source,/顾钦差/);assert.equal(org.nodes.find(n=>n.id==='traveler').name,'锦衣客 · 王爷');
+ const org=knownOrganization(g.sim);assert.match(org.clues.find(c=>c.id==='royal-rank').source,/顾钦差/);assert.equal(org.nodes.find(n=>n.id==='traveler').name,'锦衣客');assert.equal(org.nodes.find(n=>n.id==='traveler').role,'徽宗之弟 · 奉旨查案');
  const failed=setup('traveler','fu',()=>.999);assert.equal(act(failed,'greet').success,false);confirmIdentityRecognition(failed.sim,'fu');assert.equal(failed.s.facts.princeRoyal,undefined);assert.equal(currentFace(failed.s),'player');
 });
 test('existing successful checks resume identity dialogue without another roll, then expose all followups',()=>{
@@ -58,7 +58,7 @@ test('money debits the actual NPC purse, needs pickup, survives reload and canno
 });
 test('court stock is finite, physically collected, provenance keeps the accepted identity; identity is not employment',()=>{
  const g=setup();recognize(g);Object.assign(g.s.player,{x:12.2,z:-22.8});chestAction(g.eco,'chestOpen',COURT_CHEST);
- assert.ok(chestTakePreview(g.eco,COURT_CHEST).blocked);assert.ok(act(g,'stores').success);assert.equal(courtChestAccess(g.s,g.eco),true);
+ assert.equal(chestTakePreview(g.eco,COURT_CHEST).allowed,true);assert.ok(act(g,'stores').success);assert.equal(courtChestAccess(g.s,g.eco),true);
  let crimes=0;g.sim.listeners.push(type=>{if(type==='worldIncident')crimes++;});const money=g.s.player.money;
  assert.equal(chestAction(g.eco,'chestTakeAll',COURT_CHEST),undefined);assert.equal(crimes,0);assert.equal(g.s.player.money,money);
  const purse=g.eco.items('player').find(i=>i.chestSlot==='purse');assert.equal(purse.value,120);assert.equal(purse.provenance.history.at(-1).subject,'traveler');assert.equal(purse.provenance.originalOwner,'inspector');
@@ -75,7 +75,7 @@ test('permissions cannot survive another face, exposure, expiration or visible d
 test('manifest actions transfer the same entity; possession, reading and testimony are distinct',()=>{
  const g=setup('traveler','fu');recognize(g);const item=g.eco.items('npc:fu').find(i=>i.storyId==='convoy-list');
  assert.ok(act(g,'manifest').success);assert.equal(item.location,'player');assert.equal(item.provenance.originalOwner,'fu');assert.equal(item.opened,undefined);assert.equal(g.s.facts.ledgerDelivered,undefined);assert.ok(act(g,'manifest').error);
- const h=setup('fu','traveler');const record=h.eco.items('npc:fu').find(i=>i.storyId==='convoy-list');h.eco.transfer(record,'player','stolen');recognize(h);assert.ok(act(h,'handover').success);assert.equal(record.location,'npc:traveler');assert.equal(h.s.facts.ledgerDelivered,undefined);
+ const h=setup('fu','traveler');const record=h.eco.items('npc:fu').find(i=>i.storyId==='convoy-list');h.eco.transfer(record,'player','stolen');recognize(h);assert.ok(act(h,'handover').needsItem);assert.equal(record.location,'player');assert.ok(resolveIdentityOpportunity(h.sim,h.eco,h.observer,'if_identity_handover',{submittedItem:record.id}).success);assert.equal(record.location,'npc:traveler');assert.equal(h.s.facts.ledgerDelivered,undefined);
  const k=setup('inspector','fu');recognize(k);const testimony=act(k,'ledger');assert.ok(testimony.success);assert.equal(k.s.facts.taxLedgerLead,undefined);finishIdentityDialogue(k.sim,'fu',testimony);assert.equal(k.s.quests.ledger.status,'active');assert.match(k.s.quests.ledger.source,/符祥/);assert.equal(k.s.facts.ledgerDelivered,undefined);assert.ok(act(k,'ledger').error);
 });
 test('stale, remote, incapacitated and contradictory actions fail before payment or dice',()=>{
@@ -87,9 +87,9 @@ test('refused overreach changes the believed actor once, with no player penalty 
  const g=setup('fu','tea_host');recognize(g);const before=g.s.people.tea_host.relation,money=g.s.player.money;assert.ok(act(g,'overreach').success);assert.equal(g.s.people.tea_host.relation,before);assert.equal(g.s.appearance.relations['tea_host:fu'],-2);assert.equal(g.s.player.money,money);assert.ok(act(g,'overreach').error);
  applyFace(g.sim,'player');assert.equal(g.s.chronicle.deeds.find(d=>d.key==='identity:fu:tea_host:overreach').subject,'fu');
 });
-test('unlicensed chest theft uses the real action check while authorization needs no roll',()=>{
- const g=setup();Object.assign(g.s.player,{x:12.2,z:-22.8,crouched:true,stealing:true});chestAction(g.eco,'chestOpen',COURT_CHEST);let checks=0,incidents=0;g.sim.listeners.push(type=>{if(type==='fieldCheck')checks++;if(type==='worldIncident')incidents++;});
- const preview=chestTakePreview(g.eco,COURT_CHEST);assert.equal(preview.certain,false);g.sim.rng=()=>0;assert.equal(chestAction(g.eco,'chestTakeAll',COURT_CHEST),undefined);assert.equal(checks,1);assert.equal(incidents,1);assert.equal(g.eco.items('player').find(i=>i.chestSlot==='purse').provenance.history.at(-1).method,'stolen');
+test('unlicensed chest theft is a direct transfer and still records a theft incident',()=>{
+ const g=setup();applyFace(g.sim,'player');g.eco.positions.inspector={x:10,z:-23,facing:-Math.PI/2};Object.assign(g.s.player,{x:12.2,z:-22.8,crouched:true,stealing:true});chestAction(g.eco,'chestOpen',COURT_CHEST);let checks=0,incidents=0;g.sim.listeners.push(type=>{if(type==='fieldCheck')checks++;if(type==='worldIncident')incidents++;});
+ const preview=chestTakePreview(g.eco,COURT_CHEST);assert.equal(preview.certain,true);g.sim.rng=()=>{throw Error('container theft cannot roll');};assert.equal(chestAction(g.eco,'chestTakeAll',COURT_CHEST),undefined);assert.equal(checks,0);assert.equal(incidents,1);assert.equal(g.eco.items('player').find(i=>i.chestSlot==='purse').provenance.history.at(-1).method,'stolen');
 });
 test('hearing a clue through the live save observer keeps its true source and does not invent prisoner testimony',()=>{
  const g=setup('inspector','fu');recognize(g);g.sim.save=()=>g.sim.emit('save',g.s);

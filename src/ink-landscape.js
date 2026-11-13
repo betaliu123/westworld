@@ -112,7 +112,7 @@ export function roadVerge(scene) {
   flags.receiveShadow=true;scene.add(flags);
   const rocks=new T.Group();scene.add(rocks);
   // Keep the ribbon court (x 22, z 10) clear: actors stand/walk at ground level.
-  for(const [x,z,span] of [[-16,34,3],[-16,40,4],[18,35,4],[22,28,3],[-30,20,6],[30,8,3]]){
+  for(const [x,z,span] of [[-16,40,4],[18,35,4],[22,28,3],[-30,20,6],[30,8,3]]){
     for(let i=0;i<6;i++){
       const g=new T.IcosahedronGeometry(1,1), pos=g.attributes.position;
       for(let j=0;j<pos.count;j++){
@@ -137,20 +137,18 @@ export function roadVerge(scene) {
   scene.add(stems);
 }
 
-export function wantedSheet() {
+export function wantedSheet(notices=[]) {
   const canvas=document.createElement('canvas');canvas.width=384;canvas.height=280;
-  const c=canvas.getContext('2d');
-  if (!c?.fillRect) return paintedSurface('linen');
-  c.fillStyle='#e1cda3';c.fillRect(0,0,384,280);
-  c.strokeStyle='#75664c';c.lineWidth=2;c.strokeRect(9,9,366,262);
-  c.fillStyle='#473b32';c.textAlign='center';c.font='bold 33px SimSun, serif';c.fillText('懸 賞 緝 拿',192,49);
-  c.beginPath();c.moveTo(108,218);c.bezierCurveTo(114,187,137,182,148,176);c.lineTo(158,159);c.bezierCurveTo(137,144,140,85,169,83);c.bezierCurveTo(211,67,229,96,218,132);c.lineTo(209,153);c.lineTo(216,179);c.quadraticCurveTo(252,187,266,217);c.closePath();c.fill();
-  c.fillStyle='#d5bc91';c.beginPath();c.moveTo(157,116);c.lineTo(184,97);c.lineTo(211,114);c.quadraticCurveTo(211,151,183,166);c.quadraticCurveTo(160,159,157,116);c.fill();
-  c.strokeStyle='#554635';c.lineWidth=3;c.beginPath();c.moveTo(160,123);c.lineTo(174,126);c.moveTo(191,126);c.lineTo(205,121);c.moveTo(181,130);c.lineTo(178,143);c.lineTo(185,145);c.stroke();
-  c.font='21px SimSun,serif';c.fillStyle='#473b32';c.fillText('燕 七',192,251);
-  c.strokeStyle='#914a3d';c.strokeRect(288,200,43,43);c.font='25px SimSun';c.fillStyle='#914a3d';c.fillText('印',310,230);
-  const map=new T.CanvasTexture(canvas);map.colorSpace=T.SRGBColorSpace;
-  return new T.MeshStandardMaterial({map,roughness:1});
+  const c=canvas.getContext('2d');if(!c?.fillRect)return paintedSurface('linen');
+  const css=getComputedStyle(document.documentElement),color=name=>css.getPropertyValue(name).trim();
+  c.fillStyle=color('--paper');c.fillRect(0,0,384,280);c.fillStyle=color('--ink-1');
+  c.textAlign='center';c.font='30px "Jianghu Body",KaiTi,serif';c.fillText('懸 賞 緝 拿',192,42);
+  const active=notices.filter(w=>w.status==='active').slice().reverse();
+  c.textAlign='left';
+  active.slice(0,3).forEach((w,i)=>{const y=80+i*58;c.font='22px "Jianghu Body",KaiTi,serif';c.fillText(w.description?.name||'形貌待核',22,y);c.font='16px "Jianghu Body",KaiTi,serif';c.fillText(w.charges.map(c=>c.label).join('、').slice(0,13)+' · '+(w.reward||20)+'文',22,y+24);});
+  if(!active.length){c.font='22px "Jianghu Body",KaiTi,serif';c.fillText('榜上诸案已到案',80,142);}
+  c.textAlign='center';c.font='16px "Jianghu Body",KaiTi,serif';c.fillText(active.length>3?'共 '+active.length+' 道榜文 · 近前阅览':'须活口 · 按榜核问',192,264);
+  const map=new T.CanvasTexture(canvas);map.colorSpace=T.SRGBColorSpace;return new T.MeshStandardMaterial({map,roughness:1});
 }
 
 export function gateBanners(gate) {

@@ -4,6 +4,7 @@ import {visibleBetween} from './npc-awareness.js';
 import {addCausalDeed} from './item-meaning.js';
 import {placePayment} from './cash-transfers.js';
 import {learn,meet} from './factions.js';
+import {offersTravelBundle,bundleGiftActive,bundleGiftBlock,beginBundleGift} from './travel-bundle-gift.js';
 
 export const COURT_CHEST='court-supply-chest';
 export const identityAccounts=s=>s.identityAccounts??={recognitions:{},receipts:{},grants:{}};
@@ -14,6 +15,14 @@ const context=eco=>({positions:eco.positions,obstacles:eco.obstacles||[],player:
 const receipt=(s,id,kind)=>identityAccounts(s).receipts[stamp(s,id,kind)];
 const manifest=(eco,location)=>eco.items(location).find(i=>i.storyId==='convoy-list'&&i.hp>0);
 const moneyLimit=(face,id)=>['traveler','inspector'].includes(face)?80:face==='gate_guard'?6:face==='gate_merchant'?10:12;
+export function identityOpportunityPlayerLine(face,id,a){
+ if(a.id==='if_identity_bundle')return '好，娘，包裹给我吧。';
+ return a.id==='if_identity_greet'?(identityRelationship(face,id)?.replies?.default?.text||'是我。有些事，想当面同你谈。'):a.label;
+}
+export function identityGreeting(s,id,face=currentFace(s)){
+ const greeting=identityRelationship(face,id)?.greeting;
+ return greeting+(offersTravelBundle(s,id)?' 给你备的包裹还在这儿，娘拿给你，路上用得着。':'');
+}
 function paymentLine(face,id,amount){
  if(id==='inspector')return `王爷，${amount} 文放在案边，请收好。顾某以私钱垫付，记作王府借支；这笔之外，眼下再无余款。`;
  if(id==='fu')return face==='traveler'?`王爷，这是小的随身 ${amount} 文，给您放在这里。还请记着是符祥垫的，小的也得留个账。`:`顾大人，随身押运钱 ${amount} 文，都放在这里了。数目请当面点清，免得回头短了账。`;
@@ -39,8 +48,15 @@ export function confirmIdentityRecognition(sim,id){
  }
  sim.save();
 }
-export function finishIdentityDialogue(sim,id,result){
+export function finishIdentityDialogue(sim,id,result,eco=null){
  if(result.identityRecognition)confirmIdentityRecognition(sim,id);
+ if(result.identityGift&&!result.giftStarted&&result.success&&eco){result.giftStarted=beginBundleGift(sim,eco,result.identityGift.serial);}
+ const topic=result.identityTopic;
+ if(topic&&!result.topicHeard&&result.success&&currentFace(sim.s)===topic.face&&sim.s.player.face?.serial===topic.serial&&believedIdentity(sim.s,id)===topic.face){
+  result.topicHeard=true;
+  if(!receipt(sim.s,id,topic.kind))remember(sim,id,topic.kind,identityName(id)+'将你认作'+identityName(topic.face)+'，对你说：'+result.text,{topic:true});
+  sim.save();
+ }
  const info=result.identityClue,s=sim.s;
  if(!info||result.clueHeard||!result.success||currentFace(s)!==info.face||s.player.face?.serial!==info.serial||believedIdentity(s,id)!==info.face)return;
  result.clueHeard=true;
@@ -56,6 +72,7 @@ export function finishIdentityDialogue(sim,id,result){
 export function identityOpportunityOptions(sim,id){
  const s=sim.s,face=currentFace(s),edge=identityRelationship(face,id);
  if(s.chapterVersion!==2||!edge||believedIdentity(s,id)!==face)return [];
+ if(id==='tea_host'&&bundleGiftActive(s))return [];
  const options=[],add=(kind,label,extra={})=>options.push({id:'if_identity_'+kind,label,mode:'contact',kind:'listen',story:true,stat:'charm',...extra});
  if(!recognizedIdentity(s,id)){add('greet','让对方认清面貌，接着说下去');return options;}
  for(const kind of edge.offers){
@@ -64,7 +81,9 @@ export function identityOpportunityOptions(sim,id){
   if(kind==='advance'){
    if(!amount)continue;
    add(kind,face==='traveler'?`先替我备 ${amount} 文盘缠`:face==='inspector'&&id==='fu'?`把 ${amount} 文押运钱交来核账`:`借我 ${amount} 文周转`,{amount});
-  }else if(kind==='stores')add(kind,'堂内物资箱，我要取用');
+  }else if(kind==='bundle'){if(offersTravelBundle(s,id))add(kind,'收下娘备的远行包裹');}
+  else if(edge.topics?.[kind])add(kind,edge.topics[kind].label);
+  else if(kind==='stores')add(kind,'堂内物资箱，我要取用');
   else if(kind==='manifest'){if(s.ecosystem?.items.some(i=>i.storyId==='convoy-list'&&i.location==='npc:'+id&&i.hp>0))add(kind,'把花石纲名册交给我');}
   else if(kind==='handover'){if(s.ecosystem?.items.some(i=>i.storyId==='convoy-list'&&i.location==='player'&&i.hp>0))add(kind,'把押纲名册交给你查验');}
   else if(kind==='ledger')add(kind,'把副账的下落说清楚');
@@ -74,7 +93,7 @@ export function identityOpportunityOptions(sim,id){
  }
  const debt=receipt(s,id,'advance');
  if(debt&&!debt.repayment&&s.player.money>=debt.amount)add('repay',`归还先前的 ${debt.amount} 文`,{amount:debt.amount});
- if(Object.entries(identityAccounts(s).receipts).some(([k,r])=>k.startsWith(pair(s,id)+':')&&!r.reviewed)&&!receipt(s,id,'recall'))add('recall','问起先前经手的钱物');
+ if(Object.entries(identityAccounts(s).receipts).some(([k,r])=>k.startsWith(pair(s,id)+':')&&!r.topic&&!r.reviewed)&&!receipt(s,id,'recall'))add('recall','问起先前经手的钱物');
  return options;
 }
 export function identityOpportunityPreview(sim,id,a,eco){
@@ -84,6 +103,7 @@ export function identityOpportunityPreview(sim,id,a,eco){
  const q=eco?.positions[id];
  if(!reason&&(!q||Math.hypot(s.player.x-q.x,s.player.z-q.z)>3.5||!visibleBetween(s.player,q,eco.obstacles||[],eco.s.objects)))reason='先到对方跟前说话。';
  if(!reason&&live.amount!==a.amount)reason='对方的钱数已变，请重新商量。';
+ if(!reason&&a.id==='if_identity_bundle')reason=bundleGiftBlock(s,eco.positions,eco.obstacles||[]);
  const preview=!reason?disguisePreview(s,id,{force:true,context:context(eco)}):null;
  if(!reason&&preview?.certain&&preview.chance===0)reason=preview.reason;
  if(reason)return {blocked:true,certain:true,chance:0,reason};
@@ -96,16 +116,20 @@ function remember(sim,id,kind,text,extra={}){
  const deed=addCausalDeed(s,{key:'identity:'+key,title:'借身份行事',text,target:id,subject,witnesses:[id]});r.cause=deed.id;
  const n=s.people[id];n.memories??=[];n.memories.push(text);n.memories=n.memories.slice(-12);return r;
 }
-export function resolveIdentityOpportunity(sim,eco,id,action){
+export function resolveIdentityOpportunity(sim,eco,id,action,{submittedItem=null}={}){
+ if(action==='if_identity_handover'&&!submittedItem)return {needsItem:true,task:'handover'};
  const s=sim.s,a=identityOpportunityOptions(sim,id).find(x=>x.id===action);if(!a)return {error:'这件事已办过，或身份已经改变。'};
  const check=identityOpportunityPreview(sim,id,a,eco);if(check.blocked)return {error:check.reason};
  const face=currentFace(s),edge=identityRelationship(face,id),kind=action.slice('if_identity_'.length);
  const result=check.certain?{success:true,roll:null,check}:checkDisguise(sim,id,{context:context(eco)});
  if(result.error)return result;
- let text='你的言行对不上。先把这张假面卸了！',changes=[],identityClue=null;
+ let text=edge.failure||'你的言行对不上。先把这张假面卸了！',changes=[],identityClue=null,identityTopic=null,identityGift=null;
  if(result.success){
-  if(kind==='greet')text=edge.greeting;
-  else if(kind==='advance'){
+  if(kind==='greet')text=identityGreeting(s,id,face);
+  else if(kind==='bundle'){text='青禾，到包裹旁来，娘这就拿给你。';identityGift={serial:s.player.face.serial};}
+  else if(edge.topics?.[kind]){
+   text=edge.topics[kind].text;identityTopic={kind,face,serial:s.player.face.serial};
+  }else if(kind==='advance'){
    const q=eco.positions[id],pile=placePayment(sim,eco,{payer:id,payee:'player',amount:a.amount,x:q.x+.5,z:q.z+.4,stand:q,reason:identityName(id)+'认作'+identityName(face)+'所付的盘缠'});
    if(!pile)return {error:'对方已拿不出这笔钱。'};
    s.people[id].payingUntil=eco.s.time+1.2;
@@ -113,10 +137,10 @@ export function resolveIdentityOpportunity(sim,eco,id,action){
    remember(sim,id,kind,identityName(id)+'认作'+identityName(face)+'，将 '+a.amount+' 文放下待其领取。',{amount:a.amount,itemId:pile.id});
   }else if(kind==='stores'){
    identityAccounts(s).grants[COURT_CHEST]={subject:face,issuer:id,serial:s.player.face.serial,at:appearanceTime(s)};
-   text=face==='traveler'?'王爷，堂内右手的物资箱，钱袋、衣物和药都请取用。我记作王府领用；箱中没有的，眼下可调不来。':'顾大人，堂内右手的物资箱由您支配，钱袋、衣物和药都在里面。';
+   text=face==='traveler'?'王爷，堂内右手的物资箱，现存的东西都请取用。我记作王府领用；箱中没有的，眼下可调不来。':'顾大人，堂内右手的物资箱，现存的东西请您取用，属下照实记账。';
    remember(sim,id,kind,identityName(id)+'准许'+identityName(face)+'领取六扇门物资箱现存物品。');
   }else if(kind==='manifest'||kind==='handover'){
-   const item=manifest(eco,kind==='manifest'?'npc:'+id:'player');if(!item)return {error:'名册已不在原处。'};
+   const item=manifest(eco,kind==='manifest'?'npc:'+id:'player');if(kind==='handover'&&item?.id!==submittedItem)return {error:'选中的名册已不在手中。'};if(!item)return {error:'名册已不在原处。'};
    eco.transfer(item,kind==='manifest'?'player':'npc:'+id,'identity-handover',[id]);
    text=kind==='manifest'?'名册在此，请收好。这份只记纲运，查税钱还得核副账。':'名册留下，我会逐项核对。收到名册不等于查清了税账，你经手的事仍要问。';
    const r=remember(sim,id,kind,identityName(id)+'认作'+identityName(face)+'，当面'+(kind==='manifest'?'交出':'收到')+'花石纲名册。',{itemId:item.id});item.provenance.history.at(-1).cause=r.cause;
@@ -143,7 +167,7 @@ export function resolveIdentityOpportunity(sim,eco,id,action){
    remember(sim,id,kind,identityName(id)+'向'+identityName(face)+'核对先前的钱物与口述。');
   }
  }
- const r={...result,presentation:'dialogue',handledPresentation:true,type:'npc',actionId:action,eventId:'identity:'+face+':'+id+':'+kind,label:a.label,kind:'listen',motion:'talk',changes,text,dialogue:[{id:'player',text:kind==='greet'?'是我。有些事，想当面同你谈。':a.label},{id,text}],authored:true,causalRecorded:true,...(identityClue?{identityClue}:{}),...(kind==='greet'&&result.success?{identityRecognition:id}:{})};
+ const r={...result,presentation:'dialogue',handledPresentation:true,type:'npc',actionId:action,eventId:'identity:'+face+':'+id+':'+kind,label:a.label,kind:'listen',motion:'talk',changes,text,dialogue:[{id:'player',text:identityOpportunityPlayerLine(face,id,a)},{id,text}],authored:true,causalRecorded:true,...(identityClue?{identityClue}:{}),...(identityTopic?{identityTopic}:{}),...(identityGift?{identityGift}:{}),...(kind==='greet'&&result.success?{identityRecognition:id}:{})};
  s.history.push(r);sim.emit('result',r);sim.save();return r;
 }
 

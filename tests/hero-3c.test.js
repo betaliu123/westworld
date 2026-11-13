@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from '../vendor/three.module.js';
-import {HeroCombat} from '../src/hero-combat.js';
+import {HeroCombat,SWINGS} from '../src/hero-combat.js';
 import {HeroMotion} from '../src/hero-motion.js';
 import {clearCameraPosition,followOrbit} from '../src/orbit-camera.js';
 import {World} from '../src/world.js';
@@ -9,15 +9,23 @@ import {World} from '../src/world.js';
 test('swing hits at contact, only once; repeated input buffers only one combo',()=>{
   const combat=new HeroCombat();let hits=0,starts=0;
   combat.begin();const next=id=>{starts++;combat.begin(id);};
-  combat.step(.15,true,()=>hits++,next);assert.equal(hits,0);
+  combat.step(.11,true,()=>hits++,next);assert.equal(hits,0);
   for(let i=0;i<10;i++)combat.begin('gate');
-  combat.step(.11,true,()=>hits++,next);assert.equal(hits,1);
-  combat.step(.5,true,()=>hits++,next);assert.equal(starts,1);assert.equal(combat.swing.index,1);
+  combat.step(.05,true,()=>hits++,next);assert.equal(hits,1);assert.equal(starts,0);
+  combat.step(.25,true,()=>hits++,next);assert.equal(starts,1);assert.equal(combat.swing.index,1);
   combat.step(.8,true,()=>hits++,next);assert.equal(hits,2);assert.equal(combat.swing,null);
 });
 
+test('a buffered click chains after contact; an unbuffered swing plays out its recovery',()=>{
+  for(const s of SWINGS)assert.ok(s.strike<s.chain&&s.chain<=s.duration);
+  const lone=new HeroCombat();lone.begin();lone.step(SWINGS[0].chain+.01,true,()=>{},()=>assert.fail('nothing was buffered'));
+  assert.ok(lone.swing&&lone.remaining>0);lone.step(SWINGS[0].duration,true,()=>{},()=>{});assert.equal(lone.swing,null);
+  const late=new HeroCombat();let starts=0;late.begin();late.step(SWINGS[0].chain+.02,true,()=>{},()=>starts++);
+  late.begin();late.step(.016,true,()=>{},()=>starts++);assert.equal(starts,1,'a click during recovery starts the next swing on the next frame');
+});
+
 test('interruption before contact prevents damage and clears queued attacks',()=>{
-  for(const elapsed of [.05,.2]){
+  for(const elapsed of [.05,.12]){
     const c=new HeroCombat();let hits=0;c.begin();c.step(elapsed,true,()=>hits++,()=>{});c.begin();
     c.step(.6,false,()=>hits++,()=>assert.fail('must not chain after interruption'));
     c.step(1,true,()=>hits++,()=>{});assert.equal(hits,0);assert.equal(c.remaining,0);
@@ -34,7 +42,7 @@ test('world attack spends stamina once, defers damage, and sheathing cancels it'
   const w=Object.create(World.prototype);let hits=0;
   Object.assign(w,{readyUntil:Infinity,playing:true,heroCombat:new HeroCombat(),sim:{s:{player:{energy:30,hp:100}}},strike(){hits++;}});
   w.attack();assert.equal(w.sim.s.player.energy,22);assert.equal(hits,0);
-  w.heroCombat.step(.2,true,()=>w.strike(),()=>{});w.attack();assert.equal(w.sim.s.player.energy,22);
+  w.heroCombat.step(.12,true,()=>w.strike(),()=>{});w.attack();assert.equal(w.sim.s.player.energy,22);
   w.clearReady();w.heroCombat.step(1,false,()=>w.strike(),()=>{});assert.equal(hits,0);
 });
 
@@ -75,6 +83,13 @@ test('crouching and bespoke interaction use procedural fallback, then resume mot
   assert.equal(m.update(.1,{...standing,crouched:true}),false);assert.equal(m.once,null);
   assert.equal(m.update(.1,{...standing,fallback:true}),false);
   assert.equal(m.update(.1,standing),true);assert.equal(m.base,'stand_idle');
+});
+
+test('an attack cue can skip wind-up and still ends on the clip\'s last frame',()=>{
+  const m=motion(),a=m.actions.get('attack_1');m.update(.1,standing);m.cue('attack_1',.5,false,{skip:.2,fade:.07});
+  assert.equal(a.time,.2);assert.ok(Math.abs(a.getEffectiveTimeScale()-1.6)<1e-9);
+  m.update(.25,standing);assert.ok(Math.abs(a.time-.6)<1e-6);assert.equal(m.base,'attack_1');
+  m.update(.3,standing);assert.equal(m.base,'stand_idle');
 });
 
 test('takeoff, falling, landing and actual injury choose their corresponding clips',()=>{

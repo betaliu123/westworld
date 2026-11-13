@@ -1,12 +1,13 @@
 import {currentFace,clothing,clothingRole,disguisePreview} from './appearance.js';
 import {skill} from './skills.js';
+import {knownNpcName} from './npc-names.js';
 // Re-evaluated at confirmation: the preview never owns a stale success chance.
 export function identityCheck(s,{uniform=false,owner='gate_merchant'}={}){
  const p=s.player,n=s.people[owner],holder=s.watch?.holder||'gate_guard',guard=s.people[holder];
  const pass=s.ecosystem?.items.find(i=>i.location==='player'&&i.documentId==='merchant-pass'&&i.hp>0);
  const has=uniform?p.disguise==='runner':!!pass||p.inventory.some(x=>['他人的路引','改名路引'].includes(x));
  const reasons=[];let chance=100;
- const known=uniform?!!s.facts.runnerNameKnown:!!s.facts.knownNames?.[owner];
+ const known=uniform?!!s.facts.runnerNameKnown:s.chapterVersion===2?!!knownNpcName(s,owner):!!s.facts.knownNames?.[owner];
  if(!has)return {blocked:true,chance:0,certain:false,score:p.stats.charm,reason:uniform?'未穿差役服':'身上没有路引'};
  if(!known){chance=45;reasons.push('答不上原主姓名');}else reasons.push('姓名与凭据相合');
  const originalNearby=n?.hp>0&&Math.hypot((n.x??6)-p.x,(n.z??24)-p.z)<5;

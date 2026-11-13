@@ -1,8 +1,9 @@
+import {QINGHE_RIVERSIDE} from './locations.js';
 export const ATTR={might:'膂力',agility:'身法',charm:'风仪',wit:'机敏'};
 export const ROLES={wanderer:{name:'江湖游侠',desc:'身法见长，敢走险路',stats:{might:50,agility:60,charm:40,wit:50},style:'rogue'},scholar:{name:'书香出身',desc:'善察人心，以言解围',stats:{might:35,agility:40,charm:65,wit:60},style:'social'},guardian:{name:'仗义刀客',desc:'膂力过人，护弱扶危',stats:{might:65,agility:50,charm:40,wit:45},style:'kind'}};
 export const PEOPLE=[
  {id:'fu',name:'符祥',title:'应奉局管事 · 催押花石纲',faction:'应奉局',color:0x877346,x:8,z:29,relation:-5},
- {id:'qinghe',gender:'female',name:'宋青禾',title:'宋茶娘之女',faction:'临溪街坊',color:0x8b5777,x:-11,z:29.5,relation:0},
+ {id:'qinghe',gender:'female',name:'宋青禾',title:'宋茶娘之女',faction:'临溪街坊',color:0x8b5777,x:QINGHE_RIVERSIDE.x,z:QINGHE_RIVERSIDE.z,relation:0},
  {id:'inspector',name:'顾钦差',title:'六扇门 · 奉旨查案',faction:'六扇门',color:0x723e3d,x:10,z:-23,relation:0},
  {id:'gang_boss',name:'梅掌舵',title:'赤砂帮 · 帮主',faction:'赤砂帮',color:0x57352e,x:23,z:-5,relation:0},
  {id:'gate_relief',name:'周伍长',title:'临溪守军 · 轮值伍长',faction:'临溪守军',color:0x4b5965,x:2,z:25,relation:0},

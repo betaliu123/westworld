@@ -13,7 +13,10 @@ test('daily animation respects movement, seated speech and authored action prior
   assert.equal(npcMotionName({seated:true}), 'sit_idle');
   assert.equal(npcMotionName({seated:true,talking:true}), 'sit_talk');
   assert.equal(npcMotionName({seated:true,talking:true,speed:1}), 'walk');
-  for (const exceptional of [{hp:0},{armed:true},{stunned:true},{fallback:true}])
+  assert.equal(npcMotionName({armed:true}), 'combat_idle');
+  assert.equal(npcMotionName({armed:true,speed:2}), 'combat_run');
+  assert.equal(npcMotionName({flee:true,speed:3}), 'flee');
+  for (const exceptional of [{hp:0},{stunned:true},{fallback:true}])
     assert.equal(npcMotionName({...exceptional,talking:true,speed:1}), null);
 });
 
@@ -60,7 +63,7 @@ test('holding a prop keeps locomotion and breathing rather than generic speech g
  assert.equal(npcMotionName({upperBody:{kind:'drink'},seated:true,talking:true}),'sit_idle');
 });
 
-for (const kind of ['prince','guard','woman','commoner']) {
+for (const kind of ['prince','guard','woman','commoner','sandgang','constable','envoy']) {
   test(kind+' baked motion binds to its model with finite rotations and in-place roots', () => {
     const base=new URL('../src/models/',import.meta.url);
     const glb=readFileSync(new URL('npc-'+kind+'.glb',base));

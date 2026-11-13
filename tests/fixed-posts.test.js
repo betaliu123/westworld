@@ -11,6 +11,18 @@ const ids=['porter','scribe','fu'];
 function setup(){const sim=new Simulation(newArrival(),()=>.99);sim.s.time=60;sim.save=()=>{};const eco=new Ecosystem(sim,[{id:'post-test-stall',kind:'stall',x:12,z:27,owner:'tea_host'}]);return {sim,eco};}
 const rations=(eco,id)=>eco.s.items.filter(i=>i.postRationOwner===id);
 
+test('Qinghe joins her own wagon instead of waiting aside for the wagon that is waiting for her',()=>{
+ const {sim,eco}=setup(),q={x:5.5,z:30.6},n=sim.s.people.qinghe;
+ sim.s.convoy={x:7.8,z:32.5,heading:0,phase:'travel',qinghePassenger:{mode:'persuade'}};
+ sim.s.qingheJourney={mode:'persuade',phase:'convoy',delivered:true};
+ n.life={activity:'yieldConvoy',target:{x:4.1,z:30.6}};
+ n.convoyYield={previous:{activity:'qinghe-journey'},target:n.life.target};
+ assert.equal(yieldToConvoy(sim,eco,'qinghe',q,{qinghe:q}),false);
+ assert.equal(n.convoyYield,undefined);assert.equal(n.life.activity,'qinghe-journey');
+ lifeStep(sim,eco,.1,{qinghe:q});assert.equal(n.life.activity,'qinghe-journey');
+ assert.deepEqual(q,{x:5.5,z:30.6});
+});
+
 test('fixed-post people eat real carried provisions at their posts without going to a table',()=>{
  for(const id of ids){const {sim,eco}=setup(),q=fixedPost(sim.s,id),before=rations(eco,id).length;
   eco.s.hunger[id]=80;eco.tick(.1,{[id]:q});

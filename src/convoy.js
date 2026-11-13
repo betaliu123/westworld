@@ -1,4 +1,5 @@
 import {recordConvoyAftermath} from './convoy-aftermath.js';
+import {newsReady} from './world-news.js';
 import {recordCrimeScene} from './crime-investigation.js';
 import {appearanceView,believedIdentity,attributeIncident} from './appearance.js';
 import {abilityCheck,resolveAbilityCheck} from './ability-check.js';
@@ -15,8 +16,8 @@ export const CONVOY_GATE={x:7.8,z:32.5};
 export const CONVOY_TOWN={x:0,z:-16};
 export const CONVOY_STONE={x:4.2,z:32.5};
 export const CONVOY_CREW=['porter','fu'];
-export const convoyCrew=s=>s.convoy?.command?[s.convoy.command.receiver]:CONVOY_CREW;
-export const CONVOY_ENTRY_LINE='衣着齐整了，跟上。进关后把车送到镇公所门前。';
+export const convoyCrew=s=>s.convoy?.command?[s.convoy.command.receiver]:s.convoy?.passenger?.ahead?['porter']:CONVOY_CREW;
+export const CONVOY_ENTRY_LINE='衣裳换齐整了，就跟着队伍走吧。进关以后还要把车送到镇公所门前，别进了门就走散了。';
 export function convoyState(s){
  if(!s.convoy)s.convoy={...CONVOY_GATE,phase:'gate',route:0,approved:{},attempts:{},banned:{},incidents:{},posts:{}};
  const c=s.convoy;
@@ -89,20 +90,20 @@ export function resolveConvoyTalk(sim,eco,action,physical=null){
  const check=convoyPreview(sim,a);if(check.blocked)return {error:check.reason};
  if(action==='ch_convoy_strength'&&!physical)return {trainingConvoy:beginConvoyStrength(sim,eco)};
  const subject=believedIdentity(s,'porter'),attempts=c.attempts[subject]??={};let text='',changes=[],follow=[],roll=null,success=true,resultCheck=check;
- if(action==='ch_convoy_work'){c.asked=true;s.facts.convoySchedule=true;text='人手够了，不招了。纲货出了岔子，谁也担不起。';follow=['convoy_bribe','convoy_strength','convoy_charm'];}
+ if(action==='ch_convoy_work'){c.asked=true;s.facts.convoySchedule=true;text='这班役夫的人手已经够了，不能说添就添。纲货要是出了差错，最后得我来担，你总得让我放心才是。';follow=['convoy_bribe','convoy_strength','convoy_charm'];}
  if(action==='ch_convoy_refused')text=convoyBlock(s);
  if(action==='ch_convoy_bribe'){
   const at=q||{x:5,z:31},payment=placePayment(sim,eco,{payer:'player',payee:'porter',amount:6,x:at.x+.4,z:at.z+.4,stand:at,reason:'托周大石通融入队'});
   if(!payment)return {error:'需六文茶钱。'};payment.collectAt=eco.s.time;
-  changes=['盘缠 −6',...approveConvoy(sim,eco,'茶钱')];text='这份心意我领了。行，你算一个；换好短褂，别碰车上的纲货。';follow=['convoy_enter'];
+  changes=['盘缠 −6',...approveConvoy(sim,eco,'茶钱')];text='这份心意我领了，给你留个位置。短褂先换好，随队上工；车上的纲货不是私人物件，别乱碰。';follow=['convoy_enter'];
  }
  if(action==='ch_convoy_strength'||action==='ch_convoy_charm'){
   const result=physical||resolveAbilityCheck(check,sim.rng);if(result.error)return result;
   if(action==='ch_convoy_strength')delete c.pendingStrength;
   ({roll,success}=result);resultCheck=result.check;attempts[action==='ch_convoy_strength'?'might':'charm']=true;
   if(action==='ch_convoy_strength')changes.push('体力 −6');
-  if(success){changes.push(...approveConvoy(sim,eco,action==='ch_convoy_strength'?'搬石试力':'含笑说情'));text=action==='ch_convoy_strength'?'这块石头你真搬得起来。行，留你一个位置，换好短褂跟上。':'话说得倒动听。好，给你留个位置；上工还得换短褂，车上的纲货别动。';follow=['convoy_enter'];}
-  else{text=action==='ch_convoy_strength'?'放稳，别闪了腰。你这力气，眼下还扛不住这份活。':'好话我听了，可这份差事不能凭一句好话就应下。';follow=['convoy_bribe','convoy_strength','convoy_charm'];}
+  if(success){changes.push(...approveConvoy(sim,eco,action==='ch_convoy_strength'?'搬石试力':'含笑说情'));text=action==='ch_convoy_strength'?'这石头抬得起，也放得稳，倒是干活的好手。行，算你一个，短褂收好，换上再随队走。':'你倒会说话。好，给你留个位置，不过真要上工，还得先换好短褂。车上的纲货也别乱碰，出了差错，我不好交代。';follow=['convoy_enter'];}
+  else{text=action==='ch_convoy_strength'?'慢着，先把石头放稳，别闪了腰。你眼下这份力气，还担不起这班活，别勉强自己。':'好话我听进去了，可这差事不是只凭几句好话就能应下的。纲货出了事要人担责，我也不能随意添人。';follow=['convoy_bribe','convoy_strength','convoy_charm'];}
  }
  if(action==='ch_convoy_enter'){if(!admitRoute(sim,'convoy'))return {error:'眼下已不在关外入队。'};text=CONVOY_ENTRY_LINE;c.phase='travel';}
  const r={type:'npc',presentation:'dialogue',handledPresentation:true,day:s.day,eventId:'convoy:'+action,actionId:action,label:a.label,kind:'listen',motion:a.motion||'talk',roll,check:resultCheck,success,text,changes,dialogue:[{id:'porter',text}],authored:true,follow,causalRecorded:true};
@@ -142,7 +143,7 @@ export function stealConvoyCargo(eco,itemId,{staged=false}={}){
 export function inspectConvoyCargo(sim,eco,positions){
  const c=convoyState(sim.s);if(c.closed||!c.stocked)return;
  const missing=c.cargo.some(id=>!eco.s.items.some(i=>i.id===id&&i.hp>0&&i.location==='object:'+CART));if(!missing)return;
- const observer=CONVOY_CREW.find(id=>{const n=sim.s.people[id],q=positions[id];return q&&n?.hp>0&&!n.life?.night&&!n.awareness?.caseOpen&&!(n.stunnedUntil>(sim.s.npcClock||0))&&Math.hypot(q.x-c.x,q.z-c.z)<5&&visibleBetween(q,c,(eco.obstacles||[]).filter(o=>o.id!==CART),eco.s.objects);});
- if(!observer)return;c.closed=true;c.missing=true;const report=recordCrimeScene(sim,{type:'theft',convoy:true,severe:true,owner:'fu',x:c.x,z:c.z,witnesses:[]});if(report)report.discoverer=observer;sim.emit('npcRoutine',{id:observer,text:'纲货少了！先封车清点，旁人不许再跟队。'});
+ const observer=CONVOY_CREW.find(id=>{const q=positions[id];return q&&newsReady(sim.s,id)&&Math.hypot(q.x-c.x,q.z-c.z)<5&&visibleBetween(q,c,(eco.obstacles||[]).filter(o=>o.id!==CART),eco.s.objects);});
+ if(!observer)return;c.closed=true;c.missing=true;c.missingObserver=observer;c.missingAt=sim.s.npcClock||0;const report=recordCrimeScene(sim,{type:'theft',convoy:true,severe:true,owner:'fu',x:c.x,z:c.z,witnesses:[]});if(report)report.discoverer=observer;sim.emit('npcRoutine',{id:observer,text:'纲货少了！先封车清点，旁人不许再跟队。'});
  addCausalDeed(sim.s,{key:'convoy-missing',title:'纲货清点',text:'车队发现失货，暂停带人入关；尚不知道是谁取走。',target:observer,subject:'unknown'});sim.save();
 }

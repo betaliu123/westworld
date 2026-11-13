@@ -6,6 +6,9 @@ import {knownFaces,rememberFace} from '../src/appearance.js';
 import {earnReputation,reputation} from '../src/reputation.js';
 import {observeProgress,progressSnapshot} from '../src/progress.js';
 import {World} from '../src/world.js';
+import {rememberNpcConversation} from '../src/npc-names.js';
+import {societyStep} from '../src/gate-society.js';
+import {probeNpc} from '../src/npc-discovery.js';
 import * as T from '../vendor/three.module.js';
 
 const listen=sim=>{const rows=[];sim.listeners.push((type,data)=>{if(type==='actorDeltas')rows.push(...data);});return rows;};
@@ -23,6 +26,43 @@ test('merely seeing a passer-by is not a usable face; learning the identity adds
  const sim=new Simulation(newArrival()),rows=listen(sim);rememberFace(sim.s,'tea');sim.save();assert.deepEqual(rows,[]);
  sim.s.people.tea.metPlayer=true;sim.save();assert.deepEqual(rows,[{id:'player',label:'可易容面貌',delta:1}]);
  rememberFace(sim.s,'tea');sim.save();assert.equal(rows.length,1);
+});
+
+test('meeting Qinghe unlocks her face in that conversation, never on a later approach',()=>{
+ const sim=new Simulation(newArrival()),s=sim.s,rows=listen(sim);
+ // A reply can finish before the wardrobe's one-second observation scan.
+ rememberNpcConversation(sim,{id:'qinghe',text:'我想听听京里的曲子。'});
+ assert.deepEqual(rows,[{id:'player',label:'可易容面貌',delta:1}]);
+ assert.deepEqual(knownFaces(s).map(([id])=>id),['qinghe']);
+ rememberNpcConversation(sim,{id:'fu',text:'名册上有这个名字。'});
+ assert.deepEqual(rows.map(r=>r.delta),[1,1]);
+ for(let i=0;i<3;i++){
+  rememberFace(s,'qinghe');rememberFace(s,'fu');
+  rememberNpcConversation(sim,{id:'qinghe',text:'娘有娘的怕，我也有我的打算。'});sim.save();
+ }
+ assert.equal(rows.length,2);assert.equal(knownFaces(s).length,2);
+ const loaded=new Simulation(JSON.parse(JSON.stringify(s))),after=listen(loaded);
+ rememberFace(loaded.s,'qinghe');loaded.save();assert.deepEqual(after,[]);
+});
+
+test('overhearing two newly met people reports two immediately, not on a later scan',()=>{
+ const sim=new Simulation(newArrival()),s=sim.s,eco=new Ecosystem(sim,[]);
+ Object.assign(s.player,{x:0,z:30});eco.positions={old_constable:{x:0,z:31},traveler:{x:1,z:31}};
+ s.gateSociety={nextTalk:0,index:0};sim.progressBaseline=progressSnapshot(s);const rows=listen(sim);
+ societyStep(sim,eco,{obstacles:[]},.1);
+ assert.deepEqual(rows,[{id:'player',label:'可易容面貌',delta:2}]);
+ assert.deepEqual(knownFaces(s).map(([id])=>id).sort(),['old_constable','traveler']);
+ rememberFace(s,'old_constable');rememberFace(s,'traveler');sim.save();
+ s.gateSociety={nextTalk:0,index:1};societyStep(sim,eco,{obstacles:[]},.1);sim.save();
+ assert.equal(rows.length,1);
+});
+
+test('a successful probe unlocks its face before the next proximity scan, only once',()=>{
+ const sim=new Simulation(newArrival(),()=>0),rows=listen(sim);
+ assert.equal(probeNpc(sim,'qinghe').success,true);
+ assert.deepEqual(rows,[{id:'player',label:'可易容面貌',delta:1}]);
+ assert.equal(probeNpc(sim,'qinghe').cached,true);rememberFace(sim.s,'qinghe');sim.save();
+ assert.equal(rows.length,1);
 });
 test('local and faction reputation float actual capped changes once without a duplicate global total',()=>{
  const sim=new Simulation(newArrival()),s=sim.s,r=reputation(s);s.reputation=r.seenGlobal=r.cities.linxi=99;

@@ -9,13 +9,16 @@ export function restraintMotion(world,id,n,dt){
  const a=n.actor,old=a.position.clone(),p=world.hero.position;
  n.chasing=n.fleeing=false;n.actor.userData.sword.visible=false;
  if(n.alert)n.alert.visible=false;
- if(state.hp>0&&!(state.stunnedUntil>(world.sim.s.npcClock||0))&&r.mode==='lead'&&dt>0&&p.distanceTo(a.position)>1.65){
+ // Around a corner the leader can be stopped by the tether before it reaches
+ // its length limit. Close the gap while they try to walk, so both can turn.
+ const walking=world.auto?.length||['KeyW','KeyA','KeyS','KeyD'].some(key=>world.keys?.has(key)),stop=walking?.9:1.65;
+ if(state.hp>0&&!(state.stunnedUntil>(world.sim.s.npcClock||0))&&r.mode==='lead'&&dt>0&&p.distanceTo(a.position)>stop){
   if(!n.ropeRoute||world.t>(n.ropeRepath||0)){
-   n.ropeRoute=routinePath(a.position,p,(x,z)=>world.collides(x,z,0,false),1.4);n.ropeRepath=world.t+.6;
+   n.ropeRoute=routinePath(a.position,p,(x,z)=>world.collides(x,z,0,false),Math.max(.5,stop-.25));n.ropeRepath=world.t+.6;
   }
   while(n.ropeRoute.length&&Math.hypot(n.ropeRoute[0].x-a.position.x,n.ropeRoute[0].z-a.position.z)<.18)n.ropeRoute.shift();
   const q=n.ropeRoute[0];
-  if(q){const dx=q.x-a.position.x,dz=q.z-a.position.z,d=Math.hypot(dx,dz),step=Math.min(d,2.9*dt);a.rotation.y=turnToward(a.rotation.y,Math.atan2(dx,dz),dt);if(d>.001)world.move(a,dx/d*step,dz/d*step);}
+  if(q){const dx=q.x-a.position.x,dz=q.z-a.position.z,d=Math.hypot(dx,dz),step=Math.min(d,2.9*dt);a.rotation.y=turnToward(a.rotation.y,Math.atan2(dx,dz),dt);if(d>.001)world.move(a,dx/d*step,dz/d*step,true);}
  }
  state.x=a.position.x;state.z=a.position.z;state.facing=a.rotation.y;
  world.animateActor(a,Math.min(1,a.position.distanceTo(old)/Math.max(dt,.001)/2),dt,state.hp<=0?'down':'');

@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-11-12T02:30:14.043073+00:00",
+  "requestHash": "0f1291e16c563e304e5aceb140d41ffd59ae1d1b06845339a476ad5844753476",
+  "model": "deepseek-v4-flash",
+  "temperature": 0.65,
+  "thinking": {
+    "type": "disabled"
+  },
+  "maxTokens": 1200,
+  "prompt": "为北宋武侠游戏预生成物品反馈。输入的每个键是一条已经确定的本地规则结果，保持其全部事实与立场，只润色为自然直接对白。返回JSON {\"lines\":{\"原键\":\"一句台词\"}}，不增删键。每条不超过65字，称你、不假定性别；不用系统、任务、检定、好感、玩家等词。royal_pass仅是持王府腰牌的来客，不是王爷本人；放行但记下持牌面貌。royal_owner已由在场且清醒的原主否认交付。royal_lost已收到报失但尚未定罪，不能抓贼。其余不得增加承诺、赠物、金钱、秘密或偷窃指控。",
+  "facts": {
+    "wrong_item": "这不是方才说的那件。你再看看，东西先留在手里。",
+    "show_unknown": "我看见了。你拿这件东西来，是想问什么？",
+    "trade_refuse": "这件我眼下用不上，还是请你收好。",
+    "royal_pass": "确是王府的腰牌。牌子收好，我记下持牌人的面貌，放行。",
+    "royal_lost": "这块腰牌已有报失的消息。先别过关，把它的来路说清楚。",
+    "royal_owner": "牌子的主人就在眼前，说并未交给你。先把来路说清，不能凭牌放行。",
+    "keep_credential": "凭据你自己收着。要验看，展开给我看便是。",
+    "manifest_seen": "名册上的字，我已经看清了。我的去留，还得自己想。",
+    "manifest_gift": "名册我收着。上头有我的名字，我得自己想明白。",
+    "ledger_show": "确是原账。看过与收存是两回事，你愿意留下，再交给我。"
+  },
+  "candidates": {
+    "wrong_item": "这不是方才说的那件。你再看看，东西先留在手里。",
+    "show_unknown": "我看见了。你拿这件东西来，是想问什么？",
+    "trade_refuse": "这件我眼下用不上，还是请你收好。",
+    "royal_pass": "确是王府的腰牌。牌子收好，我记下持牌人的面貌，放行。",
+    "royal_lost": "这块腰牌已有报失的消息。先别过关，把它的来路说清楚。",
+    "royal_owner": "牌子的主人就在眼前，说并未交给你。先把来路说清，不能凭牌放行。",
+    "keep_credential": "凭据你自己收着。要验看，展开给我看便是。",
+    "manifest_seen": "名册上的字，我已经看清了。我的去留，还得自己想。",
+    "manifest_gift": "名册我收着。上头有我的名字，我得自己想明白。",
+    "ledger_show": "确是原账。看过与收存是两回事，你愿意留下，再交给我。"
+  },
+  "reviewed": false,
+  "agentReviewed": true,
+  "humanReview": "pending",
+  "runtimeSource": "authored local rules; no automatic candidate import",
+  "review": {
+    "reviewer": "Codex editorial review",
+    "notes": "逐条核对：候选均与输入台词相同。持牌者不称王爷；报失与持有都不定罪；赠送与验看明确分开，无新承诺和数值。",
+    "accepted": [
+      "wrong_item",
+      "show_unknown",
+      "trade_refuse",
+      "royal_pass",
+      "royal_lost",
+      "royal_owner",
+      "keep_credential",
+      "manifest_seen",
+      "manifest_gift",
+      "ledger_show"
+    ]
+  }
+}

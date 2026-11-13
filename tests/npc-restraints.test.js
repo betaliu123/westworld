@@ -63,13 +63,55 @@ test('lawful lasso custody requires physical delivery and a free officer; reward
  custodyStep(sim,eco.positions);assert.equal(p.money,money+20);
 });
 test('unlawful restraint retains evidence and local believed identity after release',()=>{
- const a=setup(),{sim,eco,n}=a;sim.s.player.face={id:'gate_merchant',serial:1,until:99999};
+ const a=setup(),{sim,eco,n}=a;sim.s.law={served:['linxi-yan-theft']};sim.s.player.face={id:'gate_merchant',serial:1,until:99999};
  sim.listeners.push((type,e)=>{if(type==='worldIncident'){e.witnesses=['thief'];witnessEvent(sim,'thief',e,true,{x:0,z:2});}});
  resolveRestraint(sim,eco,'thief');assert.equal(n.awareness.believedIdentity,'gate_merchant');assert.ok(n.awareness.caseOpen);const relation=n.relation;sim.s.player.face=null;
  resolveRestraint(sim,eco,'thief','fix');resolveRestraint(sim,eco,'thief','release');assert.equal(n.relation,relation);assert.ok(n.awareness.caseOpen);assert.equal(sim.s.chronicle.deeds.find(d=>d.title==='抛套索').identities.thief,'gate_merchant');
 });
-test('incapacitation drops the held rope but never loosens a completed ankle knot',()=>{
- for(const fixed of [false,true]){const a=setup();resolveRestraint(a.sim,a.eco,'thief');if(fixed)resolveRestraint(a.sim,a.eco,'thief','fix');a.p.hp=0;restraintStep(a.sim,a.eco);assert.equal(!!a.n.restraint,fixed);if(!fixed)assert.equal(a.eco.items('ground').filter(i=>i.type==='rope').length,1);}
+test('incapacitation releases a held loop without losing the reusable tool or loosening completed knots',()=>{
+ for(const fixed of [false,true]){const a=setup();resolveRestraint(a.sim,a.eco,'thief');if(fixed)resolveRestraint(a.sim,a.eco,'thief','fix');a.p.hp=0;restraintStep(a.sim,a.eco);assert.equal(!!a.n.restraint,fixed);assert.equal(a.eco.items('ground').filter(i=>i.type==='rope').length,0);assert.equal(a.eco.items('player').filter(i=>i.type==='rope').length,1);}
+});
+test('one reusable lasso can bind multiple people, with only one active tether and no extra items',()=>{
+ const {sim,eco,n}=setup(),rope=eco.items('player').find(i=>i.lassoKit),count=eco.s.items.length,hp=rope.hp;
+ eco.positions.merchant={x:1,z:1.5,facing:Math.PI};
+ assert.ok(resolveRestraint(sim,eco,'thief').success);assert.equal(rope.location,'player');
+ const blocked=restraintPreview(sim,eco,'merchant');assert.equal(blocked.blocked,true);assert.match(blocked.reason,/捆牢或松绑/);
+ assert.ok(resolveRestraint(sim,eco,'thief','fix').success);
+ assert.equal(restraintPreview(sim,eco,'merchant').blocked,false);assert.ok(resolveRestraint(sim,eco,'merchant').success);
+ assert.equal(n.restraint.mode,'fixed');assert.equal(sim.s.people.merchant.restraint.mode,'lead');
+ assert.ok(restraintPreview(sim,eco,'thief','lead').blocked);
+ assert.ok(resolveRestraint(sim,eco,'merchant','fix').success);assert.ok(resolveRestraint(sim,eco,'thief','lead').success);
+ const relation=n.relation;assert.ok(resolveRestraint(sim,eco,'thief','release').success);assert.ok(resolveRestraint(sim,eco,'merchant','release').success);
+ assert.equal(eco.s.items.length,count);assert.equal(rope.hp,hp);assert.equal(rope.location,'player');assert.equal(n.relation,relation);assert.ok(!rope.provenance?.history.length);
+});
+test('multiple fixed knots survive reload and untying one does not release the others or refund tools',()=>{
+ const {sim,eco,n}=setup();n.stunnedUntil=100;sim.s.people.merchant.stunnedUntil=100;eco.positions.merchant={x:1,z:1};
+ assert.ok(resolveRestraint(sim,eco,'thief','bind').success);assert.ok(resolveRestraint(sim,eco,'merchant','bind').success);
+ const restored=new Simulation(JSON.parse(JSON.stringify(sim.s)));restored.save=()=>{};const other=new Ecosystem(restored);other.positions=eco.positions;
+ restraintStep(restored,other);assert.ok(restored.s.people.thief.restraint);assert.ok(restored.s.people.merchant.restraint);
+ assert.ok(resolveRestraint(restored,other,'thief','release').success);restraintStep(restored,other);
+ assert.ok(restored.s.people.merchant.restraint);assert.equal(other.s.items.filter(i=>i.lassoKit).length,1);
+});
+test('legacy v2 bound or automatically dropped tools upgrade once, preserving knots and witness history',()=>{
+ for(const mode of ['lead','fixed','dropped']){
+  const {sim,eco,n}=setup(),rope=eco.items('player').find(i=>i.lassoKit);resolveRestraint(sim,eco,'thief');
+  const r=n.restraint;delete r.reusable;r.mode=mode==='fixed'?'fixed':'lead';r.street={key:'original-witness-event',seen:{elder:{announced:true,subject:'gate_merchant'}}};
+  eco.transfer(rope,'npc:thief','restraint',['elder']);if(mode==='dropped'){eco.transfer(rope,'ground','dropped');delete n.restraint;}
+  const money=sim.s.player.money,restored=new Simulation(JSON.parse(JSON.stringify(sim.s)));restored.save=()=>{};const other=new Ecosystem(restored);other.positions=eco.positions;
+  assert.equal(other.items('player').find(i=>i.lassoKit).id,rope.id);assert.equal(restored.s.player.money,money);
+  if(mode!=='dropped'){assert.equal(restored.s.people.thief.restraint.mode,mode);assert.equal(restored.s.people.thief.restraint.street.key,'original-witness-event');assert.equal(restored.s.people.thief.restraint.street.seen.elder.subject,'gate_merchant');}
+  const snapshot=JSON.stringify(restored.s.people.thief.restraint),transfers=other.s.items.find(i=>i.id===rope.id).provenance.history.length;
+  new Ecosystem(restored);assert.equal(JSON.stringify(restored.s.people.thief.restraint),snapshot);assert.equal(other.s.items.find(i=>i.id===rope.id).provenance.history.length,transfers);assert.equal(other.s.items.filter(i=>i.lassoKit).length,1);
+ }
+});
+test('deliberately giving away or dropping a tool is not undone by the upgrade and fixed knots remain tied',()=>{
+ for(const location of ['npc:elder','ground']){
+  const {sim,eco}=setup();resolveRestraint(sim,eco,'thief');resolveRestraint(sim,eco,'thief','fix');
+  const rope=eco.items('player').find(i=>i.lassoKit);eco.transfer(rope,location,location==='ground'?'transfer':'gifted');
+  const restored=new Simulation(JSON.parse(JSON.stringify(sim.s)));restored.save=()=>{};const other=new Ecosystem(restored);other.positions=eco.positions;
+  assert.equal(other.s.items.find(i=>i.id===rope.id).location,location);restraintStep(restored,other);assert.equal(restored.s.people.thief.restraint.mode,'fixed');
+  assert.ok(restraintPreview(restored,other,'thief','lead').blocked);assert.ok(resolveRestraint(restored,other,'thief','release').success);assert.equal(other.s.items.find(i=>i.id===rope.id).location,location);
+ }
 });
 test('lasso contact is a single beat after windup, not on menu selection',()=>{
  let strikes=0;const w={sim:new Simulation(newArrival()),hero:character(0,true),npcs:new Map(),performance:{motion:'lasso',start:0,duration:1.8,onStrike(){strikes++;}}};

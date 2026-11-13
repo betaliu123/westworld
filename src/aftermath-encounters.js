@@ -21,7 +21,7 @@ export function canDiscussEcho(s,id){
 export function pendingEcho(s,id){
  if(!canDiscussEcho(s,id))return null;
  return (s.deck?.echoes||[]).find(e=>e.who===id&&(e.subject||'player')===believedIdentity(s,id)&&e.due<=s.day&&!e.response&&
-  ['rumor_spread','grudge','thanks_letter'].includes(e.template))||null;
+  ['rumor_spread','grudge','thanks_letter','item_inquiry'].includes(e.template))||null;
 }
 export function seesEchoPlayer(s,id,position,player,heading,clear){
  if(!canDiscussEcho(s,id)||!clear)return false;
@@ -36,6 +36,7 @@ export function markEchoHeard(sim,e){
 export function echoChoices(s,e){
  if(!e||e.response||!canDiscussEcho(s,e.who)||(e.subject||'player')!==believedIdentity(s,e.who))return [];
  const later={action:{id:'later',label:'容我想想，改日再说'},preview:{certain:true}};
+ if(e.template==='item_inquiry')return [{action:{id:'clarify',label:'请核对经手记录，持有不等于偷窃'},preview:{certain:true}},later];
  if(e.template==='thanks_letter')return [
   {action:{id:'accept',label:'举手之劳，你安好便好'},preview:{certain:true}},later];
  const [style]=persona(e.who),score=s.player.stats.charm;
@@ -67,17 +68,18 @@ export function answerEcho(sim,echoId,answer,random=sim.rng||Math.random,{positi
  const success=roll===null||roll<=option.preview.chance;
  // Mend a small part of the damage, never erase a witnessed crime or grant training XP.
  if(special?.effect==='pressure')recordFactionPressure(sim,{cause:e.cause,npc:e.who,subject:e.subject||'player',faction:special.faction,line:special.text,positions,obstacles});
- const gain=e.template==='thanks_letter'?0:special?.effect==='pressure'?-4:success?2:-1;
+ const gain=['thanks_letter','item_inquiry'].includes(e.template)?0:special?.effect==='pressure'?-4:success?2:-1;
  changeRelation(sim,e.who,gain,e.subject||'player');
  const delta=(e.subject&&e.subject!=='player'?(appearanceState(s).relations[e.who+':'+e.subject]||0):n.relation)-before,style=persona(e.who)[0],voice=replies[style]||replies.wary;
- const text=special?(success?special.success:special.failure):e.template==='thanks_letter'?({law:'你肯出这份力，我记着。',courtly:'这份情，我领了。',trade:'承你照应，心里踏实多了。',blade:'承你的情。',artist:'你的心意，我记着。',wary:'嗯，那回多亏了你。'}[style]||'那回多亏了你。'):
+ const text=e.template==='item_inquiry'?'这番话记下了。持有记录与失窃经过，我会分开核对。':special?(success?special.success:special.failure):e.template==='thanks_letter'?({law:'你肯出这份力，我记着。',courtly:'这份情，我领了。',trade:'承你照应，心里踏实多了。',blade:'承你的情。',artist:'你的心意，我记着。',wary:'嗯，那回多亏了你。'}[style]||'那回多亏了你。'):
   voice[success?(answer==='apologize'?1:0):2];
- const player=special?special.text:answer==='accept'?'举手之劳，你安好便好。':answer==='apologize'?
+ const player=e.template==='item_inquiry'?'请核对东西经谁的手，不能只因我拿过，就认定是我偷的。':special?special.text:answer==='accept'?'举手之劳，你安好便好。':answer==='apologize'?
   '那件事是我做得不妥，向你赔个不是。':e.template==='grudge'?
   '那时一时情急，行事失了分寸，并非存心与你过不去。':'话传了几道，难免变了样。还请听我分说，莫只凭传言定论。';
  const reason=name(e.who)+' · '+(special?.effect==='pressure'?'记下借势施压':answer==='apologize'?'接受道歉':answer==='accept'?'谢意已回应':success?'听过解释，态度缓和':'不信辩解，愈发疑虑');
  const c=chronicle(s),deed={id:++c.seq,cause:e.cause,day:s.day,at:s.day*1000+(s.time||0),clock:clockText(s),
   title:reason,text:text+(delta?'（好感 '+(delta>0?'+':'')+delta+'）':''),target:e.who,subject:e.subject||'player',valence:'deed',witnesses:[]};
+ deed.effects=delta?[{kind:'relation',observer:e.who,subject:e.subject||'player',delta}]:[];
  c.deeds.push(deed);c.deeds=c.deeds.slice(-80);
  // Same incident may have several deliveries. One person can only settle it once.
  for(const related of deckState(s).echoes.filter(x=>x.who===e.who&&x.cause===e.cause&&(x.subject||'player')===(e.subject||'player'))){

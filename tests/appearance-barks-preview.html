@@ -1,0 +1,5 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>装扮冒泡 · 三档试玩</title>
+<style>body{margin:0;background:#e7dcc5;color:#302b25;font:16px serif}nav{display:flex;gap:12px;align-items:center;padding:6px}button{font:16px serif}iframe{border:0;display:block}output{font:14px serif;white-space:pre-wrap}</style>
+<nav><button data-size="1280,850">1280×850</button><button data-size="1024,768">1024×768</button><button data-size="800,600">800×600</button><output>等待试玩</output></nav>
+<iframe title="装扮冒泡试玩" width="1280" height="850" src="../?playtest=appearance-barks-qa"></iframe>
+<script>const f=document.querySelector('iframe');document.querySelectorAll('button').forEach(b=>b.onclick=()=>{[f.width,f.height]=b.dataset.size.split(',')});addEventListener('message',e=>{if(e.origin!==location.origin||e.data.type!=='appearance-barks-qa')return;document.querySelector('output').textContent=e.data.size.join('×')+' · 已播 '+e.data.seen+' · 错误 '+e.data.errors.length+'\n'+e.data.heard.slice(-1).join('');});</script></html>

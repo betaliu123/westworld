@@ -1,0 +1,32 @@
+<!doctype html><meta charset="utf-8"><title>NPC 战斗动作验收</title><link rel="stylesheet" href="../ink-ui.css">
+<style>body{margin:0;background:var(--paper)}canvas{display:block}nav{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:8px;flex-wrap:wrap;font:16px var(--font-body)}button,select,output{font:inherit}output{flex-basis:100%}button,select{background:var(--paper);color:var(--ink-1)}</style>
+<nav><select aria-label="人物"><option value="chi">赤锋</option><option value="shen">沈砚</option><option value="gate_guard">守卫</option><option value="guard">差役</option><option value="traveler">赵行商</option><option value="fu">符祥</option><option value="tea_host">茶娘</option></select><button>走路</button><button>戒备</button><button>追击</button><button>逃跑</button><button>攻击</button><button>受击</button><button>受惊</button><button>侧面</button><button>暂停</button><button>前进一帧</button><button id="record">录制动作</button><output>加载中</output></nav>
+<script>addEventListener('error',e=>document.querySelector('output').textContent=e.message);addEventListener('unhandledrejection',e=>document.querySelector('output').textContent=String(e.reason));</script>
+<script type="module">
+import * as T from '../vendor/three.module.js';
+import {mountActorModel,npcLook,fitSword} from '../src/actor-model.js';
+function character(){const root=new T.Group(),rig=new T.Group();root.add(rig);const arms=[new T.Group(),new T.Group()],legs=[new T.Group(),new T.Group()],head=new T.Group(),sword=new T.Group();rig.add(...arms,...legs,head);arms[0].add(sword);sword.visible=false;root.userData={rig,arms,legs,head,sword};fitSword(sword);return root;}
+const scene=new T.Scene(),camera=new T.PerspectiveCamera(35,innerWidth/innerHeight,.01,60),renderer=new T.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(2,devicePixelRatio));renderer.shadowMap.enabled=true;document.body.append(renderer.domElement);scene.background=new T.Color(0xece3cf);scene.add(new T.HemisphereLight(0xece3cf,0x4f4b42,2));const light=new T.DirectionalLight(0xece3cf,3);light.position.set(-3,6,4);light.castShadow=true;scene.add(light);
+const floor=new T.Mesh(new T.PlaneGeometry(50,50),new T.MeshStandardMaterial({color:0xc0ae88,roughness:1}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+let actor,model,mode='戒备',side=false,paused=false,onceFrame=false,stamp=0,state={};
+function view(){camera.position.set(side?4.5:2,2,side?1:4.4);camera.lookAt(0,1,0);}
+async function select(id){if(actor)scene.remove(actor);actor=character();scene.add(actor);model=mountActorModel(actor,npcLook(id));state={};await model.loaded;}
+document.querySelector('select').onchange=e=>select(e.target.value);
+for(const b of document.querySelectorAll('button'))b.onclick=()=>{const next=b.textContent;if(next==='侧面'){side=!side;view();return;}if(next==='暂停'||next==='继续'){paused=!paused;b.textContent=paused?'继续':'暂停';return;}if(next==='前进一帧'){onceFrame=true;return;}mode=next;if(next==='攻击')model.motion.cue('attack',1.12);if(next==='受击')state.hurtAt=++stamp;if(next==='受惊')state.startleAt=++stamp;};
+
+document.getElementById('record').onclick=()=>{
+ if(!model.ready)return;paused=false;const button=document.getElementById('record');button.disabled=true;
+ const chunks=[],stream=renderer.domElement.captureStream(30),recorder=new MediaRecorder(stream,{mimeType:'video/webm'});
+ const sequence=[['走路',0],['受惊',1400],['逃跑',2300],['戒备',4100],['攻击',5100],['受击',6500],['戒备',7300]];
+ for(const [next,delay]of sequence)setTimeout(()=>{mode=next;model.motion.cancelAttack();if(next==='攻击')model.motion.cue('attack',1.12);if(next==='受击')state.hurtAt=++stamp;if(next==='受惊')state.startleAt=++stamp;},delay);
+ recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};recorder.onstop=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(chunks,{type:'video/webm'}));a.download='npc-combat-motion.webm';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);stream.getTracks().forEach(t=>t.stop());button.disabled=false;};recorder.start();setTimeout(()=>recorder.stop(),8300);
+};
+view();await select('chi');let last=performance.now();
+function frame(now){requestAnimationFrame(frame);let dt=Math.min(.04,(now-last)/1000);last=now;if(!model.ready)return;if(paused&&!onceFrame)dt=0;if(onceFrame){dt=1/24;onceFrame=false;}
+actor.userData.sword.visible=['戒备','追击','攻击','受击'].includes(mode);const speed=mode==='逃跑'?4.8:mode==='追击'?3.3:mode==='走路'?1.7:0;
+model.sync(0x526355,{dt,hp:100,speed,armed:actor.userData.sword.visible,flee:mode==='逃跑',...state});renderer.render(scene,camera);
+const hand=model.handPoint(-1),blade=actor.userData.sword.getWorldPosition(new T.Vector3());document.querySelector('output').textContent=model.error?String(model.error):`${model.activeClip} · 动作 ${model.motion.actions.get(model.activeClip)?.time.toFixed(2)}s · 握点偏差 ${hand?hand.distanceTo(blade).toFixed(3):'?'}m`;
+}requestAnimationFrame(frame);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>

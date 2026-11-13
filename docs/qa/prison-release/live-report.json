@@ -1,0 +1,55 @@
+{
+  "day": 4,
+  "x": 22,
+  "z": -17,
+  "requests": [
+    {
+      "mode": "aftermath",
+      "deeds": 3,
+      "elapsed": {
+        "reason": "prison",
+        "days": 3,
+        "fromDay": 1,
+        "toDay": 4
+      },
+      "status": 200
+    }
+  ],
+  "diaries": [
+    {
+      "day": 4,
+      "lines": [
+        "午后关前伤人，守卫当场拘捕。",
+        "入城时刑期已满，街口重新落脚。",
+        "旧案未曾追问，三日牢狱无声过去。"
+      ],
+      "ai": true,
+      "inference": {
+        "status": "ai",
+        "reason": "prison",
+        "days": 3,
+        "fromDay": 1,
+        "toDay": 4,
+        "upTo": 3
+      }
+    }
+  ],
+  "echoes": [
+    {
+      "key": "rumor_spread:1:gate_relief",
+      "ai": true
+    },
+    {
+      "key": "grudge:1:gate_guard",
+      "ai": true
+    }
+  ],
+  "frames": [
+    {
+      "day": 4,
+      "text": "三日后\n\n刑满出狱"
+    }
+  ],
+  "errors": [],
+  "opaqueFrameCount": 69
+}

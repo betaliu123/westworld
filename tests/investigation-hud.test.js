@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {Simulation,newArrival} from '../src/simulation.js';
 import {Ecosystem} from '../src/ecosystem.js';
 import {acceptCrimeReport,investigationAreas,noticeInvestigations,expireInvestigations,answerInvestigation,inInvestigationArea,INVESTIGATION_RADIUS,INVESTIGATION_DURATION} from '../src/crime-investigation.js';
-import {drawInvestigationAreas,investigationClock} from '../src/investigation-ui.js';
+import {drawInvestigationAreas} from '../src/investigation-ui.js';
 
 function setup(){const sim=new Simulation(newArrival(),()=>0);sim.save=()=>{};new Ecosystem(sim);const s=sim.s;s.npcClock=10;Object.assign(s.player,{x:0,z:0});const c=acceptCrimeReport(sim,{reporter:'merchant',officer:'guard',place:{x:0,z:0},type:'body'});return {sim,s,c};}
 test('only an observed local investigation produces a public marker, without leaking witness or culprit data',()=>{
@@ -16,11 +16,11 @@ test('only an observed local investigation produces a public marker, without lea
 });
 test('the countdown uses the persistent simulation deadline, survives reload and reflects real failed-question extensions',()=>{
  const {sim,s,c}=setup();c.state='search';c.playerNoticed=true;s.npcClock+=65.3;
- const [area]=investigationAreas(s);assert.equal(area.seconds,85);assert.equal(investigationClock(area.seconds),'01:25');assert.equal(investigationAreas(s)[0].seconds,85);
+ const [area]=investigationAreas(s);assert.equal(area.seconds,85);assert.equal(investigationAreas(s)[0].seconds,85);
  const restored=new Simulation(JSON.parse(JSON.stringify(s)));restored.save=()=>{};assert.equal(investigationAreas(restored.s)[0].seconds,85);
- sim.rng=()=>.999;assert.equal(answerInvestigation(sim,c.id,'guard','explain',{guard:{x:0,z:1}}).success,false);assert.equal(investigationAreas(s)[0].seconds,180);assert.equal(investigationClock(180),'03:00');
+ sim.rng=()=>.999;assert.equal(answerInvestigation(sim,c.id,'guard','explain',{guard:{x:0,z:1}}).success,false);assert.equal(investigationAreas(s)[0].seconds,180);
 });
-test('crossing the actual question boundary changes the hint but retains the known investigation and time',()=>{
+test('crossing the actual question boundary retains the known investigation and its deadline',()=>{
  const {s,c}=setup();c.state='search';c.playerNoticed=true;s.player.x=INVESTIGATION_RADIUS-.01;assert.ok(inInvestigationArea(c,s.player));assert.ok(investigationAreas(s)[0].inside);
  s.player.x=INVESTIGATION_RADIUS;assert.ok(!inInvestigationArea(c,s.player));assert.ok(!investigationAreas(s)[0].inside);assert.equal(investigationAreas(s)[0].seconds,150);
 });
@@ -40,5 +40,5 @@ test('map circle scale matches the gameplay radius and canvas styles are restore
  drawInvestigationAreas(ctx,investigationAreas(s),'cinnabar');assert.deepEqual(arcs[0].slice(0,3),[87,89.5,INVESTIGATION_RADIUS*2.5]);assert.deepEqual(calls,['save','restore']);
 });
 test('legacy and untouched saves do not gain an investigation from merely opening the HUD',()=>{
- const s={chapterVersion:2,player:{x:0,z:0}};assert.deepEqual(investigationAreas(s),[]);assert.equal(s.investigations,undefined);assert.equal(investigationClock(0),'00:00');
+ const s={chapterVersion:2,player:{x:0,z:0}};assert.deepEqual(investigationAreas(s),[]);assert.equal(s.investigations,undefined);
 });

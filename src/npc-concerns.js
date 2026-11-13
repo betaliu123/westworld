@@ -33,7 +33,7 @@ export function concernLine(s,id){const c=s.people[id]?.concern;if(!c)return '';
  if(c.kind==='down')return name(c.target)+'，听得见吗？来人帮帮忙！';
  if(c.kind==='wounded')return name(c.target)+'，伤得这么重……我先陪着你。';
  const harm=knownPersonalHarm(s,id,believedIdentity(s,id));
- return harm?.target===c.target&&harm.kind==='restraint'?(harm.evidence==='seen'?'先把'+name(c.target)+'放开！我看见你动手了。':'先把人放开。绑人的事，我已经听说了。'):name(c.target)+'，你怎么被绑住了？先别挣，我过来了。';
+ return harm?.target===c.target&&harm.kind==='restraint'?(harm.evidence==='seen'?'先把'+name(c.target)+'放开！我看见你动手了。':harm.evidence==='seen-escort'?'先把'+name(c.target)+'放开！我看见你牵着绳子。':'先把人放开。绑人的事，我已经听说了。'):name(c.target)+'，你怎么被绑住了？先别挣，我过来了。';
 }
 export function concernMotion(world,id,n,dt){const s=world.sim.s,state=s.people[id],c=state?.concern;
  if(!c||!world.playing||world.cinematic||!awake(s,id)||state.restraint||state.inCustody||state.life?.activity==='escape'||state.drowning||state.burning||state.sickUntil>(s.ecosystem?.time||0)||state.fear>0||state.awareness?.caseOpen||['fight','warn','flee','investigate','search'].includes(state.awareness?.state))return false;

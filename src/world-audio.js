@@ -68,6 +68,8 @@ export class WorldAudio{
   if(!this.enabled||this.hidden){this.endOpening(0);this.stop();}
  }
  stop(){
+  this.generation=(this.generation||0)+1;
+  this.stopReaction();
   this.running=false;this.lastPosition=null;this.stride=0;
   for(const loop of this.loops.values())for(const node of [...loop.sources])node.stop();
   this.loops.clear();for(const node of [...this.shots])node.stop();this.lastCue.clear();
@@ -95,8 +97,9 @@ export class WorldAudio{
  makeNode(buffer,bus){
   const source=this.context.createBufferSource(),gain=this.context.createGain();
   source.buffer=buffer;source.connect(gain);gain.connect(bus);
-  const node={source,gain,stop(){try{source.stop();}catch{}source.disconnect();gain.disconnect();}};
-  source.onended=()=>{source.disconnect();gain.disconnect();this.shots.delete(node);for(const l of this.loops.values())l.sources.delete(node);};
+  const cleanup=()=>{source.disconnect();gain.disconnect();this.shots.delete(node);for(const l of this.loops.values())l.sources.delete(node);if(this.reaction===node)this.reaction=null;};
+  const node={source,gain,stop(){try{source.stop();}catch{}cleanup();}};
+  source.onended=cleanup;
   return node;
  }
  scheduleLoop(id){
@@ -127,14 +130,29 @@ export class WorldAudio{
   node.source.playbackRate.value=rate*pitch*(.97+this.random()*.06);
   node.source.start();return node;
  }
+ // One foreground nonverbal reaction; missing/late buffers never replay old events.
+ playReaction(id,{position,valid=()=>true,gain=.65,priority=1}={}){
+  if(!id.startsWith('npc-')||!this.running||!this.enabled||this.hidden||this.reactionBlocked||this.reaction||this.context?.state!=='running'||!valid())return null;
+  const buffer=this.buffers.get(id),p=position?.();if(!buffer||!p)return null;
+  const distance=Math.hypot(p.x-this.position.x,p.z-this.position.z);if(distance>=12)return null;
+  const node=this.makeNode(buffer,this.master);Object.assign(node,{id,position,valid,level:gain,priority});
+  this.reaction=node;this.shots.add(node);node.gain.gain.value=gain*clamp(1-distance/12);node.source.start();return node;
+ }
+ stopReaction(){const node=this.reaction;this.reaction=null;node?.stop();}
  update(dt,state={}){
-  this.position={x:state.x??0,z:state.z??26};this.mix=worldMix(state);
+  this.position={x:state.x??0,z:state.z??26};
+  this.reactionBlocked=!!(state.voice||state.talking||state.hp<=0||!state.started);
+  if(this.reaction){const n=this.reaction,p=n.position?.(),distance=p?Math.hypot(p.x-this.position.x,p.z-this.position.z):Infinity;
+   if(this.reactionBlocked||!n.valid()||distance>=12)this.stopReaction();
+   else n.gain.gain.setTargetAtTime(n.level*clamp(1-distance/12),this.context.currentTime,.06);
+  }
+  this.mix=worldMix({...state,voice:state.voice||!!this.reaction});
   if(!state.started||!this.enabled||this.hidden||this.context?.state!=='running'){
    if(this.running)this.stop();return;
   }
   this.running=true;
   for(const id of ['music','city','creek','music-night','night','night-inn']){
-   this.buses[id].gain.setTargetAtTime(this.mix[id],this.context.currentTime,state.voice||state.performing?.16:.8);
+   this.buses[id].gain.setTargetAtTime(this.mix[id],this.context.currentTime,state.voice||this.reaction||state.performing?.16:.8);
    if(id==='creek'||this.mix[id]>0)this.scheduleLoop(id);else this.stopLoop(id);
   }
   const flute=state.performing&&state.hp>0&&!state.talking&&!state.drowning&&!state.burning?fluteTrack(state.musicTier):null;
@@ -154,5 +172,5 @@ export class WorldAudio{
   }
  }
  status(){return {running:this.running,context:this.context?.state||'locked',loaded:[...this.buffers.keys()],
-  loops:[...this.loops.keys()],mix:this.mix,effects:this.shots.size};}
+  loops:[...this.loops.keys()],mix:this.mix,effects:this.shots.size,reaction:this.reaction?.id||null};}
 }

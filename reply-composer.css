@@ -1,0 +1,10 @@
+/* A draft lives inside the existing dialogue sheet and its scroll flow. */
+#dialogue-stage .reply-draft{display:flex;flex-direction:column;gap:8px;min-width:0}
+#dialogue-stage .reply-draft textarea{box-sizing:border-box;display:block;width:100%;min-height:88px;max-height:160px;resize:vertical;border:0;border-bottom:1px solid var(--ink-3);border-radius:0;background:var(--paper);color:var(--ink-1);font:var(--fs-3)/1.7 var(--font-body);padding:8px;outline-offset:2px}
+#dialogue-stage .reply-draft textarea::placeholder{color:var(--ink-3)}
+#dialogue-stage .reply-count{align-self:end;font:var(--fs-1)/1.4 var(--font-data);color:var(--ink-3)}
+#dialogue-stage .reply-preview{font:var(--fs-1)/1.6 var(--font-body);color:var(--ink-2);overflow-wrap:anywhere;white-space:pre-wrap}
+#dialogue-stage .reply-preview:empty{display:none}
+#dialogue-stage .reply-draft button{font:var(--fs-3)/1.5 var(--font-body);padding:8px 14px;color:var(--cinnabar)!important}
+#dialogue-stage.composing [data-speaker]{font-family:var(--font-body)!important;font-size:var(--fs-4)!important}
+#dialogue-stage.composing .dialogue-meta [data-back]{color:var(--ink-2)!important;border:0!important}

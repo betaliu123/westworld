@@ -21,6 +21,7 @@ import soundfile as sf
 ROOT = Path(__file__).resolve().parents[1]
 ENDPOINT = 'https://ai.leihuo.netease.com/openspeech/api/v3/tts/create'
 SAMPLES = {
+    'npc-qinghe-cry': ('宋青禾·石后低泣', '生成6秒游戏人物音效。一名成年女子独自低声抽泣，努力平复情绪。中低音区的清润女声，两三次轻微哽咽、断续吸气，夹着自然停顿，结尾缓缓收声。表演克制、真实、有韧性，音量轻，不大声哭喊。单人近距离录音，干净干声。只有无词的抽泣和呼吸，不包含任何可辨认的字句、旁白、唱歌、音乐、环境底声或其他人的声音。'),
     'music-opening': ('开场·蛊与仙山', '生成40秒原创中国古风武侠游戏开场纯音乐，古琴独奏为主。开头五秒是低音区沉重的古琴散音与缓慢的按音滑音，压抑、隐忍，像暗处发作的毒痛；随后古琴急促的轮指与扫弦层层推进，力度逐渐增强，紧张、悬疑、有张力，远处只有一两下极低沉的大鼓；最后十秒力量收住，转为舒缓的五声音阶泛音与长音，落在宫音上余韵悠长，平静地引向清晨的小城。没有人声，没有吟唱，没有任何语言，没有电子音色、合成器和管弦乐团，没有环境声。近距离自然录音。'),
     'music-night': ('临溪·夜泊', '生成40秒原创中国古风游戏深夜探索纯音乐。北宋小城入夜，极稀疏的古琴泛音与低声洞箫，悠缓、安宁，保留长时间自然余韵和留白。没有鼓点，没有人声，没有电子音色，没有市集、鸟鸣或其他环境声。不悲壮不惊悚，不要高潮。开头结尾轻柔，适合低音量循环。'),
     'night': ('街巷·夜风', '生成30秒写实的古代小镇深夜环境底声。极轻的树叶夜风，远处零星秋虫，安静而疏落，空间开阔。无人声、叫卖、车马、音乐、犬吠、鸟鸣、铃声、机械声，不要持续密集的高频虫鸣。响度平稳低柔，适合夜间街巷低声循环。'),
@@ -37,6 +38,15 @@ SAMPLES = {
     'draw': ('拔刀出鞘', '生成3秒干净的游戏拟音。一把传统钢刀从木鞘中利落抽出，只有一次短暂的金属与木鞘滑擦声，末尾轻微金属清鸣，动作发生在第一秒，之后安静。没有挥刀攻击，没有打斗，没有人声、音乐、电子音，无长混响。'),
     'coins': ('铜钱轻落', '生成3秒干净的游戏拟音。三枚铜钱一次轻轻落在木桌上，细小清脆的叮当声，短暂滚动后停住，全部发生在前一秒半。自然、轻巧、近距离，之后安静。没有重复倒钱，没有人声、音乐、电子音，无长混响。'),
     'step': ('布靴落地', '生成3秒干净的游戏拟音。只有一只布靴在石板路上落地的一步，短促低沉的鞋底触地声，带一点细沙轻擦，声音在第一秒发生，之后安静。只有一步，不要连续走路，不要人声、喘息、音乐、电子音、背景环境声，无长混响。'),
+    'npc-gasp-male': ('男子·受惊吸气', '生成2秒游戏人物反应音效。只有一名成年男子突然看到近处有人拔刀，短促地倒吸一口气，接一个压低的非语言惊呼，克制真实、不滑稽。反应只发生一次，集中在前一秒，随后安静。近距离干声，无清晰字句，无旁白、朗读、音乐、脚步、兵器、背景人群和长混响。'),
+    'npc-gasp-female': ('女子·受惊吸气', '生成2秒游戏人物反应音效。只有一名成年女子突然看到近处有人拔刀，短促地倒吸一口气，接一个压低的非语言惊呼，克制真实、有力量、不尖锐刺耳。反应只发生一次，集中在前一秒，随后安静。近距离干声，无清晰字句，无旁白、朗读、音乐、脚步、兵器、背景人群和长混响。'),
+    'npc-pain-male': ('男子·受击闷哼', '生成2秒游戏人物反应音效。只有一名成年男子被打中后突然呼气并发出一次短促低沉的痛哼，身体一缩的真实呼吸感，克制、不夸张、不血腥。只反应一次，集中在前一秒，之后安静。不持续呻吟，不哭喊。近距离干声，只有非语言人声，无清晰字句，无撞击、音乐、脚步、其他人声和长混响。'),
+    'npc-pain-female': ('女子·受击闷哼', '生成2秒武侠游戏动作音效。一名成年女武者在练武对招中挨了一下，突然呼气并发出一次短促低沉的闷哼，克制、坚韧、自然。前一秒发生一次呼气声，随后安静，不重复、不延长。近距离干声，只包含这一人的非语言反应，不包含可辨认的字句、旁白、音乐、碰撞、脚步、其他人声和长混响。'),
+    'npc-alarm-male': ('男子·目击惊叫', '生成2秒游戏人物反应音效。只有一名成年男子亲眼看到近处突然发生打斗，发出一次短而急促的非语言惊叫，随后收声避让。真实的惊吓和紧迫感，不恐怖、不戏剧化，不连续尖叫。反应集中在前一秒。近距离干声，无任何清晰字句，无旁白、朗读、打斗撞击、脚步、音乐、其他人声和长混响。'),
+    'npc-alarm-female': ('女子·目击惊叫', '生成2秒游戏人物反应音效。只有一名成年女子亲眼看到近处突然发生打斗，发出一次短而急促的非语言惊叫，随后收声避让。真实的惊吓和紧迫感，有力量，不尖锐刺耳、不恐怖、不戏剧化，不连续尖叫。反应集中在前一秒。近距离干声，无任何清晰字句，无旁白、朗读、打斗撞击、脚步、音乐、其他人声和长混响。'),
+    'npc-murmur-male': ('男子二人·低声议论', '生成3秒游戏现场反应音效。两名成年男子看到街上有人被绳子牵着走，先轻微惊讶吸气，再互相压低声音疑惑地议论两句。只有两个人的模糊非语言嘀咕声，听不清任何字词，不要生成可辨认的语言、名字或叫喊。声音短暂自然起伏，结尾收声。近距离干声，无音乐、脚步、器物、其他人群、笑声和长混响。'),
+    'npc-murmur-female': ('女子二人·低声议论', '生成3秒游戏现场反应音效。两名成年女子看到街上有人被绳子牵着走，先轻微惊讶吸气，再互相压低声音疑惑地议论两句。只有两个人的模糊非语言嘀咕声，听不清任何字词，不要生成可辨认的语言、名字或叫喊。声音短暂自然起伏，结尾收声。近距离干声，无音乐、脚步、器物、其他人群、笑声和长混响。'),
+    'npc-murmur-mixed': ('男女二人·低声议论', '生成3秒游戏现场反应音效。一名成年男子和一名成年女子看到街上有人被绳子牵着走，先轻微惊讶吸气，再互相压低声音疑惑地议论两句。只有这两个人的模糊非语言嘀咕声，听不清任何字词，不要生成可辨认的语言、名字或叫喊。声音短暂自然起伏，结尾收声。近距离干声，无音乐、脚步、器物、其他人群、笑声和长混响。'),
 }
 
 
@@ -96,7 +106,13 @@ def main():
                 with urllib.request.urlopen(request, timeout=180) as response:
                     result = json.load(response)
             except urllib.error.HTTPError as error:
-                raise SystemExit(f'Gateway HTTP {error.code}; stopped without retry') from None
+                try:
+                    detail = json.loads(error.read())
+                    message = detail.get('message') or detail.get('msg') or detail.get('error', {}).get('message', '')
+                    message = str(message).replace(key, '[redacted]')[:240]
+                except (ValueError, AttributeError):
+                    message = ''
+                raise SystemExit(f'Gateway HTTP {error.code}: {message}; stopped without retry') from None
             if not result.get('audio'):
                 raise SystemExit(f'No audio returned (code {result.get("code")}); stopped without retry')
             raw_path.write_bytes(base64.b64decode(result['audio'], validate=True))
@@ -111,6 +127,8 @@ def main():
         # PCM is supported by all target browsers; keep originals for re-editing.
         output = folder / f'{name}-{digest}.wav'
         sf.write(output, data, rate, subtype='PCM_16')
+        # Preserve assets added by another explicit batch while the gateway was working.
+        manifest = json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else {}
         manifest[name] = dict(title=title, src='/' + output.relative_to(ROOT).as_posix(),
                               raw=raw_path.name, seconds=round(len(data) / rate, 3),
                               normalizationGainDb=gain, payload=payload, aiGenerated=True,

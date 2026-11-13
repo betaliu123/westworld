@@ -104,10 +104,24 @@ body:has(#drawer[data-view="codex"]:not([hidden])) :is(#hud-left-stack,#hud-info
 .jh-card footer{margin-top:2px;font:var(--fs-1)/1 var(--font-data);color:var(--ink-3)}
 .jh-src{display:inline-grid;place-items:center;width:22px;height:22px;margin-left:auto;font:var(--fs-1)/1 var(--font-body);color:var(--ink-3);border:1.5px solid var(--ink-4);border-radius:2px;cursor:help}
 .jh-src.ai{color:var(--azurite);border-color:var(--azurite)}
-.jh-card.down{background:var(--paper-deep);border-color:var(--ink-3);color:var(--ink-1);min-height:120px;justify-content:flex-end}
-.jh-card.down .jh-back{position:absolute;inset:8px;border:1px solid color-mix(in srgb,var(--ink-3) 40%,transparent);border-radius:1px;background:repeating-linear-gradient(135deg,transparent 0 7px,color-mix(in srgb,var(--ink-3) 18%,transparent) 7px 8px)}
-.jh-card.down p{position:relative;color:var(--ink-1);font-size:var(--fs-2);text-shadow:0 0 4px var(--paper-deep),0 0 8px var(--paper-deep)}
-.jh-card.down small{position:relative;color:var(--ink-2)}
+
+/* 余波是已经落成的事实，后续回应另列；同一前因只占一张纸笺。 */
+.jh-echo-row{flex:1 1 100%;min-width:0}
+.jh-echo-group{width:100%;min-width:0;padding:10px 0 10px 14px;border-left:2px solid var(--ink-4);overflow-wrap:anywhere}
+.jh-echo-group h4{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px;font:var(--fs-3)/1.6 var(--font-body);letter-spacing:0;color:var(--ink-0)}
+.jh-echo-group h4 a{color:inherit;text-decoration:underline;text-underline-offset:4px}
+.jh-echo-group h4 span{font-size:var(--fs-1);color:var(--ink-3)}
+.jh-echo-entry+.jh-echo-entry{margin-top:12px;padding-top:10px;background:var(--brush-line) top left/100% 3px no-repeat}
+.jh-echo-entry p{margin:0;font:var(--fs-2)/1.7 var(--font-body)}
+.jh-effects{display:flex;flex-wrap:wrap;gap:4px 14px;flex-basis:100%;font:var(--fs-2)/1.7 var(--font-body);font-variant-numeric:tabular-nums}
+.jh-effect-label,.jh-effect.future>span{margin-right:10px;font:var(--fs-1)/1.7 var(--font-body);color:var(--ink-3)}
+:is(#drawer,#night-deal) .jh-effect.loss{color:var(--ochre)}
+:is(#drawer,#night-deal) .jh-effect.gain{color:var(--malachite)}
+:is(#drawer,#night-deal) .jh-effect.future{color:var(--azurite)}
+:is(#drawer,#night-deal) .jh-echo-fact{color:var(--ink-1)}
+:is(#drawer,#night-deal) .jh-echo-quote{color:var(--ink-2);margin-top:4px}
+:is(#drawer,#night-deal) .jh-effect-legacy,:is(#drawer,#night-deal) .jh-echo-response,:is(#drawer,#night-deal) .jh-echo-debug{display:block;font:var(--fs-1)/1.7 var(--font-body);color:var(--ink-3)}
+.jh-hand>.jh-echo-group{flex:1 1 100%}
 
 /* 舆图 */
 .jh-map{position:relative;margin:0;user-select:none;aspect-ratio:3/2}
@@ -132,8 +146,6 @@ body:has(#drawer[data-view="codex"]:not([hidden])) :is(#hud-left-stack,#hud-info
 #drawer .jh-deck li.next{color:var(--cinnabar)}
 #drawer .jh-card .jh-seal{color:var(--paper)}
 :is(#drawer,#night-deal) .jh-card .jh-reason,:is(#drawer,#night-deal) .jh-src.ai{color:var(--azurite)!important}
-#drawer .jh-card.down p{color:var(--ink-1);text-shadow:0 0 4px var(--paper-deep),0 0 8px var(--paper-deep)}
-#drawer .jh-card.down small{color:var(--ink-2)}
 #drawer .jh-place b{color:var(--ink-1);text-shadow:0 0 2px var(--paper),0 0 6px var(--paper),0 0 12px var(--paper),0 0 18px var(--paper)}
 #drawer .jh-place.live b{color:var(--ink-0)}
 #drawer .jh-place.end b{color:var(--azurite)}
@@ -143,9 +155,11 @@ body:has(#drawer[data-view="codex"]:not([hidden])) :is(#hud-left-stack,#hud-info
 #night-deal{position:fixed;inset:0;z-index:80;display:grid;place-items:center;background:radial-gradient(ellipse at center,#15140f99,#15140fd9)}
 .jh-night{width:min(820px,calc(100vw - 40px));max-height:calc(100vh - 40px);overflow:auto;padding:26px 36px 22px}
 .jh-night header{display:flex;align-items:baseline;gap:14px}
+.jh-night>header{position:sticky;top:0;z-index:1;background:var(--paper)}
 .jh-night header h2{font:400 var(--fs-6)/1 var(--font-title);color:var(--ink-0)}
 .jh-night header small{font:var(--fs-2)/1 var(--font-body);color:var(--ink-3);letter-spacing:.12em}
 .jh-night header button{margin-left:auto;width:36px;height:36px;border:0;background:none;color:var(--ink-2)}
+body.ink-night #night-deal .jh-night>header .icon-button{color:var(--ink-2)!important;filter:none}
 .jh-diary{position:relative;margin:16px 0 12px;padding-right:30px}
 .jh-diary .jh-src{position:absolute;top:2px;right:0}
 .jh-stroke{margin:0;font:var(--fs-4)/1.8 var(--font-body);color:var(--ink-1);animation:jh-stroke .38s var(--ease) both}
@@ -164,3 +178,25 @@ body:has(#drawer[data-view="codex"]:not([hidden])) :is(#hud-left-stack,#hud-info
 
 @media (max-width:900px){.jh-goals{grid-template-columns:1fr}.jh-card{width:100%}}
 @media (prefers-reduced-motion:reduce){.jh-stroke,.jh-deal-in{animation:ink-fade .2s both}.jh-wait i{animation:none}}
+
+/* Route requirements live on the same scroll; no extra overlay or fixed HUD. */
+.genyue-routes{list-style:none;margin:12px 0;padding:0;display:grid;gap:12px}
+.genyue-routes li{display:grid;gap:2px;padding:4px 0 4px 12px;border-left:2px solid var(--ink-4);overflow-wrap:anywhere}
+.genyue-routes b{font:var(--fs-3)/1.5 var(--font-body);color:var(--ink-1)}
+.genyue-routes span{font:var(--fs-2)/1.6 var(--font-body);color:var(--ink-2)}
+.genyue-routes small,.genyue-goal>small{font:var(--fs-1)/1.6 var(--font-body);color:var(--ink-3)}
+.genyue-routes .route-closed{border-left-style:dashed}
+.genyue-routes .route-closed b{text-decoration:line-through}
+.genyue-goal>button{display:block;margin-top:10px}
+
+.genyue-routes li{grid-template-columns:minmax(0,1fr) auto}
+.genyue-routes li>span,.genyue-routes li>small{grid-column:1/-1}
+.genyue-routes .route-visit{grid-column:2;grid-row:1;margin:0;padding:2px 6px;background:none;border:0;color:var(--ink-2)}
+.genyue-routes .route-visit svg{width:18px;height:18px}
+.genyue-history{margin:18px 0;color:var(--ink-3)}
+.genyue-history>summary{cursor:pointer;font:var(--fs-2)/1.6 var(--font-body)}
+.genyue-history .jh-goals{margin-top:14px}
+.quest-card.genyue-goal{border:0!important;border-radius:0;padding:8px 0;background:none;box-shadow:none;margin-top:0}
+#drawer .genyue-goal h3{font-size:var(--fs-5)!important;margin:4px 0 8px}
+.genyue-goal>p{margin:8px 0 16px}
+@media(min-width:1000px){.genyue-routes{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 24px}}

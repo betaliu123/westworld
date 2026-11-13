@@ -1,0 +1,65 @@
+{
+  "hp": 100,
+  "energy": 100,
+  "cases": [
+    {
+      "id": 1,
+      "state": "enroute",
+      "assigned": "gate_relief",
+      "reports": [
+        {
+          "reporter": "gao",
+          "officer": "gate_relief",
+          "at": 108.84470000000185,
+          "kind": "testimony",
+          "subject": "player",
+          "face": "player",
+          "garment": "旧布衣"
+        }
+      ]
+    }
+  ],
+  "complaint": {
+    "id": "gao",
+    "phase": "conflict",
+    "cause": 2
+  },
+  "dialogue": false,
+  "ready": true,
+  "people": {
+    "shen": {
+      "hp": 100,
+      "x": -34.4,
+      "z": -42
+    },
+    "gao": {
+      "hp": 46,
+      "state": "return",
+      "x": 8.673010760569005,
+      "z": 8.547710659038652
+    },
+    "tea_host": {
+      "hp": 60,
+      "state": "return",
+      "x": 1.939423755574827,
+      "z": 10.75755532401881
+    },
+    "gate_guard": {
+      "hp": 100,
+      "x": -38.8,
+      "z": -42
+    },
+    "gate_relief": {
+      "hp": 100,
+      "x": 7.055372959260976,
+      "z": 6.944627040739023
+    }
+  },
+  "events": [
+    {
+      "type": "worldIncident",
+      "kind": "assault"
+    }
+  ],
+  "errors": []
+}

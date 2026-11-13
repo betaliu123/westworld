@@ -1,8 +1,9 @@
+import {linkItemReports} from './item-observations.js';
 import {currentFace,clothing,appearanceTime,spreadIdentityRumor} from './appearance.js';
 import {visibleBetween} from './npc-awareness.js';
 import {abilityCheck,resolveAbilityCheck} from './ability-check.js';
 import {addCausalDeed} from './item-meaning.js';
-import {crimeCharges} from './wanted-records.js';
+import {crimeCharges,suspectDescription} from './wanted-records.js';
 
 export const POLICE=['guard','gate_guard','gate_relief','inspector'];
 export const INVESTIGATION_RADIUS=8,INVESTIGATION_DURATION=150;
@@ -40,7 +41,7 @@ export function recordCrimeScene(sim,event){
  c.charges??=crimeCharges(c);
  // Missing property is discoverable later, but does not tell its owner who took it.
  if(event.type==='theft'&&event.transferred&&event.itemId){c.missingItems??=[];if(!c.missingItems.includes(event.itemId))c.missingItems.push(event.itemId);}
- for(const id of event.witnesses||[])if(!c.witnesses.some(w=>w.id===id))c.witnesses.push({id,subject:event.identities?.[id]||null,face:currentFace(s),garment:clothing(s)?.name||null});
+ for(const id of event.witnesses||[])if(!c.witnesses.some(w=>w.id===id&&w.subject===(event.identities?.[id]||null)))c.witnesses.push({id,subject:event.identities?.[id]||null,face:currentFace(s),garment:clothing(s)?.name||null,description:suspectDescription(s,event.identities?.[id]||'player')});
  // Officers who actually witnessed it already own the immediate response.
  if((event.witnesses||[]).some(id=>POLICE.includes(id)))c.immediate=true;
  return c;
@@ -51,7 +52,7 @@ export function acceptCrimeReport(sim,{caseId,reporter,officer,place,type='assau
  if(!c){c={id:++b.seq,type,victim:reporter,place:{...place},at:clock(s),lastAt:clock(s),witnesses:[],reports:[],state:'unreported',checks:{},linger:{},nextAsk:clock(s)+8};b.cases.push(c);}
  if(c.state==='closed'||c.reports.some(r=>r.reporter===reporter&&r.officer===officer))return c;
  const witness=c.witnesses.find(w=>w.id===reporter);
- c.reports.push({reporter,officer,at:clock(s),kind:witness?'testimony':'discovery',subject:witness?.subject||subject,face:witness?.face||null,garment:witness?.garment||null});
+ c.reports.push({reporter,officer,at:clock(s),kind:witness||subject?'testimony':'discovery',subject:witness?.subject||subject,face:witness?.face||null,garment:witness?.garment||null,description:witness?.description});
  c.assigned=officer;c.state='enroute';c.expires=clock(s)+INVESTIGATION_DURATION;c.immediate=false;
  const reported=witness?.subject||subject;if(reported&&reported!=='player')spreadIdentityRumor(s,reported,10,'事后当面报案',officer);
  sim.emit('npcRoutine',{id:officer,text:reporter===officer?(c.type==='body'?'这里有人倒下了，先查看四周。':'先回事发处看看，留意附近的人。'):'记下了。我去事发处看看，旁人若知情，也请当面说。'});sim.save();return c;
@@ -59,17 +60,24 @@ export function acceptCrimeReport(sim,{caseId,reporter,officer,place,type='assau
 export function discoverBodies(sim,positions,obstacles=[]){
  const s=sim.s;if(s.chapterVersion!==2)return;const b=caseBook(s);
  for(const [id,n] of Object.entries(s.people)){
-  if(n.hp>0){delete b.bodySeen[id];continue;}if(b.bodySeen[id]||!positions[id])continue;
-  const q=positions[id],finder=Object.keys(positions).find(k=>k!==id&&investigationReady(s,k)&&!dangerous(s.people[k])&&distance(positions[k],q)<4&&visibleBetween(positions[k],q,obstacles,s.ecosystem?.objects)&&(()=>{const p=positions[k],angle=p.facing??s.people[k].facing;return !Number.isFinite(angle)||Math.sin(angle)*(q.x-p.x)+Math.cos(angle)*(q.z-p.z)>0;})());
-  if(!finder)continue;b.bodySeen[id]=true;
-  let c=b.cases.findLast(c=>c.victim===id&&c.state!=='closed');
+  if(n.hp>0){delete b.bodySeen[id];continue;}if(!positions[id])continue;
+  // A bystander may become unable to report. That cannot hide the body from a later patrol.
+  const previous=b.cases.findLast(c=>c.victim===id&&c.bodyFound);
+  if(b.bodySeen[id]&&previous?.reports.some(r=>POLICE.includes(r.officer)))continue;
+  const q=positions[id],finder=Object.keys(positions).find(k=>k!==id&&(!b.bodySeen[id]||POLICE.includes(k))&&investigationReady(s,k)&&!dangerous(s.people[k])&&distance(positions[k],q)<4&&visibleBetween(positions[k],q,obstacles,s.ecosystem?.objects)&&(()=>{const p=positions[k],angle=p.facing??s.people[k].facing;return !Number.isFinite(angle)||Math.sin(angle)*(q.x-p.x)+Math.cos(angle)*(q.z-p.z)>0;})());
+  if(!finder)continue;
+  if(b.bodySeen[id]&&!POLICE.includes(finder))continue;b.bodySeen[id]=true;
+  let c=previous||b.cases.findLast(c=>c.victim===id&&c.type==='assault'&&c.state!=='closed');
   if(!c){c={id:++b.seq,type:'body',victim:id,place:{x:q.x,z:q.z},at:clock(s),lastAt:clock(s),witnesses:[],reports:[],state:'unreported',checks:{},linger:{},nextAsk:clock(s)+8};b.cases.push(c);}
-  c.discoverer=finder;c.discoveryAt=clock(s);c.place={x:q.x,z:q.z};
+  c.bodyFound=true;c.discoverer=finder;c.discoveryAt=clock(s);c.place={x:q.x,z:q.z};
+  if(c.state==='closed'){c.state='unreported';c.lastAt=clock(s);}
   if(POLICE.includes(finder))acceptCrimeReport(sim,{caseId:c.id,reporter:finder,officer:finder});
   else sim.emit('npcRoutine',{id:finder,text:'这里有人倒下了！得去找官差来。'});
+  sim.save();
  }
 }
 export function discoverMissingProperty(sim,positions,obstacles=[]){
+ linkItemReports(sim,positions,obstacles);
  const s=sim.s;if(s.chapterVersion!==2)return;
  for(const c of caseBook(s).cases){
   if(c.state!=='unreported'||c.discoverer||clock(s)-c.lastAt<25||!investigationReady(s,c.victim)||dangerous(s.people[c.victim]))continue;
@@ -104,12 +112,12 @@ export function investigationCanAsk(s,c,officer){
 }
 export function investigationRisk(s,c,officer){
  const face=currentFace(s),garment=clothing(s)?.name,known=knownReports(c,officer);
- const faceMatch=known.some(r=>r.kind==='testimony'&&r.face===face),coatMatch=!!garment&&known.some(r=>r.garment===garment);
+ const possession=known.some(r=>r.kind==='possession'&&r.face===face),faceMatch=known.some(r=>r.kind==='testimony'&&r.face===face),coatMatch=!!garment&&known.some(r=>r.garment===garment);
  const describedCoats=known.filter(r=>r.kind==='testimony'&&r.garment),coatMismatch=!!garment&&describedCoats.length>0&&!coatMatch;
  const rumor=s.appearance?.rumors?.[face],heard=!!(rumor?.hearers?.includes(officer)&&rumor.until>appearanceTime(s));
  const doubts=investigationMemory(s,c,officer).doubtUntil>clock(s);
- const score=(faceMatch?35:0)+(coatMatch?25:0)+(heard?15:0)+(doubts?15:0);
- return {score,faceMatch,coatMatch,coatMismatch,heard,doubts,testimony:known.some(r=>r.kind==='testimony'),reason:faceMatch?(coatMismatch?'衣着不符，但面貌符合证言':'面貌符合证言'):coatMatch?'衣着符合证言':heard?'官差听过此面貌的传闻':doubts?'上次解释仍有疑点':'只在事发地附近，尚无指认'};
+ const score=(possession?20:0)+(faceMatch?35:0)+(coatMatch?25:0)+(heard?15:0)+(doubts?15:0);
+ return {score,possession,faceMatch,coatMatch,coatMismatch,heard,doubts,testimony:known.some(r=>r.kind==='testimony'),reason:faceMatch?(coatMismatch?'衣着不符，但面貌符合证言':'面貌符合证言'):coatMatch?'衣着符合证言':heard?'官差听过此面貌的传闻':doubts?'上次解释仍有疑点':'只在事发地附近，尚无指认'};
 }
 export function investigationPreview(sim,c,officer,choice='explain'){
  const risk=investigationRisk(sim.s,c,officer);
@@ -119,6 +127,7 @@ export function investigationPreview(sim,c,officer,choice='explain'){
 export const investigationSignature=s=>currentFace(s)+':'+(s.player.face?.serial||0);
 export function investigationQuestion(s,c,officer){
  const r=investigationRisk(s,c,officer);
+ if(r.possession)return '报失的那件东西，有你先前拿来给人看过的记录。不能只凭持有定罪，把来路说清楚。';
  if(r.faceMatch&&r.coatMismatch)return '衣裳与报案说的不同，可这面貌仍有几分相似。方才你在哪里？';
  if(r.faceMatch&&r.coatMatch)return '报案中说的衣着面貌，与你有相似之处。方才你在哪里？';
  if(r.faceMatch)return '报案中提到的面貌，与你有几分相似。方才你在哪里？';

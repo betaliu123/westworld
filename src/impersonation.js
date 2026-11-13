@@ -1,8 +1,9 @@
 import {skill,practice} from './skills.js';
+import {knownNpcName} from './npc-names.js';
 import {visibleBetween} from './npc-awareness.js';
 export const helpless=(sim,n)=>n.hp<=0||n.stunnedUntil>(sim.s.npcClock||0)||n.restraint?.mode==='fixed';
 export function outfit(sim){const p=sim.s.player;return p.disguise==='borrowed'&&sim.s.ecosystem.items.find(i=>i.id===p.wornOutfit&&i.location==='player'&&i.hp>0);}
-export function knowsName(sim,id){return !!sim.s.facts.knownNames?.[id]||(id==='traveler'&&!!sim.s.facts.princeAlias)||(id==='gate_merchant'&&sim.s.player.inventory.includes('他人的路引'));}
+export function knowsName(sim,id){return sim.s.chapterVersion===2?!!knownNpcName(sim.s,id):!!sim.s.facts.knownNames?.[id]||(id==='traveler'&&!!sim.s.facts.princeAlias)||(id==='gate_merchant'&&sim.s.player.inventory.includes('他人的路引'));}
 export function disguiseDifficulty(sim){const i=outfit(sim);return 70-(i&&knowsName(sim,i.ownerId)?25:0)-(i?.identityPaper?10:0)+Math.min(30,Math.floor((i?.exposure||0)/20));}
 export function patrolStep(sim,eco,dt){if(sim.s.chapterVersion===2)return;const i=outfit(sim),p=sim.s.player;if(!i||p.hp<=0)return;i.exposure=(i.exposure||0)+dt*(skill(p,'disguise').tier>=4?.4:1);if(!sim.s.facts.enteredCity||p.z>19.5||eco.s.time<(p.nextIdentityCheck||0))return;
  const id=['guard','gate_guard','gate_relief','inspector'].find(id=>{const q=eco.positions[id],n=sim.s.people[id];return q&&n&&!helpless(sim,n)&&Math.hypot(q.x-p.x,q.z-p.z)<4&&visibleBetween(q,p,eco.obstacles||[],eco.s.objects);});if(!id)return;

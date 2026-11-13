@@ -16,7 +16,9 @@ export function npcMotionProfile(id, kind) {
 
 // Rendering only. Never move the actor root or change gameplay/check results.
 export function npcMotionName(state, variation = 0) {
-  if (state.hp <= 0 || state.fallback || state.armed || state.stunned) return null;
+  if (state.hp <= 0 || state.fallback || state.stunned) return null;
+  if (state.flee && state.speed > .12) return 'flee';
+  if (state.armed) return state.speed > .12 ? 'combat_run' : 'combat_idle';
   if (state.speed > .12) return 'walk';
   if (state.seated) return state.talking && !state.upperBody ? 'sit_talk' : 'sit_idle';
   if (state.talking && !state.upperBody) return state.angry ? 'argue' : variation ? 'question' : 'talk';
@@ -34,6 +36,7 @@ export class NpcMotion {
     this.profile = PROFILES[profile] || PROFILES.composed;
     this.randomState = (this.seed * 0xffffffff) >>> 0 || 1;
     this.idleAge = Infinity; this.speechAge = 0; this.idle = null; this.gestureWeight = 0;
+    this.time=0;this.once=null;this.pending=null;
   }
   random() {
     this.randomState = (Math.imul(this.randomState,1664525) + 1013904223) >>> 0;
@@ -49,9 +52,47 @@ export class NpcMotion {
   reset() {
     this.mixer.stopAllAction(); this.weights.clear();
     this.current = null; this.speed = 0; this.wasTalking = false;
+    this.once=this.pending=null;
+  }
+  cue(name,duration) {
+    if(!this.actions.has(name))return false;
+    this.pending={name,duration:duration||this.actions.get(name).getClip().duration};return true;
+  }
+  cancelAttack() {
+    if(['attack','punch'].includes(this.pending?.name))this.pending=null;
+    if(['attack','punch'].includes(this.once?.name))this.once=null;
+  }
+  actionPose(dt,state) {
+    if(state.hurtAt!=null&&state.hurtAt!==this.lastHurt){this.lastHurt=state.hurtAt;this.lastStartle=state.startleAt;this.cue('hit',.42);}
+    else if(state.startleAt!=null&&state.startleAt!==this.lastStartle){this.lastStartle=state.startleAt;if(!this.once)this.cue('startle',.7);}
+    if(this.pending){
+      const {name,duration}=this.pending;this.pending=null;this.once={name,end:this.time+duration};
+      const action=this.actions.get(name);action.reset().setLoop(T.LoopOnce,1);action.clampWhenFinished=true;action.setEffectiveTimeScale(action.getClip().duration/duration).play();
+    }
+    if(this.once&&this.time>=this.once.end)this.once=null;
+    const name=this.once?.name||(state.flee?(state.speed>.12?'flee':'breathe'):state.armed?(state.speed>.12?'combat_run':'combat_idle'):null);
+    if(!name||!this.actions.has(name))return false;
+    this.current=name;const blend=1-Math.exp(-(this.once?22:12)*dt);
+    for(const [key,action]of this.actions){
+      const goal=key===name?1:0,weight=(this.weights.get(key)||0)+(goal-(this.weights.get(key)||0))*blend;
+      this.weights.set(key,weight);action.setEffectiveWeight(weight);
+      if(key!==name)continue;
+      if(!action.isScheduled()){action.reset().setLoop(T.LoopRepeat,Infinity).play();action.time=this.seed*action.getClip().duration;}
+      if(!this.once){action.clampWhenFinished=false;action.setLoop(T.LoopRepeat,Infinity);action.setEffectiveTimeScale(key==='flee'?T.MathUtils.clamp(state.speed/4.8,.5,1.4):key==='combat_run'?T.MathUtils.clamp(state.speed/3.3,.5,1.4):1);}
+    }
+    this.mixer.update(dt);return true;
   }
   update(dt, state) {
+    this.time+=dt;
+    // Death owns the whole skeleton and holds its last frame until actual revival.
+    if(state.hp<=0&&this.actions.has('death')){
+      if(!this.dead){this.reset();this.dead=true;const a=this.actions.get('death');a.reset().setLoop(T.LoopOnce,1);a.clampWhenFinished=true;a.setEffectiveWeight(1).setEffectiveTimeScale(a.getClip().duration/1.25).play();}
+      this.current='death';this.mixer.update(dt);return true;
+    }
+    if(this.dead){this.reset();this.dead=false;}
     if (!npcMotionName(state)) { if (this.current) this.reset(); return false; }
+    if(this.actionPose(dt,state))return true;
+    if(state.armed&&!this.actions.has('combat_idle')){if(this.current)this.reset();return false;}
     const speaking = state.talking && !state.upperBody;
     if (speaking && !this.wasTalking) this.turn++;
     const newSpeech = speaking && !this.wasTalking;

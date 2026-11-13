@@ -3,8 +3,10 @@ import {GLTFLoader} from '../vendor/GLTFLoader.js';
 import {clone as cloneSkinned} from '../vendor/SkeletonUtils.js';
 import {NpcMotion,npcMotionName,npcMotionProfile} from './npc-motion.js';
 import {bedBones} from './bed-pose.js';
+import {groundSeatBones} from './ground-seat.js';
 import {sleepEyes} from './sleep-eyes.js';
 import {NpcGesture} from './npc-gesture.js';
+import {FootGrounding,BodyGrounding} from './foot-grounding.js';
 
 // Daily motion uses retargeted clips; prop-specific choreography keeps its own pose.
 const HANG = Math.PI / 2 - .1, ELBOW = .22;
@@ -20,9 +22,9 @@ const KINDS = {
   guard: {file: 'npc-guard.glb', height: 2.08},
   woman: {file: 'npc-woman.glb', height: 1.88, dye: true},
   commoner: {file: 'npc-commoner.glb', height: 1.98, dye: true},
-  constable: {file: 'npc-constable.glb', height: 1.72, motion: 'guard'},
-  envoy: {file: 'npc-envoy.glb', height: 1.84, motion: 'prince'},
-  sandgang: {file: 'npc-sandgang.glb', height: 1.86, motion: 'commoner'},
+  constable: {file: 'npc-constable.glb', height: 1.72},
+  envoy: {file: 'npc-envoy.glb', height: 1.84},
+  sandgang: {file: 'npc-sandgang.glb', height: 1.86},
   maskopera: {file: 'npc-maskopera.glb', height: 1.7, motion: false},
 };
 // Eye height differs with each generated head / headdress; measured in the scaled rig.
@@ -57,10 +59,10 @@ const motionTemplates = new Map();
 function loadMotion(kind) {
   const file = typeof kind === 'string' ? kind : kind.motion || kind;
   if (!file) return Promise.resolve([]);
-  if (!motionTemplates.has(file)) motionTemplates.set(file, fetch(base(`npc-${file}-motion.json`))
+  if (!motionTemplates.has(file)) motionTemplates.set(file, Promise.all(['motion','combat','death'].map(pack=>fetch(base(`npc-${file}-${pack}.json`))
     .then(r => { if (!r.ok) throw new Error(`NPC motion: ${r.status}`); return r.json(); })
     .then(data => data.clips.map(c => T.AnimationClip.parse(c)))
-    .catch(error => { console.warn('NPC clips unavailable; retaining fallback', error); return []; }));
+    .catch(error => { console.warn('NPC clips unavailable; retaining fallback', error); return []; }))).then(packs=>packs.flat()));
   return motionTemplates.get(file);
 }
 const base = file => new URL(`./models/${file}`, import.meta.url).href;
@@ -184,6 +186,22 @@ export function mountActorModel(actor, look) {
     const hipHeight = u.rig.worldToLocal(hipNode.getWorldPosition(new T.Vector3())).y;
     const motion = handle.motion = new NpcMotion(model, clips, (u.phase || 0) / 10, 1.7857 * hipHeight / 1.04275, look.motionProfile || npcMotionProfile('',look.kind));
     const gesture = new NpcGesture(actor, model, kind.height);
+    const grounding=new FootGrounding(actor,wrapper,model),bodyGrounding=new BodyGrounding(actor,wrapper,model);
+    // Reuse the hero's real right-hand socket instead of the hidden proxy arm.
+    const hand=model.getObjectByName('mixamorigRightHand'),swordHome={parent:u.sword.parent,position:u.sword.position.clone(),quaternion:u.sword.quaternion.clone(),scale:u.sword.scale.clone()};
+    let swordSocket;
+    if(hand){
+      swordSocket=new T.Group();hand.add(swordSocket);swordSocket.scale.setScalar(1/scale);
+      const index=model.getObjectByName('mixamorigRightHandIndex1'),pinky=model.getObjectByName('mixamorigRightHandPinky1'),middle=model.getObjectByName('mixamorigRightHandMiddle1');
+      if(index&&pinky&&middle){
+        // Blade extends along local -Y. Its tip leaves the thumb side of the fist;
+        // hand bone axes differ between these generated rigs and the hero.
+        const forward=middle.position.clone().normalize(),y=pinky.position.clone().sub(index.position);y.addScaledVector(forward,-y.dot(forward)).normalize();
+        const z=y.clone().cross(forward).normalize(),x=y.clone().cross(z).normalize();
+        swordSocket.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(x,y,z));
+        swordSocket.position.copy(middle.position).multiplyScalar(.62);
+      }else{swordSocket.rotation.z=-Math.PI/2;swordSocket.position.set(0,.025,0);}
+    }
     handle.handPoint = side => gesture.handPoint(side);
     handle.betweenHands = () => gesture.betweenHands();
     let clipActive = false, blendAge = 1, blendFrom = [];
@@ -207,18 +225,21 @@ export function mountActorModel(actor, look) {
       for (const m of materials) { m.userData.tint.value.setHex(color); m.userData.amount.value = dyed ? 1 : 0; }
       const dt = Math.max(0, Math.min(.1, state.dt || 0));
       state = {...state, formal:state.formal ?? ['prince','guard','constable','envoy'].includes(look.kind)};
-      const changing = !!motion.actions.get(npcMotionName(state)) !== clipActive;
+      const changing = !!motion.actions.get(state.hp<=0?'death':npcMotionName(state)) !== clipActive;
       const before = changing ? capture() : null;
       const active = motion.update(dt, state);
+      grounding.reset();
       if (active !== clipActive) { blendFrom = before; blendAge = 0; }
       clipActive = active;
       if (active) {
         u.rig.position.set(0, 0, 0); u.rig.rotation.set(0, 0, 0);
+        if(swordSocket&&u.sword.parent!==swordSocket){swordSocket.add(u.sword);u.sword.position.set(0,0,0);u.sword.quaternion.identity();u.sword.scale.set(1,1,1);}
         // Preserve the live gaze without replacing the captured head posture.
         actor.updateMatrixWorld(true);
         const localUp = new T.Vector3(0,1,0).applyQuaternion(bone.head.parent.getWorldQuaternion(q1).invert());
         bone.head.quaternion.premultiply(q2.setFromAxisAngle(localUp,u.head.rotation.y || 0));
       } else {
+        if(u.sword.parent!==swordHome.parent){swordHome.parent.add(u.sword);u.sword.position.copy(swordHome.position);u.sword.quaternion.copy(swordHome.quaternion);u.sword.scale.copy(swordHome.scale);}
         // Reset also during the blend: undriven hips/spine/fingers otherwise
         // retain a fraction of the last walking or seated pose indefinitely.
         restore();
@@ -239,8 +260,17 @@ export function mountActorModel(actor, look) {
           b.node.position.lerpVectors(from.p,b.node.position,k);
         }
       }
-      if(state.bedPose)bedBones(u.rig,bone,state.bedPose);else gesture.update(dt, state.upperBody, active);
-      closeEyes(state.bedPose?.weight||0);if(headwear)headwear.visible=!(state.bedPose?.weight>.4);
+      if(state.hp<=0){
+        gesture.update(dt,null,false);u.sword.visible=false;closeEyes(1);
+        if(active)bodyGrounding.apply(!!motion.actions.get('death')?.paused);
+        handle.activeClip=active?'death':'down';return;
+      }
+      bodyGrounding.reset();
+      if(state.bedPose)bedBones(u.rig,bone,state.bedPose);
+      else if(state.groundPose){groundSeatBones(u.rig,bone,hipHeight,state.groundPose);gesture.update(dt,state.upperBody,!!state.upperBody);}
+      else gesture.update(dt, motion.once?.name==='startle'?{kind:'startle'}:state.upperBody, active);
+      if(active&&(state.armed||state.flee||motion.once)&&state.hp>0&&!state.bedPose&&!state.groundPose)grounding.apply();
+      closeEyes(state.bedPose?.weight||(state.groundPose?.dozing?state.groundPose.weight:state.dozing?1:0));if(headwear)headwear.visible=!(state.bedPose?.weight>.4);
       handle.activeClip = active ? motion.current + (state.upperBody ? '+'+state.upperBody.kind : '') : 'choreography';
     };
     return handle;

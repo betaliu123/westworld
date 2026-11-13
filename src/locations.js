@@ -16,4 +16,7 @@ export function migrateLocations(s){if(s.locationVersion===2)return;if(jailed(s)
 export const PRIVACY_GROVE={x:22,z:28};
 // Outside the west wall, in the corner between the river fence and 临溪人家.
 export const BEGGAR_NEST={x:-14.2,z:23.3};
+// Dry east bank, screened from the tea stall by a physical limestone outcrop.
+export const QINGHE_RIVERSIDE={x:-18.05,z:34.5,facing:-Math.PI/2};
+export const QINGHE_ROCK={id:'qinghe-river-rock',x:-16.3,z:34.2,w:2.2,d:2.9,sightHeight:2.25};
 export const privacySpot=index=>({x:PRIVACY_GROVE.x+(index%4)*1.15,z:PRIVACY_GROVE.z+Math.floor(index/4)*.85});

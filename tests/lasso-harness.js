@@ -27,6 +27,7 @@ export function mountLassoHarness({getSim,world,environment,save}){
  }
  const actions={
   '布置抛索':stage,
+  '加入第二人':()=>{const s=getSim().s,a=world.npcs.get('merchant').actor;a.position.set(-2,0,2);a.rotation.y=Math.PI;Object.assign(s.people.merchant,{x:-2,z:2,facing:Math.PI,hp:100,awareness:null,restraint:null,life:{activity:'idle'}});environment.eco.positions.merchant={x:-2,z:2,facing:Math.PI};},
   '定身现场':()=>{stage();getSim().s.people.thief.stunnedUntil=(getSim().s.npcClock||0)+120;const p=getSim().s.player;p.z=3.5;world.hero.position.z=3.5;},
   '事后报案':()=>{stage();const sim=getSim(),s=sim.s;for(const [id,x,z]of [['merchant',2,1],['guard',2,7]]){const a=world.npcs.get(id).actor;a.position.set(x,0,z);Object.assign(s.people[id],{x,z,facing:Math.PI,awareness:null,life:{activity:'idle'}});}recordCrimeScene(sim,{type:'theft',target:'thief',owner:'thief',x:0,z:2,witnesses:['merchant'],identities:{merchant:'player'}});},
   '无人目击倒地':()=>{stage();getSim().s.people.thief.hp=0;const a=world.npcs.get('guard').actor;a.position.set(1,0,3);a.rotation.y=Math.PI;},
@@ -50,6 +51,6 @@ export function mountLassoHarness({getSim,world,environment,save}){
  setInterval(()=>{
   const s=getSim().s,n=s.people.thief,q=world.npcs.get('thief').actor.position;if(active){s.time=35;s.deck.actions??={};}
   const invalid=[...document.querySelectorAll('#aim-skills button,#aim-points button')].filter(e=>!e.hidden&&e.getBoundingClientRect().width).filter(e=>{const c=getComputedStyle(e);return parseFloat(c.fontSize)<14||/Microsoft YaHei|Segoe|Georgia|sans-serif/.test(c.fontFamily);});
-  el.querySelector('output').textContent=`${innerWidth}×${innerHeight}\n状态 ${n.restraint?.mode||'自由'} / 骰 ${rolls}\n人物 ${q.x.toFixed(2)},${q.z.toFixed(2)}\n主角 ${s.player.x.toFixed(2)},${s.player.z.toFixed(2)}\n体力 ${Math.round(s.player.energy)} / 绳 ${environment.eco.s.items.find(i=>i.lassoKit)?.location}\n调查 ${s.investigations?.cases.map(c=>c.state+':'+(c.assigned||'-')).join(',')||'-'}\n官差 ${s.people.guard.awareness?.state||'无追捕'} / ${world.npcs.get('guard').actor.position.z.toFixed(2)}\n拘押案由 ${s.facts.lastCustody?.charges?.map(c=>c.label).join('、')||'-'}\n错误 ${errors.length} / 字体违规 ${invalid.length}\n${errors.slice(-1).join('')}`;
+  el.querySelector('output').textContent=`${innerWidth}×${innerHeight}\n状态 ${n.restraint?.mode||'自由'} / 第二人 ${s.people.merchant.restraint?.mode||'自由'} / 骰 ${rolls}\n人物 ${q.x.toFixed(2)},${q.z.toFixed(2)}\n主角 ${s.player.x.toFixed(2)},${s.player.z.toFixed(2)}\n体力 ${Math.round(s.player.energy)} / 绳 ${environment.eco.s.items.find(i=>i.lassoKit)?.location} / 工具 ${environment.eco.s.items.filter(i=>i.lassoKit).length}\n调查 ${s.investigations?.cases.map(c=>c.state+':'+(c.assigned||'-')).join(',')||'-'}\n官差 ${s.people.guard.awareness?.state||'无追捕'} / ${world.npcs.get('guard').actor.position.z.toFixed(2)}\n拘押案由 ${s.facts.lastCustody?.charges?.map(c=>c.label).join('、')||'-'}\n错误 ${errors.length} / 字体违规 ${invalid.length}\n${errors.slice(-1).join('')}`;
  },150);
 }

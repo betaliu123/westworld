@@ -1,4 +1,6 @@
 import {talkTree} from './talk-tree.js';
+import {teaRumorsStep} from './tea-rumors.js';
+import {activeWorldNews,worldNewsStep} from './world-news.js';
 import {identityConversationActive} from './identity-opportunities.js';
 import {convoyAftermathOptions,convoyAftermathPreview,resolveConvoyAftermath} from './convoy-aftermath.js';
 import {identityFavorOptions,identityFavorPreview,resolveIdentityFavor} from './identity-favors.js';
@@ -24,7 +26,7 @@ export function learnedFootwork(sim,id='old_constable'){
  if(learned)n.learnedFootwork=true;return !!learned;
 }
 function appearanceShop(id){return id==='scribe'?[{...option('appearance_paste','买一份易容膏'),cost:5}]:[];}
-export function contactOptions(sim,id){const news=convoyAftermathOptions(sim,id);if(news.length)return news;if(sim.s.people[id]?.restraint)return [];const favors=identityFavorOptions(sim,id);if(favors.length||identityConversationActive(sim.s,id))return favors;const inquiry=factionDisciplineOptions(sim,id);if(inquiry.length>1)return inquiry;if(sim.s.chapterVersion===2)return [...inquiry,...appearanceShop(id),...chapterOptions(sim,id),...apprenticeshipOptions(sim,id),...(sim.s.people[id]?.sickUntil>(sim.s.ecosystem?.time||0)?[option('care','递水照看')]:[])];const n=sim.s.people[id],k=knowledge(sim);return [
+export function contactOptions(sim,id){const news=convoyAftermathOptions(sim,id);if(news.length)return news;if(sim.s.people[id]?.restraint)return [];const favors=identityFavorOptions(sim,id);if(favors.length||identityConversationActive(sim.s,id))return favors;const inquiry=factionDisciplineOptions(sim,id);if(inquiry.length>1)return inquiry;if(sim.s.chapterVersion===2)return [...inquiry,...appearanceShop(id),...chapterOptions(sim,id),...apprenticeshipOptions(sim,id).filter(a=>!['ap_grind','ap_herbs'].includes(a.id)),...(sim.s.people[id]?.sickUntil>(sim.s.ecosystem?.time||0)?[option('care','递水照看')]:[])];const n=sim.s.people[id],k=knowledge(sim);return [
  ...inquiry,...appearanceShop(id),...careerOptions(sim,id),
  ...(id==='bookseller'?[option('binding','你怎么知道一本书被抽过页？')]:[]),
  ...(id==='scribe'&&outfit(sim)?[option('identity_paper','按身上这身衣服的身份刻制名帖','wit',knowsName(sim,outfit(sim).ownerId)?40:80)]:[]),
@@ -42,6 +44,7 @@ export function contactOptions(sim,id){const news=convoyAftermathOptions(sim,id)
  ...(n.sickUntil>(sim.s.ecosystem?.time||0)?[option('care','递水照看')]:[])
  ];}
 export function contactFollowups(sim,id,result){
+ if(result?.follow?.some(k=>k.startsWith('ap_'))){const next=apprenticeshipOptions(sim,id).filter(a=>result.follow.includes(a.id));return [...next.slice(0,2),{id:'ap_decline',label:result.actionId==='ch_herb_offer'?'先不买。':'眼下不便。',mode:'endTalk',kind:'listen'}];}
  if(result?.actionId?.startsWith('ca_'))return ['ca_later','ca_decline','ca_join','ca_gang','ca_court'].includes(result.actionId)?[]:convoyAftermathOptions(sim,id);
  if(sim.s.people[id]?.restraint)return [];
  if(result?.actionId?.startsWith('if_identity_'))return result.success?talkTree(id,identityFavorOptions(sim,id)):[];
@@ -51,12 +54,12 @@ export function contactFollowups(sim,id,result){
  if(!result?.success||result.actionId!=='ink_sign')return [];
  const buy=contactOptions(sim,id).find(a=>a.id==='ink_buy');return buy?[buy,{id:'ink_decline',label:'这包先留着，我不要。',mode:'endTalk',kind:'listen'}]:[];
 }
-export function contactPreview(sim,id,a,eco){if(a.id.startsWith('ca_'))return convoyAftermathPreview(sim,id,a);if(sim.s.people[id]?.restraint)return {blocked:true,certain:true,chance:0,reason:'对方还被绑着，先松绑再谈。'};if(a.id.startsWith('if_'))return identityFavorPreview(sim,id,a,eco);if(a.id.startsWith('fd_'))return factionDisciplinePreview(sim,id,a);if(a.id==='appearance_paste')return {certain:true,chance:100,blocked:sim.s.player.money<5};if(a.id.startsWith('ap_'))return apprenticeshipPreview(sim,id,a);if(a.id.startsWith('ch_'))return chapterPreview(sim,id,a);const n=sim.s.people[id],p=sim.s.player,tries=n.contactAttempts?.[sim.s.day+':'+a.id]||0;return {score:p.stats[a.stat]||0,chance:a.stat?Math.floor(Math.max(5,Math.min(95,p.stats[a.stat]+40-a.difficulty+(n.trust||0)/3-tries*20))):100,certain:!a.stat,blocked:(a.id==="ink_buy"&&p.money<5)||!!careerBlock(sim,id,a)||a.id==='training'&&p.energy<10||a.id==='escort'&&(!!n.awareness?.caseOpen||(!sim.s.facts.merchantContract&&(n.purse||0)<6))};}
-export function contactResolve(sim,eco,id,action){if(action.startsWith('ca_'))return resolveConvoyAftermath(sim,eco,id,action);if(sim.s.people[id]?.restraint)return {error:'对方还被绑着，先松绑再谈。'};if(action.startsWith('if_'))return resolveIdentityFavor(sim,eco,id,action);if(action.startsWith('fd_'))return resolveFactionDiscipline(sim,eco,id,action);if(action.startsWith('ap_'))return requestApprenticeship(sim,eco,id,action);if(action.startsWith('ch_'))return chapterResolve(sim,eco,id,action);if(action==='training'&&learnedFootwork(sim,id))action='training_review';const n=sim.s.people[id],a=contactOptions(sim,id).find(a=>a.id===action);if(!n||n.hp<=0||!a||n.stunnedUntil>(sim.s.npcClock||0)||['fight','flee'].includes(n.awareness?.state))return {error:'对方现在无法应答。'};
+export function contactPreview(sim,id,a,eco){if(a.id.startsWith('ca_'))return convoyAftermathPreview(sim,id,a);if(sim.s.people[id]?.restraint)return {blocked:true,certain:true,chance:0,reason:'对方还被绑着，先松绑再谈。'};if(a.id.startsWith('if_'))return identityFavorPreview(sim,id,a,eco);if(a.id.startsWith('fd_'))return factionDisciplinePreview(sim,id,a);if(a.id==='appearance_paste')return {certain:true,chance:100,blocked:sim.s.player.money<5};if(a.id.startsWith('ap_'))return apprenticeshipPreview(sim,id,a);if(a.id.startsWith('ch_'))return chapterPreview(sim,id,a,eco);const n=sim.s.people[id],p=sim.s.player,tries=n.contactAttempts?.[sim.s.day+':'+a.id]||0;return {score:p.stats[a.stat]||0,chance:a.stat?Math.floor(Math.max(5,Math.min(95,p.stats[a.stat]+40-a.difficulty+(n.trust||0)/3-tries*20))):100,certain:!a.stat,blocked:(a.id==="ink_buy"&&p.money<5)||!!careerBlock(sim,id,a)||a.id==='training'&&p.energy<10||a.id==='escort'&&(!!n.awareness?.caseOpen||(!sim.s.facts.merchantContract&&(n.purse||0)<6))};}
+export function contactResolve(sim,eco,id,action,options={}){if(action.startsWith('ca_'))return resolveConvoyAftermath(sim,eco,id,action);if(sim.s.people[id]?.restraint)return {error:'对方还被绑着，先松绑再谈。'};if(action.startsWith('if_'))return resolveIdentityFavor(sim,eco,id,action);if(action.startsWith('fd_'))return resolveFactionDiscipline(sim,eco,id,action);if(action.startsWith('ap_'))return requestApprenticeship(sim,eco,id,action);if(action.startsWith('ch_'))return chapterResolve(sim,eco,id,action,options);if(action==='training'&&learnedFootwork(sim,id))action='training_review';const n=sim.s.people[id],a=contactOptions(sim,id).find(a=>a.id===action);if(!n||n.hp<=0||!a||n.stunnedUntil>(sim.s.npcClock||0)||['fight','flee'].includes(n.awareness?.state))return {error:'对方现在无法应答。'};
  const check=contactPreview(sim,id,a);if(check.blocked)return {error:(action==='ink_buy'?'得付五文钱。':null)||careerBlock(sim,id,a)||'眼下还做不到。'};meet(sim,id);n.contactAttempts??={};const stamp=sim.s.day+':'+action;n.contactAttempts[stamp]=(n.contactAttempts[stamp]||0)+1;
  const roll=a.stat?Math.floor(sim.rng()*100)+1:null,success=check.certain||roll<=check.chance;let text=id==='traveler'?'一块玉佩，未必说明得了什么。咱们还是说眼前的事吧。':'眼下还信不过你，改日再谈。',changes=[];
  if(success){const career=careerResolve(sim,eco,id,action);if(career?.error)return career;if(career){text=career.text;changes=career.changes;}switch(action){
- case 'appearance_paste':{const q=eco.positions.scribe;if(!q||!eco.range(q.x,q.z))return {error:'走近刻字人再交易。'};if(!placePayment(sim,eco,{payer:'player',payee:id,amount:5,x:q.x+.4,z:q.z+.4,stand:q,reason:'易容膏货款'}))return {error:'盘缠不足。'};eco.create('易容膏','cosmetic','player',{discovered:true,material:'herb',ownerId:'scribe'});text='照着见过的脸敷，几个时辰便褪。脸能借，腰里的凭据、嘴里的姓名，得另想办法。';changes=['付出 5 文','获得：易容膏'];break;}
+ case 'appearance_paste':{const q=eco.positions.scribe;if(!q||!eco.range(q.x,q.z))return {error:'走近刻字人再交易。'};if(!placePayment(sim,eco,{payer:'player',payee:id,amount:5,x:q.x+.4,z:q.z+.4,stand:q,reason:'易容膏货款'}))return {error:'盘缠不足。'};eco.create('易容膏','cosmetic','player',{discovered:true,material:'herb',ownerId:'scribe'});text='照着见过的脸敷，几个时辰便褪。';changes=['付出 5 文','获得：易容膏'];break;}
  case 'binding':text=n.bindingShown?'还记得针脚么？迎光看旧针眼。':'瞧这两个针眼。旧孔在里，新线在外，多半拆过。先别急着说人作假，补书也得拆线。';n.bindingShown=true;break;
  case 'identity_paper':outfit(sim).identityPaper=true;text='名帖刻好了，官印我不能替你做。若被追问来历，还得你自己答。';break;
  case 'identity':if(id==='gate_merchant'){sim.s.facts.knownNames??={};sim.s.facts.knownNames[id]='赵成';}text=({old_constable:'我姓杜，捕衣早交回去了。这双眼睛和脚底的功夫，他们可收不走。',bookseller:'我姓温，名素笺。卖书是生意，把散了的旧书补得能再翻十年，是我的手艺。',inspector:'顾某奉旨查案，在此暂设六扇门值房。招募的是查案的人，不是仗势的人。',gang_boss:'梅某掌赤砂帮。要谈生意，坐；要入帮，先亮亮本事。',mei:'我叫梅知意。我爹掌赤砂帮，我的亲事却由我自己做主。',gate_guard:'我姓韩，守临溪关。放进关的人，我得对他们的来历负责。',gate_relief:'周某在韩校尉手下轮值。有人接班，才能离岗。',relay:'替驿舍补衣、传些杂事。税课的文书常从这里过。',gate_merchant:'东溪商帮的赵成。货得进城，人也得吃饭。',scribe:'修印刻字，靠手艺吃饭。别拿我的印铺名头招摇。',old_constable:'姓杜，做过捕快，如今退了。规矩懂一些，人也认得几个。',traveler:'我若照平日的法子进去，今日便什么也看不见了。你呢，是来赶路，还是被拦下的？',tea_host:'姓宋。过路人吃口热的，歇一歇脚，我挣个茶钱。',prisoner:'我曾在税课司抄账。有些数，不该让我看见。'}[id]||answerIdentity(id));break;
@@ -77,7 +80,7 @@ export function contactResolve(sim,eco,id,action){if(action.startsWith('ca_'))re
  case 'training_review':text='上次教你的身法，用着还顺手吗？别急着迈步，先看看人家的肩膀和眼睛。';break;
  case 'training':n.learnedFootwork=true;sim.s.player.energy-=10;changes=earnGrowth(sim.s.player,'agility',18,'lesson:'+sim.s.day+':'+id);if(n.contactAttempts[stamp]===1)n.trust=Math.min(100,(n.trust||0)+2);text='先看肩，再看眼。人转开身，你才挪脚。脚步轻不轻，得自己练。';break;
  case 'escort':if(!eco.items('npc:'+id).some(i=>i.type==='cargo'))return {error:'货包不见了，我得先找回来。'};if(!sim.s.facts.merchantContract){n.purse-=6;sim.s.facts.merchantContract={agreed:true,complete:false,wages:6};n.trust=(n.trust||0)+3;}n.life={activity:'escort',target:{x:1,z:22.8},until:eco.s.time+100};text='行。跟我到关前，把名字记在货单上。进城后你替我照看这一趟货，别让我找不着人。';break;
- case 'care':{const before=n.relation,trust=n.trust||0;const error=eco.act('help',id);if(error)return {error};changes=[`好感 +${n.relation-before}`,`信任 +${n.trust-trust}`];if(sim.s.chapterVersion===2&&id==='traveler'&&!sim.s.facts.royalSawHarm){sim.s.facts.royalSawKindness=true;}text=id==='traveler'?VOICE_LINES.princeCare:VOICE_LINES.teaCare;break;}
+ case 'care':{const before=n.relation,trust=n.trust||0;const error=eco.act('help',id);if(error)return {error};changes=[`好感 +${n.relation-before}`,`信任 +${n.trust-trust}`];if(sim.s.chapterVersion===2&&id==='traveler'&&!sim.s.facts.royalSawHarm){sim.s.facts.royalSawKindness=true;sim.s.facts.royalKindnessSource='care';}text=id==='traveler'?VOICE_LINES.princeCare:VOICE_LINES.teaCare;break;}
  }}
  const r={type:'npc',eventId:'contact:'+sim.s.day+':'+id+':'+action,actionId:action,label:a.label,kind:'listen',motion:['training','court_arrest'].includes(action)?'reach':'talk',check,roll,success,text,changes,dialogue:[{id,text}],authored:true};sim.s.history.push(r);sim.emit('result',r);sim.save();return r;
 }
@@ -88,6 +91,8 @@ const RUMORS=[
  {id:'patron',a:'old_constable',b:'traveler',line:'当年押税银，车到岔口要往东京走。如今挂的是税司的锁，怎么倒往大名府梁中书那里去了？'}
 ];
 export function societyStep(sim,eco,world,dt){const s=sim.s;s.gateSociety??={nextTalk:eco.s.time+12,index:0};streetSalute(sim,eco,world);const state=s.gateSociety,positions=eco.positions;
+ worldNewsStep(sim,eco,world);
+ const teaTalking=teaRumorsStep(sim,eco,world);
  if(s.facts.taxLedgerLead)learn(sim,'ledger','旧账房证言');
  const contract=s.facts.merchantContract,q=positions.gate_merchant,p=s.player;
  if(contract&&!contract.complete&&q&&Math.hypot(q.x-1,q.z-22.8)<1.4&&Math.hypot(q.x-p.x,q.z-p.z)<4&&s.event?.type==='gate'){
@@ -96,7 +101,8 @@ export function societyStep(sim,eco,world,dt){const s=sim.s;s.gateSociety??={nex
  }
  if(contract?.complete&&!contract.delivered)s.people.gate_merchant.life={activity:'escort',target:{x:4,z:18},until:eco.s.time+180};
  if(contract?.complete&&!contract.delivered&&q&&Math.hypot(q.x-4,q.z-18)<1.4&&Math.hypot(q.x-p.x,q.z-p.z)<4&&eco.items('npc:gate_merchant').some(i=>i.type==='cargo')){contract.delivered=true;s.player.money+=contract.wages||0;contract.wages=0;s.people.gate_merchant.trust=Math.min(100,s.people.gate_merchant.trust+8);sim.relation('gate_merchant',8);sim.emit('npcRoutine',{id:'gate_merchant',text:'这一趟有人照应，省心。六文工钱收好，下回路上见。'});sim.save();}
- if(eco.s.time<state.nextTalk)return;state.nextTalk=eco.s.time+24;const rumors=s.chapterVersion===2?NEW_RUMORS:RUMORS,r=rumors[state.index++%rumors.length],a=positions[r.a],b=positions[r.b];
+ if(teaTalking||eco.s.time<state.nextTalk)return;state.nextTalk=eco.s.time+24;const rumors=s.chapterVersion===2?NEW_RUMORS:RUMORS,r=rumors[state.index++%rumors.length],a=positions[r.a],b=positions[r.b];
+ if(s.chapterVersion===2&&(activeWorldNews(s,r.a).length||activeWorldNews(s,r.b).length||knowledge(sim).clues[r.id]||r.id==='tax'&&(s.convoy?.closed||s.convoy?.missing||s.convoy?.aftermath)))return;
  if(!a||!b||Math.hypot(a.x-b.x,a.z-b.z)>4||[r.a,r.b].some(id=>s.people[id].hp<=0||s.people[id].life?.night||s.people[id].sickUntil>eco.s.time||s.people[id].stunnedUntil>(s.npcClock||0)||s.people[id].awareness?.caseOpen))return;
- if(Math.hypot(p.x-a.x,p.z-a.z)<8&&visibleBetween(p,a,world.obstacles,eco.s.objects)){learn(sim,r.id,'茶棚旁听');meet(sim,r.a);meet(sim,r.b);sim.emit('npcRoutine',{id:r.a,text:r.line});}
+ if(Math.hypot(p.x-a.x,p.z-a.z)<8&&visibleBetween(p,a,world.obstacles,eco.s.objects)){meet(sim,r.a);meet(sim,r.b);learn(sim,r.id,'茶棚旁听');sim.emit('npcRoutine',{id:r.a,text:r.line});}
 }

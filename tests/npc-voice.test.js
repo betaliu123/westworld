@@ -9,7 +9,9 @@ import {VOICE_TRIAL} from '../src/voice-lines.js';
 
 const config=JSON.parse(readFileSync(new URL('../assets/audio/voice-cast.json',import.meta.url)));
 const entries=JSON.parse(readFileSync(new URL('../assets/audio/npc/manifest.json',import.meta.url))).entries;
-const line={id:'traveler',text:VOICE_TRIAL[0].text};
+const cachedTraveler=entries.find(e=>e.actor==='traveler');
+const cachedTeaHost=entries.find(e=>e.actor==='tea_host');
+const line={id:cachedTraveler.actor,text:cachedTraveler.text};
 function fixture(fetchOverride){
  const starts=[],sources=[];
  const context={state:'running',destination:{},resume:async()=>{},decodeAudioData:async()=>({duration:4}),
@@ -36,7 +38,7 @@ test('all NPCs have an explicit casting; generated Python hashes match browser r
   assert.equal(request.signature,entry.signature,entry.actor+': '+entry.text);
   assert.equal(createHash('sha256').update(request.signature).digest('hex'),entry.hash);
  }
- for(const cue of VOICE_TRIAL)assert.ok(entries.some(e=>e.signature===voiceRequest(config,cue.actor,cue.text).signature));
+ for(const cue of VOICE_TRIAL)assert.ok(voiceRequest(config,cue.actor,cue.text),cue.actor);
 });
 test('text, voice, emotion, model and pace edits invalidate the old recording',()=>{
  const original=voiceRequest(config,line.id,line.text).signature;
@@ -63,6 +65,17 @@ test('first playback waits for its catalog; cached bubbles never call generation
  assert.equal(await voice.play({id:'traveler',text:'未配音的新句。'},{channel:'bubble'}),false);
  assert.equal(calls,0);
 });
+test('subtitle-only updates stay silent without requesting new clips or playing old text',async()=>{
+ let calls=0;const {voice,starts}=fixture(()=>{calls++;throw Error('subtitle update must not synthesize');});
+ for(const cue of [...VOICE_TRIAL,{actor:'traveler',text:'这是只改字幕、尚未录音的新句。'}]){
+  const signature=voiceRequest(config,cue.actor,cue.text).signature;
+  const cached=entries.some(e=>e.signature===signature);
+  const before=starts.length;
+  assert.equal(await voice.play({id:cue.actor,text:cue.text}),cached,cue.text);
+  assert.equal(starts.length-before,cached?1:0,cue.text);
+ }
+ assert.equal(calls,0);
+});
 test('concurrent requests for a new sentence generate once',async()=>{
  let calls=0;const text='一条新的对白。';const {voice}=fixture(async()=>{calls++;return {ok:true,json:async()=>generated(text)};});
  await Promise.all([voice.prepare({id:'traveler',text},{generate:true}),voice.prepare({id:'traveler',text},{generate:true})]);
@@ -71,8 +84,8 @@ test('concurrent requests for a new sentence generate once',async()=>{
 });
 test('skipped pending speech is cached without interrupting the next speaker',async()=>{
  let resolve;const text='迟到的录音。';const {voice,starts}=fixture(()=>new Promise(r=>resolve=r));
- await voice.init();const pending=voice.play({id:'traveler',text});await new Promise(r=>setImmediate(r));
- await voice.play({id:'tea_host',text:VOICE_TRIAL.find(c=>c.actor==='tea_host').text});
+ await voice.init();const pending=voice.play({id:'traveler',text},{generate:true});await new Promise(r=>setImmediate(r));
+ await voice.play({id:'tea_host',text:cachedTeaHost.text});
  const current=voice.source;resolve({ok:true,json:async()=>generated(text)});
  assert.equal(await pending,false);assert.equal(starts.length,1);assert.equal(voice.source,current);
  assert.ok(voice.entries.has(generated(text).signature));
@@ -87,6 +100,6 @@ test('mute, dialogue close, loss of validity and NPC silence stop playback',asyn
 test('generation errors or stale responses never fall back to an unrelated cached voice',async()=>{
  let calls=0;const {voice,starts}=fixture(async()=>{calls++;return {ok:true,json:async()=>entries[0]};});
  const fresh={id:'traveler',text:'这是改过的台词。'};
- assert.equal(await voice.play(fresh),false);assert.equal(await voice.play(fresh),false);
+ assert.equal(await voice.play(fresh,{generate:true}),false);assert.equal(await voice.play(fresh,{generate:true}),false);
  assert.equal(calls,1);assert.equal(starts.length,0);
 });

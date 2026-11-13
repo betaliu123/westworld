@@ -1,6 +1,7 @@
 import {PEOPLE} from './data.js';
 import {visibleBetween} from './npc-awareness.js';
 import {fixedPost,convoyTravelling} from './npc-posts.js';
+import {QINGHE_RIVERSIDE} from './locations.js';
 
 // Original schedules, inspired by the time-window / home-link structure in KCD2.
 // All deadlines use the persistent NPC clock; clock jumps select a new intention,
@@ -51,6 +52,7 @@ export function nightPlan(sim,id,q){const s=sim.s,n=s.people[id],h=hourOf(s),now
  if(id===s.watch?.holder||id===s.watch?.incoming)return null;
  // People whose immediate responsibility cannot be abandoned remain reachable.
  if(atNight&&['porter','fu'].includes(id))return {activity:'doze',target:fixedPost(s,id),night:true};
+ if(atNight&&id==='qinghe')return {activity:'riverside',target:{...QINGHE_RIVERSIDE}};
  if(atNight&&['relay','tea_host','scribe'].includes(id)&&!s.facts.enteredCity)
   return {activity:'doze',target:{x:base.x,z:base.z},night:true};
  if(atNight&&['gate_guard','gate_relief'].includes(id)&&(s.ecosystem?.hunger[id]||0)<65)return {activity:'doze',target:{x:id==='gate_guard'?-5:-8,z:27.2},night:true};

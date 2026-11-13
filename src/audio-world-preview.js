@@ -7,6 +7,9 @@ let started=false,muted=false,performing=false,previous=0,lastCue='';voice.setEn
 const players=['music','flute-poor','flute-good','creek','music-night','night','night-inn'].map($);
 const pauseSamples=()=>players.forEach(p=>p.pause());
 audio.init().then(c=>{for(const p of players)p.src=c[p.id]?.src||'';});
+audio.init().then(c=>{for(const [id,row]of Object.entries(c).filter(([id])=>id.startsWith('npc-'))){
+ const b=document.createElement('button');b.textContent=row.title;b.onclick=()=>{audio.stopReaction();lastCue=audio.playReaction(id,{position:()=>({...audio.position,z:audio.position.z+1.5})})?row.title+' · 已播放':row.title+' · 尚未就绪';};$('reactions').append(b);
+}});
 $('start').onclick=()=>{pauseSamples();started=true;audio.unlock();voice.unlock();};
 $('stop').onclick=()=>{started=performing=false;$('performance').textContent='开始吹笛';audio.stop();voice.stop();pauseSamples();};
 $('mute').onclick=()=>{muted=!muted;audio.setEnabled(!muted);voice.setEnabled(!muted);players.forEach(p=>p.muted=muted);if(!muted)audio.unlock();$('mute').textContent=muted?'恢复声音':'静音';};
@@ -23,6 +26,6 @@ function frame(now){
  const dt=Math.min(.05,(now-previous)/1000);previous=now;
  const position={gate:{x:-8,z:26},city:{x:0,z:0},creek:{x:-22,z:34},inn:{x:-11,z:-12}}[$('place').value];
  audio.update(dt,{started,...position,time:Number($('time').value),voice:!!voice.source,performing,musicTier:Number($('music-tier').value),hp:100});voice.update();
- const state=audio.status();$('status').textContent=`${state.running?'播放中':'已停止'} · ${state.context}\n已就绪 ${state.loaded.length} / ${Object.keys(audio.catalog||{}).length} · 循环 ${state.loops.join(' / ')}\n音乐 ${state.mix.music.toFixed(2)} · 夜曲 ${state.mix['music-night'].toFixed(2)} · 夜风 ${state.mix.night.toFixed(2)} · 客栈 ${state.mix['night-inn'].toFixed(2)} · 人群 ${state.mix.city.toFixed(2)} · 溪水 ${state.mix.creek.toFixed(2)} · 对白 ${voice.source?'播放中':'无'}\n${lastCue}${errors.length?'\n错误：'+errors.join('; '):''}`;
+ const state=audio.status();$('status').textContent=`${state.running?'播放中':'已停止'} · ${state.context}\n已就绪 ${state.loaded.length} / ${Object.keys(audio.catalog||{}).length} · 循环 ${state.loops.join(' / ')}\n音乐 ${state.mix.music.toFixed(2)} · 夜曲 ${state.mix['music-night'].toFixed(2)} · 夜风 ${state.mix.night.toFixed(2)} · 客栈 ${state.mix['night-inn'].toFixed(2)} · 人群 ${state.mix.city.toFixed(2)} · 溪水 ${state.mix.creek.toFixed(2)} · 对白 ${voice.source?'播放中':'无'}\n反应 ${state.reaction||'无'}\n${lastCue}${errors.length?'\n错误：'+errors.join('; '):''}`;
  requestAnimationFrame(frame);
 }requestAnimationFrame(frame);

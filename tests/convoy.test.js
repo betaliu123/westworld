@@ -13,7 +13,7 @@ function dress(g,role='挑夫'){const item=g.eco.create(role==='挑夫'?'役夫�
 
 test('porter refuses first and offers money, strength and actual feminine clothing charm in the same turn',()=>{
  const g=setup();g.p.gender='male';dress(g,'女装行客');const before=g.eco.items('player').length,r=act(g,'work');
- assert.match(r.text,/不招/);assert.equal(g.eco.items('player').length,before);assert.equal(convoyApproved(g.s),false);
+ assert.match(r.text,/人手.*够了/);assert.equal(g.eco.items('player').length,before);assert.equal(convoyApproved(g.s),false);
  assert.deepEqual(chapterFollowups(g.sim,'porter',r).map(a=>a.id),['ch_convoy_bribe','ch_convoy_strength','ch_convoy_charm']);
  const original=g.eco.items('player').find(i=>i.name==='旧布衣');equipAppearance(g.sim,original.id,'body');
  assert.ok(!chapterOptions(g.sim,'porter').some(a=>a.id==='ch_convoy_charm'));assert.ok(act(g,'charm').error);

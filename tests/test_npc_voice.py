@@ -4,8 +4,12 @@ import multiprocessing
 from pathlib import Path
 import tempfile
 import unittest
+import io
+from contextlib import redirect_stdout
+from unittest.mock import patch
+from urllib.error import HTTPError
 
-from tools.npc_voice import VoiceStore, VoiceUnavailable, canonical
+from tools.npc_voice import VoiceStore, VoiceUnavailable, canonical, main
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -71,6 +75,32 @@ class VoiceTests(unittest.TestCase):
 
     def test_numeric_edits_keep_browser_signature_format(self):
         self.assertEqual(canonical({'speed': 1.0, 'pitch': -0.0, 'vol': 1}), '{"pitch":0,"speed":1,"vol":1}')
+
+    def test_dry_run_reports_missing_without_credentials_network_or_cache_writes(self):
+        source = self.root / 'src/voice-lines.js'
+        source.parent.mkdir()
+        source.write_text('// fixture', encoding='utf-8')
+        report = self.root / 'plan.json'
+        rows = json.dumps([{'actor': 'player_female', 'text': '劳你通融。'}], ensure_ascii=False).encode('utf-8')
+        with patch('tools.npc_voice.ROOT', self.root), patch('sys.argv', ['npc_voice.py', '--dry-run', '--report', str(report)]), \
+             patch('tools.npc_voice.subprocess.check_output', return_value=rows), \
+             patch.object(VoiceStore, '_remote', side_effect=AssertionError('paid call')), \
+             patch.object(VoiceStore, 'seed_audition', side_effect=AssertionError('cache write')), redirect_stdout(io.StringIO()):
+            main()
+        result = json.loads(report.read_text(encoding='utf-8'))
+        self.assertEqual(result['counts'], {'missing': 1})
+        self.assertEqual(result['attempts'], 0)
+        self.assertFalse((self.root / 'assets/audio/npc').exists())
+        self.assertFalse((self.root / '.artifacts').exists())
+
+    def test_http_error_reports_only_status_and_counts_attempt(self):
+        def failure(*_):
+            raise HTTPError('https://example.invalid', 429, 'secret-body', {}, None)
+        store = self.store(1, failure)
+        with self.assertRaisesRegex(VoiceUnavailable, '^http_429$'):
+            store.get('traveler', '请稍候。')
+        self.assertEqual(store.generated, 1)
+        self.assertEqual(store.manifest()['entries'], [])
 
     def test_watcher_and_server_share_one_generation(self):
         jobs = [multiprocessing.Process(target=concurrent_writer, args=(str(self.root),)) for _ in range(2)]

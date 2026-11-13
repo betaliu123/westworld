@@ -3,10 +3,12 @@ import {caseBook,POLICE,investigationReady,investigationActive,inInvestigationAr
 import {visibleBetween} from './npc-awareness.js';
 import {routinePath} from './npc-navigation.js';
 import {turnToward} from './interaction.js';
+import {activeConflict} from './combat-conflict.js';
+import {publishWantedNotices} from './wanted-records.js';
 
 export function investigationMotion(world,id,n,dt){
  const sim=world.sim,s=sim.s;if(s.chapterVersion!==2)return false;expireInvestigations(sim);
- if(!investigationReady(s,id)||['fight','warn','flee'].includes(s.people[id].awareness?.state)||s.complaint?.id===id)return false;
+ if(!investigationReady(s,id)||['fight','warn','flee'].includes(s.people[id].awareness?.state)||s.complaint?.id===id&&s.complaint.phase!=='conflict')return false;
  const now=s.npcClock||0,b=caseBook(s),positions=Object.fromEntries([...world.npcs].map(([id,n])=>[id,n.actor.position]));
  let c=b.cases.find(c=>c.assigned===id&&['enroute','search'].includes(c.state)),goal;
  if(!c&&POLICE.includes(id)){
@@ -45,10 +47,11 @@ export function investigationFrame(world){
  expireInvestigations(world.sim);
  if(world.sim.s.chapterVersion!==2||!world.playing||world.locked||world.cinematic||world.t<(world.nextBodyScan||0))return;
  world.nextBodyScan=world.t+1;const positions=Object.fromEntries([...world.npcs].map(([id,n])=>[id,{x:n.actor.position.x,z:n.actor.position.z,facing:n.actor.rotation.y}]));
- discoverBodies(world.sim,positions,world.obstacles);discoverMissingProperty(world.sim,positions,world.obstacles);noticeInvestigations(world.sim,positions,world.obstacles);
+ discoverBodies(world.sim,positions,world.obstacles);discoverMissingProperty(world.sim,positions,world.obstacles);noticeInvestigations(world.sim,positions,world.obstacles);publishWantedNotices(world.sim);
 }
 export function mountInvestigation({getSim,world,dialogue,checkReveal,available,close,log,wanted}){
  world.onInvestigation=(c,id)=>{
+  if(activeConflict(getSim().s,Object.fromEntries([...world.npcs].map(([id,n])=>[id,n.actor.position]))))return false;
   if(available()&&wanted?.handles(id)){wanted.intercept(id);return true;}
   if(!available())return false;const sim=getSim();if(!investigationActive(sim.s,c)||!inInvestigationArea(c,sim.s.player)||!investigationCanAsk(sim.s,c,id))return false;
   const key=investigationSignature(sim.s),context=investigationContext(sim.s,c,id);c.playerNoticed=true;close();world.clearReady();world.auto=null;

@@ -1,0 +1,1428 @@
+{
+  "schema": 1,
+  "catalog": "chapter",
+  "model": "speech-2.8-hd",
+  "endpoint": "https://ai.leihuo.netease.com/minimax/v1/t2a_v2",
+  "startedAt": "2026-11-12T02:33:59Z",
+  "limit": 90,
+  "requestTimeout": 180,
+  "dryRun": true,
+  "entries": [
+    {
+      "actor": "gate_guard",
+      "text": "应奉局押纲，关上须查得紧些。",
+      "sources": [
+        "src/chapter-speech.js#gate_rules"
+      ],
+      "hash": "cc2565c15383f719ca73c1659b02945a4954dfe12b40593d0d427052a7bf5455",
+      "status": "missing"
+    },
+    {
+      "actor": "gate_guard",
+      "text": "放你进去，出了事算谁的？",
+      "sources": [
+        "src/chapter-speech.js#gate_no_papers"
+      ],
+      "hash": "496395150eaf2250a6a434033e8851370cdbccf0bac591c8c000397d8eab612b",
+      "status": "missing"
+    },
+    {
+      "actor": "gate_guard",
+      "text": "让作保的人当面来。",
+      "sources": [
+        "src/chapter-speech.js#gate_guarantor"
+      ],
+      "hash": "7daaa4c277fbf6f1670af3d151dcc6cf8201cc0a4c29b63aed21e391d4914d44",
+      "status": "missing"
+    },
+    {
+      "actor": "gate_relief",
+      "text": "上头押着花石纲。今日查得紧。",
+      "sources": [
+        "src/chapter-speech.js#gate_rules"
+      ],
+      "hash": "19df3afe3e445264003f64d0486cff4243328d40f6439281183364f5d0ada9e1",
+      "status": "missing"
+    },
+    {
+      "actor": "gate_relief",
+      "text": "放你进去，出了事算谁的？",
+      "sources": [
+        "src/chapter-speech.js#gate_no_papers"
+      ],
+      "hash": "f77af763eaecaf7605db3ca05d1ecf0a49b30915240737ee3c8812e5bf2e1eae",
+      "status": "missing"
+    },
+    {
+      "actor": "gate_relief",
+      "text": "让作保的人当面来。",
+      "sources": [
+        "src/chapter-speech.js#gate_guarantor"
+      ],
+      "hash": "3a6c9d0053eb2b3e66dad5baf1f9a8e2470db415fabe50f220ca845d67533ec5",
+      "status": "missing"
+    },
+    {
+      "actor": "gate_merchant",
+      "text": "赵成。东溪来的。",
+      "sources": [
+        "src/chapter-speech.js#merchant_name"
+      ],
+      "hash": "68670e6ea0331faefbfe773a1a7ad1a68f237587c2a7dad6f3d9e1185fac3c02",
+      "status": "missing"
+    },
+    {
+      "actor": "gate_merchant",
+      "text": "韩校尉认得我。今日也没放松查。",
+      "sources": [
+        "src/chapter-speech.js#merchant_guard"
+      ],
+      "hash": "3b878b1e5f6f19b435953b91efcbb5fb1189bdd5614fc470482a9e372bd150f9",
+      "status": "missing"
+    },
+    {
+      "actor": "relay",
+      "text": "陈小乙。原先替驿站跑腿的。",
+      "sources": [
+        "src/chapter-speech.js#runner_name"
+      ],
+      "hash": "8ea85c67cd14fa9fca24680c8f29604bf1b189dfe643af82944dab41793ce764",
+      "status": "missing"
+    },
+    {
+      "actor": "relay",
+      "text": "六文。袖口刚补过。",
+      "sources": [
+        "src/chapter-speech.js#clothes_price"
+      ],
+      "hash": "e792aff82975b0bda76e9d405d9cc603374bffdba9596603a27d14a65582f930",
+      "status": "missing"
+    },
+    {
+      "actor": "tea_host",
+      "text": "茶还卖着，差费倒先催上了。",
+      "sources": [
+        "src/chapter-speech.js#tea_worry"
+      ],
+      "hash": "a0dac9c299424177120bc8898c5f3241b79a2fa8d63fe4db4cb851844c63150b",
+      "status": "missing"
+    },
+    {
+      "actor": "tea_host",
+      "text": "应奉局催的，两文。茶棚也躲不过。",
+      "sources": [
+        "src/chapter-speech.js#tea_fee"
+      ],
+      "hash": "7e581073ecb7bd88c98436ba6ce50fbcd9e86fb9b7af60653005080dd39d0cff",
+      "status": "missing"
+    },
+    {
+      "actor": "tea_host",
+      "text": "应奉局惦记上她的琴了。做娘的，哪能放心。",
+      "sources": [
+        "src/chapter-speech.js#tea_daughter"
+      ],
+      "hash": "0cfa4221faa9ce2e52e8b75e0172772441dfe7b17a0cd398a546a452c5e076ca",
+      "status": "missing"
+    },
+    {
+      "actor": "tea_host",
+      "text": "驿舍那边刚补好一身旧差服。",
+      "sources": [
+        "src/chapter-speech.js#tea_coat"
+      ],
+      "hash": "3add8ca1cc83999d16cf590bb4206f3c9cac19ed17b3c0d7b9bf6ca8491ba6a8",
+      "status": "missing"
+    },
+    {
+      "actor": "tea_host",
+      "text": "抬箱的人归周大石管。他在车旁。",
+      "sources": [
+        "src/chapter-speech.js#tea_porter"
+      ],
+      "hash": "498892d82c94e456674b891377734fdf845e0dbb766e331bc6c4de713385fcaf",
+      "status": "missing"
+    },
+    {
+      "actor": "scribe",
+      "text": "眼睛倒尖。针囊认得，规矩也该懂。",
+      "sources": [
+        "src/chapter-speech.js#scribe_secret"
+      ],
+      "hash": "d98d1b8d867e17c4a73e2cf83986de60253e7e249c7ace7fc26642c377980af2",
+      "status": "missing"
+    },
+    {
+      "actor": "scribe",
+      "text": "五文。收好了，别混进伤药。",
+      "sources": [
+        "src/chapter-speech.js#poison_price"
+      ],
+      "hash": "f434467a4ab86864bf07d4ea5ff0c7c95d434f7909936ef6b38f57870e745233",
+      "status": "missing"
+    },
+    {
+      "actor": "traveler",
+      "text": "阁下也在等进城？坐着，也能看见些事。",
+      "sources": [
+        "src/chapter-speech.js#royal_intro",
+        "src/voice-lines.js#VOICE_TRIAL"
+      ],
+      "hash": "a8a1ede32c40be418396fe25a570d03da11f8251a959c47e7467ac4b6049f32a",
+      "status": "cached"
+    },
+    {
+      "actor": "traveler",
+      "text": "赵闲舟。出门用的名字。",
+      "sources": [
+        "src/chapter-speech.js#royal_name"
+      ],
+      "hash": "9c7e579280c9afbb994e36f2904dd12402843ad1792b0bcbbf65d97394771cfb",
+      "status": "missing"
+    },
+    {
+      "actor": "traveler",
+      "text": "方才那两文，我看见了。我替你向关上说一句。",
+      "sources": [
+        "src/chapter-speech.js#royal_offer"
+      ],
+      "hash": "54365b9b9a1749c4ad47a4236131a83a0dd4939c56a72d0bc09a3002c27e18b1",
+      "status": "missing"
+    },
+    {
+      "actor": "traveler",
+      "text": "我有事相托，你再听听。不是卖身契。",
+      "sources": [
+        "src/chapter-speech.js#royal_terms"
+      ],
+      "hash": "53d35f31ddd9428ff96a10aa727a8530ca61ae4abf90ef7a016ab6c24f9aff1e",
+      "status": "missing"
+    },
+    {
+      "actor": "traveler",
+      "text": "你也进城了。路上可还顺利？",
+      "sources": [
+        "src/chapter-speech.js#entry_story"
+      ],
+      "hash": "2fb9cece87705dc5675774f4c88a438e66b8ea8d1a974f07b384aed9a4f7a30a",
+      "status": "missing"
+    },
+    {
+      "actor": "traveler",
+      "text": "我想查花石纲的副账。你肯帮我留意么？",
+      "sources": [
+        "src/chapter-speech.js#royal_task_offer"
+      ],
+      "hash": "c5bd6772700497323bd7d7c06b8c21f4a42975ad77ffbe2c4e55b1442b209615",
+      "status": "missing"
+    },
+    {
+      "actor": "qinghe",
+      "text": "我想去京里听听，那些曲子怎么唱。",
+      "sources": [
+        "src/chapter-speech.js#qinghe_wish"
+      ],
+      "hash": "35b4179b864c39b7cbb0af4a83ae2e124887073aafb1be5adc47803493cffd59",
+      "status": "missing"
+    },
+    {
+      "actor": "qinghe",
+      "text": "想去，不等于任人把名字填上。",
+      "sources": [
+        "src/chapter-speech.js#qinghe_boundary"
+      ],
+      "hash": "98684ac5b107c42ec25be0fc64ada4fbea3b0bbd2844d1f96c7d06fea3aa6359",
+      "status": "missing"
+    },
+    {
+      "actor": "qinghe",
+      "text": "是我的名字。他们竟先写好了。",
+      "sources": [
+        "src/chapter-speech.js#list_show"
+      ],
+      "hash": "684dc2da3f454ceb5ab540423540c05b0667c3e80a314d2b56c8bfb29edd479e",
+      "status": "missing"
+    },
+    {
+      "actor": "qinghe",
+      "text": "我想去，也要自己选日子。你替我去，先说清替我做什么。",
+      "sources": [
+        "src/chapter-speech.js#qinghe_alternative"
+      ],
+      "hash": "35ac81402c932e6f441efb92ed86cb472d05a7264995dafabf61c016ef1a6bae",
+      "status": "missing"
+    },
+    {
+      "actor": "qinghe",
+      "text": "让我再想一想。也请你别替我应下。",
+      "sources": [
+        "src/chapter-speech.js#qinghe_pause"
+      ],
+      "hash": "b94e33c9dcbfff443fb807d2a5f99aa71032a582c2dd1660203225bad4427a1c",
+      "status": "missing"
+    },
+    {
+      "actor": "shen",
+      "text": "戒指还没找着，她又不肯听我说。",
+      "sources": [
+        "src/chapter-speech.js#shen_concern"
+      ],
+      "hash": "41b9e5b3bda4c5f6e35fe92f272d363c200f74edacb093504249adb06ef9fc30",
+      "status": "missing"
+    },
+    {
+      "actor": "su",
+      "text": "我想唱自己的曲子。去京城，也要自己走去。",
+      "sources": [
+        "src/chapter-speech.js#su_wish"
+      ],
+      "hash": "3c3d2a1576b71d0c8c18e4963bda39e7fa478294961bfc78b40beaa067a6deca",
+      "status": "missing"
+    },
+    {
+      "actor": "su",
+      "text": "戒指还回来，我收着。亲事，我还没答应。",
+      "sources": [
+        "src/chapter-speech.js#su_boundary"
+      ],
+      "hash": "cc594f051319a19e040c4fa72655b66253d3a041495202678abd20d704bd62a9",
+      "status": "missing"
+    },
+    {
+      "actor": "fu",
+      "text": "应奉局定的名册。我只管按册交人交货。",
+      "sources": [
+        "src/chapter-speech.js#fu_manifest"
+      ],
+      "hash": "8d15cd235d4e195dfb50d4abc6a2ca1fad4e64da8006871fa56a5d351c368f06",
+      "status": "missing"
+    },
+    {
+      "actor": "prisoner",
+      "text": "账抄了两份，数却不一样。我多问了一句，就到了这里。",
+      "sources": [
+        "src/chapter-speech.js#ledger_story"
+      ],
+      "hash": "1c4e4460aa371ee77c9f072a80bbf0c8419fbfb0f06f90929eb346478886ba99",
+      "status": "missing"
+    },
+    {
+      "actor": "prisoner",
+      "text": "花石纲的副账。我留着原本。",
+      "sources": [
+        "src/chapter-speech.js#ledger_where"
+      ],
+      "hash": "f4d641fedfe00dabc15bbf60fe5f319aac9997db0bee6715230f9286acba17a5",
+      "status": "missing"
+    },
+    {
+      "actor": "prisoner",
+      "text": "给你。我盼有人肯查。我说的话，得拿账去对。",
+      "sources": [
+        "src/chapter-speech.js#ledger_offer"
+      ],
+      "hash": "2e8372c32eddee57321e4bbfa12394be1af2098b82b89238c195d89ba22ca1bd",
+      "status": "missing"
+    },
+    {
+      "actor": "prisoner",
+      "text": "顾钦差，或那位锦衣客。我盼他们肯查。",
+      "sources": [
+        "src/chapter-speech.js#ledger_who"
+      ],
+      "hash": "91cda348caf9825fb7824e1064108e2862045b7f110b019cc879c59a1f63c990",
+      "status": "missing"
+    },
+    {
+      "actor": "tea",
+      "text": "两文一份。药案可以借你。",
+      "sources": [
+        "src/chapter-speech.js#herb_offer"
+      ],
+      "hash": "7e145c046315be8c67c48c2e9c4135cc26e7509f8b8ceac8eb053bd187c22349",
+      "status": "missing"
+    },
+    {
+      "actor": "tea",
+      "text": "这碗药还没研好。替我搭把手？",
+      "sources": [
+        "src/chapter-speech.js#grind_offer"
+      ],
+      "hash": "be02875165c4a35b69ec7ffbe893d21ebabbdf41a7ff98d59d9a26a0ac934c82",
+      "status": "missing"
+    },
+    {
+      "actor": "traveler",
+      "text": "方才劳你照看。我替你向关上说一句。",
+      "sources": [
+        "src/chapter-speech.js#royal_offer"
+      ],
+      "hash": "9dd079500350765cfe616fde42937a387367e0700a402feb6476853ba0e93870",
+      "status": "missing"
+    },
+    {
+      "actor": "traveler",
+      "text": "关是进了。今后，拿自己的作为说话。",
+      "sources": [
+        "src/chapter-speech.js#entry_story"
+      ],
+      "hash": "6d9849bbcc60e4e4a4403f8bddc9be78576325ab2d81c2422aae3e685827f766",
+      "status": "missing"
+    },
+    {
+      "actor": "tea_host",
+      "text": "她想往京里去。我却怕她走远。",
+      "sources": [
+        "src/chapter-speech.js#tea_daughter"
+      ],
+      "hash": "81954c2c2838668c2f1f17e6475059bcc1a0bd3f4c10b27f29647f245df18ff9",
+      "status": "missing"
+    },
+    {
+      "actor": "traveler",
+      "text": "这位同我一道。来历我来担。",
+      "sources": [
+        "src/main.js#royalGuaranteeReady"
+      ],
+      "hash": "2cde7a2fb10fd0deacbd0bd1fc57bdd2b01d4b1ca8356e09c8a2ab29316d55ad",
+      "status": "missing"
+    },
+    {
+      "actor": "gate_guard",
+      "text": "既然当面作保，请过关。",
+      "sources": [
+        "src/main.js#royalGuaranteeReady"
+      ],
+      "hash": "f754587c8fbee08b9bd7f9d048518731e6e198f1330af864a728a0f120c6957f",
+      "status": "missing"
+    },
+    {
+      "actor": "gate_relief",
+      "text": "既然当面作保，请过关。",
+      "sources": [
+        "src/main.js#royalGuaranteeReady"
+      ],
+      "hash": "4cbbb7e271f1b1dcb48449f1217c095d41e7d6c40bfd4c1c97a7e40b27c0434d",
+      "status": "missing"
+    },
+    {
+      "actor": "player_female",
+      "text": "先看我搬这块石头，再说缺不缺人。",
+      "sources": [
+        "src/voice-lines.js#convoyStrength"
+      ],
+      "hash": "5ec388d9918af1517345208612337633a67d8c06c5cd576cb921714862102fcf",
+      "status": "cached"
+    },
+    {
+      "actor": "player_male",
+      "text": "先看我搬这块石头，再说缺不缺人。",
+      "sources": [
+        "src/voice-lines.js#convoyStrength"
+      ],
+      "hash": "62090e92b05a533b7432c1965d8fe853b088f070bdf3691f62b502bf1751414b",
+      "status": "cached"
+    },
+    {
+      "actor": "player_female",
+      "text": "周大哥，替我留个位置可好？我会记着你这份情。",
+      "sources": [
+        "src/voice-lines.js#convoyCharm"
+      ],
+      "hash": "b020af62f094238d12f766ec6f6f7d3dd102ba6fda5d1e39910e50e5378c9a93",
+      "status": "cached"
+    },
+    {
+      "actor": "player_male",
+      "text": "周大哥，替我留个位置可好？我会记着你这份情。",
+      "sources": [
+        "src/voice-lines.js#convoyCharm"
+      ],
+      "hash": "0728ebc188cddc2b7e1cc34481ff3e7208e0e2d39ef0e04b07959e5de5f23796",
+      "status": "cached"
+    },
+    {
+      "actor": "player_female",
+      "text": "六文茶钱，劳你给我留个位置。",
+      "sources": [
+        "src/voice-lines.js#convoyPayment"
+      ],
+      "hash": "aaf91ac114df3453ca8bba9a89643f398027bd86b7a969cadc651f0548495f3f",
+      "status": "cached"
+    },
+    {
+      "actor": "player_male",
+      "text": "六文茶钱，劳你给我留个位置。",
+      "sources": [
+        "src/voice-lines.js#convoyPayment"
+      ],
+      "hash": "893777b6c79af70a920abd0242654d4788ba755d5842a78812a9cf3e3284a327",
+      "status": "cached"
+    },
+    {
+      "actor": "porter",
+      "text": "搬起来，再放稳。别伤了腰。",
+      "sources": [
+        "src/voice-lines.js#convoyStrengthReply"
+      ],
+      "hash": "bfdc6b3840d4abd01f863c1109200b40e3de73535eabfcfdff86f37c987bd745",
+      "status": "missing"
+    },
+    {
+      "actor": "player_female",
+      "text": "举手之劳，你安好便好。",
+      "sources": [
+        "src/aftermath-encounters.js#thanks_letter:accept"
+      ],
+      "hash": "bfe872cd24731a12b06f7526b7cef8a1422b0e31f1e7f69fd71c1d9171efe7dc",
+      "status": "cached"
+    },
+    {
+      "actor": "player_male",
+      "text": "举手之劳，你安好便好。",
+      "sources": [
+        "src/aftermath-encounters.js#thanks_letter:accept"
+      ],
+      "hash": "a7b7fa5bb38200983f67cf46cfa0bb8528fb93e835a95675afd6f759d810321c",
+      "status": "cached"
+    },
+    {
+      "actor": "traveler",
+      "text": "这份情，我领了。",
+      "sources": [
+        "src/aftermath-encounters.js#thanks_letter:accept"
+      ],
+      "hash": "d76babc91f0748a32de6868864bcb4ed5b28a03387480d5ad6e82a65ba341347",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "承你照应，心里踏实多了。",
+      "sources": [
+        "src/aftermath-encounters.js#thanks_letter:accept"
+      ],
+      "hash": "d1c990da03ff74de90090958f109f0871f4dbf49190644cb7a4b64e5e367ffa9",
+      "status": "cached"
+    },
+    {
+      "actor": "gate_guard",
+      "text": "你肯出这份力，我记着。",
+      "sources": [
+        "src/aftermath-encounters.js#thanks_letter:accept"
+      ],
+      "hash": "05b6d009d49b10f39952436d09e32e884b1ced6a17753e996ca51d6f09967531",
+      "status": "cached"
+    },
+    {
+      "actor": "su",
+      "text": "你的心意，我记着。",
+      "sources": [
+        "src/aftermath-encounters.js#thanks_letter:accept"
+      ],
+      "hash": "447435ea5a550ede350475ec2babab1fd696880398fa4eddbd1320f735713cce",
+      "status": "cached"
+    },
+    {
+      "actor": "qing",
+      "text": "承你的情。",
+      "sources": [
+        "src/aftermath-encounters.js#thanks_letter:accept"
+      ],
+      "hash": "753276c96b1eb2b64bd95033efdd233efa30531bb2738a812e67701786251203",
+      "status": "cached"
+    },
+    {
+      "actor": "beggar",
+      "text": "嗯，那回多亏了你。",
+      "sources": [
+        "src/aftermath-encounters.js#thanks_letter:accept"
+      ],
+      "hash": "0c22d478c42fd67f45b5329f002f4991d1b366d2f26ef211d85e78066de53e2d",
+      "status": "cached"
+    },
+    {
+      "actor": "player_female",
+      "text": "那件事是我做得不妥，向你赔个不是。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:apologize"
+      ],
+      "hash": "64849e1cdef4902e80b9227851fa910fd7328ded2506bc1363db319380cd390e",
+      "status": "cached"
+    },
+    {
+      "actor": "player_male",
+      "text": "那件事是我做得不妥，向你赔个不是。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:apologize"
+      ],
+      "hash": "d126c3a56611998945f2b48d591254ac4f80ee7cbd777c91a313dc00855c6207",
+      "status": "cached"
+    },
+    {
+      "actor": "traveler",
+      "text": "这声歉，我领了。旧事却不能当作没有。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:apologize"
+      ],
+      "hash": "9b96b5fd53a45c0bcbfd42660edb6e3748345987424092eb05aa250049e01d51",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "这声歉我收下。做买卖，经不起折腾。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:apologize"
+      ],
+      "hash": "bfaa4ec69ec6f5d621aad3cb47732322d933e9533708a39c115c60cf18cf3a31",
+      "status": "cached"
+    },
+    {
+      "actor": "gate_guard",
+      "text": "肯认错，总比绕话强。往后莫再犯。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:apologize"
+      ],
+      "hash": "d00144eaf80dd11e8d46c259a3b3c7b4a7c5ded9a606d36cb40ebd265af76984",
+      "status": "cached"
+    },
+    {
+      "actor": "su",
+      "text": "这声歉，我听见了。日后好好相处。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:apologize"
+      ],
+      "hash": "7fbbd09b1504330a255382ddf75cb8fb5c5d9870fb785329441f0094675ff657",
+      "status": "cached"
+    },
+    {
+      "actor": "qing",
+      "text": "这声不是，我受了。别再有下回。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:apologize"
+      ],
+      "hash": "e469e887033691e86efcd6e05be62eacaba8b6e7f6b6011a60a716df3e1df1b2",
+      "status": "cached"
+    },
+    {
+      "actor": "beggar",
+      "text": "肯当面认一句，也罢。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:apologize"
+      ],
+      "hash": "0045c7724edfc6929436d9988ee6bf9e53b70f863d702a2edd9a6cc2f7950dda",
+      "status": "cached"
+    },
+    {
+      "actor": "player_female",
+      "text": "那时一时情急，行事失了分寸，并非存心与你过不去。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:argue"
+      ],
+      "hash": "bf8db9d74b8a847e532510e43269e0063da8f0fe37bca0048a0c8f52ec72acae",
+      "status": "cached"
+    },
+    {
+      "actor": "player_male",
+      "text": "那时一时情急，行事失了分寸，并非存心与你过不去。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:argue"
+      ],
+      "hash": "299e840ffafbd63e16c2170b37eb8e11b54327a9ace34bbc36ff8f11fe05a0b1",
+      "status": "cached"
+    },
+    {
+      "actor": "traveler",
+      "text": "这番解释，我姑且听着。往后还看行事。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:argue",
+        "src/aftermath-encounters.js#rumor_spread:argue"
+      ],
+      "hash": "6fd8427a49ca6fd278595d4ce6d84eb1678200e388bf7c18d145195778784887",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "你这么说，我心里好受些。下回可别了。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:argue",
+        "src/aftermath-encounters.js#rumor_spread:argue"
+      ],
+      "hash": "72f24ba46a50c054d64400ea8f070b2c16ade06414e7d1bfca72f4ed3e9db370",
+      "status": "cached"
+    },
+    {
+      "actor": "gate_guard",
+      "text": "话我听进去了，往后看你怎么做。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:argue",
+        "src/aftermath-encounters.js#rumor_spread:argue"
+      ],
+      "hash": "f96440a9cd8012691a2e232bc3ad7ddc53840e079d8205162dd62192ade6e1c5",
+      "status": "cached"
+    },
+    {
+      "actor": "su",
+      "text": "你肯细说，我也愿意再听一回。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:argue",
+        "src/aftermath-encounters.js#rumor_spread:argue"
+      ],
+      "hash": "7afd8ccb19acffd94da110e12677f7826eb794bf1dd459b9231b43e4e7e825ef",
+      "status": "cached"
+    },
+    {
+      "actor": "qing",
+      "text": "这一回，听你把话说完。往后看行动。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:argue",
+        "src/aftermath-encounters.js#rumor_spread:argue"
+      ],
+      "hash": "3ba84cc4f6f70852aaf69a9d73f2cb53c408f410021fdddfe4ee3492095bbdc0",
+      "status": "cached"
+    },
+    {
+      "actor": "beggar",
+      "text": "我听见了。往后再看吧。",
+      "sources": [
+        "src/aftermath-encounters.js#grudge:argue",
+        "src/aftermath-encounters.js#rumor_spread:argue"
+      ],
+      "hash": "5432806021f21c980bfb41f9cd1576a7df7be7588a774a1b7902d9deb23aee7a",
+      "status": "cached"
+    },
+    {
+      "actor": "player_female",
+      "text": "话传了几道，难免变了样。还请听我分说，莫只凭传言定论。",
+      "sources": [
+        "src/aftermath-encounters.js#rumor_spread:argue"
+      ],
+      "hash": "3d0b451ea8550984622cca121594c04fc4351672ee629b9ee8c82a02ebe662d1",
+      "status": "cached"
+    },
+    {
+      "actor": "player_male",
+      "text": "话传了几道，难免变了样。还请听我分说，莫只凭传言定论。",
+      "sources": [
+        "src/aftermath-encounters.js#rumor_spread:argue"
+      ],
+      "hash": "9ccd5ff91cb98ed01c844f6d591cd7515ae8e5bdbaf1ed2db0d32ab12fee0fbb",
+      "status": "cached"
+    },
+    {
+      "actor": "player_female",
+      "text": "这身衣裳的来历，我愿当面说明。请把疑处说清。",
+      "sources": [
+        "src/appearance.js#disguiseReplies"
+      ],
+      "hash": "2937c017a5102948fb893fafaa24a63abafefb86dbc8fb1c478d4116fb4976c8",
+      "status": "cached"
+    },
+    {
+      "actor": "player_male",
+      "text": "这身衣裳的来历，我愿当面说明。请把疑处说清。",
+      "sources": [
+        "src/appearance.js#disguiseReplies"
+      ],
+      "hash": "787d43832c32732b4fa27cdf492ff92aca7c8c3b41d5e9104aa86c58d262b0a1",
+      "status": "cached"
+    },
+    {
+      "actor": "player_female",
+      "text": "有什么疑处，请当面说清。",
+      "sources": [
+        "src/appearance.js#disguiseReplies"
+      ],
+      "hash": "b1dea3810bb3a49dacb7b43957ad812cdb6e47c1d1b264259d99b28e6032e148",
+      "status": "cached"
+    },
+    {
+      "actor": "player_male",
+      "text": "有什么疑处，请当面说清。",
+      "sources": [
+        "src/appearance.js#disguiseReplies"
+      ],
+      "hash": "918db90c8394b33cd6edde0c8ea13cdef73970c3737700646f1674c426219970",
+      "status": "cached"
+    },
+    {
+      "actor": "player_female",
+      "text": "腹中一阵阵地疼，神色难免不对。请把疑处说清。",
+      "sources": [
+        "src/appearance.js#disguiseReplies"
+      ],
+      "hash": "44b3f72e295cfa91406bab4bfa48e27db3e5aa534b94468f7fa02a7aed92a18e",
+      "status": "cached"
+    },
+    {
+      "actor": "player_male",
+      "text": "腹中一阵阵地疼，神色难免不对。请把疑处说清。",
+      "sources": [
+        "src/appearance.js#disguiseReplies"
+      ],
+      "hash": "b2d7176bf3522bda47064944aa85f267684e9510e288a5343130c894be654e8f",
+      "status": "cached"
+    },
+    {
+      "actor": "player_female",
+      "text": "今日气血亏损，举止有些失常。有什么疑处，请直说。",
+      "sources": [
+        "src/appearance.js#disguiseReplies"
+      ],
+      "hash": "6ddc0b32b0833128273177461867d0079d019e52c1bdcee367f9b32d2766c7ed",
+      "status": "cached"
+    },
+    {
+      "actor": "player_male",
+      "text": "今日气血亏损，举止有些失常。有什么疑处，请直说。",
+      "sources": [
+        "src/appearance.js#disguiseReplies"
+      ],
+      "hash": "71eb07eb53758c4d119c86586e79632bbdbe948074e39abb10d2432ec699c873",
+      "status": "cached"
+    },
+    {
+      "actor": "traveler",
+      "text": "城门查得这样紧……你是怎么进来的？",
+      "sources": [
+        "src/voice-lines.js#VOICE_TRIAL"
+      ],
+      "hash": "a33d834c08d7f738027f62c22722dbc087159fcbcf5840bc994e94e2c44e57f0",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "茶刚沏好。客官要坐下歇歇，还是带几个热饼走？",
+      "sources": [
+        "src/voice-lines.js#VOICE_TRIAL"
+      ],
+      "hash": "cfddd46aea79f1e744adcc41a48d2ababec897ea0ad65c488d316fc12a324248",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "多谢……这一回我记着。",
+      "sources": [
+        "src/voice-lines.js#VOICE_TRIAL"
+      ],
+      "hash": "aa610b41b8b74fb09fd93fd4969f31f40b95363626b72da9aa54651362eb4132",
+      "status": "cached"
+    },
+    {
+      "actor": "gate_guard",
+      "text": "站住。把手里的东西放下。你当我没瞧见？",
+      "sources": [
+        "src/voice-lines.js#VOICE_TRIAL"
+      ],
+      "hash": "e3681e277c3cbe156ac819e44a66944526687414613980b78e6fe7e9979c213a",
+      "status": "cached"
+    },
+    {
+      "actor": "scribe",
+      "text": "刻字还是修印？东西拿来看看。",
+      "sources": [
+        "src/voice-lines.js#VOICE_TRIAL"
+      ],
+      "hash": "f44c6850cc4adf7c04d07652c5e9749b3b5883744641db3fab156c79038f8115",
+      "status": "cached"
+    },
+    {
+      "actor": "gate_merchant",
+      "text": "货都在这儿，想买什么？",
+      "sources": [
+        "src/voice-lines.js#VOICE_TRIAL"
+      ],
+      "hash": "9f800daab6d8743d8eb23b1bbc6830d34975bcc98190b916d2b204b3ea6e5f9d",
+      "status": "cached"
+    },
+    {
+      "actor": "bookseller",
+      "text": "手若是干的，书就翻得。想看哪一种？",
+      "sources": [
+        "src/voice-lines.js#VOICE_TRIAL"
+      ],
+      "hash": "281f9baf56a4074bdd83fa24a24e80979ea67f505e6e11032101d5e63b54dce1",
+      "status": "cached"
+    },
+    {
+      "actor": "traveler",
+      "text": "劳你照看，缓过些来了。这份情，我记下了。",
+      "sources": [
+        "src/voice-lines.js#VOICE_TRIAL"
+      ],
+      "hash": "77b2d6526cf3ec22040bf9ed6b307b0bd7cb531560df3ed97ecb694a0b07c475",
+      "status": "cached"
+    },
+    {
+      "actor": "traveler",
+      "text": "袖中之物，也要劳你代管么？",
+      "sources": [
+        "src/voice-lines.js#VOICE_TRIAL"
+      ],
+      "hash": "1ffa63f52d4c4cc6279a74965d2708c7908ff5f4fe3c93e4b25907624ae10e6d",
+      "status": "cached"
+    },
+    {
+      "actor": "gate_guard",
+      "text": "今日查验，路引备好。",
+      "sources": [
+        "src/chapter.js#tickChapter"
+      ],
+      "hash": "050fd37a1d1641c56c637744b2e4a5877993917f6657ce278a2292168a8e1a5d",
+      "status": "missing"
+    },
+    {
+      "actor": "fu",
+      "text": "名册上的人和物，一样不能少。",
+      "sources": [
+        "src/chapter.js#tickChapter"
+      ],
+      "hash": "a83b6531a2a9c959caa3681f64f0f15c4b509ce6961c2b001e4a80be85afb835",
+      "status": "cached"
+    },
+    {
+      "actor": "beggar",
+      "text": "靠墙那块草席还干着。先睡稳了，天亮再找门路。",
+      "sources": [
+        "src/chapter.js#nest_welcome"
+      ],
+      "hash": "809ce7e68e528c462c84bd199645d315e348297ac56968d30b90aa8c0d7bac84",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "劳你破费了。等差费收去，我也能松口气。",
+      "sources": [
+        "src/chapter.js#help_mother"
+      ],
+      "hash": "f48f9aadd38af964a033efb9b4fac25503d2f3ae83414f7d6f550009ec2744c9",
+      "status": "missing"
+    },
+    {
+      "actor": "scribe",
+      "text": "这一包给你。要用在哪里，你自己担着。",
+      "sources": [
+        "src/chapter.js#poison_buy"
+      ],
+      "hash": "d2da67cf42a0052fc758830ac71909babcbbf4392f4f71c509b5e87a620609b4",
+      "status": "cached"
+    },
+    {
+      "actor": "qinghe",
+      "text": "只替我去看看，不替我许身谁家。我答应，也请你记住。",
+      "sources": [
+        "src/chapter.js#qinghe_consent"
+      ],
+      "hash": "fad01de19c019a794b8c7be2bf39aeb303cf0d616e1f020fac3ad7af600e6d3e",
+      "status": "missing"
+    },
+    {
+      "actor": "traveler",
+      "text": "走吧。我到关前说，你跟得上便来。",
+      "sources": [
+        "src/chapter.js#royal_vouch"
+      ],
+      "hash": "2ae2f4aca99d18f635b574cb3c5e6c5dd467ea516b05c14424e3d80c914eee49",
+      "status": "missing"
+    },
+    {
+      "actor": "traveler",
+      "text": "路子曲折，你肯说实话，我听着。我想在临溪留下一个看得见实情的人。",
+      "sources": [
+        "src/chapter.js#entry_truth"
+      ],
+      "hash": "d50053b66c076fde28244583f4ad2660e6aade5292e073f286cfe879ccf1a5a7",
+      "status": "missing"
+    },
+    {
+      "actor": "traveler",
+      "text": "玉符拿好，可请顾钦差协查。拿到原账，再来谈赴京的事。",
+      "sources": [
+        "src/chapter.js#royal_task"
+      ],
+      "hash": "9757ad880833f1802cc38026c1135d56b637f8b424ad5e8080d7215a57b35209",
+      "status": "missing"
+    },
+    {
+      "actor": "traveler",
+      "text": "好。凭据保得住一时，做过的事保不保得住？",
+      "sources": [
+        "src/chapter.js#entry_lie"
+      ],
+      "hash": "f258a3f5e558102483a67155e4e95eb35b30487f4e2a3a558ce9ecc5695abb93",
+      "status": "cached"
+    },
+    {
+      "actor": "traveler",
+      "text": "我在关外坐着，没白坐。这话留着骗别人。",
+      "sources": [
+        "src/chapter.js#entry_lie"
+      ],
+      "hash": "f900abfdb711394e1f67d0398360306a0d0310c9c39dddafba3836a0b0ca35e9",
+      "status": "cached"
+    },
+    {
+      "actor": "prisoner",
+      "text": "账拿稳。我说的话，得拿账去对。",
+      "sources": [
+        "src/chapter.js#ledger_get"
+      ],
+      "hash": "3dd266de2caf8fe0603c8ebce811077eb76a5ef77546e84f911928fb3f3772e7",
+      "status": "missing"
+    },
+    {
+      "actor": "shen",
+      "text": "……我让开。她的意思，我听见了。",
+      "sources": [
+        "src/chapter.js#shen_space"
+      ],
+      "hash": "c521707ca8ea9ef0ca6212e69a199ecbf71cdefe37c78f8ac22ca98a32748827",
+      "status": "missing"
+    },
+    {
+      "actor": "qing",
+      "text": "花石能进京，脚夫的工钱却不能少。这批名册在符祥的鸟笼底下。",
+      "sources": [
+        "src/chapter.js#convoy_dispute"
+      ],
+      "hash": "c75b08dff626f95b90c2c667b6b00b311fd807203116f987a272b9122a5712df",
+      "status": "cached"
+    },
+    {
+      "actor": "qing",
+      "text": "工钱先垫上，收据两边各留一份。花石送进京，也得有人记得抬石头的人。",
+      "sources": [
+        "src/chapter.js#convoy_peace"
+      ],
+      "hash": "1c93bd1c81629c6f1ef2b9f838cae026d18463f8fa8457d48fb25b9fa905ea45",
+      "status": "cached"
+    },
+    {
+      "actor": "chi",
+      "text": "我们押货，他们护路，都是吃这口饭。应奉局一文不出，倒叫我们两边打。",
+      "sources": [
+        "src/chapter.js#convoy_dispute"
+      ],
+      "hash": "16951ab2975b33e71a013fb74835979c3f0aa1c3b589477f87e57adf898b5987",
+      "status": "cached"
+    },
+    {
+      "actor": "chi",
+      "text": "工钱先垫上，收据两边各留一份。花石送进京，也得有人记得抬石头的人。",
+      "sources": [
+        "src/chapter.js#convoy_peace"
+      ],
+      "hash": "591e6dd61c0560298c2ec122677bdc1e20638867528713dd8392beadbd3935b1",
+      "status": "cached"
+    },
+    {
+      "actor": "thief",
+      "text": "是我。偷来的钱袋还没花。你要送我见官，还是让我把东西还回去？",
+      "sources": [
+        "src/chapter.js#yan_secret"
+      ],
+      "hash": "2337c6223ef4045f128e4b3b10ac92fcb1fcb3bc0ea2e3c0cd882a08c5de570d",
+      "status": "cached"
+    },
+    {
+      "actor": "thief",
+      "text": "这回算欠你的。袖口的活我能教；至于赤砂堂，我替你递个话。",
+      "sources": [
+        "src/chapter.js#yan_release"
+      ],
+      "hash": "00b4c1b41f12402647c927eedcdf0398187076ddb49eced3c02aae4a5b1affd1",
+      "status": "cached"
+    },
+    {
+      "actor": "porter",
+      "text": "人手够了。纲货出了错，谁担着？",
+      "sources": [
+        "src/convoy.js#work:0"
+      ],
+      "hash": "02294d8326efcd49b1cc37b888fc9d1f1809712c2804b65cfc631d991c36ef2f",
+      "status": "missing"
+    },
+    {
+      "actor": "porter",
+      "text": "这份心意我领了。行，你算一个；换好短褂，别碰车上的纲货。",
+      "sources": [
+        "src/convoy.js#bribe:0"
+      ],
+      "hash": "90a42fabc183e722f5037d3e8a86e55bf2f191af3d957f8929a44f9a8c12495b",
+      "status": "cached"
+    },
+    {
+      "actor": "porter",
+      "text": "话说得倒动听。好，给你留个位置；上工还得换短褂，车上的纲货别动。",
+      "sources": [
+        "src/convoy.js#charm:0"
+      ],
+      "hash": "4d5c509d6c40634977d4072ba6d25b92338ff78a9114a9f3ff2ef0b5da206b1d",
+      "status": "cached"
+    },
+    {
+      "actor": "porter",
+      "text": "好话我听了，可这份差事不能凭一句好话就应下。",
+      "sources": [
+        "src/convoy.js#charm:0.99"
+      ],
+      "hash": "7da3d731234abcafc609a911bc07f7c940bafb284a40a61ef4701100ebfd3b5f",
+      "status": "cached"
+    },
+    {
+      "actor": "porter",
+      "text": "衣着齐整了，跟上。进关后把车送到镇公所门前。",
+      "sources": [
+        "src/convoy.js#CONVOY_ENTRY_LINE"
+      ],
+      "hash": "e5330d4dc892046a1e6af6e8423c911d9ca9d0d24ff250f8ceaa495e736f9c73",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "驿舍补衣人这两日在补一身旧差衣，说补好了要交还关上。",
+      "sources": [
+        "src/event-deck.js#uniform_rack"
+      ],
+      "hash": "1892dcb7e202b05bf265767e991888a501a976001d6a89c17459d0e2a4e45e28",
+      "status": "cached"
+    },
+    {
+      "actor": "old_constable",
+      "text": "驿舍那身皂衣，补了三日还没补完。",
+      "sources": [
+        "src/event-deck.js#uniform_rack"
+      ],
+      "hash": "de92c8f2cf2b26e5f0e95e551e51770e3f07496666f1d4cb6d55c61664d56d43",
+      "status": "cached"
+    },
+    {
+      "actor": "gate_merchant",
+      "text": "驿舍衣架上挂着差衣，我还当里头有差爷歇脚。",
+      "sources": [
+        "src/event-deck.js#uniform_rack"
+      ],
+      "hash": "caaa69a79fee83a3c96854956a3d35414fc7428002fa20027e07af0c853c63be",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "赵行商每回喝茶都要摸一摸胸口，说路引比命金贵。",
+      "sources": [
+        "src/event-deck.js#merchant_pass"
+      ],
+      "hash": "4a1a0996eb61630cf70059826de2b0ac6436b37af970a76d791dccba9bed0105",
+      "status": "cached"
+    },
+    {
+      "actor": "scribe",
+      "text": "赵行商那张路引我见过，印是真的，名字写的赵成。",
+      "sources": [
+        "src/event-deck.js#merchant_pass"
+      ],
+      "hash": "65f5fed3e1594444f795bd6448c963676b5e026625708c2ec8ecf8188ff36889",
+      "status": "cached"
+    },
+    {
+      "actor": "relay",
+      "text": "那行商的路引收得紧，换衣裳都不离身。",
+      "sources": [
+        "src/event-deck.js#merchant_pass"
+      ],
+      "hash": "a17ed2653cfca1ba252528860f28ed8e779ebe4aaaf477b9ad05a45c4fc9644c",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "役夫的名额归周大石管。他肯带谁，自有他的考量，你去问问。",
+      "sources": [
+        "src/event-deck.js#merchant_escort"
+      ],
+      "hash": "73b1b86ea06789f2395afb21c892c4343318731455afcbd0a145fd6a4d8a2be8",
+      "status": "cached"
+    },
+    {
+      "actor": "old_constable",
+      "text": "那位锦衣客在茶棚。关口的事，你可问问他。",
+      "sources": [
+        "src/event-deck.js#guard_vouch"
+      ],
+      "hash": "0fe36c6f7fe38c2a81d9b44a8eb241ffe812345b61371eb6899456b4ecc6d68d",
+      "status": "missing"
+    },
+    {
+      "actor": "tea_host",
+      "text": "那位锦衣客还在茶棚。你有话，可以当面问他。",
+      "sources": [
+        "src/event-deck.js#guard_vouch"
+      ],
+      "hash": "ea565ec3c8d1742abccf0994f05b4d30245882b7e8315098aeb4d7deb6093a98",
+      "status": "missing"
+    },
+    {
+      "actor": "old_constable",
+      "text": "西边那道河栅泡了十几年，木头早糟了。",
+      "sources": [
+        "src/event-deck.js#river_fence"
+      ],
+      "hash": "b63a4da5c42102b05c37d76318c9316f4dc8b10d3bd8f8210af63be24f5c61b0",
+      "status": "cached"
+    },
+    {
+      "actor": "relay",
+      "text": "河边那道木栅，晾衣时看着都歪了。",
+      "sources": [
+        "src/event-deck.js#river_fence"
+      ],
+      "hash": "23003c59787f48a5a0d342e6f27b4ea6b1a417fe318922e41370689a42a0a73c",
+      "status": "cached"
+    },
+    {
+      "actor": "gate_relief",
+      "text": "西边水栅年年报修，年年没钱换。",
+      "sources": [
+        "src/event-deck.js#river_fence"
+      ],
+      "hash": "6bd87fffe7af43fdd76df6271b11df387993011e9ce6cf3061a816daa66817ce",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "那位穿锦衣的客人从早坐到现在，茶都凉了三回。",
+      "sources": [
+        "src/event-deck.js#prince_waiting"
+      ],
+      "hash": "8b2094683a5a656b531450a302cb49daa983383b9204b9af9ac3a95f25c9e244",
+      "status": "cached"
+    },
+    {
+      "actor": "gate_merchant",
+      "text": "茶棚那位锦衣客，腰上的玉我在汴京也少见。",
+      "sources": [
+        "src/event-deck.js#prince_waiting"
+      ],
+      "hash": "511b6fe053a6bd827cb19e0402dc38919cbc97dfca5271db54d7e7b134d7a42a",
+      "status": "cached"
+    },
+    {
+      "actor": "gate_relief",
+      "text": "杜老捕拿人不用蛮力，手往筋骨上一搭，人就不动了。",
+      "sources": [
+        "src/event-deck.js#footwork"
+      ],
+      "hash": "ee5eb5a3e6c1eab0976d1929b8ac7e1d166d69ce59365117c2842801923ba19d",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "杜老捕那双手，拿过人，也救过人。",
+      "sources": [
+        "src/event-deck.js#footwork"
+      ],
+      "hash": "a6aa26040080ada8bab7443740b2163ddc349a2715d00917436b11dae8e3a2b1",
+      "status": "cached"
+    },
+    {
+      "actor": "old_constable",
+      "text": "西墙那瘸子看人很准。你问他刻字人的手。",
+      "sources": [
+        "src/event-deck.js#seal_lesson"
+      ],
+      "hash": "0364c6360802d6a8133f39a21f8bd460ed7ad3b12898c230838bf267fc951519",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "刻字师傅不肯挽袖。瘸张瞧过一眼，没再问。",
+      "sources": [
+        "src/event-deck.js#seal_lesson"
+      ],
+      "hash": "42d26cece74d5e54ebbce113ddb3673910f64e48962f9211e05d8627d058ed7b",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "赵行商一早要的饼还没送到，饿得直转圈。",
+      "sources": [
+        "src/event-deck.js#merchant_hungry"
+      ],
+      "hash": "42faa161ae9d90192257f5f114ceac9eb3956e436875d52f1d4462935c25894e",
+      "status": "cached"
+    },
+    {
+      "actor": "relay",
+      "text": "那行商在门口转了半日，说是等饼。",
+      "sources": [
+        "src/event-deck.js#merchant_hungry"
+      ],
+      "hash": "be8fc2e786193fb1b5f724a2dcd39c1ab3ee42294cf773d48f9b7f55bc240140",
+      "status": "cached"
+    },
+    {
+      "actor": "old_constable",
+      "text": "那刻字的握刀的架势，不是刻印练出来的。",
+      "sources": [
+        "src/event-deck.js#scribe_hands"
+      ],
+      "hash": "69fb4174c9e70035a87a91cd002b61001ba11f0439b1938ab9d082e82a16cc8d",
+      "status": "cached"
+    },
+    {
+      "actor": "tea_host",
+      "text": "刻字师傅搬货那天，一肩扛起两只箱子。",
+      "sources": [
+        "src/event-deck.js#scribe_hands"
+      ],
+      "hash": "f2faca3fb2c791d94e8ae399a1b8563b1f29a2b4f0f8101ed16b99e76f690d53",
+      "status": "cached"
+    },
+    {
+      "actor": "gate_relief",
+      "text": "榜上那个燕七，城里丢了东西的都报他。",
+      "sources": [
+        "src/event-deck.js#thief_bounty"
+      ],
+      "hash": "c97cbc009816dcf7b2175e6ed551a351e0cc6794c9959527f857b8904c01072c",
+      "status": "cached"
+    },
+    {
+      "actor": "old_constable",
+      "text": "燕七那小子我抓过两回，手快，心倒不坏。",
+      "sources": [
+        "src/event-deck.js#thief_bounty"
+      ],
+      "hash": "11d34cba4538358a790641311454fc99bd46f7fd31d797d1e030559cd00f6b93",
+      "status": "cached"
+    },
+    {
+      "actor": "inn",
+      "text": "顾大人选人，肯接手难事的，他都留心。",
+      "sources": [
+        "src/event-deck.js#court_hiring"
+      ],
+      "hash": "9dad57ef946ed4c004d85ee31be031d5ac3882714e7f52767354e5898ff4deb0",
+      "status": "cached"
+    },
+    {
+      "actor": "guard",
+      "text": "榜上那燕七能带回来，大堂就认你这一份功。",
+      "sources": [
+        "src/event-deck.js#court_hiring"
+      ],
+      "hash": "054ffb951a6b7d4154b5f2917ea233d2469413930fae4bf1bfb9776ffcbeee6c",
+      "status": "cached"
+    },
+    {
+      "actor": "chi",
+      "text": "你肯替脚夫说话，梅掌舵便肯听你说话。",
+      "sources": [
+        "src/event-deck.js#gang_den"
+      ],
+      "hash": "4fb2879a8d5c063b75f39a4a7df575c23c0e3383ba5cba719e7e1d438f34a461",
+      "status": "cached"
+    },
+    {
+      "actor": "porter",
+      "text": "燕七和赤砂堂有来往。找活路的人，彼此都认得。",
+      "sources": [
+        "src/event-deck.js#gang_den"
+      ],
+      "hash": "b22313e2aa02a6bbf53809a9231855d1f49f4991b3a9bc372e7882f102990f71",
+      "status": "cached"
+    },
+    {
+      "actor": "inn",
+      "text": "抄账的被关了，说是看见花石纲的账对不上。",
+      "sources": [
+        "src/event-deck.js#ledger_rumor"
+      ],
+      "hash": "4fad0bcd0bcf18940c2bf9bedd40e15dc24583494535d247495436d26cbd8084",
+      "status": "cached"
+    },
+    {
+      "actor": "elder",
+      "text": "县狱里那位账房，进去时袖中还护着一本账。",
+      "sources": [
+        "src/event-deck.js#ledger_rumor"
+      ],
+      "hash": "4ebd24edd5925ccf9253f523780a88db073e446eefeef712235182d76dd4c258",
+      "status": "cached"
+    },
+    {
+      "actor": "qing",
+      "text": "沈师兄的戒指和苏姑娘的心事，哪里是同一回事。",
+      "sources": [
+        "src/event-deck.js#proposal"
+      ],
+      "hash": "afa751f96bdc568a165076392bd9e709ea9eb066b2daf2f6383b72c2830642c3",
+      "status": "cached"
+    },
+    {
+      "actor": "gao",
+      "text": "桥头那两位还没谈妥。苏姑娘想走自己的路。",
+      "sources": [
+        "src/event-deck.js#proposal"
+      ],
+      "hash": "2b3e0dde25d20fa0201cbe1343ef82a3e2ce1cd5f5bbeee58d7fe233824da623",
+      "status": "cached"
+    },
+    {
+      "actor": "tea",
+      "text": "苏姑娘的笛子好听，可总有人不肯听她说话。",
+      "sources": [
+        "src/event-deck.js#su_music"
+      ],
+      "hash": "7eda6da14feed0530947f23c0275b947421841517e3ae76b80d025ea9d808b4c",
+      "status": "cached"
+    },
+    {
+      "actor": "gao",
+      "text": "苏晚说要唱自己的曲子，我觉得没什么不好。",
+      "sources": [
+        "src/event-deck.js#su_music"
+      ],
+      "hash": "75b4c8c9d4e8d9d5c3a48ea40665ff21a5d32bbd1e8ba31a6b92466db22af067",
+      "status": "cached"
+    },
+    {
+      "actor": "porter",
+      "text": "脚夫扭了脚，都找阿青敷药。",
+      "sources": [
+        "src/event-deck.js#aqing_herbs"
+      ],
+      "hash": "73c777bdc2008996ecd593e53cf7e1ff7be086c39aff7b7f9f21e0843e70c34b",
+      "status": "cached"
+    },
+    {
+      "actor": "inn",
+      "text": "阿青一直给伤者敷药，药账却还欠着。",
+      "sources": [
+        "src/event-deck.js#aqing_herbs"
+      ],
+      "hash": "b9ff5ad531207262f99f734a79f24d3d454e6b00a04c67fd5210d610a8c3a5cc",
+      "status": "cached"
+    },
+    {
+      "actor": "guard",
+      "text": "燕七那小子又出手了，捕房里堆着状子。",
+      "sources": [
+        "src/event-deck.js#thief_town"
+      ],
+      "hash": "1331a14611b9d16d18dc505121b05cf15a7058a36b4f619f9cab25739f28cd5d",
+      "status": "cached"
+    },
+    {
+      "actor": "merchant",
+      "text": "燕七又在街上转，我把钱袋缝进了里衣。",
+      "sources": [
+        "src/event-deck.js#thief_town"
+      ],
+      "hash": "6fe91122b567c7017477783146409eb3e292b7f46864b9ab1f2f1369218aadc1",
+      "status": "cached"
+    }
+  ],
+  "attempts": 0,
+  "counts": {
+    "missing": 55,
+    "cached": 101
+  }
+}

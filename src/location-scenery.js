@@ -2,9 +2,12 @@ import {BEGGAR_NEST,PRIVACY_GROVE} from './locations.js';
 import * as T from '../vendor/three.module.js';
 import {furnishHouse} from './night-scene.js';
 import {buildCourtChest} from './court-chest-scene.js';
+import {buildTravelBundle} from './travel-bundle-scene.js';
+import {buildQingheRiverside} from './qinghe-riverside.js';
 import {CART,CONVOY_GATE,CONVOY_STONE} from './convoy.js';
 export function buildLocationScenery(world,{box,cyl,textSprite}){
- buildCourtChest(world,{box});
+ buildCourtChest(world,{box});buildTravelBundle(world);
+ buildQingheRiverside(world);
  // Cargo stays attached to its physical cart; the scene controller moves the same asset.
  const convoy=world.convoyVisual=new T.Group();convoy.position.set(CONVOY_GATE.x,0,CONVOY_GATE.z);world.scene.add(convoy);
  const cargo=world.convoyCargo={stone:new T.Group(),silk:new T.Group(),cage:new T.Group()};convoy.add(...Object.values(cargo));

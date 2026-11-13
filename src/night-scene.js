@@ -1,5 +1,4 @@
 import * as T from '../vendor/three.module.js';
-import {WARDROBE_CHEST} from './home-chest.js';
 import {HOMES,homeFor,roomAt,doorId,bedFor,nightTime,hourOf,homeOccupied,isSleeping} from './night-life.js';
 const PAPER=0xece3cf,INK=0x4f4b42,OCHRE=0x9c6d3c;
 function bedQuilt(){const geometry=new T.PlaneGeometry(1.07,1.42,16,16),p=geometry.attributes.position;
@@ -20,24 +19,6 @@ export function furnishHouse(world,g,base,box){const h=HOMES.find(h=>base===`hou
   world.registerObject?.(bed,'bed:'+id,h.name+' · 床铺','wood',180,{kind:'bed',owner:id});
   // The foot of the bed is an accessible activity slot. The bed itself remains solid.
   world.obstacles.push({id:`bed:${id}`,x:b.x,z:b.z-.2,w:1.02,d:1.35,sightHeight:.55});
- }
- if(h.id==='riverside'){
-  const chest=new T.Group();chest.position.set(-2.15,0,1.15);g.add(chest);
-  box(chest,1.15,.12,.65,OCHRE,0,.15,0);
-  for(const side of [-1,1])box(chest,.09,.5,.65,OCHRE,side*.53,.4,0);
-  for(const side of [-1,1])box(chest,1.15,.5,.07,OCHRE,0,.4,side*.29);
-  const lid=new T.Group();lid.position.set(0,.66,-.32);chest.add(lid);
-  box(lid,1.2,.1,.69,OCHRE,0,0,.32);
-  for(const x of [-.42,.42])box(lid,.055,.115,.7,0xbda46a,x,0,.32);
-  box(chest,.13,.16,.035,0xbda46a,0,.53,.34);
-  const robe=box(chest,.58,.16,.42,0x8d5278,-.18,.31,0);
-  box(robe,.5,.015,.04,PAPER,0,.09,0);
-  const tins=[];for(let i=0;i<3;i++){
-   const tin=new T.Mesh(new T.CylinderGeometry(.065,.065,.12,12),new T.MeshStandardMaterial({color:PAPER,roughness:.8}));tin.position.set(.35,.31,-.17+i*.17);chest.add(tin);tins.push(tin);
-  }
-  world.registerObject?.(chest,WARDROBE_CHEST,'旧木箱','wood',120,{kind:'chest'});
-  world.obstacles.push({id:WARDROBE_CHEST,x:h.x-2.15,z:h.z+1.15,w:1.15,d:.65,sightHeight:.7});
-  record.chest={lid,robe,tins};
  }
  const lamp=new T.Group();lamp.position.set(0,1.5,-h.d/2+.5);g.add(lamp);
  box(g,.5,.09,.4,INK,0,1.32,-h.d/2+.5);
@@ -60,10 +41,6 @@ export function operateDoor(world,eco,id){const h=HOMES.find(h=>doorId(h)===id),
 }
 export function updateHomes(world,dt){const s=world.sim.s,objects=s.ecosystem?.objects||{},night=nightTime(s),now=s.npcClock||0,inside=roomAt(world.hero.position);
  for(const r of world.houses||[]){const h=r.home,o=objects[doorId(h)],doorPoint={x:h.x,z:h.z+h.d/2};
-  if(r.chest){const c=objects[WARDROBE_CHEST],items=s.ecosystem?.items.filter(i=>i.location==='object:'+WARDROBE_CHEST&&i.hp>0)||[];
-   r.chest.lid.rotation.x=T.MathUtils.lerp(r.chest.lid.rotation.x,c?.open?-1.9:0,Math.min(1,dt*8));
-   r.chest.robe.visible=items.some(i=>i.chestSlot==='robe');const count=items.filter(i=>i.chestSlot==='paste').length;r.chest.tins.forEach((m,i)=>m.visible=i<count);
-  }
   // Anyone using the doorway opens it within arm's reach; nobody phases through it.
   const using=[...world.npcs].some(([id,n])=>{const state=s.people[id];return state.hp>0&&!(state.stunnedUntil>now)&&state.life?.target&&!['sleep','doze','awake'].includes(state.life.activity)&&Math.hypot(n.actor.position.x-doorPoint.x,n.actor.position.z-doorPoint.z)<2.4&&(homeFor(id)?.id===h.id||roomAt(n.actor.position)?.id===h.id);});
   if(using&&o?.hp>0){o.open=true;o.autoCloseAt=now+4;}
@@ -97,7 +74,8 @@ export function sleepingPose(world,id){const n=world.npcs.get(id),state=world.si
  if(state.hp<=0||state.stunnedUntil>world.sim.s.npcClock||state.awareness&&!['idle','return'].includes(state.awareness.state))return false;
  const target=state.life?.target;if(!target||Math.hypot(n.actor.position.x-target.x,n.actor.position.z-target.z)>.6)return false;
  if(state.life.activity==='sleep')return true;
- if(state.life.activity==='doze'){u.head.rotation.x=.25+Math.sin(world.t*.7)*.09;u.rig.rotation.x=.12;u.arms[0].rotation.x=-.5;u.npcPoseOverride=true;return true;}
+ // Sitting is applied after locomotion, with a distinct stool / ground pose.
+ if(state.life.activity==='doze'){for(const prop of [n.heldFood,n.heldCup,n.heldKettle])if(prop)prop.visible=false;u.head.rotation.x=.25+Math.sin(world.t*.7)*.025;return true;}
  if(state.life.activity==='nightDrink'){if(!n.nightCup){n.nightCup=new T.Mesh(new T.CylinderGeometry(.1,.08,.18,8),new T.MeshStandardMaterial({color:PAPER}));u.arms[1].add(n.nightCup);n.nightCup.position.set(0,-.55,.03);}n.nightCup.visible=true;u.arms[1].rotation.x=-1.7+Math.sin(world.t*.8)*.35;u.npcPoseOverride=true;return true;}
  return false;
 }

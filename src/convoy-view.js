@@ -1,3 +1,4 @@
+import {VOICE_LINES} from './voice-lines.js';
 import {CART,CONVOY_STONE,CONVOY_ENTRY_LINE,beginConvoyStrength,strengthReady,settleConvoyStrength,resolveConvoyTalk,convoyPreview,convoyTheftPreview,stealConvoyCargo} from './convoy.js';
 import {surfacePoint} from './materials.js';
 import {chapterFollowups} from './chapter.js';
@@ -12,10 +13,10 @@ export function mountConvoyInteraction({world,getSim,getEco,dialogue,checkReveal
   if(a.id==='ch_convoy_enter'){dialogue.play([{id:'porter',text:CONVOY_ENTRY_LINE}],cancelled=>{if(cancelled)return;const r=resolveConvoyTalk(sim,eco,a.id);if(r.error)notify(r.error);},'');return;}
   if(a.id==='ch_convoy_strength'){
    const ticket=beginConvoyStrength(sim,eco);if(ticket.error)return notify(ticket.error);
-   dialogue.play([{id:'player',text:'先看我搬这块石头，再说缺不缺人。'},{id:'porter',text:'好。就在这儿，搬起来再稳稳放下，别逞强。'}],cancelled=>{if(cancelled)return;const goal=[CONVOY_STONE.x,CONVOY_STONE.z-1];if(!world.routeTo([CONVOY_STONE.x,CONVOY_STONE.z-1.5],.2))return notify('石块旁暂时走不过去。');world.auto.push(goal);active={action:a,ticket,phase:'approach',age:0,sim};},'');return;
+   dialogue.play([{id:'player',text:VOICE_LINES.convoyStrength},{id:'porter',text:VOICE_LINES.convoyStrengthReply}],cancelled=>{if(cancelled)return;const goal=[CONVOY_STONE.x,CONVOY_STONE.z-1];if(!world.routeTo([CONVOY_STONE.x,CONVOY_STONE.z-1.5],.2))return notify('石块旁暂时走不过去。');world.auto.push(goal);active={action:a,ticket,phase:'approach',age:0,sim};},'');return;
   }
   if(a.id==='ch_convoy_charm'||a.id==='ch_convoy_bribe'){
-   dialogue.play([{id:'player',text:a.id==='ch_convoy_charm'?'周大哥，替我留个位置可好？我会记着你这份情。':'六文茶钱，劳你给我留个位置。'}],cancelled=>{if(cancelled)return;world.perform({motion:a.stat?'talk':'offer',kind:'support'},'porter');active={action:a,phase:'perform',age:0,sim,beat:world.performance};if(a.stat)checkReveal.start(a,check);},'');return;
+   dialogue.play([{id:'player',text:a.id==='ch_convoy_charm'?VOICE_LINES.convoyCharm:VOICE_LINES.convoyPayment}],cancelled=>{if(cancelled)return;world.perform({motion:a.stat?'talk':'offer',kind:'support'},'porter');active={action:a,phase:'perform',age:0,sim,beat:world.performance};if(a.stat)checkReveal.start(a,check);},'');return;
   }
   reply(resolveConvoyTalk(sim,eco,a.id));
  }

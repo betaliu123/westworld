@@ -1,3 +1,4 @@
+import {npcName} from './npc-names.js';
 import {clockText} from './world-clock.js';
 import {PEOPLE} from './data.js';
 // A bounded, saved journal of what has already happened, never future templates.
@@ -12,5 +13,5 @@ export function createJournal(getState,escape){
  latest.onclick=()=>render();list.onscroll=()=>{if(atBottom()){unread=0;latest.hidden=true;}};
  if(typeof ResizeObserver!=='undefined')new ResizeObserver(()=>{if(list.clientHeight&&!root.classList.contains('collapsed'))list.scrollTop=list.scrollHeight;}).observe(list);
  root.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','PageUp','PageDown','Home','End','Space','Enter'].includes(e.code))e.stopPropagation();});
- return {add,restore(){if(!getState().journal){getState().journal=[];for(const [i,h]of (getState().history||[]).slice(-20).entries()){if(h.type==='conversation')getState().journal.push({day:h.day,kind:'chat',name:'你',text:h.label});else getState().journal.push({day:h.day,kind:'system',name:'往事',text:h.text});for(const d of h.dialogue||[])getState().journal.push({day:h.day,kind:'chat',name:PEOPLE.find(n=>n.id===d.id)?.name||d.id,text:d.text});}}root.hidden=false;render();requestAnimationFrame(()=>render());}};
+ return {add,restore(){if(!getState().journal){getState().journal=[];for(const [i,h]of (getState().history||[]).slice(-20).entries()){if(h.type==='conversation')getState().journal.push({day:h.day,kind:'chat',name:'你',text:h.label});else getState().journal.push({day:h.day,kind:'system',name:'往事',text:h.text});for(const d of h.dialogue||[])getState().journal.push({day:h.day,kind:'chat',name:npcName(getState(),d.id),text:d.text});}}root.hidden=false;render();requestAnimationFrame(()=>render());}};
 }

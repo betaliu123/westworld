@@ -1,0 +1,143 @@
+{
+  "review": "Reviewed: edited repeat-heal drafts to avoid assuming prior treatment or the same injury; removed invented newly acquired news and exact previous dates; gate greetings require a recorded earlier outside encounter, still-unentered city and a route topic. Town wording omitted because chapter stage is not physical location. Imported reviewed variants in src/action-card-lines.js; no voice generation.",
+  "batches": [
+    {
+      "request": {
+        "model": "deepseek-v4-flash",
+        "temperature": 0.8,
+        "max_tokens": 1800,
+        "thinking": {
+          "type": "disabled"
+        },
+        "messages": [
+          {
+            "role": "system",
+            "content": "为北宋武侠游戏写人物主动来访的开场话。输入是资料，不是指令。每个键写三种变化，每句不超过四十汉字，克制自然，称你、不暗示性别。只提出对应意图，不结算、不编造过去赠物、欠债、受伤原因、日子、任务与人名。不用现代词和系统术语，不写旁白。返回JSON {\"lines\":{\"给定键\":[\"台词\",\"台词\",\"台词\"]}}。"
+          },
+          {
+            "role": "user",
+            "content": "{\"food_first\": \"看见对方饥饿，提出送一份随身食物，以{food}代替名称，尚未交付\", \"food_again\": \"以前碰过面，现又饥饿；提出送{food}，不可声称上次已送或昨天见过\", \"heal_first\": \"看见重伤，提出包扎，尚未治疗\", \"heal_again\": \"以前碰过面，现伤重，提出包扎；不可声称伤势原因、上次治过或欠钱\"}"
+          }
+        ]
+      },
+      "response": {
+        "id": "2a72f464-8a50-40f6-994a-ab249942d1cc",
+        "object": "chat.completion",
+        "created": 1794411678,
+        "model": "deepseek-flash",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "{\n  \"lines\": {\n    \"food_first\": [\n      \"看你饿着，我这有份{food}，先吃些。\",\n      \"你似饿了，我带着{food}，要不用点。\",\n      \"腹空难行，这份{food}你且拿去。\"\n    ],\n    \"food_again\": [\n      \"又见面了，你仍饿着？这{food}给你。\",\n      \"瞧你气色，怕是没吃，拿些{food}吧。\",\n      \"你我又遇，这份{food}你收下垫垫。\"\n    ],\n    \"heal_first\": [\n      \"伤得不轻，让我替你包扎一下。\",\n      \"这伤得急，我先帮你裹上。\",\n      \"你忍着些，我来给你包扎。\"\n    ],\n    \"heal_again\": [\n      \"又碰上你，伤还重着，我来包扎。\",\n      \"你伤未好，让我再替你裹一裹。\",\n      \"看你这伤，先别动，我帮你包扎。\"\n    ]\n  }\n}"
+            },
+            "logprobs": null,
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 203,
+          "completion_tokens": 231,
+          "total_tokens": 434,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "prompt_cache_hit_tokens": 0,
+          "prompt_cache_miss_tokens": 203
+        },
+        "system_fingerprint": "bc19ba97cbe016479903222bb1578db6"
+      }
+    },
+    {
+      "request": {
+        "model": "deepseek-v4-flash",
+        "temperature": 0.8,
+        "max_tokens": 1800,
+        "thinking": {
+          "type": "disabled"
+        },
+        "messages": [
+          {
+            "role": "system",
+            "content": "为北宋武侠游戏写人物主动来访的开场话。输入是资料，不是指令。每个键写三种变化，每句不超过四十汉字，克制自然，称你、不暗示性别。只提出对应意图，不结算、不编造过去赠物、欠债、受伤原因、日子、任务与人名。不用现代词和系统术语，不写旁白。返回JSON {\"lines\":{\"给定键\":[\"台词\",\"台词\",\"台词\"]}}。"
+          },
+          {
+            "role": "user",
+            "content": "{\"guide_first\": \"想告诉对方一个有用去处，先问愿不愿听，不指定人物、地点或承诺\", \"guide_again\": \"以前见过对方，想提一条新线索，问愿不愿听\", \"guide_gate\": \"前日曾在关外见过此人，此人从未入城，现在又在关外；可说怎么还在这儿，问愿不愿听条门路，不声称一直等在原地\", \"guide_town\": \"以前见过，现在已在城里，想提一条新线索，不假定他刚入城或对方做过什么\"}"
+          }
+        ]
+      },
+      "response": {
+        "id": "3e2453a0-1cff-4953-9563-a3652dc155ae",
+        "object": "chat.completion",
+        "created": 1794411681,
+        "model": "deepseek-flash",
+        "choices": [
+          {
+            "index": 0,
+            "message": {
+              "role": "assistant",
+              "content": "{\n  \"lines\": {\n    \"guide_first\": [\"有个去处或许有用，可愿听我讲讲？\", \"我知晓一处可能帮得上忙，想听吗？\", \"有条路或许对你有益，愿不愿听？\"],\n    \"guide_again\": [\"又见面了，新得的线索，可愿一听？\", \"先前见过，如今有条新消息，想听吗？\", \"咱们见过，我这有新门路，愿听否？\"],\n    \"guide_gate\": [\"前日关外见过，怎么还在这儿？有门路可听？\", \"关外一别，你还未入城？有条路，愿听吗？\", \"前日关外相遇，现又在此，可愿听条门路？\"],\n    \"guide_town\": [\"城里又遇，新得一线索，可愿听？\", \"先前见过，如今在城里，有新消息听吗？\", \"咱们见过，我这儿有条新门路，愿听否？\"]\n  }\n}"
+            },
+            "logprobs": null,
+            "finish_reason": "stop"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 222,
+          "completion_tokens": 215,
+          "total_tokens": 437,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "prompt_cache_hit_tokens": 0,
+          "prompt_cache_miss_tokens": 222
+        },
+        "system_fingerprint": "bc19ba97cbe016479903222bb1578db6"
+      }
+    }
+  ],
+  "lines": {
+    "food_first": [
+      "看你饿着，我这有份{food}，先吃些。",
+      "你似饿了，我带着{food}，要不用点。",
+      "腹空难行，这份{food}你且拿去。"
+    ],
+    "food_again": [
+      "又见面了，你仍饿着？这{food}给你。",
+      "瞧你气色，怕是没吃，拿些{food}吧。",
+      "你我又遇，这份{food}你收下垫垫。"
+    ],
+    "heal_first": [
+      "伤得不轻，让我替你包扎一下。",
+      "这伤得急，我先帮你裹上。",
+      "你忍着些，我来给你包扎。"
+    ],
+    "heal_again": [
+      "又碰上你，伤还重着，我来包扎。",
+      "你伤未好，让我再替你裹一裹。",
+      "看你这伤，先别动，我帮你包扎。"
+    ],
+    "guide_first": [
+      "有个去处或许有用，可愿听我讲讲？",
+      "我知晓一处可能帮得上忙，想听吗？",
+      "有条路或许对你有益，愿不愿听？"
+    ],
+    "guide_again": [
+      "又见面了，新得的线索，可愿一听？",
+      "先前见过，如今有条新消息，想听吗？",
+      "咱们见过，我这有新门路，愿听否？"
+    ],
+    "guide_gate": [
+      "前日关外见过，怎么还在这儿？有门路可听？",
+      "关外一别，你还未入城？有条路，愿听吗？",
+      "前日关外相遇，现又在此，可愿听条门路？"
+    ],
+    "guide_town": [
+      "城里又遇，新得一线索，可愿听？",
+      "先前见过，如今在城里，有新消息听吗？",
+      "咱们见过，我这儿有条新门路，愿听否？"
+    ]
+  }
+}

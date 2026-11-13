@@ -4,7 +4,7 @@ const INK={Rope:'rope',Swords:'sword',Backpack:'bundle',Package:'bundle',UserRou
 INK.AttentionAway='eyeAway';INK.AttentionEdge='eyeEdge';
 INK.Investigation='investigation';
 INK.Disguise='disguise';
-export function icon(name){if(INK[name]&&globalThis.document?.body){ensureInkDefs();return inkIcon(INK[name]);}return window.lucide.createElement(window.lucide.icons[name],{width:24,height:24,'stroke-width':1.6,'aria-hidden':'true'}).outerHTML;}
+export function icon(name){if(INK[name]){if(globalThis.document?.body)ensureInkDefs();return inkIcon(INK[name]);}return window.lucide.createElement(window.lucide.icons[name],{width:24,height:24,'stroke-width':1.6,'aria-hidden':'true'}).outerHTML;}
 // Self-contained SVG for scene sprites; uses the same brush paths as the HUD.
 export function sceneIcon(name){const css=getComputedStyle(document.documentElement),ink=css.getPropertyValue('--ink-1').trim()||css.getPropertyValue('--ink').trim(),paper=css.getPropertyValue('--paper').trim();
  return inkIcon(INK[name],{size:128}).replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ').replace(' filter="url(#ink-rough)"','').replaceAll('currentColor',ink).replaceAll('var(--cinnabar,#a63a2b)',ink).replaceAll('<path ',`<path stroke="${paper}" stroke-width="1.1" stroke-linejoin="round" paint-order="stroke" `);

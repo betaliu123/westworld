@@ -1,7 +1,21 @@
 // Directed knowledge: recognition is an NPC fact, never player omniscience.
 // DS candidates reviewed in docs/plans/2026-11-11-identity-ds-*.json. The local
 // catalog corrects speaker reversals and removes claims about unverified stock.
+// Family recognition is authored locally; it must work without a generated batch.
 export const IDENTITY_RELATIONS={
+ 'qinghe:tea_host':{
+  question:'青禾？你今日说话的口气怎么生分了？抬起头，让娘仔细看看。',
+  greeting:'青禾，原来是娘多心了。你肯过来同娘说话就好，别总把心事闷着。',
+  failure:'不对，你不是青禾。她说话时的神情，做娘的还认不出来？你为何冒用我女儿的脸？',
+  replies:{
+   default:{label:'娘，是我。你有什么担心，慢慢同我说。',text:'娘，是我。你有什么担心，慢慢同我说。'},
+   clothing:{label:'娘，衣裳的事，你想问什么？',text:'娘，衣裳的事，你想问什么，我都听着。'},
+   low_hp:{text:'娘，我身子虚得厉害，才没顾上好好说话。'},
+   sick:{text:'娘，我腹中难受，才显得神色不对。'},
+  },
+  offers:['bundle','family'],
+  topics:{family:{label:'娘，进京的事，你还担心什么？',text:'娘舍不得你，可也不能替你过一辈子。你若还想进京，就先把要去的地方、替谁做事问清楚。不要旁人一催，便急着答应。'}},
+ },
  'traveler:inspector':{
   question:'阁下的面貌顾某认得，只是今日的言行有些生疏。容我核问一句。',
   greeting:'原来是王爷，下官方才失礼。您奉皇兄手诏查临溪税案，想先听案情，还是先谈用度？',royal:true,
@@ -24,7 +38,7 @@ export const IDENTITY_RELATIONS={
  },
  'inspector:traveler':{
   question:'顾大人，今日为何这副神色？临溪的案子可有变故？',
-  greeting:'顾大人，称我闲舟便是。皇兄交下来的税案，你我分头查；若缺盘缠，我身上还有一些。',royal:true,
+  greeting:'顾大人，称我闲舟便是。皇兄交下来的税案，你我分头查；盘缠的事，也可当面商量。',royal:true,
   offers:['advance','ledger','tax','manifest'],
  },
  'fu:traveler':{
@@ -34,7 +48,7 @@ export const IDENTITY_RELATIONS={
  },
  'inspector:guard':{
   question:'顾大人，今日的衣着举止与值房里不同，容属下确认。',
-  greeting:'顾大人。值房的物资我不敢擅动，您要用时，请亲自去堂内箱中取。',offers:['stores','tax'],
+  greeting:'顾大人。值房的物资我不敢擅动，您若要用，属下还须当面记账。',offers:['stores','tax'],
  },
  'gate_guard:gate_relief':{
   question:'韩校尉，您今日的吩咐听着有些不同，末将再确认一句。',

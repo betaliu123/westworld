@@ -2,6 +2,7 @@
 <title>临溪 · 人物配音验收</title><link rel="stylesheet" href="../style.css"><link rel="stylesheet" href="../ink-ui.css">
 <style>body{overflow:auto;background:var(--paper,#e7decb);padding:32px;max-width:1000px;margin:auto}h1{font-size:30px}button{margin:6px;padding:12px;font:inherit}#samples{display:flex;flex-wrap:wrap}#status{white-space:pre-wrap;padding:16px;font-size:16px}p{font-size:18px}</style>
 <h1>人物配音 · 实际对白</h1><p>使用游戏的声音调度与对白组件，仅播放已有录音，不生成、不读取或更改存档。</p>
+<label>查找人物或台词 <input id="filter" type="search"></label><p id="coverage"></p>
 <div id="samples"></div><button id="sequence">锦衣客 → 茶娘 → 守卫</button><button id="mute">静音</button><button id="stop">停止</button>
 <p id="status" role="status">加载中</p><p id="errors"></p>
 <script type="module">
@@ -16,8 +17,20 @@ let playingText='',startedCount=0,finishedCount=0;
 const world={npcs:new Map(),keys:new Set(),clearReady(){},hero:{rotation:{},position:{x:0,z:0}}};
 const dialogue=mountDialogue(world,{journal:{add(){}},clear:()=>voice.stop(),stopSpeech:()=>voice.stop(),hasVoice:()=>true,
  speak:line=>voice.play(line,{generate:false,onStart:()=>{playingText=line.text;startedCount++;}})});
-function play(rows){voice.unlock();dialogue.play(rows.map(r=>({id:r.actor,text:r.text})),()=>finishedCount++,'配音验收');}
-for(const row of VOICE_TRIAL){const b=document.createElement('button');b.textContent=voice.config.cast[row.actor].name+' · '+row.text.slice(0,12);b.onclick=()=>play([row]);document.querySelector('#samples').append(b);}
+function play(rows){voice.unlock();dialogue.play(rows.map(r=>({id:r.actor.startsWith('player_')?'player':r.actor,actor:r.actor,text:r.text})),()=>finishedCount++,'配音验收');}
+let rows=VOICE_TRIAL;
+if(new URLSearchParams(location.search).get('batch')==='chapter'){
+ const response=await fetch('../docs/qa/2026-11-11-voice-batch.json',{cache:'no-store'});
+ if(response.ok)rows=(await response.json()).entries;
+}
+const available=rows.filter(row=>voice.entries.has(voice.request(row)?.signature));
+document.querySelector('#coverage').textContent=`本清单已有录音 ${available.length} / ${rows.length} 条`;
+function render(){
+ const query=document.querySelector('#filter').value.trim(),samples=document.querySelector('#samples');samples.replaceChildren();
+ for(const row of available){const name=voice.config.cast[row.actor].name;if(query&&!(`${name} ${row.text}`.includes(query)))continue;
+  const b=document.createElement('button');b.textContent=name+' · '+row.text.slice(0,12);b.title=row.text;b.onclick=()=>play([row]);samples.append(b);}
+}
+document.querySelector('#filter').oninput=render;render();
 document.querySelector('#sequence').onclick=()=>play([VOICE_TRIAL[1],VOICE_TRIAL[2],VOICE_TRIAL[4]]);
 document.querySelector('#stop').onclick=()=>{dialogue.finish(true);voice.stop();};
 document.querySelector('#mute').onclick=e=>{voice.setEnabled(!voice.enabled);if(voice.enabled)voice.unlock();e.target.textContent=voice.enabled?'静音':'开启声音';};

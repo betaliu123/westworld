@@ -1,0 +1,5 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>倒地押送验收</title>
+<style>body{margin:0;background:#ece3cf}nav{height:40px}button{font:16px KaiTi,serif;margin:4px}iframe{border:0;transform-origin:top left}</style>
+<nav><button data-size="1280,850">1280 × 850</button><button data-size="1024,768">1024 × 768</button><button data-size="800,600">800 × 600</button></nav>
+<iframe title="独立试玩存档" width="1280" height="850" src="../index.html?playtest=capture-qa"></iframe>
+<script>const frame=document.querySelector('iframe');function fit(){frame.style.transform=`scale(${Math.min(1,innerWidth/frame.width,(innerHeight-40)/frame.height)})`;}document.querySelectorAll('button').forEach(b=>b.onclick=()=>{[frame.width,frame.height]=b.dataset.size.split(',');fit();});onresize=fit;fit();</script>

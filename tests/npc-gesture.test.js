@@ -37,6 +37,9 @@ test('held props use two hands; drinking leaves the other arm to the captured cl
  assert.equal(handGoals({kind:'ribbon'}).filter(Boolean).length,2);
  assert.ok(handGoals({kind:'ribbon',throwTime:.55})[0][1]>handGoals({kind:'ribbon'})[0][1]);
  assert.equal(handGoals({kind:'unknown'}),null);
+ assert.equal(handGoals({kind:'present'}).filter(Boolean).length,2);
+ assert.ok(handGoals({kind:'handover'})[1][2]>handGoals({kind:'present'})[1][2]);
+ assert.ok(handGoals({kind:'inspect'})[1][1]>handGoals({kind:'present'})[1][1]);
 });
 test('NPC travel eases in, brakes near goals and never crosses stopping radius',()=>{
  let distance=4,speed=0,first=0;

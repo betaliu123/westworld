@@ -11,7 +11,7 @@ function load(file) {
 
 // Replaces the box stand-in once the generated mesh arrives. `height` is the upright size;
 // `lay` turns that upright length flat onto the parent's XZ plane.
-export function fitProp(group, file, {height = 1, lay = false, keep = () => false} = {}) {
+export function fitProp(group, file, {height = 1, lay = false, keep = () => false, onFit = () => {}} = {}) {
   if (!globalThis.document?.createElement || !group) return;
   load(file).then(src => {
     const model = src.clone(true), meshes = [];
@@ -49,5 +49,6 @@ export function fitProp(group, file, {height = 1, lay = false, keep = () => fals
     model.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
     for (const child of [...group.children]) if (child.isMesh && !keep(child)) child.visible = false;
     group.add(model);
+    onFit(model);
   }).catch(error => console.warn('prop model failed; keeping the stand-in', file, error));
 }

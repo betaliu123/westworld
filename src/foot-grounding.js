@@ -46,3 +46,17 @@ export class FootGrounding {
   }
   reset(){this.wrapper.position.y=this.baseY;}
 }
+
+// A fallen body rests on its lowest visible surface, rather than its feet.
+export class BodyGrounding {
+  constructor(actor,wrapper,model){this.actor=actor;this.wrapper=wrapper;this.baseY=wrapper.position.y;this.model=model;this.box=new T.Box3();this.correction=null;}
+  apply(settled=false){
+    this.wrapper.position.y=this.baseY;
+    if(!settled||this.correction===null){
+      this.actor.updateMatrixWorld(true);this.box.setFromObject(this.model,true);
+      this.correction=this.box.isEmpty()?0:this.actor.position.y+.015-this.box.min.y;
+    }
+    this.wrapper.position.y+=this.correction;
+  }
+  reset(){this.correction=null;}
+}

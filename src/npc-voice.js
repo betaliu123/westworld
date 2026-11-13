@@ -71,7 +71,8 @@ export class NpcVoice {
   }
   return this.pending.get(req.signature);
  }
- async play(line,{channel='dialogue',generate=channel==='dialogue',valid=()=>true,onStart=()=>{}}={}){
+ // Playback uses exact cached recordings. A subtitle edit never starts paid synthesis.
+ async play(line,{channel='dialogue',generate=false,valid=()=>true,onStart=()=>{}}={}){
   this.stop();
   if(!this.enabled||!this.context||!this.canSpeak(line)||!valid())return false;
   const ticket=this.ticket;this.current={line,channel,valid};

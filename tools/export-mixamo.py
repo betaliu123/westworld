@@ -20,6 +20,7 @@ for path in source.glob('*.fbx'):
     start, end = action.frame_range
     bones = list(arm.pose.bones)
     rest = {b.name: quat(up @ arm.matrix_world @ b.bone.matrix_local) for b in bones}
+    rest_positions = {b.name: list((up @ arm.matrix_world @ b.bone.matrix_local).translation) for b in bones}
     hips = next(b for b in bones if b.name.replace(':', '') == 'mixamorigHips')
     rest_hip = list((up @ arm.matrix_world @ hips.bone.matrix_local).translation)
     fps = scene.render.fps / scene.render.fps_base
@@ -34,7 +35,7 @@ for path in source.glob('*.fbx'):
         for b in bones:
             rotations[b.name].append(quat(up @ arm.matrix_world @ b.matrix))
         positions.append(list((up @ arm.matrix_world @ hips.matrix).translation))
-    result = dict(name=path.stem, duration=duration, times=times, rest=rest,
+    result = dict(name=path.stem, duration=duration, times=times, rest=rest, restPositions=rest_positions,
                   hipRest=rest_hip, hipPositions=positions, rotations=rotations)
     (output / (path.stem + '.json')).write_text(json.dumps(result), encoding='utf8')
     print(path.stem, len(bones), duration, rest_hip)

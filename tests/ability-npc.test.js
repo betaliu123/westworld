@@ -133,7 +133,7 @@ test('same-tier cached probes persist, never roll or grant duplicate practice, a
 test('a cached novice observation remains readable without unlocking identity or inventory',()=>{
  const g=setup('insight',1,'scribe'),r=probeNpc(g.sim,g.id),info=npcInfo(g.sim,g.eco,g.id);
  assert.equal(info.observed,true);assert.equal(info.probed,false);assert.equal(info.observation,r.insight);
- assert.equal(info.name,'？？？');assert.equal(info.faction,'？？？');assert.deepEqual(info.items,[]);assert.equal(info.money,null);
+ assert.equal(info.name,'刻字人');assert.equal(info.nameKnown,false);assert.equal(info.faction,'？？？');assert.deepEqual(info.items,[]);assert.equal(info.money,null);
  const sim=new Simulation(JSON.parse(JSON.stringify(g.sim.s))),eco=new Ecosystem(sim);
  assert.equal(npcInfo(sim,eco,g.id).observation,r.insight);
 });

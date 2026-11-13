@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "catalog": "trial",
+  "model": "speech-2.8-hd",
+  "endpoint": "https://ai.leihuo.netease.com/minimax/v1/t2a_v2",
+  "startedAt": "2026-11-12T02:33:10Z",
+  "limit": 2,
+  "requestTimeout": 180,
+  "dryRun": false,
+  "entries": [
+    {
+      "actor": "traveler",
+      "text": "阁下也在等进城？坐着，也能看见些事。",
+      "hash": "a8a1ede32c40be418396fe25a570d03da11f8251a959c47e7467ac4b6049f32a",
+      "status": "generated",
+      "url": "/assets/audio/npc/a8a1ede32c40be418396fe25a570d03da11f8251a959c47e7467ac4b6049f32a.mp3",
+      "duration": 4.464
+    },
+    {
+      "actor": "traveler",
+      "text": "城门查得这样紧……你是怎么进来的？",
+      "hash": "a33d834c08d7f738027f62c22722dbc087159fcbcf5840bc994e94e2c44e57f0",
+      "status": "cached",
+      "url": "/assets/audio/audition-2026-11-10/prince-28.mp3",
+      "duration": 3.888
+    },
+    {
+      "actor": "tea_host",
+      "text": "茶刚沏好。客官要坐下歇歇，还是带几个热饼走？",
+      "hash": "cfddd46aea79f1e744adcc41a48d2ababec897ea0ad65c488d316fc12a324248",
+      "status": "cached",
+      "url": "/assets/audio/npc/cfddd46aea79f1e744adcc41a48d2ababec897ea0ad65c488d316fc12a324248.mp3",
+      "duration": 5.04
+    },
+    {
+      "actor": "tea_host",
+      "text": "多谢……这一回我记着。",
+      "hash": "aa610b41b8b74fb09fd93fd4969f31f40b95363626b72da9aa54651362eb4132",
+      "status": "cached",
+      "url": "/assets/audio/npc/aa610b41b8b74fb09fd93fd4969f31f40b95363626b72da9aa54651362eb4132.mp3",
+      "duration": 2.664
+    },
+    {
+      "actor": "gate_guard",
+      "text": "站住。把手里的东西放下。你当我没瞧见？",
+      "hash": "e3681e277c3cbe156ac819e44a66944526687414613980b78e6fe7e9979c213a",
+      "status": "cached",
+      "url": "/assets/audio/audition-2026-11-10/guard-28.mp3",
+      "duration": 5.436
+    },
+    {
+      "actor": "scribe",
+      "text": "刻字还是修印？东西拿来看看。",
+      "hash": "f44c6850cc4adf7c04d07652c5e9749b3b5883744641db3fab156c79038f8115",
+      "status": "cached",
+      "url": "/assets/audio/npc/f44c6850cc4adf7c04d07652c5e9749b3b5883744641db3fab156c79038f8115.mp3",
+      "duration": 2.88
+    },
+    {
+      "actor": "gate_merchant",
+      "text": "货都在这儿，想买什么？",
+      "hash": "9f800daab6d8743d8eb23b1bbc6830d34975bcc98190b916d2b204b3ea6e5f9d",
+      "status": "cached",
+      "url": "/assets/audio/npc/9f800daab6d8743d8eb23b1bbc6830d34975bcc98190b916d2b204b3ea6e5f9d.mp3",
+      "duration": 2.268
+    },
+    {
+      "actor": "bookseller",
+      "text": "手若是干的，书就翻得。想看哪一种？",
+      "hash": "281f9baf56a4074bdd83fa24a24e80979ea67f505e6e11032101d5e63b54dce1",
+      "status": "cached",
+      "url": "/assets/audio/npc/281f9baf56a4074bdd83fa24a24e80979ea67f505e6e11032101d5e63b54dce1.mp3",
+      "duration": 7.056
+    },
+    {
+      "actor": "traveler",
+      "text": "劳你照看，缓过些来了。这份情，我记下了。",
+      "hash": "77b2d6526cf3ec22040bf9ed6b307b0bd7cb531560df3ed97ecb694a0b07c475",
+      "status": "cached",
+      "url": "/assets/audio/npc/77b2d6526cf3ec22040bf9ed6b307b0bd7cb531560df3ed97ecb694a0b07c475.mp3",
+      "duration": 5.148
+    },
+    {
+      "actor": "traveler",
+      "text": "袖中之物，也要劳你代管么？",
+      "hash": "1ffa63f52d4c4cc6279a74965d2708c7908ff5f4fe3c93e4b25907624ae10e6d",
+      "status": "cached",
+      "url": "/assets/audio/npc/1ffa63f52d4c4cc6279a74965d2708c7908ff5f4fe3c93e4b25907624ae10e6d.mp3",
+      "duration": 2.844
+    }
+  ],
+  "attempts": 1,
+  "counts": {
+    "generated": 1,
+    "cached": 9
+  }
+}

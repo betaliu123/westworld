@@ -5,12 +5,14 @@
 import * as T from '../vendor/three.module.js';
 import {character} from '../src/world.js';
 import {mountActorModel} from '../src/actor-model.js';
+import {npcMotionProfile} from '../src/npc-motion.js';
 const scene=new T.Scene();scene.background=new T.Color('#797970');
 const camera=new T.PerspectiveCamera(35,innerWidth/innerHeight,.1,100);camera.position.set(0,2.6,Math.max(9,12/camera.aspect));camera.lookAt(0,1,0);
 const renderer=new T.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=T.ACESFilmicToneMapping;document.body.append(renderer.domElement);
 scene.add(new T.HemisphereLight(0xffefd4,0x39414b,2));const light=new T.DirectionalLight(0xffe7c9,3);light.position.set(-3,6,4);scene.add(light);
 const ground=new T.Mesh(new T.PlaneGeometry(100,100),new T.MeshStandardMaterial({color:0x686b66}));ground.rotation.x=-Math.PI/2;ground.position.y=-.02;scene.add(ground);
-const kinds=['prince','guard','commoner','woman'],profiles=['reserved','reserved','elder','lively'],models=kinds.map((kind,i)=>{const actor=character(0x657f89);actor.position.x=(i-1.5)*1.8;actor.userData.phase=i*2.1;scene.add(actor);return {actor,handle:mountActorModel(actor,{kind,motionProfile:profiles[i]})};});
+const requested=new URLSearchParams(location.search).get('kinds')?.split(',').filter(k=>['prince','guard','commoner','woman','constable','sandgang','envoy'].includes(k));
+const kinds=requested?.length?requested.slice(0,4):['prince','guard','commoner','woman'],profiles=requested?.length?kinds.map(k=>npcMotionProfile({constable:'inspector',sandgang:'chi',envoy:'fu'}[k]||'',k)):['reserved','reserved','elder','lively'],models=kinds.map((kind,i)=>{const actor=character(0x657f89);actor.position.x=(i-(kinds.length-1)/2)*1.8;actor.userData.phase=i*2.1;scene.add(actor);return {actor,handle:mountActorModel(actor,{kind,motionProfile:profiles[i]})};});
 let state={hp:100,speed:0},pause=false,angle=0,report='',focus=false;
 const balls=models.map(()=>{const b=new T.Mesh(new T.SphereGeometry(.26,20,12),new T.MeshStandardMaterial({color:0xc73956}));scene.add(b);return b;});
 const cups=models.map(()=>{const cup=new T.Mesh(new T.CylinderGeometry(.1,.08,.2,12),new T.MeshStandardMaterial({color:0xd8d1b3}));scene.add(cup);return cup;});

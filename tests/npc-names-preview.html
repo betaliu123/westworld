@@ -1,0 +1,11 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>人物称呼统一验收</title>
+<style>body{margin:0;background:#ece3cf;font:16px serif}nav{padding:4px}button{font:16px serif}iframe{display:block;border:0}output{display:block;white-space:pre-wrap}</style>
+<nav><button data-size="1280,850">1280×850</button><button data-size="1024,768">1024×768</button><button data-size="800,600">800×600</button>
+<button data-fixture="porter">陌生挑夫</button><button data-fixture="bubble">当前人物冒泡</button><button data-fixture="info">人物资料</button><button data-fixture="traveler">陌生锦衣客</button><button data-fixture="gate_merchant">陌生行商</button><button data-fixture="long">长对白</button><button data-fixture="explore">探索清屏</button></nav>
+<iframe title="人物称呼独立试玩" width="1280" height="850" src="/?playtest=npc-names-qa"></iframe><output></output>
+<script>
+const frame=document.querySelector('iframe');
+for(const b of document.querySelectorAll('[data-size]'))b.onclick=()=>{const [w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h;};
+for(const b of document.querySelectorAll('[data-fixture]'))b.onclick=()=>frame.contentWindow.postMessage({type:'names-fixture',fixture:b.dataset.fixture},location.origin);
+addEventListener('message',e=>{if(e.origin===location.origin&&e.source===frame.contentWindow&&e.data?.type==='names-status')document.querySelector('output').textContent=JSON.stringify(e.data);});
+</script></html>

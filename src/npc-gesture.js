@@ -5,16 +5,30 @@ import * as T from '../vendor/three.module.js';
 export function handGoals(pose, time = 0) {
   if (!pose) return null;
   const wave = Math.sin(time * 4), kind = pose.kind;
+  if (kind === 'startle') return [[-.30,1.48,.36],[.30,1.42,.32]];
   if (kind === 'ribbon' || kind === 'carry') {
     const lift = kind === 'ribbon' ? T.MathUtils.smoothstep(pose.throwTime || 0, 0, .55) : 0;
     return [[-.28,1.30 + lift*.40,.32 + lift*.14],[.28,1.30 + lift*.40,.32 + lift*.14]];
   }
+  if (kind === 'guardLapel') return [[-.15,1.43,.24],null];
+  if (kind === 'present' || kind === 'handover') {
+    const extension=kind==='handover'?.12:0;
+    return [[-.16,1.23,.39+extension],[.15,1.27,.43+extension]];
+  }
+  if (kind === 'inspect') return [[-.12,1.11,.22],[.12,1.63,.20]];
+  if (kind === 'stitch') return [[-.13,1.12,.34],[.10+wave*.025,1.15+wave*.035,.35]];
+  if (kind === 'wipe') return [[-.10,1.12,.32],[.06+wave*.035,1.16,.35]];
   if (kind === 'bound') return [[-.08,1.03,.27],[.08,1.03,.27]];
+  if (kind === 'captureReach') {const k=pose.lift||0;return [[-.22,.62+k*.56,.58],[.22,.66+k*.54,.55]];}
+  if (kind === 'captureEscort') return [[-.25,1.25,.66],null];
   if (kind === 'clap') { const x = .07 + (1 + Math.sin(time*7))*.07; return [[-x,1.28,.38],[x,1.28,.38]]; }
   if (kind === 'flute') return [[-.15,1.62,.27],[.34,1.57,.31]];
   if (kind === 'sick') return [[-.12,1.01,.20],[.13,1.08,.24]];
   if (kind === 'eat' || kind === 'drink') return [null,[.09,1.72 + wave*.025,.23]];
   if (kind === 'pour') return [null,[.32,1.13,.46]];
+  if (kind === 'waterPlay') return [[-.22,1.08,.30],[.12+Math.sin(time*1.5)*.07,.88,.60+Math.cos(time*1.5)*.025]];
+  if (kind === 'pensive') return [[-.22,1.08,.30],[.10,1.63,.18]];
+  if (kind === 'cry') return [[-.20,1.06,.30],[.10,1.68+Math.sin(time*2)*.008,.22]];
   if (kind === 'reach' || kind === 'care') return [null,[.20,1.13 + wave*.025,.46]];
   return null;
 }
@@ -53,18 +67,26 @@ export class NpcGesture {
   constructor(actor, model, height) {
     this.actor=actor; this.scale=height/2; this.time=0;
     const aliases={Hips:'Hip',RightArm:'R_Upperarm',RightForeArm:'R_Forearm',RightHand:'R_Hand',LeftArm:'L_Upperarm',LeftForeArm:'L_Forearm',LeftHand:'L_Hand'};
-    const bone=name=>model.getObjectByName('mixamorig'+name)||model.getObjectByName(aliases[name]||name);
+    const bone=name=>model.getObjectByName('mixamorig'+name)||model.getObjectByName('mixamorig:'+name)||model.getObjectByName(aliases[name]||name);
     this.hips=bone('Hips');
+    this.spine=bone('Spine');this.chest=bone('Spine2');this.riverLean=0;
     this.hipRest=actor.worldToLocal(this.hips.getWorldPosition(new T.Vector3())).y;
     // Goal signs are discovered from this skeleton, not assumed from source axes.
     this.arms=['Right','Left'].map(side=>({upper:bone(side+'Arm'),fore:bone(side+'ForeArm'),hand:bone(side+'Hand'),fingers:bone(side+'HandMiddle1'),weight:0,goal:null}));
   }
   update(dt, pose, active) {
     this.time+=dt;
-    if (!active) { for(const arm of this.arms){arm.weight=0;arm.goal=null;} return; }
+    if (!active) { for(const arm of this.arms){arm.weight=0;arm.goal=null;}this.riverLean=0; return; }
     const next=handGoals(pose,this.time);
     const blend=1-Math.exp(-14*dt);
     this.actor.updateWorldMatrix(true,true);
+    // Bend the torso over the bank while leaving seated hips, knees and feet grounded.
+    const lean=pose?.kind==='captureReach'?1.12*(1-(pose.lift||0)):pose?.kind==='captureEscort'?.14:pose?.kind==='waterPlay'?1.15:pose?.kind==='cry'?.20+Math.sin(this.time*2)*.008:pose?.kind==='pensive'?.12:0;
+    this.riverLean+=(lean-this.riverLean)*blend;
+    if(this.riverLean>.001&&this.spine&&this.chest){
+      const direction=new T.Vector3(0,Math.cos(this.riverLean),Math.sin(this.riverLean)).applyQuaternion(this.actor.getWorldQuaternion(new T.Quaternion()));
+      aimBone(this.spine,this.chest,this.spine.getWorldPosition(new T.Vector3()).add(direction));
+    }
     const hipOffset=this.actor.worldToLocal(this.hips.getWorldPosition(new T.Vector3())).y-this.hipRest;
     for(const arm of this.arms) {
       if(!arm.hand)continue;
@@ -80,7 +102,7 @@ export class NpcGesture {
       const goal=arm.goal.clone();goal.y+=hipOffset;pole.y+=hipOffset;
       solveArm(arm.upper,arm.fore,arm.hand,this.actor.localToWorld(goal),this.actor.localToWorld(pole),arm.weight);
       if(requested){
-        const direction=['ribbon','carry','clap'].includes(pose.kind)?new T.Vector3(-side*.15,.5,.7):new T.Vector3(-side*.1,0,1);
+        const direction=['ribbon','carry','clap','present','handover'].includes(pose.kind)?new T.Vector3(-side*.15,.5,.7):new T.Vector3(-side*.1,0,1);
         if(arm.fingerDirection)arm.fingerDirection.lerp(direction,blend);else arm.fingerDirection=direction;
       }
       if(arm.fingers&&arm.fingerDirection){

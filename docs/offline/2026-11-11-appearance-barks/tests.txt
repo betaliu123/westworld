@@ -1,0 +1,260 @@
+TAP version 13
+# Subtest: acquisition does not trigger; actual wearing triggers one named local response without identity or reward changes
+ok 1 - acquisition does not trigger; actual wearing triggers one named local response without identity or reward changes
+  ---
+  duration_ms: 5.688
+  ...
+# Subtest: old saves establish a baseline; pending and seen notices survive reload, repeated dressing is deduplicated
+ok 2 - old saves establish a baseline; pending and seen notices survive reload, repeated dressing is deduplicated
+  ---
+  duration_ms: 2.0316
+  ...
+# Subtest: no wall, rear, distant, hidden or incapacitated observer gives an appearance response
+ok 3 - no wall, rear, distant, hidden or incapacitated observer gives an appearance response
+  ---
+  duration_ms: 0.99
+  ...
+# Subtest: closer original/identity challenge takes precedence; familiar contradictions never receive a reassuring clothing aside
+ok 4 - closer original/identity challenge takes precedence; familiar contradictions never receive a reassuring clothing aside
+  ---
+  duration_ms: 1.0698
+  ...
+# Subtest: latest equipment wins; stale queued response cannot commit, and headwear from inventory is observed
+ok 5 - latest equipment wins; stale queued response cannot commit, and headwear from inventory is observed
+  ---
+  duration_ms: 0.6586
+  ...
+# Subtest: nearest eligible observer wins; cooldown is global and no shared filler is spoken by unsupported characters
+ok 6 - nearest eligible observer wins; cooldown is global and no shared filler is spoken by unsupported characters
+  ---
+  duration_ms: 0.5507
+  ...
+# Subtest: reviewed pack has 240 bounded lines and recorded generation provenance
+ok 7 - reviewed pack has 240 bounded lines and recorded generation provenance
+  ---
+  duration_ms: 1.0921
+  ...
+# Subtest: scene controller defers while a panel is open, rechecks before display and only commits when shown
+ok 8 - scene controller defers while a panel is open, rechecks before display and only commits when shown
+  ---
+  duration_ms: 0.916
+  ...
+# Subtest: new wardrobes omit the unused cape; old item records survive without a wearable cape slot
+ok 9 - new wardrobes omit the unused cape; old item records survive without a wearable cape slot
+  ---
+  duration_ms: 4.4095
+  ...
+# Subtest: face, clothing and credentials stay independent; appearance consumes exactly one owned paste
+ok 10 - face, clothing and credentials stay independent; appearance consumes exactly one owned paste
+  ---
+  duration_ms: 1.5971
+  ...
+# Subtest: the displayed chance is the actual roll threshold; new clothing invalidates the earlier inspection
+ok 11 - the displayed chance is the actual roll threshold; new clothing invalidates the earlier inspection
+  ---
+  duration_ms: 1.6213
+  ...
+# Subtest: the original owner exposes the mask with no dice; a new face is not globally known
+ok 12 - the original owner exposes the mask with no dice; a new face is not globally known
+  ---
+  duration_ms: 0.5709
+  ...
+# Subtest: witness attribution is frozen at the incident and propagates to face-specific aftermath
+ok 13 - witness attribution is frozen at the incident and propagates to face-specific aftermath
+  ---
+  duration_ms: 1.6987
+  ...
+# Subtest: an observer cannot identify a concealed costume change through a wall
+ok 14 - an observer cannot identify a concealed costume change through a wall
+  ---
+  duration_ms: 0.4072
+  ...
+# Subtest: reputation earned while disguised belongs to the perceived identity, including faction reputation
+ok 15 - reputation earned while disguised belongs to the perceived identity, including faction reputation
+  ---
+  duration_ms: 0.3468
+  ...
+# Subtest: Yan surrender uses the actual jail, clears pursuit, and releases inside the city
+ok 16 - Yan surrender uses the actual jail, clears pursuit, and releases inside the city
+  ---
+  duration_ms: 1.8374
+  ...
+# Subtest: passing strangers stay out of the face list and cannot be applied; known and warrant faces remain usable
+ok 17 - passing strangers stay out of the face list and cannot be applied; known and warrant faces remain usable
+  ---
+  duration_ms: 0.8252
+  ...
+# Subtest: unmasking records misconduct against the actual player; earlier incidents retain the borrowed identity
+ok 18 - unmasking records misconduct against the actual player; earlier incidents retain the borrowed identity
+  ---
+  duration_ms: 0.8855
+  ...
+# Subtest: a gift remembers whom the recipient believed and the porter route recognizes a prepared bare chest after securing a place
+ok 19 - a gift remembers whom the recipient believed and the porter route recognizes a prepared bare chest after securing a place
+  ---
+  duration_ms: 2.9462
+  ...
+# Subtest: incapable original owners and familiar observers never preview, roll, unmask or consume a check
+ok 20 - incapable original owners and familiar observers never preview, roll, unmask or consume a check
+  ---
+  duration_ms: 13.6759
+  ...
+# Subtest: severe injury follows max health; recovery and control expiry restore deterministic recognition
+ok 21 - severe injury follows max health; recovery and control expiry restore deterministic recognition
+  ---
+  duration_ms: 1.2284
+  ...
+# Subtest: old exposure and evidence survive control and reload, without being applied again while incapacitated
+ok 22 - old exposure and evidence survive control and reload, without being applied again while incapacitated
+  ---
+  duration_ms: 1.4096
+  ...
+# Subtest: automatic and voluntary encounters skip every incapacity, then recover without a fake cooldown
+ok 23 - automatic and voluntary encounters skip every incapacity, then recover without a fake cooldown
+  ---
+  duration_ms: 10.517
+  ...
+# Subtest: incapacity during the question or after its choices prevents stale explanations and unmask admission
+ok 24 - incapacity during the question or after its choices prevents stale explanations and unmask admission
+  ---
+  duration_ms: 16.3041
+  ...
+# Subtest: incapable observers cannot expose a duplicate; another capable witness retains their own observation
+ok 25 - incapable observers cannot expose a duplicate; another capable witness retains their own observation
+  ---
+  duration_ms: 0.3813
+  ...
+# Subtest: giving an item to a severely injured original cannot trigger automatic recognition
+ok 26 - giving an item to a severely injured original cannot trigger automatic recognition
+  ---
+  duration_ms: 0.6211
+  ...
+# Subtest: identity-based favours reject incapable speakers without a null preview or a payout
+ok 27 - identity-based favours reject incapable speakers without a null preview or a payout
+  ---
+  duration_ms: 1.0516
+  ...
+# Subtest: Fu original gift is intercepted before inventory transfer, with deterministic recognition
+ok 28 - Fu original gift is intercepted before inventory transfer, with deterministic recognition
+  ---
+  duration_ms: 5.2179
+  ...
+# Subtest: familiar porter notices wrong outfit; correct clothes never grant office or name knowledge
+ok 29 - familiar porter notices wrong outfit; correct clothes never grant office or name knowledge
+  ---
+  duration_ms: 0.912
+  ...
+# Subtest: seeing both originals blocks favors; walls, distance and facing are actual evidence filters
+ok 30 - seeing both originals blocks favors; walls, distance and facing are actual evidence filters
+  ---
+  duration_ms: 1.0357
+  ...
+# Subtest: borrow preview never rolls; success uses its exact threshold and debits a real purse once
+ok 31 - borrow preview never rolls; success uses its exact threshold and debits a real purse once
+  ---
+  duration_ms: 2.3139
+  ...
+# Subtest: failed impersonation never pays or starts a departure; lost money and stale actions never roll
+ok 32 - failed impersonation never pays or starts a departure; lost money and stale actions never roll
+  ---
+  duration_ms: 2.4601
+  ...
+# Subtest: remote, wall-separated, sleeping, restrained and unconscious recipients cannot transact
+ok 33 - remote, wall-separated, sleeping, restrained and unconscious recipients cannot transact
+  ---
+  duration_ms: 2.2201
+  ...
+# Subtest: identity opportunities precede ordinary hiring; followups retain actions and a clear exit
+ok 34 - identity opportunities precede ordinary hiring; followups retain actions and a clear exit
+  ---
+  duration_ms: 1.4962
+  ...
+# Subtest: repayment remains pending until the actual pile is collected and cannot debit twice
+ok 35 - repayment remains pending until the actual pile is collected and cannot debit twice
+  ---
+  duration_ms: 1.6906
+  ...
+# Subtest: both borrowed identities can order departure without prior tasks or a guarantor trip
+ok 36 - both borrowed identities can order departure without prior tasks or a guarantor trip
+  ---
+  duration_ms: 2.4352
+  ...
+# Subtest: original in sight, missing cargo, and disabled receiver block commands before rolling
+ok 37 - original in sight, missing cargo, and disabled receiver block commands before rolling
+  ---
+  duration_ms: 1.9764
+  ...
+# Subtest: old pending escort is retired without granting passage or deleting old debt and receipts
+ok 38 - old pending escort is retired without granting passage or deleting old debt and receipts
+  ---
+  duration_ms: 0.3027
+  ...
+# Subtest: automatic proximity recognizes Fu and familiar porter; cancelled questioning does not roll
+ok 39 - automatic proximity recognizes Fu and familiar porter; cancelled questioning does not roll
+  ---
+  duration_ms: 1.2983
+  ...
+# Subtest: all directed acquaintances have distinct greetings and reachable actions without tasks
+ok 40 - all directed acquaintances have distinct greetings and reachable actions without tasks
+  ---
+  duration_ms: 10.1816
+  ...
+# Subtest: royal knowledge requires hearing the accepted greeting; names and sealed content remain separate
+ok 41 - royal knowledge requires hearing the accepted greeting; names and sealed content remain separate
+  ---
+  duration_ms: 1.7488
+  ...
+# Subtest: existing successful checks resume identity dialogue without another roll, then expose all followups
+ok 42 - existing successful checks resume identity dialogue without another roll, then expose all followups
+  ---
+  duration_ms: 1.3364
+  ...
+# Subtest: money debits the actual NPC purse, needs pickup, survives reload and cannot be farmed by makeup
+ok 43 - money debits the actual NPC purse, needs pickup, survives reload and cannot be farmed by makeup
+  ---
+  duration_ms: 2.7602
+  ...
+# Subtest: court stock is finite, physically collected, provenance keeps the accepted identity; identity is not employment
+ok 44 - court stock is finite, physically collected, provenance keeps the accepted identity; identity is not employment
+  ---
+  duration_ms: 3.147
+  ...
+# Subtest: permissions cannot survive another face, exposure, expiration or visible duplicate; renewal never refills stock
+ok 45 - permissions cannot survive another face, exposure, expiration or visible duplicate; renewal never refills stock
+  ---
+  duration_ms: 0.8373
+  ...
+# Subtest: manifest actions transfer the same entity; possession, reading and testimony are distinct
+ok 46 - manifest actions transfer the same entity; possession, reading and testimony are distinct
+  ---
+  duration_ms: 1.6462
+  ...
+# Subtest: stale, remote, incapacitated and contradictory actions fail before payment or dice
+ok 47 - stale, remote, incapacitated and contradictory actions fail before payment or dice
+  ---
+  duration_ms: 3.0386
+  ...
+# Subtest: refused overreach changes the believed actor once, with no player penalty or property transfer
+ok 48 - refused overreach changes the believed actor once, with no player penalty or property transfer
+  ---
+  duration_ms: 0.6278
+  ...
+# Subtest: unlicensed chest theft uses the real action check while authorization needs no roll
+ok 49 - unlicensed chest theft uses the real action check while authorization needs no roll
+  ---
+  duration_ms: 1.4698
+  ...
+# Subtest: hearing a clue through the live save observer keeps its true source and does not invent prisoner testimony
+ok 50 - hearing a clue through the live save observer keeps its true source and does not invent prisoner testimony
+  ---
+  duration_ms: 0.8869
+  ...
+1..50
+# tests 50
+# suites 0
+# pass 50
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 423.9818

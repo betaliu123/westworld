@@ -15,14 +15,15 @@ export class HeroMotion {
     this.suspended = false;
   }
 
-  cue(name, duration, hold = false) {
+  // skip starts the clip that many seconds in (the rest is fitted to duration); fade is the blend-in time.
+  cue(name, duration, hold = false, {skip = 0, fade = .15} = {}) {
     if (!this.actions.has(name)) return false;
     this.once = {name, end: this.time + (duration || this.actions.get(name).getClip().duration), duration, hold};
-    this.play(name, {once: true, duration, restart: true});
+    this.play(name, {once: true, duration, restart: true, skip, fade});
     return true;
   }
 
-  play(name, {once = false, duration, restart = false, speed = 1} = {}) {
+  play(name, {once = false, duration, restart = false, speed = 1, skip = 0, fade = .15} = {}) {
     const next = this.actions.get(name);
     if (!next) return;
     if (this.base !== name || restart) {
@@ -33,12 +34,12 @@ export class HeroMotion {
       next.clampWhenFinished = once;
       next.enabled = true;
       next.setEffectiveWeight(1);
-      next.setEffectiveTimeScale(duration ? next.getClip().duration / duration : speed);
-      next.time = once ? 0 : (phase % 1) * next.getClip().duration;
+      next.setEffectiveTimeScale(duration ? (next.getClip().duration - skip) / duration : speed);
+      next.time = once ? skip : (phase % 1) * next.getClip().duration;
       next.play();
       if (previous && previous !== next) {
-        previous.fadeOut(.15);
-        next.fadeIn(.15);
+        previous.fadeOut(fade);
+        next.fadeIn(fade);
       }
       this.base = name;
     } else if (!once) next.setEffectiveTimeScale(speed);
@@ -48,6 +49,7 @@ export class HeroMotion {
     this.mixer.stopAllAction();
     this.base = this.once = null;
     this.wasAir = this.wasDead = this.weapon = false;
+    this.custodyPhase = null;
   }
 
   cancelAttack() {
@@ -56,7 +58,13 @@ export class HeroMotion {
 
   update(dt, state) {
     this.time += dt;
-    const dead = state.hp <= 0;
+    const custody=state.custody;
+    if(custody?.phase==='lift'&&this.actions.has('death')){
+      if(this.custodyPhase!=='lift'){this.reset();this.play('death',{once:true,restart:true,fade:0});this.custodyPhase='lift';}
+      const action=this.actions.get('death');action.paused=true;action.time=action.getClip().duration*(1-custody.progress);this.mixer.update(0);return true;
+    }
+    if(this.custodyPhase==='lift')this.reset();
+    const dead = state.hp <= 0 && !custody;
     // Bespoke actions (flute, pressure points, eating) keep their own
     // hand/prop choreography; do not replace them with an unrelated stock clip.
     const hasCrouch = this.actions.has('crouch_idle') && this.actions.has('crouch_walk');

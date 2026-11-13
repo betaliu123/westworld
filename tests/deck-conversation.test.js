@@ -46,7 +46,7 @@ test('porter has no self-referral news while the tea host can introduce the clot
  const draw=peek(sim.s,'talk','tea_host'),route=draw.candidates.find(e=>e.id==='merchant_escort');
  assert.equal(route.place.person,'porter');
  const ctx=dealContext(sim.s,draw,'tea_host');
- assert.match(ctx.candidates.find(e=>e.id===route.id).fact,/短褂/);
+ assert.match(ctx.candidates.find(e=>e.id===route.id).fact,/周大石|役夫/);
  assert.doesNotMatch(JSON.stringify(route),/辰时|申时|点名|误了时候/);
 });
 

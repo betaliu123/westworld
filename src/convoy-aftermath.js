@@ -26,7 +26,7 @@ export function recordConvoyAftermath(sim,event,item){
 function reactToNews(sim,id,k){
  const s=sim.s,a=s.convoy.aftermath,subject=k.subject,key=a.id+':'+subject;
  if(id==='qing')earnReputation(sim,{city:null,faction:'qingzhu',subject,amount:18,key:key+':qingzhu',reason:'青竹会听闻截取纲货，愿当面结识'});
- if(id==='gang_boss')earnReputation(sim,{city:null,faction:'gang',subject,amount:-8,key:key+':gang',reason:'赤砂帮担忧货路因此受查'});
+ if(id==='gang_boss')earnReputation(sim,{city:null,faction:'gang',subject,amount:12,key:key+':gang',reason:'赤砂帮听闻盗纲，认可胆量与手段'});
  if(POLICE.includes(id))earnReputation(sim,{city:null,faction:'court',subject,amount:-20,key:key+':court',reason:'官府收到盗纲指认'});
  if(subject!=='player'&&!k.rumored){spreadIdentityRumor(s,subject,12,'盗取纲货的传闻',id);k.rumored=true;}
  const heard=Object.entries(a.known).filter(([who,k])=>k.subject===subject&&!POLICE.includes(who)&&!['fu','porter'].includes(who));
@@ -66,7 +66,7 @@ export function convoyAftermathFrame(world){
   if(Math.sin(heading)*dx+Math.cos(heading)*dz<0)continue;
   const recognized=believedIdentity(s,id)===k.subject;
   if(id==='qing'&&!recognized)continue;
-  const text=id==='qing'?'听说是你截了纲货。我是青竹会林青舟，想同你谈谈入会的事。':id==='gang_boss'?recognized?'这趟纲货是你动的？官府若封路，沿路吃饭的人都得受累。':'纲货一丢，官府怕要查货路。堂里走货得更谨慎了。':POLICE.includes(id)?'纲货失窃，已有指认。知情的人，来当面说明。':'花石纲也有人敢动了。听说是'+(k.subject==='player'?(recognized?'你':'一位江湖客'):identityName(k.subject))+'，这事怕是小不了。';
+  const text=id==='qing'?'听说是你截了纲货。我是青竹会林青舟，想同你谈谈入会的事。':id==='gang_boss'?recognized?'花石纲也敢动，你倒有些胆量。想往艮岳去，可来谈谈运石队的名额。':'连花石纲也敢动，这人的胆量，我倒想见识见识。':POLICE.includes(id)?'纲货失窃，已有指认。知情的人，来当面说明。':'花石纲也有人敢动了。听说是'+(k.subject==='player'?(recognized?'你':'一位江湖客'):identityName(k.subject))+'，这事怕是小不了。';
   if(world.onConvoySpeech?.({id,text})){
    a.spoken[id]=true;
    if(id==='qing'){
@@ -122,7 +122,7 @@ export function resolveConvoyAftermath(sim,eco,id,action){
   text='好，我替你登记，往后由我与你接洽。这枚竹符收好；官府的案子还在，入会可免不了追查。';changes=['加入青竹会','获得：青竹会竹符'];
  }else if(action==='ca_decline'){a.invitation.status='declined';text='人各有志，我不强求。这趟纲货的风声紧，你自己保重。';}
  else if(action==='ca_later'){a.invitation.offered=true;text='可以，等你想清楚，再来找我。';}
- else if(action==='ca_gang'){a.responses[id]=true;text='纲货的风声我听到了。官府查货，沿路商旅都要受累。赤砂帮往后与你谈事，会多留一分心。';}
+ else if(action==='ca_gang'){a.responses[id]=true;text='敢动纲货，手上总有些本事。运石队的名额可以谈，官府的案子却得你自己担。';}
  else if(action==='ca_court'){a.responses[id]=true;text='已派人查现场和证言。有人受了伤、货去了何处，都要查；江湖上怎么议论，不能销掉案子。';}
  if(['accepted','declined'].includes(a.invitation.status)&&s.quests?.['qingzhu-invitation'])s.quests['qingzhu-invitation'].status='complete';
  addCausalDeed(s,{key:'convoy-response:'+action,title:choice.label,text,target:id,subject,cause:a.id,witnesses:[id]});

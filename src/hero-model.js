@@ -4,6 +4,7 @@ import {HeroMotion} from './hero-motion.js';
 import {bedBones} from './bed-pose.js';
 import {sleepEyes} from './sleep-eyes.js';
 import {FootGrounding} from './foot-grounding.js';
+import {NpcGesture} from './npc-gesture.js';
 
 // Retargeted motion drives locomotion/combat. Bespoke interactions retain their procedural choreography.
 const HEIGHT = 2.04, HANG = Math.PI / 2 - .1, ELBOW = .22;
@@ -101,6 +102,7 @@ export function mountHeroModel(actor, url) {
       bone[shin].quaternion.copy(q2.copy(rest[key]).invert().multiply(knee).multiply(rest[shin]));
     }
     handle.ready = true;
+    const itemGesture=new NpcGesture(actor,model,HEIGHT);
     handle.wrapper = wrapper;handle.bindPose=bindPose;
     handle.sync = ({hatOn, disguised, dt = 0, ...state}) => {
       u.rig.visible = true;
@@ -116,6 +118,7 @@ export function mountHeroModel(actor, url) {
         if(u.sword.parent!==swordSocket){swordSocket.add(u.sword);u.sword.position.set(0,0,0);u.sword.quaternion.identity();u.sword.scale.set(1,1,1);}
         // Physical root stays on the ground; only the hips carry the authored pose.
         usedMotion = true;
+        itemGesture.update(dt,state.upperBody,(state.hp>0||!!state.custody)&&!state.airborne);
         return;
       }
       if(usedMotion||state.bedPose){
@@ -131,6 +134,7 @@ export function mountHeroModel(actor, url) {
       leg('leftLeg', 'leftShin', u.legs[1]);
       drive('head', u.head);
       if(state.bedPose)bedBones(u.rig,bone,state.bedPose);
+      itemGesture.update(dt,state.upperBody,!!state.upperBody&&state.hp>0&&!state.bedPose&&!state.airborne);
     };
     return handle;
   }).catch(error => {handle.error=error;console.error('hero model failed to load',error);return handle;});

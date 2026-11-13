@@ -1,5 +1,6 @@
 ﻿/** End player-directed hostility, leaving relationships, evidence, custody and NPC duels intact. */
 export function endPlayerPursuit(s){
+ delete s.surrender;
  delete s.complaint;if(s.territory)delete s.territory.barred;
  for(const n of Object.values(s.people)){
   if(n.awareness?.suspect==='player'||n.awareness?.lastIncident!=null)n.awareness=null;

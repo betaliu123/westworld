@@ -18,6 +18,7 @@ ASCII = ''.join(chr(c) for c in range(0x20, 0x7f))
 # Display (title) strings that come from code paths rather than literals, plus result glyphs.
 DATA_CHARS = '０１２３４５６７８９＋－×÷％·／：一二三四五六七八九十百千两文日时刻次成败险'
 TITLE_EXTRA = '江湖有回声临溪镇关县狱茶棚绛云楼北街城门东西南北成败险胜负平生死逃擒醉毒伤愈入城出狱章壹贰叁肆伍陆柒捌玖拾初入江湖记事出狱了翻墙赵更生宣旧纸焦浓重淡清墨朱砂石绿赭青释行商'
+TITLE_EXTRA += '三日后'
 
 
 def project_text():

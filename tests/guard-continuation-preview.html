@@ -1,0 +1,11 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>守卫对白续接验收</title>
+<style>body{margin:0;background:#ece3cf;font:16px serif}nav{padding:4px}button{font:16px serif}iframe{display:block;border:0}output{display:block;white-space:pre-wrap}</style>
+<nav><button data-size="1280,850">1280×850</button><button data-size="1024,768">1024×768</button><button data-size="800,600">800×600</button>
+<button data-fixture="intro">初次问话</button><button data-fixture="kindness">有担保线索</button><button data-fixture="alone">无担保线索</button><button data-fixture="relief">接班守卫</button><button data-fixture="explore">探索清屏</button></nav>
+<iframe title="守卫独立试玩" width="1280" height="850" src="/?playtest=guard-continue-qa"></iframe><output></output>
+<script>
+const frame=document.querySelector('iframe');
+for(const b of document.querySelectorAll('[data-size]'))b.onclick=()=>{const [w,h]=b.dataset.size.split(',');frame.width=w;frame.height=h;};
+for(const b of document.querySelectorAll('[data-fixture]'))b.onclick=()=>frame.contentWindow.postMessage({type:'guard-fixture',fixture:b.dataset.fixture},location.origin);
+addEventListener('message',e=>{if(e.origin===location.origin&&e.source===frame.contentWindow&&e.data?.type==='guard-status')document.querySelector('output').textContent=JSON.stringify(e.data);});
+</script></html>

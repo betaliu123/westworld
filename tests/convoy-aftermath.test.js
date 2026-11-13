@@ -46,7 +46,7 @@ test('physical reports preserve observed identity and different factions react o
  assert.equal(g.s.convoy.aftermath.known.qing.subject,'fu');assert.equal(g.s.appearance.reputations.fu.factions.qingzhu,18);assert.equal(factionRep(g.s,'qingzhu'),0);
  assert.equal(convoyAftermathOptions(g.sim,'qing').length,0,'unmasked player is not the subject of the invitation');
  shareConvoyNews(g.sim,'porter','gang_boss',g.eco.positions);shareConvoyNews(g.sim,'porter','inspector',g.eco.positions);
- assert.equal(g.s.appearance.reputations.fu.factions.gang,-8);assert.equal(g.s.appearance.reputations.fu.factions.court,-20);assert.ok(g.s.appearance.rumors.fu.hearers.includes('qing'));
+ assert.equal(g.s.appearance.reputations.fu.factions.gang,12);assert.equal(g.s.appearance.reputations.fu.factions.court,-20);assert.ok(g.s.appearance.rumors.fu.hearers.includes('qing'));
 });
 test('one convoy creates one reputation consequence per faction and one public renown claim across reload',()=>{
  const g=setup();const before=cityRep(g.s);recordConvoyTheft(g.sim,g.eco,g.event,g.item);
@@ -125,5 +125,5 @@ test('an NPC clipped by an old wagon margin can step out, but never advance deep
  w.props=[];w.obstacles=[{id:'flowerstone-cart',x:0,z:23.7,w:2.9,d:3.7}];w.collides=World.prototype.collides;w.move=World.prototype.move;w.npcMoveDt=.1;
  const before=actor.position.x;w.move(actor,-.01,0);assert.equal(actor.position.x,before);
  for(let i=0;i<10;i++){w.t+=.1;w.move(actor,.02,0);}assert.ok(actor.position.x>1.75);assert.equal(actor.position.z,23);
- w.obstacles.push({id:'test-wall',x:2.2,z:23,w:.2,d:3});const at=actor.position.x;w.move(actor,.2,0);assert.equal(actor.position.x,at);
+ w.obstacles.push({id:'test-wall',x:2.2,z:23,w:.2,d:3});const at=actor.position.x;actor.rotation.y=Math.PI/2;w.move(actor,.2,0);assert.equal(actor.position.x,at);assert.ok(actor.userData.attemptedMove,'it is the wall that stops the step, not a pivot');
 });
