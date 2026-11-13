@@ -6,24 +6,59 @@ export const SWINGS = [
   {duration: .68, strike: .21, chain: .54, skip: .14},
 ];
 
-export const SWING_COST = 8;
+export const SWING_COST = 4;
+
+// Running speed in metres a second. With a blade drawn it is the fastest the armed run clip can follow without the feet sliding.
+export const SPRINT = {plain: 6.2, armed: 5.2};
+
+// A raised blade takes a blow from the front: chip is the share of damage that still gets through.
+// A blow caught within `window` seconds of raising it is turned aside whole. Practice (trained) steadies both.
+// Raising the blade again within `repress` seconds gives no such window, so hammering the key does not turn every blow.
+export const GUARD = {cost: 6, chip: .4, chipTrained: .25, window: .25, windowTrained: .4, repress: .5};
+export const guardChip = tier => tier >= 2 ? GUARD.chipTrained : GUARD.chip;
+export const guardWindow = tier => tier >= 3 ? GUARD.windowTrained : GUARD.window;
+
+// The ink wave: a cut thrown forward. It leaves the blade `release` seconds into the cast, travels `range` metres at `speed`,
+// and strikes each person within `radius` of it once, `power` times as hard as an ordinary cut.
+export const WAVE = {cooldown: 12, cast: .62, release: .2, speed: 16, range: 12, radius: 1.7, power: 1.5};
 
 // A quick step out of reach. It grants no immunity: a blow misses only because, at its contact frame,
 // the body really is somewhere else. It starts fast and settles: dodgeTravel is the ground covered by a given age.
 export const DODGE = {time: .26, distance: 3.1, cost: 10, cooldown: .55};
 export const dodgeTravel = age => { const k = Math.min(1, Math.max(0, age / DODGE.time)); return DODGE.distance * (1 - (1 - k) ** 2); };
 
-// A swing at an opponent standing just out of reach steps in during its wind-up.
-// sight: how far away such an opponent is noticed; keep: the distance the step stops at; reach: the most it covers.
-export const LUNGE = {sight: 3.8, keep: 2, reach: 1.4};
+// A swing at an opponent standing just out of reach steps in during its wind-up, and keeps after them if they give ground.
+// sight: how far away such an opponent is noticed; keep: the distance the step stops at; reach: the most one swing covers;
+// speed: the fastest the body is carried.
+export const LUNGE = {sight: 3.8, keep: 2, reach: 1.4, speed: 9};
+// Ground covered this frame toward an opponent `distance` away, so as to stand at striking distance when the cut lands.
+export const lungeStep = (distance, left, untilStrike, dt) => {
+  const gap = distance - LUNGE.keep;
+  return gap > .02 && left > 0 ? Math.min(gap, left, LUNGE.speed * dt, gap * dt / Math.max(untilStrike, dt)) : 0;
+};
+
+// Bodies do not pass through each other in a fight: walking into an opponent stops this far off. Given the offset from
+// them, standOff is the step back out; the quick step is exempt and slips past.
+export const BODY_GAP = .8;
+export const standOff = (x, z) => {
+  const d = Math.hypot(x, z);
+  return d < BODY_GAP && d > .01 ? {x: x / d * (BODY_GAP - d), z: z / d * (BODY_GAP - d)} : null;
+};
+
+// How near an object must be to take a cut that also has a person in its arc: nothing takes it from someone squarely faced
+// and in plain view; otherwise the nearer of the two does.
+export const FACED = .8;
+export const objectReach = ({distance, align, clear}) => align > FACED && clear ? 0 : distance;
 
 // What a landed blow does to the picture: a held frame, a camera jolt and a brief narrowing of the view.
 // stop is seconds of near-stillness; shake and punch are 0..1.
 export const IMPACT = {
-  light: {stop: .045, shake: .1, punch: .3},
-  down: {stop: .11, shake: .22, punch: .7},
-  hurt: {stop: .05, shake: .24, punch: .45},
-  guard: {stop: .03, shake: .07, punch: .15},
+  light: {stop: .065, shake: .2, punch: .42},
+  down: {stop: .15, shake: .36, punch: .85},
+  hurt: {stop: .06, shake: .3, punch: .5},
+  guard: {stop: .04, shake: .12, punch: .2},
+  parry: {stop: .16, shake: .3, punch: .7},
+  cast: {stop: .05, shake: .26, punch: .6},
 };
 export class ImpactFeel {
   constructor(calm = false) { this.stop = this.shake = this.punch = 0; this.calm = calm; }

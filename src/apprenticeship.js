@@ -17,7 +17,7 @@ const family={old_constable:'court',gate_relief:'court',inspector:'court',qing:'
 export const LESSONS={
  pressure:{demo:'看指尖，先认肩井。不是戳，是送。',hint:'等师父落肩，再点亮起的穴位',motion:'pressure',prop:'dummy',steps:['认肩井','落指','收力'],after:'肩背认准了，迎面也能制住人。遇到巡逻，先想清楚值不值得动手。'},
  insight:{demo:'左肩比右肩低，腰间压着硬物。先看清，再下断语。',hint:'点击师父身上亮起的观察点',motion:'observe',prop:'parcel',steps:['看肩头','辨腰物','看手茧'],after:'去看刻字人的手和袖口。眼里有了凭据，再开口问他的来历。'},
- combat:{demo:'刀背护胸，别追刀尖。等我收势，你再接进来。',hint:'师父出招时按住 R 格挡，收势后左键还招',motion:'sword',prop:'weapon',steps:['守住中线','接住来招','收势还击'],after:'这一手要用在护人上。进城问问林青舟和段赤川，他们还在为脚夫的工钱争执。'},
+ combat:{demo:'刀背护胸，别追刀尖。等我收势，你再接进来。',hint:'师父出招时按住 F 格挡，收势后左键还招',motion:'sword',prop:'weapon',steps:['守住中线','接住来招','收势还击'],after:'这一手要用在护人上。进城问问林青舟和段赤川，他们还在为脚夫的工钱争执。'},
  theft:{demo:'肩转开了，袖口才露出来。等这一刻，再解钱袋。',hint:'等师父转身，再点击钱袋；正面伸手会被拍开',motion:'reach',prop:'purse',steps:['靠近袖口','解开结扣','收起钱袋'],after:'钱袋的结扣也能解了。别人身上的东西，拿走了就得担后果。'},
  music:{demo:'先听这三拍。气息慢些，跟着我，别抢在句尾换气。',hint:'节拍落到朱砂线附近时按空格',motion:'flute',prop:'flute',steps:['起音','续气','收音'],after:'这支竹笛给你。找块空地奏一曲，过路人愿不愿停下，就听你的了。'},
  disguise:{demo:'衣服只骗第一眼。照着我的站姿，收肩，再改步子；熟人仍会认你。',hint:'跟着师父的示范，在亮起时点击对应部位',motion:'bow',prop:'mirror',steps:['收肩','垂手','定步'],after:'有衣服才好改扮。路引上的姓名、原主认识的人，还要自己留心。'},

@@ -1,10 +1,16 @@
 import * as T from '../vendor/three.module.js';
+import {WAVE} from './hero-combat.js';
 
 // Combat effects drawn as ink on paper: a blade leaves a brush stroke, a blow throws ink that blots the ground and dries.
 // Everything is pooled and black ink only; nothing here decides a hit, it only shows one that happened.
 const INK = new T.Color('#15140f');
 const DROPS = 72, BLOTS = 56, MARKS = 8, TRAIL_SAMPLES = 24, TRAIL_SUB = 4, TRAIL_STEP = 1 / 60;
 const GROUND = .05, GROW_FROM = .5;
+// Cinnabar is kept for the one thing that must not be missed: where a blow is about to land.
+const CINNABAR = new T.Color('#a63a2b');
+// WARNS: warnings shown at once. WARN_MARGIN: the quad is that much larger than the reach, to leave room for a rough edge.
+// The thrown cut is drawn as wide as it really reaches.
+const WARNS = 6, WARN_MARGIN = 1.12, WAVE_HALF = WAVE.radius;
 
 function seeded(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 
@@ -100,6 +106,49 @@ void main(){
   if(a<.02)discard;
   gl_FragColor=vec4(uInk,a*uOpacity);
 }`;
+// The ground a coming blow will cover: a cinnabar fan. Its rim is there from the first moment and the wash spreads out to it.
+// vP is in units of the blow's reach times WARN_MARGIN, +y along the attacker's facing.
+const warnVertex = `
+varying vec2 vP;
+void main(){ vP=position.xz; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`;
+const warnFragment = `
+uniform sampler2D uBrush; uniform vec3 uColor; uniform float uHalf,uFill,uAlpha,uSeed; varying vec2 vP;
+void main(){
+  float len=length(vP), r=len*${WARN_MARGIN.toFixed(2)}, ang=acos(clamp(vP.y/max(len,1e-4),-1.,1.));
+  float fibre=texture2D(uBrush,vec2(ang*.9+uSeed,r*.5)).g, rough=(fibre-.5)*.1;
+  float inside=smoothstep(1.,.95,r+rough)*smoothstep(uHalf,uHalf-.07,ang+rough)*smoothstep(.16,.3,r);
+  float rim=inside*(1.-smoothstep(.9,.8,r+rough)*smoothstep(uHalf-.1,uHalf-.2,ang+rough));
+  float wash=inside*smoothstep(uFill+.03,uFill-.12,r)*(.42+.4*smoothstep(.35,.7,fibre));
+  float a=max(rim*(.6+.4*fibre),wash)*uAlpha;
+  if(a<.02)discard;
+  gl_FragColor=vec4(uColor,a);
+}`;
+// A thrown cut: one broad sweep of the brush, wet and whole at its leading edge (v=0), breaking into bristle streaks behind,
+// and drying as it travels (uAge 0..1).
+const waveVertex = `
+varying vec2 vUv;
+void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`;
+const waveFragment = `
+uniform sampler2D uBrush; uniform float uAge,uSeed,uOpacity; uniform vec3 uInk; varying vec2 vUv;
+void main(){
+  float fibre=texture2D(uBrush,vec2(vUv.x*1.6+uSeed,vUv.y*.9+.05)).g*.7+texture2D(uBrush,vec2(vUv.x*3.7+uSeed*2.,vUv.y*.5+.3)).g*.3;
+  float dry=mix(.02,.9,smoothstep(.1,1.,vUv.y))+uAge*.5;
+  float a=smoothstep(dry,dry+.09,fibre)*smoothstep(0.,.04,vUv.y)*(1.-smoothstep(.75,1.,uAge));
+  if(a<.02)discard;
+  gl_FragColor=vec4(uInk,a*uOpacity);
+}`;
+// The sweep's shape: an arc WAVE_HALF wide to either side that stands like a cresting wave, its leading edge high and
+// forward and its trailing edge low and behind; tall in the middle and drawn out to nothing at its ends.
+function crescent() {
+  const N = 28, R = WAVE_HALF / Math.sin(1.2), position = [], uv = [], index = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, phi = (t - .5) * 2.4, full = Math.cos((t - .5) * Math.PI) ** .7, x = Math.sin(phi), z = Math.cos(phi), back = .7 * full;
+    position.push(x * R, .6 * full, z * R - R * .8, x * (R - back), -.8 * full, z * (R - back) - R * .8); uv.push(t, 0, t, 1);
+    if (i < N) { const a = i * 2; index.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  }
+  const g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute(position, 3)); g.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); g.setIndex(index);
+  return g;
+}
 const blend = {transparent: true, depthWrite: false};
 
 // A ribbon swept by two moving points. Sparse frames are rounded with a spline, so a slow machine still gets a curve.
@@ -191,6 +240,45 @@ export class InkFx {
     this.blade = new Trail(scene, texture, {life: .3, opacity: .9});
     this.smear = new Trail(scene, texture, {life: .34, opacity: .5});
     this.dummy = new T.Object3D(); this.up = new T.Vector3(0, 1, 0); this.a = new T.Vector3(); this.b = new T.Vector3();
+    const fan = new T.BufferGeometry();
+    fan.setAttribute('position', new T.Float32BufferAttribute([-1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1], 3)); fan.setIndex([0, 2, 1, 0, 3, 2]);
+    this.warns = Array.from({length: WARNS}, () => {
+      const mesh = new T.Mesh(fan, new T.ShaderMaterial({uniforms: {uBrush: {value: texture}, uColor: {value: CINNABAR}, uHalf: {value: 1}, uFill: {value: 0}, uAlpha: {value: 0}, uSeed: {value: 0}}, vertexShader: warnVertex, fragmentShader: warnFragment, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3, ...blend}));
+      mesh.frustumCulled = false; mesh.renderOrder = 3; mesh.visible = false; mesh.userData.environmentEffect = true; scene.add(mesh);
+      return {mesh, key: null, alpha: 0, fresh: false};
+    });
+    // The thrown cut is two sweeps: the stroke itself, and a paler one a little behind it like the wash a loaded brush leaves.
+    const sweep = crescent();
+    this.waveMeshes = [1, .38].map((opacity, i) => {
+      const mesh = new T.Mesh(sweep, new T.ShaderMaterial({uniforms: {uBrush: {value: texture}, uAge: {value: 0}, uSeed: {value: 0}, uOpacity: {value: opacity}, uInk: {value: INK}}, vertexShader: waveVertex, fragmentShader: waveFragment, side: T.DoubleSide, ...blend}));
+      mesh.frustumCulled = false; mesh.renderOrder = 8 - i; mesh.visible = false; mesh.rotation.order = 'YXZ'; mesh.userData.environmentEffect = true; scene.add(mesh);
+      return mesh;
+    });
+    this.wave = null;
+  }
+  // Called every frame of a wind-up; a warning nobody renews fades out. progress: 0 as the blow starts, 1 as it lands.
+  warn(key, x, z, facing, reach, half, progress) {
+    const w = this.warns.find(w => w.key === key) || this.warns.find(w => w.key === null); if (!w) return;
+    const u = w.mesh.material.uniforms;
+    if (w.key !== key) { w.key = key; w.alpha = 0; u.uSeed.value = this.rnd(); }
+    w.fresh = true; w.mesh.position.set(x, GROUND + .012, z); w.mesh.rotation.y = facing; w.mesh.scale.set(reach * WARN_MARGIN, 1, reach * WARN_MARGIN);
+    u.uHalf.value = half; u.uFill.value = Math.min(1, Math.max(0, progress)) * 1.08;
+  }
+  // The thrown cut leaves the blade at (x, z) heading along (dx, dz).
+  waveStart(x, z, dx, dz) {
+    this.wave = {x, z, dx, dz, k: 0, live: true, fade: 0, laid: 0, seed: this.rnd()};
+    const along = new T.Vector3(dx, 0, dz), at = new T.Vector3(), r = this.rnd;
+    for (let i = 0; i < 14; i++) { const s = (r() - .5) * 2.6; this.drop(at.set(x + dz * s, .9 + r() * .5, z - dx * s), along, 4.5); }
+    this.blot(x - dx * .5, z - dz * .5, 1.5, .3, Math.atan2(dx, dz), 3);
+  }
+  waveMove(x, z, k) { const w = this.wave; if (w) { w.x = x; w.z = z; w.k = k; } }
+  // spent: it ran its course and thins away. broke: something solid stopped it, and it bursts there.
+  waveEnd(broke = false) {
+    const w = this.wave; if (!w || !w.live) return; w.live = false;
+    if (!broke) return;
+    const r = this.rnd, back = new T.Vector3(-w.dx, 0, -w.dz), at = new T.Vector3();
+    for (let i = 0; i < 16; i++) { const s = (r() - .5) * 3; this.drop(at.set(w.x + w.dz * s, .4 + r() * 1.1, w.z - w.dx * s), back, 4); }
+    this.blot(w.x, w.z, 1.9, .5, Math.atan2(w.dx, w.dz), 5);
   }
   // Screen angle of a world direction, so brushwork follows the blow as the camera sees it.
   angle(camera, point, direction) {
@@ -225,9 +313,12 @@ export class InkFx {
     this.blot(point.x + direction.x * .5, point.z + direction.z * .5, .22 + .16 * power, .34 + .3 * power, Math.atan2(direction.x, direction.z));
   }
   // Two blades meeting throw a short spray and no stain.
-  clash(camera, point, direction, detail = 1) {
-    this.mark(point, {stroke: true, width: .95, height: .13, angle: this.angle(camera, point, direction) + Math.PI / 2, life: .2});
-    for (let i = Math.round(5 * detail); i > 0; i--) this.drop(point, direction, 2.6);
+  // power 1 for a blow caught on the blade; 2 for one turned aside, which crosses two strokes.
+  clash(camera, point, direction, detail = 1, power = 1) {
+    const across = this.angle(camera, point, direction) + Math.PI / 2;
+    this.mark(point, {stroke: true, width: .95 * power, height: .13 * power ** .5, angle: across, life: .2 + .08 * (power - 1)});
+    if (power > 1) this.mark(point, {stroke: true, width: .8 * power, height: .15, angle: across + 1.25, life: .26});
+    for (let i = Math.round(5 * detail * power); i > 0; i--) this.drop(point, direction, 2.6 + .9 * (power - 1));
   }
   // Scuffed ink along a quick step.
   streak(from, to) {
@@ -258,5 +349,29 @@ export class InkFx {
     if (faded) this.blotFade.needsUpdate = true;
     for (const m of this.marks) { if (!m.mesh.visible) continue; m.age += dt; if (m.age >= m.life) { m.mesh.visible = false; continue; } const u = m.mesh.material.uniforms; u.uAge.value = m.age / m.life; if (!u.uStroke.value) u.uGrow.value = GROW_FROM + (1 - GROW_FROM) * (1 - (1 - Math.min(1, m.age / .09)) ** 2); }
     this.blade.update(this.now); this.smear.update(this.now);
+    for (const w of this.warns) {
+      if (w.key === null) continue;
+      w.alpha = w.fresh ? Math.min(1, w.alpha + dt / .08) : w.alpha - dt / .16; w.fresh = false;
+      if (w.alpha <= 0) { w.key = null; w.mesh.visible = false; continue; }
+      w.mesh.visible = true; w.mesh.material.uniforms.uAlpha.value = w.alpha;
+    }
+    const w = this.wave;
+    if (w) {
+      if (!w.live) w.fade += dt / .16;
+      if (w.fade >= 1) { this.wave = null; for (const m of this.waveMeshes) m.visible = false; return; }
+      const turn = Math.atan2(w.dx, w.dz), age = Math.min(1, w.k * .55 + w.fade);
+      this.waveMeshes.forEach((m, i) => {
+        const lag = i * .55, size = (1 + .3 * w.k) * (i ? 1.12 : 1);
+        m.visible = true; m.position.set(w.x - w.dx * lag, 1.05, w.z - w.dz * lag); m.rotation.set(0, turn, .28); m.scale.setScalar(size);
+        m.material.uniforms.uAge.value = Math.min(1, age + i * .12); m.material.uniforms.uSeed.value = w.seed + i * .37;
+      });
+      // Ink shaken off along the way: long scuffs on the ground and drops thrown to either side.
+      const gone = w.k * WAVE.range, r = this.rnd;
+      while (w.live && w.laid < gone) {
+        w.laid += .55; const side = (r() - .5) * 2 * WAVE_HALF * .8, x = w.x + w.dz * side, z = w.z - w.dx * side;
+        this.blot(x, z, .06 + r() * .1, .9 + r() * 1.3, turn, 3.2);
+        this.drop(this.b.set(x, .5 + r() * .8, z), this.dummy.position.set(w.dx + w.dz * Math.sign(side) * .8, 0, w.dz - w.dx * Math.sign(side) * .8), 3.2);
+      }
+    }
   }
 }

@@ -31,11 +31,11 @@ import {inkPost,inkEnabled} from './ink-post.js';
 import {renderQuality,qualityMode} from './render-quality.js';
 import {mountAppearanceModel} from './appearance-model.js';
 import {mountHeroModel} from './hero-model.js';
-import {HeroCombat,SWING_COST,DODGE,dodgeTravel,LUNGE,IMPACT,ImpactFeel} from './hero-combat.js';
+import {HeroCombat,SWING_COST,SPRINT,GUARD,guardWindow,WAVE,DODGE,dodgeTravel,LUNGE,IMPACT,ImpactFeel,objectReach,lungeStep,standOff} from './hero-combat.js';
 import {ViewPress} from './view-drag.js';
 import {InkFx,bladeEnds} from './ink-fx.js';
 import {mountVitality} from './npc-vitality.js';
-import {stepNpcCombat,npcArmed} from './npc-combat.js';
+import {stepNpcCombat,npcArmed,NPC_REACH,CROWD,crowdSlots} from './npc-combat.js';
 import {followOrbit,clearDialogueCamera} from './orbit-camera.js';
 import {landscape,paintedSurface,pine,gateRoof,roadVerge,wantedSheet,gateBanners,windAtGate} from './ink-landscape.js';
 import {ambientLine} from './ambient-lines.js';
@@ -128,14 +128,14 @@ export class World{
  this.eventGroup=new T.Group();this.scene.add(this.eventGroup);this.syncEvent();this.resize();window.addEventListener('resize',()=>this.resize());
  this.camera.position.copy(this.hero.position).add(new T.Vector3(0,1.45+this.distance*Math.sin(this.pitch),this.distance*Math.cos(this.pitch)));this.camera.lookAt(this.hero.position.clone().add(new T.Vector3(0,1.45,0)));
  canvas.addEventListener('contextmenu',e=>e.preventDefault());// Right-drag turns the view; so does a left-drag, because some browsers keep right-drags for their own gestures.
- // A left click acts on release. With the weapon drawn it strikes on press, and a drag that starts before contact takes the swing back.
+ // A left click acts on release. With the weapon drawn it strikes on press and the strike stands, even if the press goes on to turn the view.
  this.press=new ViewPress();
- canvas.addEventListener('pointerdown',e=>{if(e.button===2){if(this.performance)this.performance.camera=false;this.drag=true;canvas.setPointerCapture(e.pointerId);}else if(e.button===0){const armed=this.combatReady,before=this.heroCombat.swing;if(armed)this.primaryAction(e);
+ canvas.addEventListener('pointerdown',e=>{if(e.button===2){if(this.performance)this.performance.camera=false;this.drag=true;canvas.setPointerCapture(e.pointerId);}else if(e.button===0){const armed=this.combatReady;if(armed)this.primaryAction(e);
   // While the right button already turns the view, a left press is only ever a strike.
-  if(!this.drag){this.press.down(e.clientX,e.clientY,armed);this.pressSwing=this.heroCombat.swing!==before?this.heroCombat.swing:null;canvas.setPointerCapture(e.pointerId);}}});
+  if(!this.drag){this.press.down(e.clientX,e.clientY,armed);canvas.setPointerCapture(e.pointerId);}}});
  canvas.addEventListener('pointerup',e=>{if(e.button===0){if(this.press.up())this.primaryAction(e);}else this.drag=false;});
  const release=()=>{this.drag=false;this.press.cancel();};canvas.addEventListener('pointercancel',release);window.addEventListener('blur',release);
- canvas.addEventListener('pointermove',e=>{const left=this.press.move(e.clientX,e.clientY);if(left.began){if(this.performance)this.performance.camera=false;this.takeBackSwing();}if(this.drag||left.turn){this.yaw-=e.movementX*(this.aimMode?.003:.006);this.pitch=Math.max(.045,Math.min(1.05,this.pitch+e.movementY*.004));}});canvas.addEventListener('wheel',e=>{e.preventDefault();if(this.performance)this.performance.camera=false;this.distance=Math.max(3.8,Math.min(18,this.distance+e.deltaY*.01));},{passive:false});
+ canvas.addEventListener('pointermove',e=>{const left=this.press.move(e.clientX,e.clientY);if(left.began&&this.performance)this.performance.camera=false;if(this.drag||left.turn){this.yaw-=e.movementX*(this.aimMode?.003:.006);this.pitch=Math.max(.045,Math.min(1.05,this.pitch+e.movementY*.004));}});canvas.addEventListener('wheel',e=>{e.preventDefault();if(this.performance)this.performance.camera=false;this.distance=Math.max(3.8,Math.min(18,this.distance+e.deltaY*.01));},{passive:false});
  window.addEventListener('blur',()=>{this.keys.clear();this.clearReady();});
  }
  showNpcCheck({id,label,success,observation=false,income=false,priority=false}){
@@ -234,8 +234,9 @@ export class World{
  this.animateActor(a,walking?1:0,dt,'');u.sword.visible=e.phase==='bout';if(e.phase==='bout'){const beat=((s.npcClock-e.at)*2+(id===e.host?0:.5))*Math.PI*2;u.arms[1].rotation.x=-1.15-.9*Math.sin(beat);u.arms[0].rotation.x=-.8+.35*Math.sin(beat);u.rig.rotation.z=.095*Math.sin(beat);}else u.rig.rotation.z=0;return true;
  }
  reactNpc(id,n,dt){const s=this.sim.s,a=n.actor,p=this.hero.position,state=s.people[id];
+ // Someone knocked off balance mid-fight stays where they are until it passes; they do not walk off on their daily round.
+ if(state.hp>0&&state.stunnedUntil>(s.npcClock||0)){this.animateActor(a,0,dt,'');a.userData.arms[0].rotation.x=-.4;if(n.alert)n.alert.visible=false;return true;}
  if(s.chapterVersion===2&&!conflictCapable(s,id))return false;
- if(state.stunnedUntil>(s.npcClock||0)){this.animateActor(a,0,dt,'');a.userData.arms[0].rotation.x=-.4;if(n.alert)n.alert.visible=false;return true;}
  const canSee=visibleBetween(a.position,p,this.obstacles,s.ecosystem?.objects);const r=advanceAwareness(this.sim,id,a.position,canSee,dt,this.combatReady);
  this.alertBudget??=new FeedbackBudget();
  const glyph=ALERT_EMOJI[r?.state],near=a.position.distanceTo(p)<10;
@@ -253,6 +254,8 @@ export class World{
  n.alert.material.opacity=Math.min(1,Math.max(0,(1.8-age)/.45));const scale=.48*(1+Math.max(0,1-age/.25)*.15);n.alert.scale.set(scale,scale,1);n.alert.position.y=3.05+Math.min(age,.3)*.2;}
  n.label.visible=false;
  let target=r.state==='return'?r.home:r.lastKnown;let speed=r.state==='fight'?2.6:1.6,stop=r.state==='fight'?1.3:r.state==='warn'?2.2:.3;
+ // Several opponents each take a place of their own around the player (this.slots) rather than the one spot in front.
+ const slot=r.state==='fight'&&canSee?this.slots?.get(id):null,placed=!!slot&&!this.collides(slot.x,slot.z,0,false);if(placed){target=slot;stop=.15;}
  if(r.state==='flee'){const threat=canSee?p:r.lastKnown,dx=a.position.x-threat.x,dz=a.position.z-threat.z,len=Math.hypot(dx,dz)||1;target={x:a.position.x+dx/len*5,z:a.position.z+dz/len*5};speed=3;}
  if(r.state==='notice'||n.combat?.swing||this.t<(n.recoilUntil||0)||this.t<(a.userData.startledAt??-10)+STARTLE_HOLD)speed=0;
  const remaining=Math.hypot(target.x-a.position.x,target.z-a.position.z);
@@ -262,8 +265,9 @@ export class World{
   if(!n.reactionPath.length&&r.state!=='fight')n.reactionRepath=this.t+2;
  }
  while(n.reactionPath?.length&&Math.hypot(n.reactionPath[0].x-a.position.x,n.reactionPath[0].z-a.position.z)<.18)n.reactionPath.shift();
- const next=n.reactionPath?.[0]||target,dx=next.x-a.position.x,dz=next.z-a.position.z,d=Math.hypot(dx,dz);
- if((!n.combat?.swing||n.combat.swing.age<.18)&&this.t>=(a.userData.startledAt??-10)+STARTLE_HOLD)a.rotation.y=turnToward(a.rotation.y,Math.atan2(dx,dz),dt);
+ const close=placed&&remaining<3.5,next=(close?null:n.reactionPath?.[0])||target,dx=next.x-a.position.x,dz=next.z-a.position.z,d=Math.hypot(dx,dz);
+ // Stepping to a place beside the player is done facing the player.
+ if((!n.combat?.swing||n.combat.swing.age<.18)&&this.t>=(a.userData.startledAt??-10)+STARTLE_HOLD)a.rotation.y=turnToward(a.rotation.y,close?Math.atan2(p.x-a.position.x,p.z-a.position.z):Math.atan2(dx,dz),dt);
  const step=remaining>stop?Math.min(d,arriveStep(remaining,speed,dt,stop)):0;if(d>.01)this.move(a,dx/d*step,dz/d*step);
  this.animateActor(a,step>0?1:0,dt,r.state==='warn'?'talk':'');a.userData.sword.visible=r.state==='fight'&&npcArmed(s,id);if(r.state==='warn')a.userData.arms[0].rotation.x=-1.3;
  return true;
@@ -396,18 +400,15 @@ gateRoof(gate);this.banners=gateBanners(gate);
  const line=response(this.sim.s,id,'draw');markEncounter(this.sim.s,id,'draw');n.drawCooldown=this.t+12;n.actor.userData.startledAt=this.t;n.actor.userData.startledUntil=this.t+.7;n.lookUntil=this.t+3;
  if(!said&&!state.awareness?.caseOpen){said=true;this.onLifeSpeech?.({id,text:line});this.onSound?.('notice');}
  }}
- receiveHit(id){const q=this.npcs.get(id).actor.position.clone().sub(this.hero.position).normalize(),front=q.dot(new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y)))>.3;const r=defend(this.sim,id,{guarding:this.combatReady&&this.keys.has('KeyR'),front,perfect:this.t-(this.guardStarted??-10)<.45});if(r.blocked)this.onSound?.('wood',{gain:.4});return r;}
- npcImpact(id){const s=this.sim.s,r=this.receiveHit(id);if(r.damage||r.blocked)this.combatImpact(this.hero,this.npcs.get(id)?.actor.position||this.hero.position,r.blocked?'guard':'hurt');if(r.damage>0&&officials.includes(id)&&s.player.hp<=0)beginPlayerCapture(this,id);if(r.damage)this.onHurt?.();return r;}
+ receiveHit(id){const q=this.npcs.get(id).actor.position.clone().sub(this.hero.position).normalize(),front=q.dot(new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y)))>.3;const r=defend(this.sim,id,{guarding:this.guarding,front,perfect:this.t-(this.guardStarted??-10)<guardWindow(skill(this.sim.s.player,'combat').tier)});if(r.blocked)this.onSound?.('metal',{gain:r.parried?.9:.55,rate:r.parried?1.25:1});return r;}
+ // The blade is up while F is held, unless it is busy cutting or the body is mid-step.
+ get guarding(){return !!this.keys&&this.combatReady&&this.keys.has('KeyF')&&!this.heroCombat?.swing&&!this.dodging&&!this.cast&&!this.locked&&!this.performance&&this.sim.s.player.hp>0;}
+ // See GUARD: only a blade raised afresh has the moment in which a blow is turned aside whole.
+ raiseGuard(){if(!this.combatReady)return;const again=this.t-(this.guardPressed??-10)<GUARD.repress;this.guardPressed=this.t;this.guardStarted=again?-10:this.t;}
+ npcImpact(id){const s=this.sim.s,r=this.receiveHit(id),foe=this.npcs.get(id)?.actor;if(r.damage||r.blocked)this.combatImpact(this.hero,foe?.position||this.hero.position,r.parried?'parry':r.blocked?'guard':'hurt');if(r.parried&&foe){this.shove(foe,new T.Vector3(foe.position.x-this.hero.position.x,0,foe.position.z-this.hero.position.z).normalize(),.6);this.heroModel?.motion?.cue('parry_riposte',.5,false,{fade:.05});}if(r.damage>0&&officials.includes(id)&&s.player.hp<=0)beginPlayerCapture(this,id);if(r.damage)this.onHurt?.();return r;}
  get combatReady(){return this.readyUntil===Infinity;}
  toggleWeapon(){if(this.sim.s.player.bedRest||!this.playing||this.locked||this.performance||this.sim.s.player.hp<=0)return;if(this.combatReady)this.clearReady();else this.readyUntil=Infinity;if(this.combatReady)this.reactToDraw();this.onReady?.();}
- clearReady(){this.readyUntil=0;this.heroCombat?.cancel();this.heroModel?.motion?.cancelAttack();this.attackTime=0;}
- // The press turned out to be a view drag: a swing it started is withdrawn before contact, with its stamina.
- takeBackSwing(){
- const swing=this.heroCombat.swing;this.heroCombat.queued=undefined;
- if(!swing||swing!==this.pressSwing||swing.hit)return;
- this.heroCombat.cancel();this.heroModel?.motion?.cancelAttack();this.attackTime=0;this.inkFx?.trailEnd();
- const p=this.sim.s.player;p.energy=Math.min(100,p.energy+SWING_COST);
- }
+ clearReady(){this.readyUntil=0;this.cast=null;this.heroCombat?.cancel();this.heroModel?.motion?.cancelAttack();this.attackTime=0;}
  primaryAction(e){
  if(this.aimMode){this.onAimPick?.(e);return;}
  if(this.sim.s.player.bedRest)return;
@@ -420,30 +421,34 @@ gateRoof(gate);this.banners=gateBanners(gate);
  for(const n of this.npcs.values()){n.nextHit=0;n.actor.position.copy(n.base);}
  }
  attack(objectId=null){
- if(!this.combatReady||this.performance||this.sim.s.player.energy<SWING_COST||this.locked||this.sim.s.player.hp<=0)return;
+ if(!this.combatReady||this.performance||this.locked||this.cast||this.sim.s.player.hp<=0)return;
+ if(this.sim.s.player.energy<SWING_COST){this.spent();return;}
  if(this.sim.s.surrender)abandonSurrender(this.sim);
  this.heroCombat??=new HeroCombat();const swing=this.heroCombat.begin(objectId);if(!swing)return;
  this.attackTime=swing.duration;this.sim.s.player.energy-=SWING_COST;this.lunge=this.aimSwing(swing);this.dodging=null;this.heroModel?.motion?.cue('attack_'+(swing.index+1),swing.duration,false,{skip:swing.skip,fade:.07});
  }
- // A new swing faces the held direction at once; with no direction held it faces a nearby opponent who is already fighting the player.
- // If that opponent stands just out of reach, the wind-up carries the body in: the returned step closes to striking distance.
+ // Too tired for what was asked: said once, not on every press.
+ spent(){if(this.t<(this.spentUntil||0))return;this.spentUntil=this.t+.7;this.onSpent?.();}
+ // A new swing turns to a nearby opponent who is already fighting the player, unless the held direction points away from them;
+ // with nobody there it faces the held direction.
+ // The wind-up then follows that opponent (see lungeStep), so being pushed or stepping back mid-swing does not leave the cut short.
  aimSwing(swing){
  const k=this.keys,h=this.hero;if(!k||!h)return null;
  const sx=(k.has('KeyD')?1:0)-(k.has('KeyA')?1:0),sz=(k.has('KeyS')?1:0)-(k.has('KeyW')?1:0),held=!!(sx||sz);
  if(held)h.rotation.y=Math.atan2(sx*Math.cos(this.yaw)+sz*Math.sin(this.yaw),-sx*Math.sin(this.yaw)+sz*Math.cos(this.yaw));
  const fx=Math.sin(h.rotation.y),fz=Math.cos(h.rotation.y);let foe=null,near=LUNGE.sight;
  for(const [id,n] of this.npcs){const p=this.sim.s.people[id];if(!(p?.hp>0)||!(p.awareness?.state==='fight'||n.chasing))continue;const x=n.actor.position.x-h.position.x,z=n.actor.position.z-h.position.z,d=Math.hypot(x,z);
-  // A held direction is the player's own aim; only an opponent already in that direction is closed on.
-  if(d<near&&(!held||(x*fx+z*fz)/Math.max(d,.01)>.8)){near=d;foe=n.actor.position;}}
+  // A direction held away from an opponent is the player's own aim, and is left alone.
+  if(d<near&&(!held||(x*fx+z*fz)/Math.max(d,.01)>.17)){near=d;foe=n.actor.position;}}
  if(!foe)return null;
- if(!held)h.rotation.y=Math.atan2(foe.x-h.position.x,foe.z-h.position.z);
- const gap=near-LUNGE.keep;if(gap<=.05||!swing)return null;
- return {x:(foe.x-h.position.x)/near,z:(foe.z-h.position.z)/near,speed:Math.min(gap,LUNGE.reach)/swing.strike,swing};
+ h.rotation.y=Math.atan2(foe.x-h.position.x,foe.z-h.position.z);
+ return swing?{foe,left:LUNGE.reach,swing}:null;
  }
  // A quick step out of reach: toward the held direction, or straight back. See DODGE: it grants no immunity.
  dodge(){
  const p=this.sim.s.player,h=this.hero;
- if(!this.combatReady||!this.playing||this.locked||this.performance||p.hp<=0||p.bedRest||p.crouched||p.stealing||h.position.y>.02||this.dodging||this.t<(this.dodgeReadyAt||0)||p.energy<DODGE.cost||inDeepWater(h.position.x,h.position.z))return false;
+ if(!this.combatReady||!this.playing||this.locked||this.performance||p.hp<=0||p.bedRest||p.crouched||p.stealing||h.position.y>.02||this.dodging||this.cast||this.t<(this.dodgeReadyAt||0)||inDeepWater(h.position.x,h.position.z))return false;
+ if(p.energy<DODGE.cost){this.spent();return false;}
  const k=this.keys,sx=(k.has('KeyD')?1:0)-(k.has('KeyA')?1:0),sz=(k.has('KeyS')?1:0)-(k.has('KeyW')?1:0),held=!!(sx||sz),len=Math.hypot(sx,sz)||1;
  const x=held?(sx*Math.cos(this.yaw)+sz*Math.sin(this.yaw))/len:-Math.sin(h.rotation.y),z=held?(-sx*Math.sin(this.yaw)+sz*Math.cos(this.yaw))/len:-Math.cos(h.rotation.y);
  p.energy-=DODGE.cost;this.heroCombat.cancel();this.attackTime=0;this.lunge=null;this.auto=null;this.inkFx?.trailEnd();
@@ -452,10 +457,42 @@ gateRoof(gate);this.banners=gateBanners(gate);
  this.heroModel?.motion?.cue(held?'ink_step':'dodge',DODGE.time+.1,false,{fade:.05});this.onSound?.('attack',{gain:.45,rate:1.5});
  return true;
  }
+ // The ink wave (WAVE): a cut thrown forward. It leaves the blade partway through the cast; whoever it reaches is settled
+ // by the same attack as an ordinary cut, only heavier, so striking a bystander with it is striking a bystander.
+ inkWave(){
+ const p=this.sim.s.player,h=this.hero;
+ if(!this.combatReady||!this.playing||this.locked||this.performance||p.hp<=0||p.bedRest||this.cast||this.dodging||h.position.y>.02||this.t<(this.waveReadyAt||0)||inDeepWater(h.position.x,h.position.z))return false;
+ if(this.sim.s.surrender)abandonSurrender(this.sim);
+ this.heroCombat.cancel();this.attackTime=0;this.lunge=null;this.auto=null;this.inkFx?.trailEnd();this.aimSwing(null);
+ this.cast={age:0,released:false};this.waveReadyAt=this.t+WAVE.cooldown;
+ this.heroModel?.motion?.cue('attack_3',WAVE.cast,false,{skip:.14,fade:.06});this.onSound?.('attack',{gain:.8,rate:.7});
+ return true;
+ }
+ // 1 just after a cast, 0 once the wave can be thrown again.
+ get waveCooldown(){return Math.min(1,Math.max(0,(this.waveReadyAt||0)-this.t)/WAVE.cooldown);}
+ stepWave(dt){
+ const cast=this.cast,h=this.hero;
+ if(cast){cast.age+=dt;
+  if(!cast.released&&cast.age>=WAVE.release){cast.released=true;const x=Math.sin(h.rotation.y),z=Math.cos(h.rotation.y);
+   this.wave={x:h.position.x+x*1.1,z:h.position.z+z*1.1,dx:x,dz:z,gone:0,hit:new Set()};this.feel?.hit(IMPACT.cast);this.inkFx?.waveStart(this.wave.x,this.wave.z,x,z);this.onSound?.('attack',{gain:1,rate:.55});}
+  if(cast.age>=WAVE.cast)this.cast=null;}
+ const w=this.wave;if(!w)return;
+ const step=Math.min(WAVE.speed*dt,WAVE.range-w.gone),x=w.x+w.dx*step,z=w.z+w.dz*step,walled=this.collides(x,z,0,false);
+ if(!walled){w.x=x;w.z=z;w.gone+=step;}
+ const s=this.sim.s,at={x:w.x,z:w.z};
+ for(const [id,n] of this.npcs){const st=s.people[id],a=n.actor.position;
+  if(w.hit.has(id)||!(st.hp>0)||Math.hypot(a.x-w.x,a.z-w.z)>WAVE.radius||!visibleBetween(at,a,this.obstacles,s.ecosystem?.objects))continue;
+  w.hit.add(id);const before=st.hp;this.sim.attack(id,[],WAVE.power);
+  if(st.hp<before)this.combatImpact(n.actor,{x:w.x-w.dx,z:w.z-w.dz},st.hp<=0?'down':'light');}
+ this.inkFx?.waveMove(w.x,w.z,w.gone/WAVE.range);
+ if(walled||w.gone>=WAVE.range-1e-4){this.inkFx?.waveEnd(walled);this.wave=null;}
+ }
  strike(objectId=null){
  const h=this.hero.position,front=new T.Vector3(Math.sin(this.hero.rotation.y),0,Math.cos(this.hero.rotation.y));
  const targets=[...this.npcs].filter(([id,n])=>{const d=n.actor.position.clone().sub(h);return d.length()<(this.sim.s.player.combatSchool==='qing'?3.1:2.6)&&d.normalize().dot(front)>.1&&this.sim.s.people[id].hp>0;}).sort((a,b)=>a[1].actor.position.distanceTo(h)-b[1].actor.position.distanceTo(h));
- if(this.ecology?.hit(front,objectId?Infinity:targets[0]?.[1].actor.position.distanceTo(h)??Infinity,objectId))return;
+ // Object footprints are boxes: a guard under a gateway stands inside the gate's. Whoever is squarely faced with nothing solid between takes the cut.
+ const first=targets[0]?.[1].actor.position,reach=first?objectReach({distance:first.distanceTo(h),align:first.clone().sub(h).normalize().dot(front),clear:visibleBetween(h,first,this.obstacles,this.sim.s.ecosystem?.objects)}):Infinity;
+ if(this.ecology?.hit(front,objectId?Infinity:reach,objectId))return;
  if(objectId)return;
  if(targets.length){const [id,n]=targets[0],before=this.sim.s.people[id].hp;this.sim.attack(id);if(this.sim.s.people[id].hp<before)this.combatImpact(n.actor,h,this.sim.s.people[id].hp<=0?'down':'light');}
  else for(const prop of this.props){const d=new T.Vector3(prop.x,0,prop.z).sub(h);if(d.length()<2.8&&d.normalize().dot(front)>.1&&!this.sim.s.broken.includes(prop.id)){prop.hp--;this.onSound?.('wood',prop);if(prop.hp<=0){this.sim.breakProp(prop.id);this.burst(prop.x,1,prop.z,0xa28152,18);}break;}}
@@ -503,13 +540,13 @@ gateRoof(gate);this.banners=gateBanners(gate);
  }
  burst(x,y,z,color,count){for(let i=0;i<count;i++){const m=mesh(new T.BoxGeometry(.05,.05,.22),color,this.scene,x,y,z);this.particles.push({m,life:.6,v:new T.Vector3((Math.random()-.5)*6,Math.random()*4,(Math.random()-.5)*6)});}}
  // Shows a blow that has already been settled: thrown ink, a held frame, a short shove. It decides nothing.
- // kind: light | down (the blow felled them) | hurt (the player was hit) | guard (the player's blade caught it).
+ // kind: light | down (the blow felled them) | hurt (the player was hit) | guard (the player's blade caught it) | parry (and turned it aside).
  combatImpact(actor,from,kind='light'){
  const p=actor.position,away=new T.Vector3(p.x-from.x,0,p.z-from.z);if(away.lengthSq()<1e-6)away.set(0,0,1);away.normalize();
  this.feel?.hit(IMPACT[kind]);
- const detail=this.quality?.step>1?.5:1,point=new T.Vector3(p.x-away.x*(kind==='guard'?.55:.2),kind==='guard'?1.25:1.15,p.z-away.z*(kind==='guard'?.55:.2));
- if(kind==='guard')this.inkFx?.clash(this.camera,point,away,detail);else this.inkFx?.impact(this.camera,point,away,kind==='down'?1.6:kind==='hurt'?.75:1,detail);
- this.shove(actor,away,kind==='down'?.55:kind==='guard'?.12:.32);
+ const met=kind==='guard'||kind==='parry',detail=this.quality?.step>1?.5:1,point=new T.Vector3(p.x-away.x*(met?.55:.2),met?1.25:1.15,p.z-away.z*(met?.55:.2));
+ if(met)this.inkFx?.clash(this.camera,point,away,detail,kind==='parry'?2:1);else this.inkFx?.impact(this.camera,point,away,kind==='down'?1.6:kind==='hurt'?.75:1,detail);
+ if(kind!=='parry')this.shove(actor,away,kind==='down'?.7:kind==='guard'?.12:kind==='hurt'?.32:.45);
  }
  shove(actor,away,distance){
  const u=actor.userData;if(u.bedPose||u.groundPose||!this.shoves)return;
@@ -601,26 +638,28 @@ gateRoof(gate);this.banners=gateBanners(gate);
  else if(this.auto){this.auto=null;this.onArrive?.();}
  if(sx||sz){const len=Math.hypot(sx,sz);sx/=len;sz/=len;dx=sx*Math.cos(this.yaw)+sz*Math.sin(this.yaw);dz=-sx*Math.sin(this.yaw)+sz*Math.cos(this.yaw);}
  const dodge=this.dodging;if(dodge)dx=dz=0;
- const want=dx||dz?(inDeepWater(this.hero.position.x,this.hero.position.z)?1.4:(s.player.stealing||s.player.crouched)?1.6:k.has('ShiftLeft')&&s.player.energy>1?6.2:3.3)*(this.heroCombat?.swing?(this.heroCombat.swing.hit?.85:.5):1):0;
+ const want=dx||dz?(inDeepWater(this.hero.position.x,this.hero.position.z)?1.4:(s.player.stealing||s.player.crouched)?1.6:this.guarding?1.9:k.has('ShiftLeft')&&s.player.energy>1?(this.combatReady?SPRINT.armed:SPRINT.plain):3.3)*(this.cast?.3:this.heroCombat?.swing?(this.heroCombat.swing.hit?.85:.5):1):0;
  if(want>4)s.player.energy=Math.max(0,s.player.energy-dt*5);else if(!(this.performance?.motion==='flute'&&this.performance.duration===3600))s.player.energy=Math.min(100,s.player.energy+dt*3);
  const v=this.heroVel,ease=1-Math.exp(-(want?9:13)*dt);v.x+=(dx*want-v.x)*ease;v.z+=(dz*want-v.z)*ease;speed=Math.hypot(v.x,v.z);if(!want&&speed<.08){v.set(0,0,0);speed=0;}
  // The quick step replaces walking for its length, and ends early where something solid is in the way.
  if(dodge){const step=dodgeTravel(dodge.age+dt)-dodgeTravel(dodge.age);dodge.age+=dt;v.set(dodge.x*step/Math.max(dt,1e-4),0,dodge.z*step/Math.max(dt,1e-4));}
  const lunge=this.lunge;if(lunge&&(this.heroCombat.swing!==lunge.swing||lunge.swing.hit))this.lunge=null;
  const fromX=this.hero.position.x,fromZ=this.hero.position.z;this.move(this.hero,v.x*dt,v.z*dt);
- if(this.lunge)this.move(this.hero,lunge.x*lunge.speed*dt,lunge.z*lunge.speed*dt);
+ if(!dodge)for(const [id,n] of this.npcs){const st=s.people[id];if(!(st?.hp>0)||!(st.awareness?.state==='fight'||n.chasing))continue;const out=standOff(this.hero.position.x-n.actor.position.x,this.hero.position.z-n.actor.position.z);if(out)this.move(this.hero,out.x,out.z);}
+ if(this.lunge){const x=lunge.foe.x-this.hero.position.x,z=lunge.foe.z-this.hero.position.z,d=Math.hypot(x,z),step=lungeStep(d,lunge.left,lunge.swing.strike-lunge.swing.age,dt);
+  if(d>.01){this.hero.rotation.y=Math.atan2(x,z);if(step>0){lunge.left-=step;this.move(this.hero,x/d*step,z/d*step);}}}
  if(dodge){const at=this.hero.position;this.inkFx?.smearAdd(new T.Vector3(at.x,.45,at.z),new T.Vector3(at.x,1.35,at.z));
   if(dodge.age>=DODGE.time){this.dodging=null;this.inkFx?.smearEnd();this.inkFx?.streak(dodge.from,at);}}
  speed=Math.hypot(this.hero.position.x-fromX,this.hero.position.z-fromZ)/Math.max(dt,.001);
- const before=this.hero.rotation.y;if(want)this.hero.rotation.y=heroTurn(before,Math.atan2(dx,dz),dt);this.heroTurnRate=Math.atan2(Math.sin(this.hero.rotation.y-before),Math.cos(this.hero.rotation.y-before))/Math.max(dt,.001);
+ const before=this.hero.rotation.y;if(want&&!this.lunge)this.hero.rotation.y=heroTurn(before,Math.atan2(dx,dz),dt);this.heroTurnRate=Math.atan2(Math.sin(this.hero.rotation.y-before),Math.cos(this.hero.rotation.y-before))/Math.max(dt,.001);
  }else{this.heroVel.set(0,0,0);this.heroTurnRate=0;this.dodging=this.lunge=null;}
- this.stepShoves(dt);
+ this.stepShoves(dt);this.stepWave(dt);
  if(s.player.bedRest)speed=moveToBed(this,dt);
  if(s.player.hp<=0){this.jumpV=0;this.hero.position.y=0;this.attackTime=0;this.auto=null;this.keys.clear();s.player.crouched=false;s.player.stealing=false;}
  this.jumpV-=18*dt;this.hero.position.y=Math.max(0,this.hero.position.y+this.jumpV*dt);if(this.hero.position.y===0){if(this.jumpV<-2){this.landing={at:this.t,impact:Math.min(1,-this.jumpV/8)};this.onSound?.('step',{gain:1.4});}this.jumpV=0;}
 
  if(custodyPose)speed=custodyPose.speed;this.animateActor(this.hero,speed||this.objectMoving?1:0,dt,s.player.hp<=0?'down':'');if(s.player.hp>0)this.heroGait(this.objectMoving&&!speed?3.3:speed,dt);if(this.combatReady){this.hero.userData.arms[1].rotation.x=-.7;this.hero.userData.arms[1].rotation.z=.35;}if(this.attackTime){this.hero.userData.arms[1].rotation.x=-1.5;this.hero.userData.arms[1].rotation.z=-2+this.attackTime*7;}
- const guarding=this.combatReady&&this.keys.has('KeyR')&&skill(s.player,'combat').tier>=2&&!this.attackTime;if(guarding){this.hero.userData.arms[1].rotation.x=-1.35;this.hero.userData.arms[1].rotation.z=-.55;this.hero.userData.arms[0].rotation.x=-.9;}restraintBeat(this);this.animatePerformance(speed,dt);this.actionCoins.visible=this.performance?.motion==='gamble';this.actionBowl.visible=!!this.performance&&['eat','drink'].includes(this.performance.motion);this.actionFlute.visible=this.performance?.motion==='flute';this.actionStool.visible=this.performance?.motion==='eat'&&!speed&&this.actionStool.position.distanceTo(this.hero.position)<.3;this.hero.userData.sword.visible=this.combatReady||this.performance?.motion==='sword';
+ const guarding=this.guarding;if(guarding){this.hero.userData.arms[1].rotation.x=-1.35;this.hero.userData.arms[1].rotation.z=-.55;this.hero.userData.arms[0].rotation.x=-.9;}restraintBeat(this);this.animatePerformance(speed,dt);this.actionCoins.visible=this.performance?.motion==='gamble';this.actionBowl.visible=!!this.performance&&['eat','drink'].includes(this.performance.motion);this.actionFlute.visible=this.performance?.motion==='flute';this.actionStool.visible=this.performance?.motion==='eat'&&!speed&&this.actionStool.position.distanceTo(this.hero.position)<.3;this.hero.userData.sword.visible=this.combatReady||this.performance?.motion==='sword';
  s.player.x=this.hero.position.x;s.player.z=this.hero.position.z;
  this.heroCombat.step(dt,this.playing&&!this.locked&&!this.performance&&s.player.hp>0&&this.combatReady,id=>this.strike(id),id=>this.attack(id));this.attackTime=this.heroCombat.remaining;
  // The blade is heard once it is moving, so a press that turns out to be a view drag makes no sound.
@@ -632,13 +671,15 @@ gateRoof(gate);this.banners=gateBanners(gate);
  if(this.playing&&!this.locked&&!this.cinematic)encounterStep(this.sim,Object.fromEntries([...this.npcs].map(([id,n])=>[id,n.actor.position])),this.obstacles);
  if(this.playing&&!this.locked&&!this.cinematic)observeConcerns(this.sim,Object.fromEntries([...this.npcs].map(([id,n])=>[id,{x:n.actor.position.x,z:n.actor.position.z,facing:n.actor.rotation.y}])),this.obstacles);
  const boardNotices=publicWantedNotices(s),boardSignature=JSON.stringify(boardNotices.map(w=>[w.id,w.status,w.charges]));if(this.wantedPoster&&this.wantedBoardSignature!==boardSignature){this.wantedBoardSignature=boardSignature;this.wantedPoster.material.map?.dispose();this.wantedPoster.material.dispose();this.wantedPoster.material=wantedSheet(boardNotices);}
+ // Places around the player for those attacking together; one opponent alone needs none.
+ {const h=this.hero.position,closing=[];for(const [id,n]of this.npcs){const st=s.people[id],at=n.actor.position;if(st.hp>0&&(st.awareness?.state==='fight'||n.chasing)&&Math.hypot(at.x-h.x,at.z-h.z)<CROWD.near)closing.push({id,x:at.x,z:at.z});}this.slots=closing.length>1?crowdSlots(h,closing):null;}
  surrenderFrame(this);escortReactionFrame(this);investigationFrame(this);identityConsequenceFrame(this);bundleGiftFrame(this,dt);qingheJourneyFrame(this,dt);convoyAftermathFrame(this);actionCardFrame(this,dt);
  for(const [id,n]of this.npcs){if(s.people[id].hp<=0){n.chasing=n.fleeing=false;n.actor.position.y=0;delete n.actor.userData.bedPose;delete n.actor.userData.groundPose;this.animateActor(n.actor,0,dt,'down');n.actor.userData.sword.visible=false;if(n.alert)n.alert.visible=false;continue;}if(captureMotion(this,id,n,dt))continue;if(this.playing&&!this.cinematic&&surrenderMotion(this,id,n,this.locked?0:dt))continue;if(restraintMotion(this,id,n,this.playing&&!this.locked&&!this.cinematic?dt:0))continue;if(escortReactionMotion(this,id,n,dt))continue;if(s.chapterVersion===2&&this.playing&&!this.cinematic&&!this.sim.s.surrender&&['fight','flee','search'].includes(this.sim.s.people[id]?.awareness?.state)&&this.reactNpc(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&bountyOfficerMotion(this,id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&investigationMotion(this,id,n,this.locked?0:dt))continue;if(this.t<(n.actor.userData.startledAt??-10)+STARTLE_HOLD&&conflictCapable(s,id)){this.animateActor(n.actor,0,dt,'');n.actor.userData.sword.visible=false;continue;}if(this.trainingActor===id){this.animateActor(n.actor,0,dt,'');n.actor.userData.sword.visible=false;continue;}if(bundleGiftMotion(this,id,n,dt))continue;if(qingheJourneyMotion(this,id,n,dt))continue;if(actionCardMotion(this,id,n,dt))continue;this.lifeFeedback(id,n);n.actor.userData.sword.visible=false;if(this.playing&&!this.cinematic&&this.territoryMotion(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&this.complaintMotion(id,n,this.locked?0:dt))continue;if(concernMotion(this,id,n,dt))continue;if(this.playing&&identityConsequenceMotion(this,id,n,dt))continue;if(this.playing&&!this.cinematic&&this.reportOrReactionMotion(id,n,this.locked?0:dt))continue;if(this.playing&&!this.cinematic&&convoyAftermathMotion(this,id,n,this.locked?0:dt))continue;const state=s.people[id],a=n.actor;let moving=0,gesture='';const beforeMove=a.position.clone(),dist=Math.hypot(a.position.x-this.hero.position.x,a.position.z-this.hero.position.z);
  n.chasing=this.playing&&this.sim.isPursuing(id,dist-(n.chasing?2:0));n.fleeing=state.fear>0&&(n.fleeing?dist<10:dist<7);
  if(this.cinematic){const other=this.npcs.get(this.cinematic.speaker===id?this.cinematic.listener:this.cinematic.speaker)?.actor.position||this.hero.position;a.rotation.y=turnToward(a.rotation.y,Math.atan2(other.x-a.position.x,other.z-a.position.z),dt);gesture=this.cinematic.speaker===id?'talk':'';}
  else if(state.hp<=0){gesture='down';}
  else if(n.chasing){
-  const dir=this.hero.position.clone().sub(a.position);dir.y=0;dir.normalize();if(!n.combat?.swing||n.combat.swing.age<.18)a.rotation.y=turnToward(a.rotation.y,Math.atan2(dir.x,dir.z),dt);const step=arriveStep(dist,n.combat?.swing?0:2,dt,1.2);this.move(a,dir.x*step,dir.z*step);moving=step>0?1:0;gesture='';a.userData.sword.visible=npcArmed(s,id);
+  const dir=this.hero.position.clone().sub(a.position);dir.y=0;dir.normalize();if(!n.combat?.swing||n.combat.swing.age<.18)a.rotation.y=turnToward(a.rotation.y,Math.atan2(dir.x,dir.z),dt);const slot=this.slots?.get(id),placed=!!slot&&!this.collides(slot.x,slot.z,0,false),to=placed?new T.Vector3(slot.x-a.position.x,0,slot.z-a.position.z):dir,gap=placed?to.length():dist;if(placed&&gap>1e-4)to.multiplyScalar(1/gap);const step=arriveStep(gap,n.combat?.swing?0:2,dt,placed?.15:1.2);this.move(a,to.x*step,to.z*step);moving=step>0?1:0;gesture='';a.userData.sword.visible=npcArmed(s,id);
  }else if(n.fleeing){const dir=a.position.clone().sub(this.hero.position).normalize();this.move(a,dir.x*3*dt,dir.z*3*dt);a.rotation.y=turnToward(a.rotation.y,Math.atan2(dir.x,dir.z),dt);moving=1;}
  else if(this.itemExchange?.targetId===id){a.rotation.y=turnToward(a.rotation.y,Math.atan2(this.hero.position.x-a.position.x,this.hero.position.z-a.position.z),dt);gesture=this.itemExchange.phase==='talk'?'talk':'';}
  else if(n.echoFacingUntil>this.t){a.rotation.y=turnToward(a.rotation.y,Math.atan2(this.hero.position.x-a.position.x,this.hero.position.z-a.position.z),dt);gesture=this.speaking===id?'talk':'';}
@@ -702,8 +743,11 @@ gateRoof(gate);this.banners=gateBanners(gate);
  // Detect blocked attempts after movement, not long-lived idle positions.
  for(const [id,n]of this.npcs)recoverNpc(this,id,n,dt);
  for(const [id,n]of this.npcs)stepNpcCombat(this,id,n,dt,k=>this.npcImpact(k));
+ // The ground a coming blow will cover, shown through its wind-up.
+ for(const [id,n]of this.npcs){const blow=n.combat?.swing,at=n.actor.position;if(blow&&!blow.hit&&Math.hypot(at.x-this.hero.position.x,at.z-this.hero.position.z)<14)this.inkFx.warn(id,at.x,at.z,n.actor.rotation.y,NPC_REACH.distance,Math.acos(NPC_REACH.cos),blow.age/blow.strike);}
  const oldHp=this.hero.userData.lastHp;bodyFeedback(this.hero,s.player.hp,this.t,dt);
- if(oldHp!==undefined&&s.player.hp<oldHp){this.heroCombat.cancel();this.attackTime=0;const cue=damageSound(oldHp,s.player.hp,environmentDamage);if(cue)this.onSound?.(cue);if(s.player.hp<=0&&oldHp>0)this.onHurt?.();}
+ // A blow taken does not stop a cut already under way.
+ if(oldHp!==undefined&&s.player.hp<oldHp){const cue=damageSound(oldHp,s.player.hp,environmentDamage);if(cue)this.onSound?.(cue);if(s.player.hp<=0&&oldHp>0)this.onHurt?.();}
  dressActor(this.hero,0x385953,outfit(this.sim)?.color??0x385953);
  for(const [id,n]of this.npcs){if(s.people[id].wardrobeInitialized)dressActor(n.actor,n.person.color,s.ecosystem.items.some(i=>i.type==='clothing'&&i.ownerId===id&&i.location==='npc:'+id&&i.hp>0)?n.person.color:0xb6b09b);const st=s.people[id],a=n.actor,d=a.position.distanceTo(this.hero.position),available=st.hp>0&&!(st.stunnedUntil>(s.npcClock||0));const visible=available&&d<6&&visibleBetween(a.position,this.hero.position,this.obstacles,s.ecosystem?.objects);const dx=this.hero.position.x-a.position.x,dz=this.hero.position.z-a.position.z;const front=Math.sin(a.rotation.y)*dx+Math.cos(a.rotation.y)*dz>0;
  if(id==='scribe'&&this.playing&&!this.locked&&!this.cinematic&&!this.performance&&s.player.hp>0&&!st.probed&&!s.facts.scribeScarsSeen&&visible&&d<3.8&&this.onThought?.('（他虎口的疤，倒不像刻刀伤的。）')){s.facts.scribeScarsSeen=true;this.sim.save();}
@@ -741,7 +785,7 @@ gateRoof(gate);this.banners=gateBanners(gate);
  }
  this.ecology?.afterPose?.();
  playerBedPose(this);
- this.heroModel.sync({dt,custody:custodyPose,bedPose:this.hero.userData.bedPose,hatOn:!!s.player.hat,disguised:['runner','borrowed'].includes(s.player.disguise),hp:s.player.hp,hurt:oldHp!==undefined&&s.player.hp<oldHp,armed:this.combatReady,speed:this.objectMoving&&!speed?3.3:speed,airborne:this.hero.position.y>.02,crouched:s.player.crouched||s.player.stealing,upperBody:custodyPose?.phase!=='lift'&&custodyPose?{kind:'bound'}:['present','handover'].includes(this.performance?.motion)?{kind:this.performance.motion}:null,fallback:!!this.performance&&!['present','handover'].includes(this.performance.motion)||guarding||!!this.hero.userData.bedPose});this.appearanceModel.update(s);drawLassos(this);
+ this.heroModel.sync({dt,custody:custodyPose,bedPose:this.hero.userData.bedPose,hatOn:!!s.player.hat,disguised:['runner','borrowed'].includes(s.player.disguise),hp:s.player.hp,hurt:oldHp!==undefined&&s.player.hp<oldHp&&!this.heroCombat.swing&&!this.cast&&!guarding,guard:guarding,armed:this.combatReady,speed:this.objectMoving&&!speed?3.3:speed,airborne:this.hero.position.y>.02,crouched:s.player.crouched||s.player.stealing,upperBody:custodyPose?.phase!=='lift'&&custodyPose?{kind:'bound'}:['present','handover'].includes(this.performance?.motion)?{kind:this.performance.motion}:null,fallback:!!this.performance&&!['present','handover'].includes(this.performance.motion)||!!this.hero.userData.bedPose});this.appearanceModel.update(s);drawLassos(this);
  // The blade's stroke is taken from where the sword really is, over the cutting part of the swing only.
  const swing=this.heroCombat.swing,sword=this.hero.userData.sword;
  if(swing&&sword.visible&&swing.age>swing.strike-.11&&swing.age<swing.strike+.15&&(this.bladeEnds??=bladeEnds(sword))){sword.updateWorldMatrix(true,false);this.inkFx.trailAdd(this.bladeEnds.near.clone().applyMatrix4(sword.matrixWorld),this.bladeEnds.far.clone().applyMatrix4(sword.matrixWorld));}else this.inkFx.trailEnd();

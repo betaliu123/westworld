@@ -615,6 +615,13 @@ body.ink-night #dialogue-stage .dialogue-context{color:var(--paper);background:r
 #combat-ready{background:none!important;border:0!important;font:var(--fs-2) var(--font-body)!important}
 #combat-ready kbd{margin:0 .3em 0 .9em}#combat-ready kbd:first-child{margin-left:0}
 #hud-context-stack>#combat-ready{position:static;inset:auto;transform:none;padding:0;margin:0;white-space:nowrap}
+/* The ink wave's key refills with ink from the bottom while it cannot be thrown; --cd runs from 1 to 0. */
+#wave-key{position:relative;overflow:hidden}
+#wave-key::after{content:"";position:absolute;inset:auto 0 0 0;height:calc((1 - var(--cd,0))*100%);background:var(--ink-3);opacity:0;pointer-events:none}
+#wave-key.cooling{border-style:dashed;color:var(--ink-3);box-shadow:none}
+#wave-key.cooling::after{opacity:.4}
+/* Too tired to act: the empty stamina bar is hatched in cinnabar once. */.field-meters progress.spent{animation:spent 420ms ease-out}
+@keyframes spent{0%,70%{background:repeating-linear-gradient(-45deg,var(--cinnabar) 0 3px,transparent 3px 6px)}}
 #reply-status{display:none!important}
 #hud-info-stack .hero-vitals,#hud-info-stack #vitals,#vitals{transition:opacity .6s var(--ease)}
 body.vitals-full :is(#hud-info-stack .hero-vitals,#vitals){opacity:.35}

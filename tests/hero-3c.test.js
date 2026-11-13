@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from '../vendor/three.module.js';
-import {HeroCombat,SWINGS} from '../src/hero-combat.js';
+import {HeroCombat,SWINGS,SWING_COST} from '../src/hero-combat.js';
 import {HeroMotion} from '../src/hero-motion.js';
 import {clearCameraPosition,followOrbit} from '../src/orbit-camera.js';
 import {World} from '../src/world.js';
@@ -41,8 +41,8 @@ test('an impact may open dialogue and cancel its own chain',()=>{
 test('world attack spends stamina once, defers damage, and sheathing cancels it',()=>{
   const w=Object.create(World.prototype);let hits=0;
   Object.assign(w,{readyUntil:Infinity,playing:true,heroCombat:new HeroCombat(),sim:{s:{player:{energy:30,hp:100}}},strike(){hits++;}});
-  w.attack();assert.equal(w.sim.s.player.energy,22);assert.equal(hits,0);
-  w.heroCombat.step(.12,true,()=>w.strike(),()=>{});w.attack();assert.equal(w.sim.s.player.energy,22);
+  w.attack();assert.equal(w.sim.s.player.energy,30-SWING_COST);assert.equal(hits,0);
+  w.heroCombat.step(.12,true,()=>w.strike(),()=>{});w.attack();assert.equal(w.sim.s.player.energy,30-SWING_COST);
   w.clearReady();w.heroCombat.step(1,false,()=>w.strike(),()=>{});assert.equal(hits,0);
 });
 
@@ -83,6 +83,18 @@ test('crouching and bespoke interaction use procedural fallback, then resume mot
   assert.equal(m.update(.1,{...standing,crouched:true}),false);assert.equal(m.once,null);
   assert.equal(m.update(.1,{...standing,fallback:true}),false);
   assert.equal(m.update(.1,standing),true);assert.equal(m.base,'stand_idle');
+});
+
+test('drawing on the move plays no standing draw, and a raised guard is held still until let go',()=>{
+  const still=motion();still.update(.1,standing);still.update(.1,{...standing,armed:true});assert.equal(still.base,'draw');
+  const running=motion();running.update(.1,{...standing,speed:5});running.update(.1,{...standing,speed:5,armed:true});assert.equal(running.base,'run_sword','the feet keep running');
+  running.update(.1,{...standing,speed:5});assert.equal(running.base,'sprint','sheathing on the move likewise');
+  const m=motion(true);m.actions.set('parry',m.mixer.clipAction(new T.AnimationClip('parry',.5,[new T.NumberKeyframeTrack('hip.rotation[x]',[0,.5],[0,1])])));
+  const armed={...standing,armed:true};m.weapon=true;m.update(.1,armed);assert.equal(m.base,'idle_sword');
+  m.update(.1,{...armed,guard:true});const pose=m.actions.get('parry');assert.equal(m.base,'parry');assert.equal(pose.paused,true);
+  const held=pose.time;m.update(.4,{...armed,guard:true});assert.equal(pose.time,held,'it does not play on');
+  m.update(.1,armed);assert.equal(m.base,'idle_sword');
+  assert.equal(motion().update(.1,{...armed,guard:true}),true,'a model without the clip simply stands');
 });
 
 test('an attack cue can skip wind-up and still ends on the clip\'s last frame',()=>{

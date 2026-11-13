@@ -2,6 +2,9 @@ import * as T from '../vendor/three.module.js';
 
 // A small adapter, independent of the reference game's controller or quest state.
 // Animation never translates the actor: navigation, collisions and jump physics own that.
+// Seconds into the parry clip at which the blade is held across the body.
+const GUARD_POSE = .36;
+
 export class HeroMotion {
   constructor(model, clips) {
     this.mixer = new T.AnimationMixer(model);
@@ -23,7 +26,8 @@ export class HeroMotion {
     return true;
   }
 
-  play(name, {once = false, duration, restart = false, speed = 1, skip = 0, fade = .15} = {}) {
+  // freeze holds the clip still at that many seconds in: a pose kept for as long as it is asked for.
+  play(name, {once = false, duration, restart = false, speed = 1, skip = 0, fade = .15, freeze} = {}) {
     const next = this.actions.get(name);
     if (!next) return;
     if (this.base !== name || restart) {
@@ -37,6 +41,7 @@ export class HeroMotion {
       next.setEffectiveTimeScale(duration ? (next.getClip().duration - skip) / duration : speed);
       next.time = once ? skip : (phase % 1) * next.getClip().duration;
       next.play();
+      if (freeze != null) { next.time = freeze; next.paused = true; }
       if (previous && previous !== next) {
         previous.fadeOut(fade);
         next.fadeIn(fade);
@@ -81,7 +86,8 @@ export class HeroMotion {
     this.wasDead = dead;
     if (!dead) {
       if (state.hurt) this.cue('hit', .36);
-      if (state.armed !== this.weapon && !this.once) this.cue(state.armed ? 'draw' : 'sheathe');
+      // Drawing and sheathing are standing motions; on the move the hand simply changes what it holds, or the feet would slide.
+      if (state.armed !== this.weapon && !this.once && !(state.speed > .15)) this.cue(state.armed ? 'draw' : 'sheathe');
       this.weapon = state.armed;
       const air = state.airborne;
       if (air && !this.wasAir) this.cue(state.speed > .5 ? 'jump_fwd' : 'jump_up', .3);
@@ -90,7 +96,8 @@ export class HeroMotion {
     }
     if (this.once && !this.once.hold && this.time >= this.once.end) this.once = null;
     if (!this.once) {
-      if (state.airborne) {
+      if (state.guard && this.actions.has('parry')) this.play('parry', {fade: .07, freeze: GUARD_POSE});
+      else if (state.airborne) {
         if(!this.actions.has('fall')){this.reset();return false;}
         this.play('fall');
       }

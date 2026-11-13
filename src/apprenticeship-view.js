@@ -44,9 +44,9 @@ export function mountApprenticeship(world,getSim,getEco,{clear,say,notify,follow
   targets.hidden=!t.demonstrated||['combat','music'].includes(t.ability)||after>0;
   const offsets=t.ability==='medicine'?[[-.3,.85,0],[0,.85,0],[.3,.85,0]]:[[-.35,1.55,.1],[.3,.95,.2],[.35,1.2,.1]];
   for(const b of targets.children){const i=Number(b.dataset.lessonPoint),base=['medicine','pressure'].includes(t.ability)?prop:a,q=world.screenPoint(base.localToWorld(new T.Vector3(...offsets[i])));b.hidden=!q.visible||i!==t.step;b.style.left=Math.max(20,Math.min(innerWidth-160,q.x))+'px';b.style.top=Math.max(110,Math.min(innerHeight-160,q.y+(i===1?20:0)))+'px';b.classList.toggle('current',i===t.step);b.disabled=i!==t.step;}
-  if(t.demonstrated&&t.ability==='combat'&&t.step<2&&world.keys.has('KeyR')&&phase>=.38&&phase<=.82)input(t.step,true);
+  if(t.demonstrated&&t.ability==='combat'&&t.step<2&&world.keys.has('KeyF')&&phase>=.38&&phase<=.82)input(t.step,true);
  }
- window.addEventListener('keydown',e=>{if(!session||e.repeat||e.target.closest?.('input,textarea'))return;if(['Escape','KeyW','KeyA','KeyS','KeyD'].includes(e.code)){e.preventDefault();e.stopImmediatePropagation();stop('这一遍先停下，回来再练。');return;}if(e.code==='Space'&&session.ability==='music'){e.preventDefault();e.stopImmediatePropagation();input(session.step);}if(e.code==='KeyR'){e.preventDefault();e.stopImmediatePropagation();world.keys.add('KeyR');}},true);
+ window.addEventListener('keydown',e=>{if(!session||e.repeat||e.target.closest?.('input,textarea'))return;if(['Escape','KeyW','KeyA','KeyS','KeyD'].includes(e.code)){e.preventDefault();e.stopImmediatePropagation();stop('这一遍先停下，回来再练。');return;}if(e.code==='Space'&&session.ability==='music'){e.preventDefault();e.stopImmediatePropagation();input(session.step);}if(e.code==='KeyF'){e.preventDefault();e.stopImmediatePropagation();world.keys.add('KeyF');}},true);
  world.canvas.addEventListener('pointerdown',e=>{if(session&&e.button===0){e.preventDefault();e.stopImmediatePropagation();if(session.ability==='combat')input(session.step);}},true);
  return {start,update,stop,get active(){return !!session;}};
 }

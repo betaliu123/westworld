@@ -8,7 +8,7 @@ export const SKILLS={
  music:{name:'乐器',teacher:'苏晚',abilities:['尚未学会','持谱练习','街头卖艺','以曲留客','宴席献艺']},
  disguise:{name:'妆扮',teacher:'刻字人、宋青禾',abilities:['尚未学会','换衣遮面','模仿举止、降低盘查风险','修饰年貌、模仿举止','熟习改扮、延缓露馅']},
  medicine:{name:'医毒',teacher:'阿青',abilities:['尚未学会','辨常见草药','辨毒、配泻药','配解药、投毒更隐蔽','配迟发散、辨迟发毒']},
- combat:{name:'武艺',teacher:'周伍长、林青舟、段赤川',abilities:['无章法','持刀连击','按住 R 架刀格挡','适时格挡可反击，师承决定刀势','格挡反击可缴械']}
+ combat:{name:'武艺',teacher:'周伍长、林青舟、段赤川',abilities:['无章法','持刀连击','架刀更稳，格挡少受伤','卸力的时机更宽，师承决定刀势','格挡反击可缴械']}
 };
 export function skill(p,id){return p.skills?.[id]||{tier:0,xp:0};}
 export function initSkills(p){p.skills??=Object.fromEntries(Object.keys(SKILLS).map(id=>[id,{tier:['pressure','theft','insight','combat','lasso'].includes(id)?1:0,xp:0}]));p.skills.lasso??={tier:1,xp:0};return p.skills;}

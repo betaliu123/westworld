@@ -226,12 +226,12 @@ export class Simulation{
   }
  }
  tick(dt){const s=this.s;this.passTime(dt,s.player.bedRest?.phase==='sleep');for(const n of Object.values(s.people))n.fear=Math.max(0,n.fear-dt);}
- attack(id,witnesses=[]){
+ attack(id,witnesses=[],power=1){
  const s=this.s,n=s.people[id];if(!n||n.hp<=0)return;
  const revenge=s.deck?.actions?.active,selfDefense=revenge?.template==='revenge'&&revenge.phase==='combat'&&revenge.members.includes(id);const incident={type:'assault',target:id,x:s.player.x,z:s.player.z,selfDefense};this.emit('worldIncident',incident);witnesses=incident.witnesses??witnesses;
  if(this.s.chapterVersion!==2&&isGate(this.event)&&id==='gate_guard'){if(!n.awareness&&gateState(this.event).phase!=='fight')resolveGate(this,this.event.id,'g_charge');n.hp=Math.max(1,n.hp-1);this.save();return;}
  if(id==='shen'&&isProposal(this.event)&&proposalState(this.event).phase==='duel'){n.hp=Math.max(1,n.hp-combatDamage(s.player));if(n.hp<=50)finishProposalDuel(this,true);this.save();return;}
- if(s.chapterVersion!==2&&s.player.lessons?.boxing&&!s.player.lessons.shortStrike){s.player.lessons.shortStrike=true;this.emit('sandbox',{text:'你照图收肘，短打终于使顺了。近战伤害 +3。',dialogue:[]});}const first=n.hp>0; n.hp=Math.max(0,n.hp-Math.round(combatDamage(s.player,s.chapterVersion===2?wornArmor(s,id):0)*counterStrike(this,id)));
+ if(s.chapterVersion!==2&&s.player.lessons?.boxing&&!s.player.lessons.shortStrike){s.player.lessons.shortStrike=true;this.emit('sandbox',{text:'你照图收肘，短打终于使顺了。近战伤害 +3。',dialogue:[]});}const first=n.hp>0; n.hp=Math.max(0,n.hp-Math.round(combatDamage(s.player,s.chapterVersion===2?wornArmor(s,id):0)*counterStrike(this,id)*power));
  if(first&&n.hp===0&&(s.chapterVersion!==2||skill(n,'combat').tier>=skill(s.player,'combat').tier))earnGrowth(s.player,'might',12,s.chapterVersion===2?`combat:${id}`:`combat:${s.day}:${id}`);n.fear=selfDefense?0:18;n.mood=n.hp<=0?'down':selfDefense?'calm':'angry';if(!selfDefense&&!n.awareness){this.relation(id,-6);s.wanted=clamp(s.wanted+1,0,9);}s.attacks++;
  for(const w of witnesses){if(w!==id&&s.people[w]){s.people[w].fear=12;s.people[w].mood=w==='guard'?'angry':'afraid';}}
  n.memories.push(selfDefense?'寻仇时，你曾还手抵挡。':'你曾在街上对我动手。');this.emit('violence',{id,down:n.hp<=0});
