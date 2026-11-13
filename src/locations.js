@@ -1,6 +1,8 @@
 export const RIBBON_COURT={x:22,z:10};
 export const PRISON={spawn:{x:22,z:-22},inmate:{x:20.5,z:-23},release:{x:22,z:-17},bounds:{minX:19.2,maxX:24.8,minZ:-24.8,maxZ:-19.8}};
 export function jailed(s){return s.event?.type==='gate'&&['prison','testimony'].includes(s.event.gate?.phase);}
+export const PRISON_BEDS=[20,23.8].map((x,i)=>({id:'bed:prison-'+i,x,z:-23.8,xTarget:x,zTarget:-22.65,home:'prison',height:.23}));
+export const inPrisonCell=p=>p.x>=PRISON.bounds.minX&&p.x<=PRISON.bounds.maxX&&p.z>=PRISON.bounds.minZ&&p.z<=PRISON.bounds.maxZ;
 // Recovery must stay on the accessible side of the gate (or inside the cell).
 export function recoveryPoint(s){return jailed(s)?{...PRISON.spawn}:s.event?.type==='gate'&&s.event.status==='active'?{x:0,z:27}:{x:0,z:14};}
 export function repairStrandedRecovery(s){

@@ -466,5 +466,59 @@
     },
     "aiGenerated": true,
     "generatedAt": "2026-11-13T04:56:52.986912+00:00"
+  },
+  "music-danger": {
+    "title": "盘查·危弦",
+    "src": "/assets/audio/world/music-danger-602092f96bb2819d.wav",
+    "raw": "music-danger-602092f96bb2819d-raw.wav",
+    "seconds": 40.0,
+    "normalizationGainDb": 16.34,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成40秒原创中国古风武侠潜行游戏危险区域纯音乐。官差正在附近搜查，低音古琴断续闷拨，两三个音缓缓反复，稀疏低沉鼓心在远处缓慢推进，少量弦的摩擦与压低的洞箫长气音。紧张、克制、有被发现前屏住呼吸的悬念，不是战斗高潮。不要大声骤响，不要惊吓，不要西方管弦配乐或电子合成音。没有人声、语言、吟唱、脚步和环境音。整体音量均匀，开头结尾轻柔，可低声循环。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-13T08:23:42.718671+00:00"
+  },
+  "music-prison": {
+    "title": "县狱·长夜",
+    "src": "/assets/audio/world/music-prison-4c2ee75929199dbd.wav",
+    "raw": "music-prison-4c2ee75929199dbd-raw.wav",
+    "seconds": 37.55,
+    "normalizationGainDb": 23.63,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成40秒原创中国古风游戏牢房纯音乐。极稀疏低音古琴散音，偶尔两三枚黯淡泛音，极轻洞箫低音长息，缓慢、沉闷、清冷，留有大段安静余韵，像在狭小牢房等待天明。没有明确欢快旋律，没有鼓点、高潮或恐怖惊吓，没有电子音色，没有人声、吟唱、囚犯喊叫、锁链、滴水或其他环境音。音量平稳克制，首尾柔和，适合安静循环。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-13T08:24:38.572545+00:00"
+  },
+  "recognition": {
+    "title": "识破·弦涩",
+    "src": "/assets/audio/world/recognition-64abe37608b1b09e.wav",
+    "raw": "recognition-64abe37608b1b09e-raw.wav",
+    "seconds": 1.467,
+    "normalizationGainDb": 13.63,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成1.6秒古风游戏被当面认出后的尴尬提示音。只有一架古琴的两次短促拨弦，第一下轻巧而突然，第二下低半拍轻微滑音收住，带一点窘迫和无言以对的顿挫。自然木质琴弦，克制、不滑稽、不惊悚、不刺耳，不用锣、笑声或卡通音效。没有任何人声、语言、音乐伴奏、环境声。干净近距离单次音效，余音迅速自然衰减。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-13T08:24:48.270980+00:00"
   }
 }

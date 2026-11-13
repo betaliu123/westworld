@@ -49,6 +49,17 @@ test('music is audible in the initial scene; voices duck it and performance sile
  assert.equal(worldMix({performing:true}).music,0);
  assert.ok(worldMix({hp:0}).music<base.music);
 });
+test('danger fades with departure, prison switches ambience, recognition obeys distance and shared mute',async()=>{
+ const {audio,context}=await ready();for(const id of ['music-danger','music-prison','recognition'])audio.buffers.set(id,{duration:id==='recognition'?1.4:40});
+ for(let i=0;i<50;i++){context.currentTime+=.1;audio.update(.1,{...state,danger:1});}
+ const high=audio.mix['music-danger'];assert.ok(high>.4);assert.ok(audio.loops.has('music-danger'));
+ audio.update(.1,{...state,danger:0});assert.ok(audio.mix['music-danger']<high&&audio.mix['music-danger']>high*.8);
+ for(let i=0;i<120;i++){context.currentTime+=.1;audio.update(.1,state);}assert.equal(audio.mix['music-danger'],0);assert.ok(!audio.loops.has('music-danger'));
+ audio.update(.1,{...state,prison:true,danger:1});assert.ok(audio.loops.has('music-prison'));assert.ok(!audio.loops.has('music'));assert.equal(audio.mix.city,0);
+ assert.equal(audio.play('recognition',{x:100,z:100}),null);const sound=audio.play('recognition');assert.ok(sound);assert.equal(audio.play('recognition'),null);
+ audio.setEnabled(false);assert.ok(sound.source.stopped);assert.equal(audio.loops.size,0);assert.equal(audio.play('recognition'),null);
+ audio.setEnabled(true);audio.update(.1,state);assert.ok(!audio.loops.has('music-prison'));assert.equal(audio.shots.size,0,'unmute cannot replay recognition');
+});
 test('crowd fades outside and at night; creek fades with distance',()=>{
  assert.ok(worldMix({z:0}).city>worldMix({z:40}).city);
  assert.ok(worldMix({z:0,time:170}).city<worldMix({z:0,time:20}).city);

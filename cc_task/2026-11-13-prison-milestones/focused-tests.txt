@@ -1,0 +1,190 @@
+TAP version 13
+# Subtest: new wardrobes omit the unused cape; old item records survive without a wearable cape slot
+ok 1 - new wardrobes omit the unused cape; old item records survive without a wearable cape slot
+  ---
+  duration_ms: 3.7372
+  ...
+# Subtest: face, clothing and credentials stay independent; appearance consumes exactly one owned paste
+ok 2 - face, clothing and credentials stay independent; appearance consumes exactly one owned paste
+  ---
+  duration_ms: 0.8765
+  ...
+# Subtest: the displayed chance is the actual roll threshold; new clothing invalidates the earlier inspection
+ok 3 - the displayed chance is the actual roll threshold; new clothing invalidates the earlier inspection
+  ---
+  duration_ms: 1.4857
+  ...
+# Subtest: the original owner exposes the mask with no dice; a new face is not globally known
+ok 4 - the original owner exposes the mask with no dice; a new face is not globally known
+  ---
+  duration_ms: 0.516
+  ...
+# Subtest: recognition cue is emitted only on actual exposure, never preview, success or repeated unmasked checks
+ok 5 - recognition cue is emitted only on actual exposure, never preview, success or repeated unmasked checks
+  ---
+  duration_ms: 0.896
+  ...
+# Subtest: witness attribution is frozen at the incident and propagates to face-specific aftermath
+ok 6 - witness attribution is frozen at the incident and propagates to face-specific aftermath
+  ---
+  duration_ms: 1.5628
+  ...
+# Subtest: an observer cannot identify a concealed costume change through a wall
+ok 7 - an observer cannot identify a concealed costume change through a wall
+  ---
+  duration_ms: 0.4272
+  ...
+# Subtest: reputation earned while disguised belongs to the perceived identity, including faction reputation
+ok 8 - reputation earned while disguised belongs to the perceived identity, including faction reputation
+  ---
+  duration_ms: 0.875
+  ...
+# Subtest: Yan surrender uses the actual jail, clears pursuit, and releases inside the city
+ok 9 - Yan surrender uses the actual jail, clears pursuit, and releases inside the city
+  ---
+  duration_ms: 2.1217
+  ...
+# Subtest: passing strangers stay out of the face list and cannot be applied; known and warrant faces remain usable
+ok 10 - passing strangers stay out of the face list and cannot be applied; known and warrant faces remain usable
+  ---
+  duration_ms: 0.7461
+  ...
+# Subtest: unmasking records misconduct against the actual player; earlier incidents retain the borrowed identity
+ok 11 - unmasking records misconduct against the actual player; earlier incidents retain the borrowed identity
+  ---
+  duration_ms: 0.3836
+  ...
+# Subtest: a gift remembers whom the recipient believed and the porter route recognizes a prepared bare chest after securing a place
+ok 12 - a gift remembers whom the recipient believed and the porter route recognizes a prepared bare chest after securing a place
+  ---
+  duration_ms: 1.9964
+  ...
+# Subtest: the face list puts the most recently usable face first and marks only a learned main route
+ok 13 - the face list puts the most recently usable face first and marks only a learned main route
+  ---
+  duration_ms: 0.3604
+  ...
+# Subtest: dead cellmate cannot speak or block the bed; real sleep releases once without inventing testimony
+ok 14 - dead cellmate cannot speak or block the bed; real sleep releases once without inventing testimony
+  ---
+  duration_ms: 6.1363
+  ...
+# Subtest: sleep may be interrupted; reload, injury and broken bedding cannot award early release
+ok 15 - sleep may be interrupted; reload, injury and broken bedding cannot award early release
+  ---
+  duration_ms: 3.0776
+  ...
+# Subtest: nearby conscious attackers block rest, distant and dead incidents do not; range still applies
+ok 16 - nearby conscious attackers block rest, distant and dead incidents do not; range still applies
+  ---
+  duration_ms: 0.6539
+  ...
+# Subtest: new fact milestones queue in order and persist; closing never repeats rewards or old scenes
+ok 17 - new fact milestones queue in order and persist; closing never repeats rewards or old scenes
+  ---
+  duration_ms: 1.5847
+  ...
+# Subtest: illustrations and generated sound files are local assets with recorded prompts
+ok 18 - illustrations and generated sound files are local assets with recorded prompts
+  ---
+  duration_ms: 1.6851
+  ...
+# Subtest: tension follows wanted danger areas and distance without revealing hidden cases
+ok 19 - tension follows wanted danger areas and distance without revealing hidden cases
+  ---
+  duration_ms: 0.9349
+  ...
+# Subtest: SeedAudio reactions are single foreground voices and duck the world mix
+ok 20 - SeedAudio reactions are single foreground voices and duck the world mix
+  ---
+  duration_ms: 1.678
+  ...
+# Subtest: reaction source is interrupted by dialogue, mute, hidden, invalid speaker, or leaving range
+ok 21 - reaction source is interrupted by dialogue, mute, hidden, invalid speaker, or leaving range
+  ---
+  duration_ms: 1.8498
+  ...
+# Subtest: reaction playback uses static SeedAudio files without TTS requests or late playback
+ok 22 - reaction playback uses static SeedAudio files without TTS requests or late playback
+  ---
+  duration_ms: 2.4512
+  ...
+# Subtest: music is audible in the initial scene; voices duck it and performance silences it
+ok 23 - music is audible in the initial scene; voices duck it and performance silences it
+  ---
+  duration_ms: 0.1459
+  ...
+# Subtest: danger fades with departure, prison switches ambience, recognition obeys distance and shared mute
+ok 24 - danger fades with departure, prison switches ambience, recognition obeys distance and shared mute
+  ---
+  duration_ms: 1.4574
+  ...
+# Subtest: crowd fades outside and at night; creek fades with distance
+ok 25 - crowd fades outside and at night; creek fades with distance
+  ---
+  duration_ms: 0.1181
+  ...
+# Subtest: no audio starts without a gesture; loop overlap has complementary fades
+ok 26 - no audio starts without a gesture; loop overlap has complementary fades
+  ---
+  duration_ms: 0.2482
+  ...
+# Subtest: mute/hidden stop all scheduled and current sources; unmute resumes only once
+ok 27 - mute/hidden stop all scheduled and current sources; unmute resumes only once
+  ---
+  duration_ms: 0.8691
+  ...
+# Subtest: delayed downloads only populate the cache; cannot sound after mute
+ok 28 - delayed downloads only populate the cache; cannot sound after mute
+  ---
+  duration_ms: 3.4218
+  ...
+# Subtest: transients are bounded, distant events silent, footsteps exclude teleports and airborne travel
+ok 29 - transients are bounded, distant events silent, footsteps exclude teleports and airborne travel
+  ---
+  duration_ms: 0.7859
+  ...
+# Subtest: shipping catalog contains actual recorded files for every cue and music, no credentials
+ok 30 - shipping catalog contains actual recorded files for every cue and music, no credentials
+  ---
+  duration_ms: 2.4412
+  ...
+# Subtest: continuous river damage never retriggers an impact; a real hit in water still sounds
+ok 31 - continuous river damage never retriggers an impact; a real hit in water still sounds
+  ---
+  duration_ms: 0.2523
+  ...
+# Subtest: flute uses music tier, never overlaps another solo, and stops on action exit
+ok 32 - flute uses music tier, never overlaps another solo, and stops on action exit
+  ---
+  duration_ms: 0.3284
+  ...
+# Subtest: flute obeys mute, hidden, dialogue, death and water; late load cannot replay a finished action
+ok 33 - flute obeys mute, hidden, dialogue, death and water; late load cannot replay a finished action
+  ---
+  duration_ms: 2.0028
+  ...
+# Subtest: swimming does not create stone footsteps and repeated impact cues are bounded
+ok 34 - swimming does not create stone footsteps and repeated impact cues are bounded
+  ---
+  duration_ms: 0.6293
+  ...
+# Subtest: the opening piece plays once before the world runs and fades out under the town music
+ok 35 - the opening piece plays once before the world runs and fades out under the town music
+  ---
+  duration_ms: 0.3869
+  ...
+# Subtest: the opening piece is never started late, muted or after the shots are gone
+ok 36 - the opening piece is never started late, muted or after the shots are gone
+  ---
+  duration_ms: 0.1943
+  ...
+1..36
+# tests 36
+# suites 0
+# pass 36
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 246.5519

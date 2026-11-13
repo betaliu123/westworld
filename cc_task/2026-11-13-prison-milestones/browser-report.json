@@ -1,0 +1,871 @@
+{
+  "layouts": [
+    {
+      "view": "bed",
+      "width": 1280,
+      "height": 850,
+      "layout": [
+        {
+          "text": "牢中草铺",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 14
+        },
+        {
+          "text": "",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 22
+        },
+        {
+          "text": "可以在这里歇息。",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 16
+        },
+        {
+          "text": "躺下歇息",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 14
+        },
+        {
+          "text": "睡到出狱",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 14
+        }
+      ]
+    },
+    {
+      "view": "bed",
+      "width": 1024,
+      "height": 768,
+      "layout": [
+        {
+          "text": "牢中草铺",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 14
+        },
+        {
+          "text": "",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 22
+        },
+        {
+          "text": "可以在这里歇息。",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 16
+        },
+        {
+          "text": "躺下歇息",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 14
+        },
+        {
+          "text": "睡到出狱",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 14
+        }
+      ]
+    },
+    {
+      "view": "bed",
+      "width": 800,
+      "height": 600,
+      "layout": [
+        {
+          "text": "牢中草铺",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 14
+        },
+        {
+          "text": "",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 22
+        },
+        {
+          "text": "可以在这里歇息。",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 16
+        },
+        {
+          "text": "躺下歇息",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 14
+        },
+        {
+          "text": "睡到出狱",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 14
+        }
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 850,
+      "layout": [
+        {
+          "text": "surface",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 16
+        },
+        {
+          "text": "重见天日",
+          "inside": true,
+          "font": "\"Jianghu Title\", KaiTi, STKaiti, serif",
+          "size": 44
+        },
+        {
+          "text": "抖落衣上尘土，再走一程。",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "×",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 30
+        }
+      ]
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "layout": [
+        {
+          "text": "surface",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 16
+        },
+        {
+          "text": "重见天日",
+          "inside": true,
+          "font": "\"Jianghu Title\", KaiTi, STKaiti, serif",
+          "size": 44
+        },
+        {
+          "text": "抖落衣上尘土，再走一程。",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "×",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 30
+        }
+      ]
+    },
+    {
+      "width": 800,
+      "height": 600,
+      "layout": [
+        {
+          "text": "surface",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 16
+        },
+        {
+          "text": "重见天日",
+          "inside": true,
+          "font": "\"Jianghu Title\", KaiTi, STKaiti, serif",
+          "size": 30
+        },
+        {
+          "text": "抖落衣上尘土，再走一程。",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 18
+        },
+        {
+          "text": "×",
+          "inside": true,
+          "font": "\"Jianghu Body\", KaiTi, STKaiti, serif",
+          "size": 30
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "arrest": {
+    "day": 1,
+    "phase": "prison",
+    "bed": null,
+    "hp": 100,
+    "prisoner": 1,
+    "player": {
+      "x": 22,
+      "z": -22
+    },
+    "inv": [],
+    "facts": {
+      "entryStarted": true,
+      "guPoisonKnown": true,
+      "genyueCureRumor": true,
+      "lassoKitIssued": true,
+      "lastCustody": {
+        "officer": "gate_guard",
+        "subject": "player",
+        "day": 1
+      },
+      "custodyIdentity": null
+    },
+    "milestones": {
+      "version": 1,
+      "last": {
+        "prison": "2",
+        "release": null,
+        "court": false,
+        "prince": false
+      },
+      "queue": [
+        {
+          "key": "prison:2",
+          "kind": "prison"
+        }
+      ],
+      "seen": []
+    },
+    "locked": true,
+    "ready": false,
+    "pose": null,
+    "audio": {
+      "mix": {
+        "music": 0,
+        "music-night": 0,
+        "music-danger": 0,
+        "music-prison": 0.24700000000000003,
+        "night": 0,
+        "night-inn": 0,
+        "city": 0,
+        "creek": 0
+      },
+      "loops": [],
+      "loaded": 0,
+      "danger": 0,
+      "shots": 0
+    },
+    "bedObject": {
+      "id": "bed:prison-1",
+      "kind": "bed",
+      "name": "牢中草铺",
+      "x": 23.8,
+      "z": -23.8,
+      "owner": "inspector",
+      "hp": 180,
+      "max": 180,
+      "drops": 0,
+      "material": "wood",
+      "w": 1.2000000476837158,
+      "d": 2,
+      "y": 0.15875000070780515,
+      "burning": 0,
+      "wetUntil": 0
+    },
+    "errors": []
+  },
+  "killed": {
+    "day": 1,
+    "phase": "prison",
+    "bed": null,
+    "hp": 100,
+    "prisoner": 0,
+    "player": {
+      "x": 22,
+      "z": -22
+    },
+    "inv": [],
+    "facts": {
+      "entryStarted": true,
+      "guPoisonKnown": true,
+      "genyueCureRumor": true,
+      "lassoKitIssued": true,
+      "lastCustody": {
+        "officer": "gate_guard",
+        "subject": "player",
+        "day": 1
+      },
+      "custodyIdentity": null
+    },
+    "milestones": {
+      "version": 1,
+      "last": {
+        "prison": "2",
+        "release": null,
+        "court": false,
+        "prince": false
+      },
+      "queue": [],
+      "seen": [
+        "prison:2"
+      ]
+    },
+    "locked": false,
+    "ready": true,
+    "pose": null,
+    "audio": {
+      "mix": {
+        "music": 0,
+        "music-night": 0,
+        "music-danger": 0,
+        "music-prison": 0.38,
+        "night": 0,
+        "night-inn": 0,
+        "city": 0,
+        "creek": 0
+      },
+      "loops": [],
+      "loaded": 12,
+      "danger": 0,
+      "shots": 3
+    },
+    "bedObject": {
+      "id": "bed:prison-1",
+      "kind": "bed",
+      "name": "牢中草铺",
+      "x": 23.8,
+      "z": -23.8,
+      "owner": "inspector",
+      "hp": 180,
+      "max": 180,
+      "drops": 0,
+      "material": "wood",
+      "w": 1.2000000476837158,
+      "d": 2,
+      "y": 0.15875000070780515,
+      "burning": 0,
+      "wetUntil": 0
+    },
+    "errors": []
+  },
+  "sleep": {
+    "day": 1,
+    "phase": "prison",
+    "bed": {
+      "bedId": "bed:prison-1",
+      "phase": "sleep",
+      "elapsed": 0,
+      "slept": 0,
+      "hp": 100,
+      "party": "main",
+      "unauthorized": false,
+      "stalled": 0
+    },
+    "hp": 100,
+    "prisoner": 0,
+    "player": {
+      "x": 23.343116797941175,
+      "z": -22.497705599313726
+    },
+    "inv": [],
+    "facts": {
+      "entryStarted": true,
+      "guPoisonKnown": true,
+      "genyueCureRumor": true,
+      "lassoKitIssued": true,
+      "lastCustody": {
+        "officer": "gate_guard",
+        "subject": "player",
+        "day": 1
+      },
+      "custodyIdentity": null
+    },
+    "milestones": {
+      "version": 1,
+      "last": {
+        "prison": "2",
+        "release": null,
+        "court": false,
+        "prince": false
+      },
+      "queue": [],
+      "seen": [
+        "prison:2"
+      ]
+    },
+    "locked": false,
+    "ready": false,
+    "pose": {
+      "weight": 0.9906666666666674,
+      "k": 0.9996409407543102,
+      "sit": 0.02931733007222619,
+      "time": 8.990754000095373
+    },
+    "audio": {
+      "mix": {
+        "music": 0,
+        "music-night": 0,
+        "music-danger": 0,
+        "music-prison": 0.38,
+        "night": 0,
+        "night-inn": 0,
+        "city": 0,
+        "creek": 0
+      },
+      "loops": [
+        "creek",
+        "music-prison"
+      ],
+      "loaded": 29,
+      "danger": 0,
+      "shots": 0
+    },
+    "bedObject": {
+      "id": "bed:prison-1",
+      "kind": "bed",
+      "name": "牢中草铺",
+      "x": 23.8,
+      "z": -23.8,
+      "owner": "inspector",
+      "hp": 180,
+      "max": 180,
+      "drops": 0,
+      "material": "wood",
+      "w": 1.2000000476837158,
+      "d": 2,
+      "y": 0.15875000070780515,
+      "burning": 0,
+      "wetUntil": 0
+    },
+    "errors": []
+  },
+  "released": {
+    "day": 4,
+    "hp": 100,
+    "prisoner": 0,
+    "player": {
+      "x": 22,
+      "z": -17
+    },
+    "inv": [],
+    "facts": {
+      "entryStarted": true,
+      "guPoisonKnown": true,
+      "genyueCureRumor": true,
+      "lassoKitIssued": true,
+      "lastCustody": {
+        "officer": "gate_guard",
+        "subject": "player",
+        "day": 1
+      },
+      "custodyIdentity": null,
+      "enteredCity": true,
+      "entryRoute": "prison",
+      "falseName": null,
+      "entryReceipt": {
+        "route": "prison",
+        "day": 1,
+        "cost": "刑满获释，旧案结清"
+      },
+      "lastPrisonRelease": {
+        "id": "prison:2",
+        "reason": "prison",
+        "days": 3,
+        "fromDay": 1,
+        "toDay": 4
+      },
+      "convoyRumor": true,
+      "princeDeparture": {
+        "stage": 0
+      }
+    },
+    "milestones": {
+      "version": 1,
+      "last": {
+        "prison": null,
+        "release": "prison:2",
+        "court": false,
+        "prince": false
+      },
+      "queue": [
+        {
+          "key": "release:prison:2",
+          "kind": "release"
+        }
+      ],
+      "seen": [
+        "prison:2"
+      ]
+    },
+    "locked": true,
+    "ready": false,
+    "pose": null,
+    "audio": {
+      "mix": {
+        "music": 0.325,
+        "music-night": 0,
+        "music-danger": 0,
+        "music-prison": 0,
+        "night": 0,
+        "night-inn": 0,
+        "city": 0.58,
+        "creek": 0
+      },
+      "loops": [
+        "creek",
+        "music",
+        "city"
+      ],
+      "loaded": 29,
+      "danger": 0,
+      "shots": 0
+    },
+    "bedObject": {
+      "id": "bed:prison-1",
+      "kind": "bed",
+      "name": "牢中草铺",
+      "x": 23.8,
+      "z": -23.8,
+      "owner": "inspector",
+      "hp": 180,
+      "max": 180,
+      "drops": 0,
+      "material": "wood",
+      "w": 1.2000000476837158,
+      "d": 2,
+      "y": 0.15875000070780515,
+      "burning": 0,
+      "wetUntil": 0
+    },
+    "errors": []
+  },
+  "danger": {
+    "day": 4,
+    "hp": 100,
+    "prisoner": 0,
+    "player": {
+      "x": 0,
+      "z": 12
+    },
+    "inv": [],
+    "facts": {
+      "entryStarted": true,
+      "guPoisonKnown": true,
+      "genyueCureRumor": true,
+      "lassoKitIssued": true,
+      "lastCustody": {
+        "officer": "gate_guard",
+        "subject": "player",
+        "day": 1
+      },
+      "custodyIdentity": null,
+      "enteredCity": true,
+      "entryRoute": "prison",
+      "falseName": null,
+      "entryReceipt": {
+        "route": "prison",
+        "day": 1,
+        "cost": "刑满获释，旧案结清"
+      },
+      "lastPrisonRelease": {
+        "id": "prison:2",
+        "reason": "prison",
+        "days": 3,
+        "fromDay": 1,
+        "toDay": 4
+      },
+      "convoyRumor": true,
+      "princeDeparture": {
+        "stage": 0
+      },
+      "constableReferral": true,
+      "career": "court",
+      "factionEnrollments": {
+        "court": {
+          "day": 4
+        }
+      },
+      "princeCommission": true,
+      "courtTokenIssued": "item-124"
+    },
+    "milestones": {
+      "version": 1,
+      "last": {
+        "prison": null,
+        "release": "prison:2",
+        "court": true,
+        "prince": true
+      },
+      "queue": [],
+      "seen": [
+        "prison:2",
+        "release:prison:2",
+        "court:true",
+        "prince:true"
+      ]
+    },
+    "locked": false,
+    "ready": false,
+    "pose": null,
+    "audio": {
+      "mix": {
+        "music": 0.05870988424431356,
+        "music-night": 0,
+        "music-danger": 0.40598690649523156,
+        "music-prison": 0,
+        "night": 0,
+        "night-inn": 0,
+        "city": 0.58,
+        "creek": 0
+      },
+      "loops": [
+        "city",
+        "creek",
+        "music",
+        "music-danger"
+      ],
+      "loaded": 29,
+      "danger": 1,
+      "shots": 0
+    },
+    "bedObject": {
+      "id": "bed:prison-1",
+      "kind": "bed",
+      "name": "牢中草铺",
+      "x": 23.8,
+      "z": -23.8,
+      "owner": "inspector",
+      "hp": 180,
+      "max": 180,
+      "drops": 0,
+      "material": "wood",
+      "w": 1.2000000476837158,
+      "d": 2,
+      "y": 0.15875000070780515,
+      "burning": 0,
+      "wetUntil": 0
+    },
+    "errors": []
+  },
+  "fading": {
+    "day": 4,
+    "hp": 100,
+    "prisoner": 0,
+    "player": {
+      "x": -15,
+      "z": 12
+    },
+    "inv": [],
+    "facts": {
+      "entryStarted": true,
+      "guPoisonKnown": true,
+      "genyueCureRumor": true,
+      "lassoKitIssued": true,
+      "lastCustody": {
+        "officer": "gate_guard",
+        "subject": "player",
+        "day": 1
+      },
+      "custodyIdentity": null,
+      "enteredCity": true,
+      "entryRoute": "prison",
+      "falseName": null,
+      "entryReceipt": {
+        "route": "prison",
+        "day": 1,
+        "cost": "刑满获释，旧案结清"
+      },
+      "lastPrisonRelease": {
+        "id": "prison:2",
+        "reason": "prison",
+        "days": 3,
+        "fromDay": 1,
+        "toDay": 4
+      },
+      "convoyRumor": true,
+      "princeDeparture": {
+        "stage": 0
+      },
+      "constableReferral": true,
+      "career": "court",
+      "factionEnrollments": {
+        "court": {
+          "day": 4
+        }
+      },
+      "princeCommission": true,
+      "courtTokenIssued": "item-124"
+    },
+    "milestones": {
+      "version": 1,
+      "last": {
+        "prison": null,
+        "release": "prison:2",
+        "court": true,
+        "prince": true
+      },
+      "queue": [],
+      "seen": [
+        "prison:2",
+        "release:prison:2",
+        "court:true",
+        "prince:true"
+      ]
+    },
+    "locked": false,
+    "ready": false,
+    "pose": null,
+    "audio": {
+      "mix": {
+        "music": 0.1590529432101796,
+        "music-night": 0,
+        "music-danger": 0.31367129224663476,
+        "music-prison": 0,
+        "night": 0,
+        "night-inn": 0,
+        "city": 0.58,
+        "creek": 0.45499999999999996
+      },
+      "loops": [
+        "city",
+        "creek",
+        "music",
+        "music-danger"
+      ],
+      "loaded": 29,
+      "danger": 0.30000000000000004,
+      "shots": 0
+    },
+    "bedObject": {
+      "id": "bed:prison-1",
+      "kind": "bed",
+      "name": "牢中草铺",
+      "x": 23.8,
+      "z": -23.8,
+      "owner": "inspector",
+      "hp": 180,
+      "max": 180,
+      "drops": 0,
+      "material": "wood",
+      "w": 1.2000000476837158,
+      "d": 2,
+      "y": 0.15875000070780515,
+      "burning": 0,
+      "wetUntil": 0
+    },
+    "errors": []
+  },
+  "quiet": {
+    "day": 4,
+    "hp": 100,
+    "prisoner": 0,
+    "player": {
+      "x": -17,
+      "z": 25
+    },
+    "inv": [],
+    "facts": {
+      "entryStarted": true,
+      "guPoisonKnown": true,
+      "genyueCureRumor": true,
+      "lassoKitIssued": true,
+      "lastCustody": {
+        "officer": "gate_guard",
+        "subject": "player",
+        "day": 1
+      },
+      "custodyIdentity": null,
+      "enteredCity": true,
+      "entryRoute": "prison",
+      "falseName": null,
+      "entryReceipt": {
+        "route": "prison",
+        "day": 1,
+        "cost": "刑满获释，旧案结清"
+      },
+      "lastPrisonRelease": {
+        "id": "prison:2",
+        "reason": "prison",
+        "days": 3,
+        "fromDay": 1,
+        "toDay": 4
+      },
+      "convoyRumor": true,
+      "princeDeparture": {
+        "stage": 0
+      },
+      "constableReferral": true,
+      "career": "court",
+      "factionEnrollments": {
+        "court": {
+          "day": 4
+        }
+      },
+      "princeCommission": true,
+      "courtTokenIssued": "item-124"
+    },
+    "milestones": {
+      "version": 1,
+      "last": {
+        "prison": null,
+        "release": "prison:2",
+        "court": true,
+        "prince": true
+      },
+      "queue": [],
+      "seen": [
+        "prison:2",
+        "release:prison:2",
+        "court:true",
+        "prince:true"
+      ]
+    },
+    "locked": false,
+    "ready": false,
+    "pose": null,
+    "audio": {
+      "mix": {
+        "music": 0.5,
+        "music-night": 0,
+        "music-danger": 0,
+        "music-prison": 0,
+        "night": 0,
+        "night-inn": 0,
+        "city": 0.4970588235294118,
+        "creek": 0.5249999999999999
+      },
+      "loops": [
+        "city",
+        "creek",
+        "music"
+      ],
+      "loaded": 29,
+      "danger": 0,
+      "shots": 0
+    },
+    "bedObject": {
+      "id": "bed:prison-1",
+      "kind": "bed",
+      "name": "牢中草铺",
+      "x": 23.8,
+      "z": -23.8,
+      "owner": "inspector",
+      "hp": 180,
+      "max": 180,
+      "drops": 0,
+      "material": "wood",
+      "w": 1.2000000476837158,
+      "d": 2,
+      "y": 0.15875000070780515,
+      "burning": 0,
+      "wetUntil": 0
+    },
+    "errors": []
+  }
+}

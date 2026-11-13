@@ -1,0 +1,75 @@
+TAP version 13
+# Subtest: new wardrobes omit the unused cape; old item records survive without a wearable cape slot
+ok 1 - new wardrobes omit the unused cape; old item records survive without a wearable cape slot
+  ---
+  duration_ms: 5.0256
+  ...
+# Subtest: face, clothing and credentials stay independent; appearance consumes exactly one owned paste
+ok 2 - face, clothing and credentials stay independent; appearance consumes exactly one owned paste
+  ---
+  duration_ms: 2.552
+  ...
+# Subtest: the displayed chance is the actual roll threshold; new clothing invalidates the earlier inspection
+ok 3 - the displayed chance is the actual roll threshold; new clothing invalidates the earlier inspection
+  ---
+  duration_ms: 1.8006
+  ...
+# Subtest: the original owner exposes the mask with no dice; a new face is not globally known
+ok 4 - the original owner exposes the mask with no dice; a new face is not globally known
+  ---
+  duration_ms: 0.6561
+  ...
+# Subtest: recognition cue is emitted only on actual exposure, never preview, success or repeated unmasked checks
+ok 5 - recognition cue is emitted only on actual exposure, never preview, success or repeated unmasked checks
+  ---
+  duration_ms: 1.0248
+  ...
+# Subtest: witness attribution is frozen at the incident and propagates to face-specific aftermath
+ok 6 - witness attribution is frozen at the incident and propagates to face-specific aftermath
+  ---
+  duration_ms: 1.6986
+  ...
+# Subtest: an observer cannot identify a concealed costume change through a wall
+ok 7 - an observer cannot identify a concealed costume change through a wall
+  ---
+  duration_ms: 0.4472
+  ...
+# Subtest: reputation earned while disguised belongs to the perceived identity, including faction reputation
+ok 8 - reputation earned while disguised belongs to the perceived identity, including faction reputation
+  ---
+  duration_ms: 0.4741
+  ...
+# Subtest: Yan surrender uses the actual jail, clears pursuit, and releases inside the city
+ok 9 - Yan surrender uses the actual jail, clears pursuit, and releases inside the city
+  ---
+  duration_ms: 2.2855
+  ...
+# Subtest: passing strangers stay out of the face list and cannot be applied; known and warrant faces remain usable
+ok 10 - passing strangers stay out of the face list and cannot be applied; known and warrant faces remain usable
+  ---
+  duration_ms: 0.8396
+  ...
+# Subtest: unmasking records misconduct against the actual player; earlier incidents retain the borrowed identity
+ok 11 - unmasking records misconduct against the actual player; earlier incidents retain the borrowed identity
+  ---
+  duration_ms: 0.4286
+  ...
+# Subtest: a gift remembers whom the recipient believed and the porter route recognizes a prepared bare chest after securing a place
+ok 12 - a gift remembers whom the recipient believed and the porter route recognizes a prepared bare chest after securing a place
+  ---
+  duration_ms: 2.4921
+  ...
+# Subtest: the face list puts the most recently usable face first and marks only a learned main route
+ok 13 - the face list puts the most recently usable face first and marks only a learned main route
+  ---
+  duration_ms: 0.4639
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 281.7209

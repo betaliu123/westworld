@@ -1,17 +1,20 @@
 import {roomAt} from './night-life.js';
 // Recorded world audio. Playback never calls a generation service.
 const clamp=(n,a=0,b=1)=>Math.min(b,Math.max(a,n));
-export function worldMix({x=0,z=26,time=0,voice=false,talking=false,performing=false,hp=100}={}){
+export function worldMix({x=0,z=26,time=0,voice=false,talking=false,performing=false,hp=100,prison=false,danger=0}={}){
  const hour=((6+time/10)%24+24)%24,day=hour>=6&&hour<19?1:0;
  const duck=voice?.28:talking?.65:1;
  const city=clamp((26-z)/12),tea=clamp(1-Math.hypot(x+13,z-25)/17);
  const room=roomAt({x,z}),inside=!!room,lateInn=room?.public&&(hour>=19||hour<2);
- return {music:(performing?0:hp<=0?.12:.5)*duck*day,
-  'music-night':(performing?0:hp<=0?.08:.32)*duck*(1-day),
-  night:(1-day)*(inside?.06:.38)*(voice?.45:1),
-  'night-inn':lateInn?.3*(voice?.4:1):0,
-  city:Math.max(city*.58,tea*.65)*day*(inside?.16:1)*(voice?.36:1),
-  creek:clamp(1-Math.abs(x+22)/20)*.7*(inside?.25:1)*(voice?.5:1)};
+ const threat=prison?0:clamp(danger),ordinary=prison?0:1-threat;
+ return {music:(performing?0:hp<=0?.12:.5)*duck*day*ordinary,
+  'music-night':(performing?0:hp<=0?.08:.32)*duck*(1-day)*ordinary,
+  'music-danger':performing?0:.46*threat*duck*(hp>0?1:.25),
+  'music-prison':prison&&!performing?.38*duck:0,
+  night:prison?0:(1-day)*(inside?.06:.38)*(voice?.45:1),
+  'night-inn':!prison&&lateInn?.3*(voice?.4:1):0,
+  city:prison?0:Math.max(city*.58,tea*.65)*day*(inside?.16:1)*(voice?.36:1),
+  creek:prison?0:clamp(1-Math.abs(x+22)/20)*.7*(inside?.25:1)*(voice?.5:1)};
 }
 export function hitSound(material){return material==='wood'?'wood':['metal','stone'].includes(material)?'metal':'body';}
 // Continuous water/fire damage is not a new physical impact every frame.
@@ -22,6 +25,7 @@ const CUES={
  draw:['draw',.45],sheath:['draw',.28,.8],step:['step',.25],jump:['step',.18],
  mail:['coins',.19],notice:['metal',.08,1.35],alert:['metal',.17,.8],
  tick:['wood',.055,1.6],win:['coins',.26],lose:['body',.12,.8],coins:['coins',.5],
+ recognition:['recognition',.52],
 };
 
 export class WorldAudio{
@@ -37,7 +41,7 @@ export class WorldAudio{
   if(!this.context){
    this.context=this.createContext();this.master=this.context.createGain();
    this.master.gain.value=this.enabled&&!this.hidden?1:0;this.master.connect(this.context.destination);
-   this.buses={};for(const id of ['music','city','creek','music-night','night','night-inn','flute-poor','flute-good']){
+   this.buses={};for(const id of ['music','city','creek','music-night','night','night-inn','music-danger','music-prison','flute-poor','flute-good']){
     const bus=this.context.createGain();bus.gain.value=0;bus.connect(this.master);this.buses[id]=bus;
    }
   }
@@ -70,7 +74,7 @@ export class WorldAudio{
  stop(){
   this.generation=(this.generation||0)+1;
   this.stopReaction();
-  this.running=false;this.lastPosition=null;this.stride=0;
+  this.running=false;this.lastPosition=null;this.stride=0;this.dangerLevel=0;
   for(const loop of this.loops.values())for(const node of [...loop.sources])node.stop();
   this.loops.clear();for(const node of [...this.shots])node.stop();this.lastCue.clear();
  }
@@ -120,7 +124,7 @@ export class WorldAudio{
   if(!this.running||!this.enabled||this.hidden||this.context?.state!=='running')return null;
   const cue=CUES[kind];if(!cue)return null;
   const [id,level,pitch=1]=cue,buffer=this.buffers.get(id);if(!buffer)return null;
-  const now=this.context.currentTime,cooldown=['notice','alert','mail'].includes(kind)?1.2:kind==='hurt'?.6:.065;
+  const now=this.context.currentTime,cooldown=kind==='recognition'?2.5:['notice','alert','mail'].includes(kind)?1.2:kind==='hurt'?.6:.065;
   if(now-(this.lastCue.get(kind)??-Infinity)<cooldown)return null;
   const distance=x==null?0:Math.hypot(x-this.position.x,z-this.position.z);
   if(distance>15)return null;
@@ -146,12 +150,15 @@ export class WorldAudio{
    if(this.reactionBlocked||!n.valid()||distance>=12)this.stopReaction();
    else n.gain.gain.setTargetAtTime(n.level*clamp(1-distance/12),this.context.currentTime,.06);
   }
-  this.mix=worldMix({...state,voice:state.voice||!!this.reaction});
+  const target=state.prison?0:clamp(state.danger||0),level=this.dangerLevel||0;
+  this.dangerLevel=state.prison?0:level+(target-level)*(1-Math.exp(-Math.max(0,dt)*(target>level?2.5:.55)));
+  if(target===0&&this.dangerLevel<.004)this.dangerLevel=0;
+  this.mix=worldMix({...state,danger:this.dangerLevel,voice:state.voice||!!this.reaction});
   if(!state.started||!this.enabled||this.hidden||this.context?.state!=='running'){
    if(this.running)this.stop();return;
   }
   this.running=true;
-  for(const id of ['music','city','creek','music-night','night','night-inn']){
+  for(const id of ['music','city','creek','music-night','night','night-inn','music-danger','music-prison']){
    this.buses[id].gain.setTargetAtTime(this.mix[id],this.context.currentTime,state.voice||this.reaction||state.performing?.16:.8);
    if(id==='creek'||this.mix[id]>0)this.scheduleLoop(id);else this.stopLoop(id);
   }

@@ -1,7 +1,7 @@
 import {PEOPLE} from './data.js';
 import {visibleBetween} from './npc-awareness.js';
 import {fixedPost,convoyTravelling} from './npc-posts.js';
-import {QINGHE_RIVERSIDE} from './locations.js';
+import {QINGHE_RIVERSIDE,PRISON_BEDS} from './locations.js';
 
 // Original schedules, inspired by the time-window / home-link structure in KCD2.
 // All deadlines use the persistent NPC clock; clock jumps select a new intention,
@@ -27,7 +27,7 @@ function leaveRoom(n,q,destination){const h=roomAt(q);if(!h){delete n.nightExitP
  const inner={x:h.x,z:h.z+h.d/2-.75};if(distance(q,inner)<.7)n.nightExitPhase=h.id;
  return n.nightExitPhase===h.id?porch(h):inner;
 }
-export function bedFor(id){const h=homeFor(id);if(!h)return null;const i=h.residents.indexOf(id);
+export function bedFor(id){const prison=PRISON_BEDS.find(b=>b.id==='bed:'+id);if(prison)return prison;const h=homeFor(id);if(!h)return null;const i=h.residents.indexOf(id);
  // Beds share a back-wall row, leaving the doorway and foot aisle clear.
  const count=h.residents.length,x=h.x+(count===1?-h.w/2+1.05:(i/(count-1)-.5)*(h.w-2.1)),z=h.z-h.d/2+1.25;
  return {x,z,xTarget:x,zTarget:z+1.15,home:h.id,index:i};

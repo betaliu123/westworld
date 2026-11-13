@@ -39,6 +39,13 @@ test('the original owner exposes the mask with no dice; a new face is not global
  const {sim,s}=setup();face(sim,'gate_merchant');assert.ok(disguisePreview(s,'gate_merchant').original);assert.equal(checkDisguise(sim,'gate_merchant').success,false);assert.equal(currentFace(s),'player');
  face(sim,'thief');assert.equal(believedIdentity(s,'gate_merchant'),'thief');
 });
+test('recognition cue is emitted only on actual exposure, never preview, success or repeated unmasked checks',()=>{
+ const {sim,s}=setup(),events=[];sim.listeners.push((type,data)=>{if(type==='identityExposed')events.push(data);});
+ face(sim,'gate_merchant');disguisePreview(s,'gate_merchant');assert.equal(events.length,0);
+ assert.equal(checkDisguise(sim,'gate_guard').success,true);assert.equal(events.length,0);
+ assert.equal(checkDisguise(sim,'gate_merchant').success,false);assert.deepEqual(events,[{observer:'gate_merchant',face:'gate_merchant'}]);
+ checkDisguise(sim,'gate_merchant');assert.equal(events.length,1);
+});
 test('witness attribution is frozen at the incident and propagates to face-specific aftermath',()=>{
  const {sim,s}=setup();face(sim,'gate_merchant');const relation=s.people.gate_guard.relation;const e={type:'theft',x:0,z:24,text:'当街取物'};
  witnessEvent(sim,'gate_guard',e,true,{x:0,z:24});assert.equal(e.identities.gate_guard,'gate_merchant');assert.equal(s.people.gate_guard.relation,relation);assert.equal(appearanceState(s).relations['gate_guard:gate_merchant'],-3);

@@ -7,7 +7,7 @@ const smooth=t=>{t=T.MathUtils.clamp(t,0,1);return t*t*(3-2*t);};
 // physical root stays at the reachable foot slot; only the body reclines.
 export function restPose(actor,bed,weight,time){const u=actor.userData,k=smooth((weight-.15)/.85),sit=Math.sin(Math.PI*weight);
  actor.rotation.y=0;u.rig.rotation.set(-Math.PI/2*k,0,0);
- u.rig.position.set((bed.x-actor.position.x)*k,.64*k-.3*sit+.006*Math.sin(time*1.2)*k,(bed.z+.96-actor.position.z)*k);
+ u.rig.position.set((bed.x-actor.position.x)*k,(bed.height??.64)*k-.3*sit+.006*Math.sin(time*1.2)*k,(bed.z+.96-actor.position.z)*k);
  u.head.rotation.set(.03*k,.22*k,0);u.arms.forEach(a=>a.rotation.set(-.12*k,0,0));u.legs.forEach(l=>l.rotation.set(-.6*sit,0,0));
  u.sword.visible=false;u.bedPose={weight,k,sit,time};u.npcPoseOverride=true;
 }

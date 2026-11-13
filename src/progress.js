@@ -9,7 +9,7 @@ import {syncOpeningLeads} from './qinghe-leads.js';
 export function entryObjective(s){
  if(s.event?.type!=='gate'||s.facts.enteredCity)return '';
  const phase=s.event.gate?.phase,bag=s.player.inventory;
- if(['prison','testimony'].includes(phase))return '在牢中等候释放，或听听同牢人的来历。';
+ if(['prison','testimony'].includes(phase))return '点牢中草铺歇息，可睡到刑满出狱。';
  if(['exposed','fight'].includes(phase))return '先应付眼前的盘问。';
  if(s.chapterVersion===2){if(s.player.disguise==='runner')return s.facts.runnerNameKnown?'身着差服，已知陈小乙之名。':s.facts.runnerCollarSeen?'身着差服，尚不知衣领旧名。':'身着旧差役服，尚未获准入城。';if(bag.includes('他人的路引'))return s.facts.knownNames?.gate_merchant?'路引在身，已知赵成之名。':'路引在行囊中，尚未核清姓名。';if(bag.includes('旧差役服'))return '旧差役服已收进包裹。';return s.facts.entryRulesKnown?'花石纲先行，关口正在查验凭据。':'关口封着，尚未获准入城。';}
  if(s.player.disguise==='runner')return '已换差役服，可去关口应答。';

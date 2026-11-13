@@ -1,0 +1,12 @@
+attack point { x: 426.7999404915205, y: 282.67979396408396, visible: true }
+killed
+bed point { x: 804.6978377187277, y: 387.0503804050602, visible: true }
+reload pending
+loaded
+continued
+resume state {"day":4,"hp":100,"prisoner":0,"player":{"x":22,"z":-17},"inv":[],"facts":{"entryStarted":true,"guPoisonKnown":true,"genyueCureRumor":true,"lassoKitIssued":true,"lastCustody":{"officer":"gate_guard","subject":"player","day":1},"custodyIdentity":null,"enteredCity":true,"entryRoute":"prison","falseName":null,"entryReceipt":{"route":"prison","day":1,"cost":"刑满获释，旧案结清"},"lastPrisonRelease":{"id":"prison:2","reason":"prison","days":3,"fromDay":1,"toDay":4},"convoyRumor":true,"princeDeparture":{"stage":0}},"milestones":{"version":1,"last":{"prison":null,"release":"prison:2","court":false,"prince":false},"queue":[{"key":"release:prison:2","kind":"release"}],"seen":["prison:2"]},"locked":true,"ready":false,"pose":null,"audio":{"mix":{"music":0.325,"music-night":0,"music-danger":0,"music-prison":0,"night":0,"night-inn":0,"city":0.58,"creek":0},"loops":[],"loaded":0,"danger":0,"shots":0},"bedObject":{"id":"bed:prison-1","kind":"bed","name":"牢中草铺","x":23.8,"z":-23.8,"owner":"inspector","hp":180,"max":180,"drops":0,"material":"wood","w":1.2000000476837158,"d":2,"y":0.15875000070780515,"burning":0,"wetUntil":0},"errors":[]}
+reload completed
+court passed
+prince result {"type":"npc","presentation":"dialogue","day":4,"eventId":"chapter:royal_task","actionId":"ch_royal_task","label":"可有查账的引荐？","kind":"listen","motion":"talk","roll":null,"check":{"score":0,"chance":100,"certain":true,"blocked":false,"reason":""},"success":true,"text":"这枚玉符你收好，查账时可以拿给顾钦差看，请他协助。等你找到原账，再来同我商量赴京的事。","changes":["获得：闲舟引荐玉符"],"dialogue":[{"id":"traveler","text":"这枚玉符你收好，查账时可以拿给顾钦差看，请他协助。等你找到原账，再来同我商量赴京的事。"}],"authored":true,"follow":[],"causalRecorded":true}
+prince passed
+PASS prison, art, sleep, release, audio

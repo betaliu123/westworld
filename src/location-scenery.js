@@ -1,4 +1,4 @@
-import {BEGGAR_NEST,PRIVACY_GROVE} from './locations.js';
+import {BEGGAR_NEST,PRIVACY_GROVE,PRISON_BEDS} from './locations.js';
 import * as T from '../vendor/three.module.js';
 import {furnishHouse} from './night-scene.js';
 import {buildCourtChest} from './court-chest-scene.js';
@@ -58,7 +58,10 @@ export function buildLocationScenery(world,{box,cyl,textSprite}){
  const wall=(id,x,z,w,d)=>{box(prison,w,3.7,d,0x555e5a,x,1.85,z);world.obstacles.push({id,x:22+x,z:-22+z,w,d});};wall('jail-west',-3.5,0,.45,7);wall('jail-east',3.5,0,.45,7);wall('jail-back',0,-3.5,7.4,.45);
  world.jailBars=new T.Group();world.jailBars.position.set(22,0,-19);world.scene.add(world.jailBars);for(let x=-3.3;x<=3.3;x+=.42)box(world.jailBars,.07,3.1,.09,0x303735,x,1.55,0);for(const y of [.2,1.6,3])box(world.jailBars,6.8,.12,.14,0x303735,0,y,0);
  world.obstacles.push({id:'jail-bars',x:22,z:-19,w:6.8,d:.14});box(prison,.22,.3,.15,0x9f8853,.4,1.3,3.15);
- for(const x of [-2,1.8]){box(prison,1.2,.12,2,0x8e8055,x,.14,-1.8);for(let i=0;i<8;i++)box(prison,.05,.035,1.8,0xb29b61,x-.5+i*.14,.22,-1.8);}
+ for(const b of PRISON_BEDS){const mat=new T.Group();mat.position.set(b.x-22,0,b.z+22);prison.add(mat);box(mat,1.2,.12,2,0x8e8055,0,.14,0);for(let i=0;i<8;i++)box(mat,.05,.035,1.8,0xb29b61,-.5+i*.14,.22,0);
+  world.registerObject?.(mat,b.id,'牢中草铺','wood',180,{kind:'bed',owner:'inspector'});
+  world.obstacles.push({id:b.id,x:b.x,z:b.z-.2,w:1.02,d:1.35,sightHeight:.23});
+ }
  cyl(prison,.25,.18,.4,0x61503c,2.6,.2,1.6);cyl(prison,.2,.14,.08,0xaaa184,-1,.12,.4);box(prison,.7,.14,.45,0x706652,-2.5,.35,1.8);
  for(const x of [-2.9,2.9]){world.lantern(prison,x,2.6,1);const light=new T.PointLight(0xffae61,1.8,8);light.position.set(x,2.5,1);prison.add(light);}
  const label=textSprite('临 溪 县 狱');label.position.set(22,3.6,-18.8);world.scene.add(label);

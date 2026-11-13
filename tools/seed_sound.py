@@ -21,6 +21,9 @@ import soundfile as sf
 ROOT = Path(__file__).resolve().parents[1]
 ENDPOINT = 'https://ai.leihuo.netease.com/openspeech/api/v3/tts/create'
 SAMPLES = {
+    'music-danger': ('盘查·危弦', '生成40秒原创中国古风武侠潜行游戏危险区域纯音乐。官差正在附近搜查，低音古琴断续闷拨，两三个音缓缓反复，稀疏低沉鼓心在远处缓慢推进，少量弦的摩擦与压低的洞箫长气音。紧张、克制、有被发现前屏住呼吸的悬念，不是战斗高潮。不要大声骤响，不要惊吓，不要西方管弦配乐或电子合成音。没有人声、语言、吟唱、脚步和环境音。整体音量均匀，开头结尾轻柔，可低声循环。'),
+    'music-prison': ('县狱·长夜', '生成40秒原创中国古风游戏牢房纯音乐。极稀疏低音古琴散音，偶尔两三枚黯淡泛音，极轻洞箫低音长息，缓慢、沉闷、清冷，留有大段安静余韵，像在狭小牢房等待天明。没有明确欢快旋律，没有鼓点、高潮或恐怖惊吓，没有电子音色，没有人声、吟唱、囚犯喊叫、锁链、滴水或其他环境音。音量平稳克制，首尾柔和，适合安静循环。'),
+    'recognition': ('识破·弦涩', '生成1.6秒古风游戏被当面认出后的尴尬提示音。只有一架古琴的两次短促拨弦，第一下轻巧而突然，第二下低半拍轻微滑音收住，带一点窘迫和无言以对的顿挫。自然木质琴弦，克制、不滑稽、不惊悚、不刺耳，不用锣、笑声或卡通音效。没有任何人声、语言、音乐伴奏、环境声。干净近距离单次音效，余音迅速自然衰减。'),
     'npc-qinghe-cry': ('宋青禾·石后低泣', '生成6秒游戏人物音效。一名成年女子独自低声抽泣，努力平复情绪。中低音区的清润女声，两三次轻微哽咽、断续吸气，夹着自然停顿，结尾缓缓收声。表演克制、真实、有韧性，音量轻，不大声哭喊。单人近距离录音，干净干声。只有无词的抽泣和呼吸，不包含任何可辨认的字句、旁白、唱歌、音乐、环境底声或其他人的声音。'),
     'music-opening': ('开场·蛊与仙山', '生成40秒原创中国古风武侠游戏开场纯音乐，古琴独奏为主。开头五秒是低音区沉重的古琴散音与缓慢的按音滑音，压抑、隐忍，像暗处发作的毒痛；随后古琴急促的轮指与扫弦层层推进，力度逐渐增强，紧张、悬疑、有张力，远处只有一两下极低沉的大鼓；最后十秒力量收住，转为舒缓的五声音阶泛音与长音，落在宫音上余韵悠长，平静地引向清晨的小城。没有人声，没有吟唱，没有任何语言，没有电子音色、合成器和管弦乐团，没有环境声。近距离自然录音。'),
     'music-night': ('临溪·夜泊', '生成40秒原创中国古风游戏深夜探索纯音乐。北宋小城入夜，极稀疏的古琴泛音与低声洞箫，悠缓、安宁，保留长时间自然余韵和留白。没有鼓点，没有人声，没有电子音色，没有市集、鸟鸣或其他环境声。不悲壮不惊悚，不要高潮。开头结尾轻柔，适合低音量循环。'),
@@ -117,7 +120,7 @@ def main():
                 raise SystemExit(f'No audio returned (code {result.get("code")}); stopped without retry')
             raw_path.write_bytes(base64.b64decode(result['audio'], validate=True))
             generated += 1
-        data, rate, gain = processed(raw_path.read_bytes(), name in ('music', 'music-opening', 'city', 'creek', 'flute-poor', 'flute-good', 'music-night', 'night', 'night-inn'),
+        data, rate, gain = processed(raw_path.read_bytes(), name in ('music', 'music-opening', 'city', 'creek', 'flute-poor', 'flute-good', 'music-night', 'music-danger', 'music-prison', 'night', 'night-inn'),
                                      target=-29 if name == 'creek' else None)
         if name == 'step':
             # The model can include several steps despite the prompt. Keep one footfall.
