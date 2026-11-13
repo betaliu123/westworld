@@ -22,6 +22,7 @@ export function mountHudLayout(){
  const actions=dock('hud-context-actions',['interact']);context.append(actions);const water=document.createElement('span');water.id='water-state';water.innerHTML=icon('Waves');water.title='溺水 · 气血持续下降，尽快上岸';water.setAttribute('aria-label',water.title);water.setAttribute('role','status');actions.append(water);
  // The drawn-weapon key hints flow with the other context prompts instead of holding a fixed spot beside them.
  const ready=byId('combat-ready');if(ready)context.append(ready);
+ const downed=byId('downed-hint');if(downed)context.append(downed);
  const side=dock('hud-context-side',[]);side.hidden=true;context.append(side);
  const mode=byId('stealth-mode');mode.innerHTML=icon('EyeOff')+'<span class="aim-skill-label">潜行<span class="aim-skill-key">（Z键）</span></span>';mode.title='潜行 · Z 键蹲下';mode.setAttribute('aria-label',mode.title);byId('aim-skills')?.prepend(mode);
  dock('hud-bottom-actions',['environment-tools','aim-skills']);

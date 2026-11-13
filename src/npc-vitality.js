@@ -4,8 +4,8 @@ import {visibleBetween} from './npc-awareness.js';
 
 // A wounded person's condition, drawn as one brush stroke above the head: black for what is left, a grey
 // length for what was just lost, faint dry strokes for the rest. It turns cinnabar once they are badly hurt.
-// It appears when someone is hurt in the player's sight and stays while that person is fighting the player;
-// it is never a standing readout over healthy passers-by.
+// It appears only over someone who is fighting the player and already hurt. A passer-by who was clipped
+// carries no stroke, healthy or wounded.
 export const VITALITY = {linger: 4.5, fallen: .9, hold: .28, drain: .55, low: .3, reach: 15};
 
 export function stepVitality(v, {hp, max, fighting = false, seen = true, now, dt}) {
@@ -17,7 +17,7 @@ export function stepVitality(v, {hp, max, fighting = false, seen = true, now, dt
   v.hp = hp; v.part = part; v.low = part <= VITALITY.low;
   if (part >= v.lag) v.lag = part;
   else if (now - v.struck > VITALITY.hold) v.lag = Math.max(part, v.lag - VITALITY.drain * dt);
-  const shown = seen && (now < v.until || fighting && hp > 0 && hp < max);
+  const shown = seen && fighting && hp > 0 && hp < max;
   v.alpha = shown ? Math.min(1, v.alpha + dt / .14) : Math.max(0, v.alpha - dt / .6);
   return v;
 }

@@ -614,12 +614,16 @@ body.ink-night #dialogue-stage .dialogue-context{color:var(--paper);background:r
 /* Quiet HUD: full vitals and settled objectives step back. */
 #combat-ready{background:none!important;border:0!important;font:var(--fs-2) var(--font-body)!important}
 #combat-ready kbd{margin:0 .3em 0 .9em}#combat-ready kbd:first-child{margin-left:0}
-#hud-context-stack>#combat-ready{position:static;inset:auto;transform:none;padding:0;margin:0;white-space:nowrap}
-/* The ink wave's key refills with ink from the bottom while it cannot be thrown; --cd runs from 1 to 0. */
-#wave-key{position:relative;overflow:hidden}
+#hud-context-stack>#combat-ready{position:static;inset:auto;transform:none;padding:0;margin:0;display:flex;flex-direction:column;align-items:center;gap:2px;white-space:nowrap}
+/* The ink wave sits on its own line, larger than the other keys, and its key refills with ink from the bottom while it cannot be thrown; --cd runs from 1 to 0. */
+#wave-hint{font-size:var(--fs-5);letter-spacing:.12em}
+#wave-key{position:relative;overflow:hidden;font-size:inherit}
 #wave-key::after{content:"";position:absolute;inset:auto 0 0 0;height:calc((1 - var(--cd,0))*100%);background:var(--ink-3);opacity:0;pointer-events:none}
 #wave-key.cooling{border-style:dashed;color:var(--ink-3);box-shadow:none}
 #wave-key.cooling::after{opacity:.4}
+#downed-hint{font:var(--fs-4) var(--font-body);color:var(--cinnabar);text-shadow:0 0 3px var(--paper),0 0 7px var(--paper)}
+#hud-context-stack>#downed-hint{position:static;inset:auto;transform:none;margin:0}
+body.ink-night #downed-hint{text-shadow:0 0 3px var(--ink-0),0 0 7px var(--ink-0)}
 /* Too tired to act: the empty stamina bar is hatched in cinnabar once. */.field-meters progress.spent{animation:spent 420ms ease-out}
 @keyframes spent{0%,70%{background:repeating-linear-gradient(-45deg,var(--cinnabar) 0 3px,transparent 3px 6px)}}
 #reply-status{display:none!important}

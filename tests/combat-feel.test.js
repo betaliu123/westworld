@@ -176,9 +176,10 @@ test('the ink wave is thrown once per cooldown and settles each person it reache
 test('a wound stroke shows only for wounds the player saw, lags behind the loss and fades',()=>{
   const frame=(v,o)=>stepVitality(v,{max:100,seen:true,dt:.1,...o});
   let v=frame(null,{hp:100,now:0});assert.equal(v.alpha,0,'healthy people carry no stroke');
-  v=frame(v,{hp:80,now:.1});assert.ok(v.alpha>0);assert.equal(v.part,.8);assert.equal(v.lag,1,'the lost length stays for a moment');
-  for(let t=.2;t<1.2;t+=.1)v=frame(v,{hp:80,now:t});assert.ok(Math.abs(v.lag-.8)<1e-9);assert.equal(v.alpha,1);
-  for(let t=1.2;t<VITALITY.linger+2;t+=.1)v=frame(v,{hp:80,now:t});assert.equal(v.alpha,0,'it does not stay over someone left alone');
+  v=frame(v,{hp:80,now:.1});assert.equal(v.alpha,0,'someone who is not fighting shows nothing, even just wounded');
+  v=frame(v,{hp:80,now:.2,fighting:true});assert.ok(v.alpha>0);assert.equal(v.part,.8);assert.equal(v.lag,1,'the lost length stays for a moment');
+  for(let t=.3;t<1.3;t+=.1)v=frame(v,{hp:80,now:t,fighting:true});assert.ok(Math.abs(v.lag-.8)<1e-9);assert.equal(v.alpha,1);
+  for(let t=1.3;t<3;t+=.1)v=frame(v,{hp:80,now:t});assert.equal(v.alpha,0,'it goes once they leave the fight');
   v=frame(v,{hp:80,now:20,fighting:true});assert.ok(v.alpha>0,'a wounded opponent keeps it while fighting');
   v=frame(v,{hp:25,now:20.1,fighting:true});assert.equal(v.low,true);
   let unseen=frame(null,{hp:100,now:0});unseen=frame(unseen,{hp:40,now:.1,seen:false});assert.equal(unseen.alpha,0);assert.equal(unseen.lag,.4);
