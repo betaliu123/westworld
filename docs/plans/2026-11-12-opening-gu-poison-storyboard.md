@@ -1,5 +1,12 @@
 # 蛊毒求生开场 · 分镜草案
 
+> 2026-11-13 修订（用户要求加强张力）：每幕加一行志莽行书题字（逐字墨晕显出），字幕改写为下表；末幕按钮由「入临溪」改为「开始游戏」。开场配一首 40 秒 Seed Audio 古琴曲 `music-opening`（低沉压抑→轮指推进→收于宫音泛音），只播一次不循环；进入游戏时 3.5 秒淡出，同时城镇琴箫淡入。下文旧字幕作留档。
+>
+> | 幕 | 题字 | 字幕 |
+> | --- | --- | --- |
+> | 仙山 | 蛊入骨髓 | 遍访名医，人人摇头。／听闻道君皇帝营建艮岳，招聚天下异人——仙山之上，必有解法。 |
+> | 城门 | 关门只为石开 | 替艮岳运货、办差的人，都在临溪落脚。上山的路，就在这座城里。／可黄旗一展，花石纲入城，关门在你面前合上了。 |
+
 日期：2026-11-12。状态：用户已确认两张轻水墨图，并要求按定稿字幕接入开场、仙山在前。已接入新开局：仙山 `02-genyue-lake-ink-v4.png` → 城门 `linxi-gate-ink-v2.png`，移除三种出身选择。完整观看与跳过接回同一起始状态；继续已有存档不重播。发布与验收记录见 `../../cc_task/2026-11-12-opening/README.md`。
 
 旧第③张样张留档：`assets-src/opening/linxi-seeking-road-v2.png`。旧提示词与编辑记录：`assets-src/opening/linxi-seeking-road-prompts.md`。新的关口镜头样张：`assets-src/opening/linxi-gate-cinematic-v1.png`；提示词：`assets-src/opening/linxi-gate-cinematic-v1-prompt.md`。

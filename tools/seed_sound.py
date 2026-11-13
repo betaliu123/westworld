@@ -21,6 +21,7 @@ import soundfile as sf
 ROOT = Path(__file__).resolve().parents[1]
 ENDPOINT = 'https://ai.leihuo.netease.com/openspeech/api/v3/tts/create'
 SAMPLES = {
+    'music-opening': ('开场·蛊与仙山', '生成40秒原创中国古风武侠游戏开场纯音乐，古琴独奏为主。开头五秒是低音区沉重的古琴散音与缓慢的按音滑音，压抑、隐忍，像暗处发作的毒痛；随后古琴急促的轮指与扫弦层层推进，力度逐渐增强，紧张、悬疑、有张力，远处只有一两下极低沉的大鼓；最后十秒力量收住，转为舒缓的五声音阶泛音与长音，落在宫音上余韵悠长，平静地引向清晨的小城。没有人声，没有吟唱，没有任何语言，没有电子音色、合成器和管弦乐团，没有环境声。近距离自然录音。'),
     'music-night': ('临溪·夜泊', '生成40秒原创中国古风游戏深夜探索纯音乐。北宋小城入夜，极稀疏的古琴泛音与低声洞箫，悠缓、安宁，保留长时间自然余韵和留白。没有鼓点，没有人声，没有电子音色，没有市集、鸟鸣或其他环境声。不悲壮不惊悚，不要高潮。开头结尾轻柔，适合低音量循环。'),
     'night': ('街巷·夜风', '生成30秒写实的古代小镇深夜环境底声。极轻的树叶夜风，远处零星秋虫，安静而疏落，空间开阔。无人声、叫卖、车马、音乐、犬吠、鸟鸣、铃声、机械声，不要持续密集的高频虫鸣。响度平稳低柔，适合夜间街巷低声循环。'),
     'night-inn': ('客栈·夜阑', '生成30秒古代小客栈临近打烊的室内环境底声。很安静，偶尔一只陶瓷酒杯轻轻放在木桌上、衣袖轻擦，远处一点炉火，不包含任何可辨认的人声或对话，没有笑闹，没有音乐、脚步循环、叫卖、现代电器。最多三次轻微杯盏声，声音低柔、克制、自然，适合低音量循环。'),
@@ -100,7 +101,7 @@ def main():
                 raise SystemExit(f'No audio returned (code {result.get("code")}); stopped without retry')
             raw_path.write_bytes(base64.b64decode(result['audio'], validate=True))
             generated += 1
-        data, rate, gain = processed(raw_path.read_bytes(), name in ('music', 'city', 'creek', 'flute-poor', 'flute-good', 'music-night', 'night', 'night-inn'),
+        data, rate, gain = processed(raw_path.read_bytes(), name in ('music', 'music-opening', 'city', 'creek', 'flute-poor', 'flute-good', 'music-night', 'night', 'night-inn'),
                                      target=-29 if name == 'creek' else None)
         if name == 'step':
             # The model can include several steps despite the prompt. Keep one footfall.

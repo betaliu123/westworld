@@ -3,18 +3,21 @@ export const OPENING_SHOTS = [
     id: 'genyue',
     image: 'assets/opening/genyue-ink-v4.png',
     alt: '隔着秋色湖面，远眺云雾中的仙山艮岳与宫殿',
+    // Brush-script titles: at most 8 characters each, glyphs bundled in vendor/fonts (see the opening font script).
+    title: '蛊入骨髓',
     lines: [
-      '你身中蛊毒，寻医无果。',
-      '听闻道君皇帝营建仙山艮岳，招聚天下异人，仙山上必有解毒之法。',
+      '遍访名医，人人摇头。',
+      '听闻道君皇帝营建艮岳，招聚天下异人——仙山之上，必有解法。',
     ],
   },
   {
     id: 'linxi',
     image: 'assets/opening/linxi-gate-ink-v2.png',
     alt: '旅人扶着石栏，望向临溪城门与正在入城的花石纲车',
+    title: '关门只为石开',
     lines: [
-      '替艮岳运货、办差的人，常在临溪落脚。',
-      '你循线而来，想寻一条上山的路，却撞上了花石纲封关。',
+      '替艮岳运货、办差的人，都在临溪落脚。上山的路，就在这座城里。',
+      '可黄旗一展，花石纲入城，关门在你面前合上了。',
     ],
   },
 ];
@@ -38,7 +41,7 @@ export function mountOpeningSequence() {
   root.innerHTML = `<div class="opening-art"></div>
     <button type="button" class="opening-skip" aria-label="跳过开场">跳过</button>
     <div class="opening-content">
-      <div class="opening-copy" aria-live="polite" aria-atomic="true"><p></p><p></p></div>
+      <div class="opening-copy" aria-live="polite" aria-atomic="true"><h2 class="opening-title"></h2><p></p><p></p></div>
       <div class="opening-footer">
         <div class="opening-progress" role="progressbar" aria-label="开场进度" aria-valuemin="1" aria-valuemax="2"><i></i><i></i></div>
         <span class="opening-image-error" hidden>画面未能载入 <button type="button" class="opening-retry">重试</button></span>
@@ -48,7 +51,8 @@ export function mountOpeningSequence() {
   document.body.append(root);
   const art = root.querySelector('.opening-art');
   const copy = root.querySelector('.opening-copy');
-  const lines = [...copy.children];
+  const title = copy.querySelector('.opening-title');
+  const lines = [...copy.querySelectorAll('p')];
   const next = root.querySelector('.opening-next');
   const skip = root.querySelector('.opening-skip');
   const retry = root.querySelector('.opening-retry');
@@ -80,7 +84,7 @@ export function mountOpeningSequence() {
     revealed = true;
     root.dataset.revealed = 'true';
     lines[1].textContent = OPENING_SHOTS[shot].lines[1];
-    next.textContent = shot === OPENING_SHOTS.length - 1 ? '入临溪' : '继续';
+    next.textContent = shot === OPENING_SHOTS.length - 1 ? '开始游戏' : '继续';
   }
   function show(index) {
     clearTimeout(timer);
@@ -92,14 +96,18 @@ export function mountOpeningSequence() {
       img.classList.toggle('current', i === shot);
       img.setAttribute('aria-hidden', String(i !== shot));
     });
+    // Each character is its own span so the brush title can bleed in stroke by stroke.
+    title.replaceChildren(...[...OPENING_SHOTS[shot].title].map((char, i) => Object.assign(document.createElement('span'), {textContent: char, style: `--i:${i}`})));
+    title.setAttribute('aria-label', OPENING_SHOTS[shot].title);
     lines[0].textContent = OPENING_SHOTS[shot].lines[0];
+    lines[0].style.animation = 'none'; void lines[0].offsetWidth; lines[0].style.animation = '';
     lines[1].textContent = '';
     progress.setAttribute('aria-valuenow', String(shot + 1));
     [...progress.children].forEach((dot, i) => dot.classList.toggle('current', i === shot));
     imageError.hidden = !images[shot].dataset.failed;
     next.textContent = '继续';
     if (reduced.matches) reveal();
-    else timer = setTimeout(reveal, 1200);
+    else timer = setTimeout(reveal, 2200);
   }
   function finish() {
     if (!active) return;
@@ -141,7 +149,7 @@ export function mountOpeningSequence() {
   }
   function onVisibility() {
     clearTimeout(timer);
-    if (!document.hidden && active && !revealed) timer = setTimeout(reveal, 1200);
+    if (!document.hidden && active && !revealed) timer = setTimeout(reveal, 2200);
   }
   root.addEventListener('click', event => {
     event.stopPropagation();

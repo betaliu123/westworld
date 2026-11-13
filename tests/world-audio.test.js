@@ -6,12 +6,12 @@ import {environmentStep} from '../src/world-rules.js';
 
 function fixture(){
  const sources=[],errors=[],requests=[];
- const param=()=>({value:0,setValueAtTime(v){this.value=v;},setTargetAtTime(v){this.value=v;},linearRampToValueAtTime(v){this.value=v;}});
+ const param=()=>({value:0,setValueAtTime(v){this.value=v;},setTargetAtTime(v){this.value=v;},linearRampToValueAtTime(v){this.value=v;},cancelScheduledValues(){}});
  const context={currentTime:0,state:'running',destination:{},resume:async()=>{},decodeAudioData:async()=>({duration:4}),
   createGain:()=>({gain:param(),connect(){},disconnect(){}}),
   createBufferSource(){const source={playbackRate:{value:1},connect(){},disconnect(){},start(t=0){this.started=t;},
    stop(t){if(t!=null){this.ends=t;return;}this.stopped=true;this.onended?.();}};sources.push(source);return source;}};
- const catalog=Object.fromEntries(['music','city','creek','flute-poor','flute-good','swing','body','wood','metal','draw','step','coins'].map(id=>[id,{src:'/'+id+'.wav'}]));
+ const catalog=Object.fromEntries(['music','music-opening','city','creek','flute-poor','flute-good','swing','body','wood','metal','draw','step','coins'].map(id=>[id,{src:'/'+id+'.wav'}]));
  const fetcher=async url=>{requests.push(url);return {ok:true,json:async()=>catalog,arrayBuffer:async()=>new ArrayBuffer(4)};};
  const audio=new WorldAudio({fetcher,createContext:()=>context,random:()=>.5,onError:e=>errors.push(e)});
  return {audio,context,sources,errors,requests};
@@ -120,4 +120,20 @@ test('swimming does not create stone footsteps and repeated impact cues are boun
  assert.equal(audio.shots.size,0);
  assert.ok(audio.play('hurt'));context.currentTime+=.1;assert.equal(audio.play('hurt'),null);
  context.currentTime+=.6;assert.ok(audio.play('hurt'));
+});
+
+test('the opening piece plays once before the world runs and fades out under the town music',async()=>{
+ const {audio,context,sources}=fixture();audio.getContext();await audio.init();
+ const node=await audio.playOpening();assert.ok(node);assert.equal(node.source.loop,undefined);
+ audio.update(.016,{...state,started:false});assert.equal(audio.opening,node,'the world being idle does not cut the opening');
+ context.currentTime=20;audio.endOpening();assert.equal(audio.opening,null);
+ assert.equal(node.gain.gain.value,0);assert.ok(Math.abs(node.source.ends-23.55)<1e-6,'stops after the fade, not at once');
+ audio.update(.016,state);assert.ok(audio.mix.music>0);assert.equal(sources.filter(s=>s===node.source).length,1);
+});
+
+test('the opening piece is never started late, muted or after the shots are gone',async()=>{
+ const muted=fixture();muted.audio.setEnabled(false);assert.equal(await muted.audio.playOpening(),null);
+ const late=fixture();late.audio.getContext();const pending=late.audio.playOpening();late.audio.endOpening();
+ assert.equal(await pending,null);assert.equal(late.audio.opening??null,null);
+ const hidden=fixture();hidden.audio.getContext();await hidden.audio.playOpening();hidden.audio.setHidden(true);assert.equal(hidden.audio.opening,null);
 });

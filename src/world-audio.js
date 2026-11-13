@@ -65,12 +65,31 @@ export class WorldAudio{
  setHidden(value){this.hidden=!!value;this.syncMute();}
  syncMute(){
   if(this.master)this.master.gain.setValueAtTime(this.enabled&&!this.hidden?1:0,this.context.currentTime);
-  if(!this.enabled||this.hidden)this.stop();
+  if(!this.enabled||this.hidden){this.endOpening(0);this.stop();}
  }
  stop(){
   this.running=false;this.lastPosition=null;this.stride=0;
   for(const loop of this.loops.values())for(const node of [...loop.sources])node.stop();
   this.loops.clear();for(const node of [...this.shots])node.stop();this.lastCue.clear();
+ }
+ // The opening piece plays once over the painted shots, before the world runs. It ends by settling, so on entering
+ // the game it fades out over the town's music fading in rather than cutting; a late load is never started.
+ async playOpening(){
+  if(!this.enabled||this.hidden)return null;
+  const token=this.openingToken=(this.openingToken||0)+1;
+  try{this.getContext().resume().catch(this.onError);}catch(e){this.onError(e);return null;}
+  const buffer=await this.load('music-opening');
+  if(!buffer||token!==this.openingToken||!this.enabled||this.hidden)return null;
+  const node=this.makeNode(buffer,this.master),t=this.context.currentTime;
+  node.gain.gain.setValueAtTime(0,t);node.gain.gain.linearRampToValueAtTime(.6,t+1.2);
+  node.source.start(t);this.opening=node;return node;
+ }
+ endOpening(fade=3.5){
+  this.openingToken=(this.openingToken||0)+1;
+  const node=this.opening;this.opening=null;if(!node)return;
+  const g=node.gain.gain,t=this.context.currentTime;
+  g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.linearRampToValueAtTime(0,t+fade);
+  try{node.source.stop(t+fade+.05);}catch{}
  }
  stopLoop(id){const loop=this.loops.get(id);if(!loop)return;for(const node of [...loop.sources])node.stop();this.loops.delete(id);}
  makeNode(buffer,bus){

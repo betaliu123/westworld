@@ -268,5 +268,23 @@
     },
     "aiGenerated": true,
     "generatedAt": "2026-11-11T02:54:32.497352+00:00"
+  },
+  "music-opening": {
+    "title": "开场·蛊与仙山",
+    "src": "/assets/audio/world/music-opening-e1435f5cc44c408e.wav",
+    "raw": "music-opening-e1435f5cc44c408e-raw.wav",
+    "seconds": 40.0,
+    "normalizationGainDb": 2.28,
+    "payload": {
+      "model": "seed-audio-1.0",
+      "text_prompt": "生成40秒原创中国古风武侠游戏开场纯音乐，古琴独奏为主。开头五秒是低音区沉重的古琴散音与缓慢的按音滑音，压抑、隐忍，像暗处发作的毒痛；随后古琴急促的轮指与扫弦层层推进，力度逐渐增强，紧张、悬疑、有张力，远处只有一两下极低沉的大鼓；最后十秒力量收住，转为舒缓的五声音阶泛音与长音，落在宫音上余韵悠长，平静地引向清晨的小城。没有人声，没有吟唱，没有任何语言，没有电子音色、合成器和管弦乐团，没有环境声。近距离自然录音。",
+      "audio_config": {
+        "format": "wav",
+        "sample_rate": 48000,
+        "enable_subtitle": false
+      }
+    },
+    "aiGenerated": true,
+    "generatedAt": "2026-11-13T04:56:52.986912+00:00"
   }
 }
