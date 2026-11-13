@@ -1,10 +1,40 @@
 /* The opening stays on the painting: ink captions, a paper wash, two actions. */
-#welcome .start-card{background:none;border:0;box-shadow:none;width:300px;padding:24px 0}
 #welcome .welcome-art h1{font:400 var(--fs-6)/1.35 var(--font-title)}
 #welcome .eyebrow{font:var(--fs-1)/1.7 var(--font-body)}
 #welcome .seal{font:var(--fs-5)/1.1 var(--font-title)}
-#welcome .start-card button{font:var(--fs-3)/1.6 var(--font-body);min-height:48px}
-#welcome .save-notice{font:var(--fs-2)/1.8 var(--font-body);color:var(--ink-2)}
+/* Title screen. The paper wash lies over the live scene; until the scene exists the same wash lies over a still of it
+   (tools/capture_title_still.mjs), so loading and loaded are one picture and the still simply gives way to the scene. */
+#welcome{--title-wash:linear-gradient(90deg,color-mix(in srgb,var(--paper) 94%,transparent),color-mix(in srgb,var(--paper) 66%,transparent) 46%,color-mix(in srgb,var(--paper) 19%,transparent) 70%,color-mix(in srgb,var(--paper) 72%,transparent));background:var(--title-wash)!important}
+#welcome::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--title-wash),url(assets/ui/title-still.webp) center/cover no-repeat,var(--paper);opacity:0;pointer-events:none;transition:opacity 420ms var(--ease)}
+#welcome.loading::before{opacity:1}
+/* The entries are on a slip of paper hung on the painting like a small scroll: an inked rod above, a brushed rule below, no shadow. */
+#welcome .start-card{position:relative;width:300px;padding:30px 26px 28px 22px!important;border:0!important;border-radius:2px!important;box-shadow:none!important;background:var(--grain),color-mix(in srgb,var(--paper) 93%,transparent)!important}
+#welcome .start-card::before{content:"";position:absolute;left:-7px;right:-7px;top:-5px;height:10px;background:var(--ink-1);-webkit-mask:var(--brush-bar) center/100% 100% no-repeat;mask:var(--brush-bar) center/100% 100% no-repeat}
+#welcome .start-card::after{content:"";position:absolute;left:14px;right:14px;bottom:9px;height:4px;background:var(--ink-3);-webkit-mask:var(--brush-line) center/100% 100% no-repeat;mask:var(--brush-line) center/100% 100% no-repeat}
+#welcome .start-card button{display:block;position:relative;width:100%;min-height:48px;margin:0;padding:10px 0 12px 28px!important;border:0!important;border-radius:0;background:none!important;text-align:left;font:var(--fs-3)/1.5 var(--font-body)!important;letter-spacing:.16em!important;color:var(--ink-2)!important;text-shadow:none!important}
+#welcome .start-card button[hidden]{display:none}
+#welcome .start-card button.primary{font-size:var(--fs-4)!important;color:var(--ink-0)!important}
+#welcome .start-card button small{display:block;margin-top:2px;font:var(--fs-1)/1.4 var(--font-data);letter-spacing:.08em}
+/* The one cinnabar mark: a small seal beside the entry that takes the player in. */
+#welcome .start-card button.primary::before{content:"";position:absolute;left:6px;top:calc(10px + .75em - 5px);width:10px;height:10px;border-radius:1px;background:var(--cinnabar);transform:rotate(-7deg)}
+/* A faint brushed rule parts the two entries; ink runs along the rule under whichever entry is pointed at or focused. */
+#welcome .start-card button.quiet{margin-top:6px}
+#welcome .start-card button::after{content:"";position:absolute;left:28px;right:20px;bottom:2px;height:6px;--rule:transparent;background:linear-gradient(90deg,var(--ink-1) 50%,var(--rule) 50%) 100% 0/200% 100%;-webkit-mask:var(--brush-line) center/100% 100% no-repeat;mask:var(--brush-line) center/100% 100% no-repeat;transition:background-position 200ms var(--ease)}
+#welcome .start-card button:has(~button:not([hidden]))::after{--rule:var(--ink-4)}
+#welcome .start-card button:is(:hover,:focus-visible):not(:disabled)::after{background-position:0 0}
+#welcome .start-card button:focus-visible{outline:0}
+#welcome .save-notice{margin:0 0 6px;padding-left:28px;font:var(--fs-2)/1.8 var(--font-body);color:var(--ink-2)}
+/* Loading: a dry brush mark that wet ink runs along as files and models arrive; the entries come up out of the paper when it is full. */
+#boot{display:none}
+#welcome.loading #boot{display:block;padding:12px 0 10px 28px}
+#welcome.loading .start-card :is(button,.save-notice){display:none!important}
+#boot i{display:block;position:relative;height:10px;background:color-mix(in srgb,var(--ink-3) 32%,transparent);-webkit-mask:var(--brush-bar) center/100% 100% no-repeat;mask:var(--brush-bar) center/100% 100% no-repeat}
+#boot i::after{content:"";position:absolute;inset:0;background:var(--ink-1);clip-path:inset(0 calc((1 - var(--p,0))*100%) 0 0);transition:clip-path 220ms var(--ease)}
+#boot span{display:block;margin-top:12px;font:var(--fs-1)/1.4 var(--font-body);letter-spacing:.3em;color:var(--ink-2)}
+#welcome:not(.loading) .start-card :is(button,.save-notice){animation:entry-in 360ms var(--ease) both}
+#welcome:not(.loading) .start-card button.quiet{animation-delay:90ms}
+@keyframes entry-in{from{opacity:0;filter:blur(3px)}}
+@media(prefers-reduced-motion:reduce){#welcome::before,#boot i::after,#welcome .start-card button::after{transition:none}#welcome:not(.loading) .start-card :is(button,.save-notice){animation:none}}
 #opening-sequence{position:fixed;inset:0;z-index:100;background:var(--paper);color:var(--ink-1);font:var(--fs-4)/1.8 var(--font-body);overflow:hidden;isolation:isolate;touch-action:manipulation}
 #opening-sequence[hidden]{display:none}
 #opening-sequence .opening-art{position:absolute;inset:0;overflow:hidden}

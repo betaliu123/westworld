@@ -124,7 +124,9 @@ export class World{
 
  for(const person of PEOPLE){const actor=character(person.color,false,person.gender==='female',person.id==='traveler'?'prince':null);actor.position.set(sim.s.people[person.id]?.x??person.x,0,sim.s.people[person.id]?.z??person.z);if(person.id==='tea_host'){const q=nearestWalkable(actor.position,(x,z)=>this.collides(x,z,0,false));if(q){actor.position.x=q.x;actor.position.z=q.z;sim.s.people[person.id].x=q.x;sim.s.people[person.id].z=q.z;}}this.scene.add(actor);const labelName=npcName(sim.s,person.id),label=textSprite(labelName);label.position.y=2.7;actor.add(label);this.npcs.set(person.id,{actor,person,label,labelName,base:new T.Vector3(person.x,0,person.z),phase:Math.random()*10,model:mountActorModel(actor,npcLook(person.id))});}
  // Enter play only when every initial skin and weapon has finished loading.
- this.modelsReady=Promise.all([this.heroModel.loaded,...[...this.npcs.values()].map(n=>n.model.loaded),this.hero.userData.swordLoaded]).then(results=>results.at(-1)!==false&&this.heroModel.ready&&[...this.npcs.values()].every(n=>n.model.ready));
+ // Each model load, so the title screen can show how many have finished.
+ this.modelLoads=[this.heroModel.loaded,...[...this.npcs.values()].map(n=>n.model.loaded),this.hero.userData.swordLoaded];
+ this.modelsReady=Promise.all(this.modelLoads).then(results=>results.at(-1)!==false&&this.heroModel.ready&&[...this.npcs.values()].every(n=>n.model.ready));
  this.eventGroup=new T.Group();this.scene.add(this.eventGroup);this.syncEvent();this.resize();window.addEventListener('resize',()=>this.resize());
  this.camera.position.copy(this.hero.position).add(new T.Vector3(0,1.45+this.distance*Math.sin(this.pitch),this.distance*Math.cos(this.pitch)));this.camera.lookAt(this.hero.position.clone().add(new T.Vector3(0,1.45,0)));
  canvas.addEventListener('contextmenu',e=>e.preventDefault());// Right-drag turns the view; so does a left-drag, because some browsers keep right-drags for their own gestures.

@@ -93,6 +93,7 @@ import {mountOpeningSequence,recordOpeningBackground} from './opening-sequence.j
 import {escortSpeechCurrent} from './restraint-witnesses.js';
 import {npcActionAccess} from './npc-action-access.js';
 const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+import {trackBoot} from './boot-progress.js';
 const gatePreview=new URLSearchParams(location.search).get('preview')==='gate';
 const saveScope={gatePreview,playtest:new URLSearchParams(location.search).get('playtest')||''};
 const SAVE=saveKey(saveScope);let saved=loadCurrentSave(localStorage,SAVE);
@@ -191,7 +192,7 @@ bind();
 const openingSequence=mountOpeningSequence();
 $('continue').hidden=!saved;
 if(saved){
- $('continue').textContent=`继续游戏 · ${clockText(saved)}`;$('continue').className='primary';
+ $('continue').innerHTML='继续游戏<small>'+esc(clockText(saved))+'</small>';$('continue').className='primary';
  $('start').before($('continue'));$('start').className='quiet';$('start').textContent='另起新局';
 }
 let entering=false;
@@ -199,14 +200,14 @@ async function begin(resume,fresh=false){
  if(entering||started)return;
  npcVoice.stop();worldAudio.unlock();npcVoice.unlock();
  if(!resume&&saved&&!restartConfirmed){restartConfirmed=true;$('restart-notice').hidden=false;$('restart-notice').textContent='重开将覆盖当前存档；继续游戏可保留原进度。';$('start').textContent='确认重开并覆盖存档';return;}
- entering=true;const entry=resume?$('continue'):$('start'),entryText=entry.textContent;entry.textContent='入画中…';$('start').disabled=$('continue').disabled=true;
+ entering=true;const entry=resume?$('continue'):$('start'),entryText=entry.innerHTML;entry.textContent='入画中…';$('start').disabled=$('continue').disabled=true;
  const ready=await world.modelsReady;
- if(!ready){entry.textContent=entryText;$('start').disabled=$('continue').disabled=false;entering=false;toast('人物资源未能载入，请刷新后重试。');return;}
+ if(!ready){entry.innerHTML=entryText;$('start').disabled=$('continue').disabled=false;entering=false;toast('人物资源未能载入，请刷新后重试。');return;}
  if(!resume||fresh){world.keys.clear();if(sound)worldAudio.playOpening();await openingSequence.play();worldAudio.endOpening();sim=new Simulation(newArrival());recordOpeningBackground(sim.s);world.sim=sim;world.gatePlaced=false;world.hero.position.set(sim.s.player.x,0,sim.s.player.z);world.syncEvent();bind();}
- world.keys.clear();world.auto=null;entry.textContent=entryText;$('start').disabled=$('continue').disabled=false;entering=false;
+ world.keys.clear();world.auto=null;entry.innerHTML=entryText;$('start').disabled=$('continue').disabled=false;entering=false;
  started=true;journal.restore();if(pendingPrisonAftermath(sim.s))dawnAftermath();$('welcome').hidden=true;for(const id of ['hud','vitals','controls','minimap'])$(id).hidden=false;save();toast(resume&&!fresh?'旧日的人情与风波都还在。继续你的江湖。':(sim.event?.type==='gate'?'黄旗封住了关口。先看一看，再找自己的门路。':'你来到临溪。桥头传来争执声……按 E 介入。'));
 }
-$('start').onclick=()=>begin(false);$('continue').onclick=()=>begin(true);
+$('start').onclick=()=>begin(false);$('continue').onclick=()=>begin(true);trackBoot($('welcome'),world.modelLoads);
 $('sound').onclick=()=>{sound=!sound;worldAudio.setEnabled(sound);worldAudio.unlock();npcVoice.setEnabled(sound);npcVoice.unlock();try{localStorage.setItem('jianghu-sound',sound?'on':'off');}catch{}iconButton($('sound'),sound?'Volume2':'VolumeX',sound?'关闭声音':'开启声音');$('sound').setAttribute('aria-pressed',String(sound));if(sound)tone('mail');};
 function closePanel(){world.clearReady();epoch++;panelTarget=null;$('panel').hidden=true;world.locked=!$('drawer').hidden;document.body.classList.toggle('panel-open',!$('drawer').hidden);}
 function closeDrawer(){world.clearReady();$('drawer').hidden=true;world.locked=false;world.keys.clear();document.body.classList.remove('panel-open');}
