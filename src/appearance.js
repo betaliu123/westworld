@@ -19,6 +19,10 @@ export function restoreKnownFaces(s){for(const [id,n]of Object.entries(s.people)
 // contain those observations; keep the record but never offer it as a usable face.
 export function canUseFace(s,id){return id==='player'||!!(appearanceState(s).faces[id]&&(s.people[id]?.metPlayer||s.people[id]?.probed||appearanceState(s).faces[id].source==='通缉榜画像'));}
 export function knownFaces(s){return Object.entries(appearanceState(s).faces).filter(([id])=>canUseFace(s,id));}
+// Number each face once, in the order it became usable; older saves keep their first-seen order.
+export function recentFaces(s){const a=appearanceState(s),faces=knownFaces(s);for(const [,info]of faces.filter(([,f])=>f.usable==null).sort((x,y)=>(x[1].at||0)-(y[1].at||0)))info.usable=a.usableSerial=(a.usableSerial||0)+1;return faces.sort((x,y)=>y[1].usable-x[1].usable);}
+// Only routes the player has actually learned about are marked.
+export function mainRouteFace(s,id){return id==='qinghe'&&s.chapterVersion===2&&!!s.facts?.qingheRosterRouteKnown&&!s.facts.enteredCity&&!s.convoy?.closed;}
 export function feminineBody(s){return femalePeople.has(currentFace(s))||(currentFace(s)==='player'&&s.player.gender==='female');}
 export function clothing(s){return s.ecosystem?.items.find(i=>i.id===s.player.wornOutfit&&i.location==='player'&&i.hp>0)||null;}
 export function clothingRole(item){if(!item)return '挑夫';if(item.identityRole)return item.identityRole;if(item.ownerId==='fu')return '应奉局管事';if(/差役/.test(item.name))return '差役';if(['guard','gate_guard','gate_relief','inspector'].includes(item.ownerId))return '官兵';if(femalePeople.has(item.ownerId)||/女装|罗裙/.test(item.name))return '女装行客';if(/役夫|短褂/.test(item.name)||item.ownerId==='porter')return '挑夫';if(item.ownerId==='gate_merchant'||item.ownerId==='merchant')return '商人';return '江湖行客';}

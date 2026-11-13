@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Simulation,newArrival} from '../src/simulation.js';
 import {Ecosystem} from '../src/ecosystem.js';
-import {appearanceState,appearanceTime,currentFace,applyFace,rememberFace,knownFaces,canUseFace,feminineBody,equipAppearance,appearanceView,disguisePreview,checkDisguise,needsDisguiseCheck,believedIdentity,spreadIdentityRumor,rumorRisk,attributeIncident} from '../src/appearance.js';
+import {appearanceState,appearanceTime,currentFace,applyFace,rememberFace,knownFaces,recentFaces,mainRouteFace,canUseFace,feminineBody,equipAppearance,appearanceView,disguisePreview,checkDisguise,needsDisguiseCheck,believedIdentity,spreadIdentityRumor,rumorRisk,attributeIncident} from '../src/appearance.js';
 import {witnessEvent,advanceAwareness} from '../src/npc-awareness.js';
 import {recordDeed,aftermathContext,applyAftermath} from '../src/event-deck.js';
 import {pendingEcho} from '../src/aftermath-encounters.js';
@@ -69,3 +69,10 @@ test('Yan surrender uses the actual jail, clears pursuit, and releases inside th
  test('a gift remembers whom the recipient believed and the porter route recognizes a prepared bare chest after securing a place',()=>{
   const {sim,s,eco}=setup();face(sim,'gate_merchant');const deed=addCausalDeed(s,{title:'照看',text:'递水照看',target:'tea_host',valence:'kind'});assert.equal(deed.subject,'gate_merchant');applyFace(sim,'player');equipAppearance(sim,null,'body');s.time=12;chapterResolve(sim,eco,'porter','ch_convoy_work');chapterResolve(sim,eco,'porter','ch_convoy_bribe');const a=chapterOptions(sim,'porter').find(a=>a.id==='ch_convoy_enter');assert.ok(a);assert.equal(chapterPreview(sim,'porter',a).blocked,false);const result=chapterResolve(sim,eco,'porter',a.id);assert.ok(!result.error);assert.equal(s.facts.entryRoute,'convoy');assert.equal(s.player.wornOutfit,null);
  });
+test('the face list puts the most recently usable face first and marks only a learned main route',()=>{
+ const {s}=setup();s.chapterVersion=2;rememberFace(s,'qinghe');rememberFace(s,'porter');s.time+=5;rememberFace(s,'gate_guard');
+ s.people.gate_guard.metPlayer=true;s.people.porter.metPlayer=true;assert.deepEqual(recentFaces(s).map(([id])=>id),['gate_guard','porter']);
+ s.people.qinghe.metPlayer=true;assert.deepEqual(recentFaces(s).map(([id])=>id),['qinghe','gate_guard','porter']);
+ assert.equal(mainRouteFace(s,'qinghe'),false);s.facts.qingheRosterRouteKnown=true;assert.equal(mainRouteFace(s,'qinghe'),true);assert.equal(mainRouteFace(s,'porter'),false);
+ s.facts.enteredCity=true;assert.equal(mainRouteFace(s,'qinghe'),false);
+});
