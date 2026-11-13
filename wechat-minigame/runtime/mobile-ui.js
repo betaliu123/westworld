@@ -1,10 +1,12 @@
 import {TouchRouter,hit} from './input.js';
 import {PALETTE as P,drawInkIcon,drawInkTitle,brushLine,paper,loadInkFonts} from './ink-canvas.js';
 import {iconNameFromSvg} from '../engine/src/ui-icons.js';
+import {drawLoading} from './loading-view.js';
+import {OpeningArt} from './opening-art.js';
 const DIALOGUES=['dialogue-stage','dialogue','cinematic-dialogue'];
 export class MobileUI{
  constructor(platform,T){
-  this.p=platform;this.T=T;this.surface=wx.createCanvas();this.ctx=this.surface.getContext('2d');this.fonts=loadInkFonts(wx,platform.assets,platform.read);this.zones=[];this.dirty=true;this.scroll=0;this.images=new Map();
+  this.p=platform;this.T=T;this.surface=wx.createCanvas();this.ctx=this.surface.getContext('2d');this.fonts=loadInkFonts(wx,platform.assets,platform.read);this.zones=[];this.dirty=true;this.scroll=0;this.openingArt=new OpeningArt(platform);
   this.input=new TouchRouter({key:platform.key,camera:(dx,dy)=>{const w=this.world;if(!w||w.locked)return;w.yaw-=dx*.006;w.pitch=Math.max(.045,Math.min(1.05,w.pitch+dy*.004));},tap:(x,y)=>{if(!this.world?.locked){const e=new platform.dom.Event('pointerdown',{bubbles:true,cancelable:true});Object.assign(e,{button:0,clientX:x,clientY:y,pointerId:0});platform.worldCanvas.dispatchEvent(e);}}});
   const touches=e=>e.changedTouches||[];
   platform.document.addEventListener('keydown',e=>{if(e.code==='Escape')platform.document.getElementById('mobile-journal')?.remove();});
@@ -42,10 +44,13 @@ export class MobileUI{
   if(resized){this.surface.width=pw;this.surface.height=ph;this.scroll=0;this.input.cancel();}
   const c=this.ctx;c.setTransform(ratio,0,0,ratio,0,0);c.clearRect(0,0,w,h);this.zones=[];this.layout={width:w,height:h,regions:[]};
   if(!this.texture){this.texture=new T.CanvasTexture(this.surface);this.texture.colorSpace=T.SRGBColorSpace;this.texture.generateMipmaps=false;this.texture.minFilter=T.LinearFilter;this.texture.magFilter=T.LinearFilter;this.scene=new T.Scene();this.camera=new T.OrthographicCamera(-1,1,1,-1,0,2);const m=new T.MeshBasicMaterial({map:this.texture,transparent:true,depthTest:false,depthWrite:false});m.toneMapped=false;this.scene.add(new T.Mesh(new T.PlaneGeometry(2,2),m));this.camera.position.z=1;}
+  const loading=this.p.env.__jianghuLoading;
+  if(loading?.active){this.lastPanel=null;if(!this.loadingShown){this.input.cancel();this.loadingShown=true;}const layout=drawLoading(c,w,h,loading,this.fonts);this.layout.loading=layout;if(layout.retry)this.zones.push({...layout.retry,kind:'button',label:'重新载入',action:()=>loading.retry?.()});this.texture.needsUpdate=true;this.compose(world);return;}
+  this.loadingShown=false;
   const welcome=d.getElementById('welcome'),opening=d.getElementById('opening-sequence');
   const ids=['opening-sequence',...DIALOGUES,'lesson-stage','night-deal','aim-points','conversation','drawer','object-actions','panel','environment-panel','street-panel','mobile-journal'];
   const panel=ids.map(id=>d.getElementById(id)).find(e=>this.visible(e))||[...d.querySelectorAll('[role="dialog"]')].find(e=>this.visible(e));
-  if(this.visible(opening)){const img=opening.querySelector('img.current')||opening.querySelector('img');if(img)this.background(img.getAttribute('src'),w,h);}
+  if(this.visible(opening))this.openingArt.paint(opening,c,w,h);
   if(panel){this.toolsOpen=false;const signature=panel.id+'|'+panel.className+'|'+this.text(panel.querySelector('[data-line]'))+'|'+this.text(panel.querySelector('.cinematic-choices'))+'|'+[...panel.querySelectorAll('[data-action]')].map(b=>b.dataset.action).join(',');if(panel!==this.lastPanel||signature!==this.panelSignature){this.scroll=0;this.input.cancel();this.releasedStick=null;}this.lastPanel=panel;this.panelSignature=signature;this.panel(panel,w,h,safe.left,safe.right);}
   else if(this.visible(welcome)){
    this.lastPanel=null;this.rect(0,0,w,h,P.paper+'70');drawInkTitle(c,'江湖',safe.left+28,h*.23,44);drawInkTitle(c,'有回声',safe.left+58,h*.23+60,44);
@@ -126,7 +131,7 @@ export class MobileUI{
   const stick=f||release,alpha=f?.48:.48*(1-age/180)**2,c=this.ctx,x=Math.max(zone.x+38,Math.min(zone.x+zone.w-38,stick.x)),y=Math.max(zone.y+38,Math.min(zone.y+zone.h-138,stick.y)),dx=stick.lastX-stick.x,dy=stick.lastY-stick.y,n=Math.max(1,Math.hypot(dx,dy)/30);
   c.save();c.globalAlpha=alpha;c.strokeStyle=P.ink2;c.lineWidth=1.2;c.beginPath();c.arc(x,y,39,.12,Math.PI*2+.02);c.stroke();c.fillStyle=P.paper;c.beginPath();c.arc(x+dx/n,y+dy/n,13,0,Math.PI*2);c.fill();c.stroke();c.restore();this.layout.stickVisible=true;
  }
- background(src,w,h){if(!src)return;let im=this.images.get(src);if(!im){im=this.p.image();const a=this.p.assets[this.p.clean(src)];if(a)im.src=a.path;this.images.set(src,im);}if(im.width)try{this.ctx.drawImage(im,0,0,w,h);}catch{}}
+ prepareOpening(){const root=this.p.document.getElementById('opening-sequence');return root?this.openingArt.prepare(root):Promise.resolve();}
  notice(text,w,y){const width=Math.min(440,w*.52),height=Math.min(100,this.rows(text,width-28,16).length*24+20);paper(this.ctx,(w-width)/2,y,width,height,.9);this.wrap(text,(w-width)/2+14,y+10,width-28,16);}
  close(el){const close=el.querySelector('[data-close],[data-dialogue-close],[data-object-close],[aria-label*="退出"],[aria-label*="关闭"]');if(close)this.press(close);else this.key('Escape');}
  panel(el,w,h,left,right){

@@ -5,8 +5,11 @@ import {textureFiles} from '../runtime/texture-files.js';
 import fs from 'node:fs';
 const sizes=[[1280,850],[1024,768],[800,600],[844,390],[667,375]];
 for(const [w,h] of sizes)test(`opening shows subtitles and preserves reveal, advance and skip at ${w}x${h}`,async()=>{
- const t=harness(w,h);globalThis.matchMedia=()=>({matches:true});const opening=mountOpeningSequence();let image;t.ui.background=src=>image=src;const done=opening.play();t.render();assert.equal(t.ui.layout.panel.kind,'opening');assert.ok(t.ui.layout.panel.h<h*.4);assert.ok(t.ui.layout.panel.y>h*.55);assert.match(image,/genyue/);assert.ok(!t.calls.some(c=>c[0]==='fillText'&&c[1]==='初入江湖'));
- t.ui.zones.find(z=>z.label==='继续').action();t.render();assert.match(image,/linxi/);assert.equal(t.ui.zones.find(z=>z.label==='入临溪').h,44);t.ui.zones.find(z=>z.label==='跳过').action();await done;assert.equal(opening.active,false);
+ const t=harness(w,h);globalThis.matchMedia=()=>({matches:true});const opening=mountOpeningSequence();
+ t.p.assets=new Proxy({},{get:(_,key)=>({path:key})});t.p.clean=s=>s;t.p.image=()=>{const events={};return {width:1672,addEventListener:(n,f)=>events[n]=f,set src(v){this.path=v;queueMicrotask(()=>events.load());}};};
+ await t.ui.prepareOpening();const drawn=()=>t.calls.filter(c=>c[0]==='drawImage').at(-1)?.[1].path;
+ const done=opening.play();t.render();assert.equal(t.ui.layout.panel.kind,'opening');assert.ok(t.ui.layout.panel.h<h*.4);assert.ok(t.ui.layout.panel.y>h*.55);assert.match(drawn(),/genyue/);assert.ok(!t.calls.some(c=>c[0]==='fillText'&&c[1]==='初入江湖'));
+ t.ui.zones.find(z=>z.label==='继续').action();t.render();assert.match(drawn(),/linxi/);assert.equal(t.ui.zones.find(z=>z.label==='入临溪').h,44);t.ui.zones.find(z=>z.label==='跳过').action();await done;assert.equal(opening.active,false);
 });
 for(const [w,h] of sizes)test(`object description fits content and retains actual actions at ${w}x${h}`,()=>{
  const t=harness(w,h),p=t.document.createElement('aside');p.id='environment-panel';p.innerHTML='<header><b>城外通缉榜</b><button data-close>关闭</button></header><p>燕七涉嫌窃取许行商的钱袋。协拿到案者赏二十文，须活口。</p><button data-action="bounty">揭榜 · 拘传燕七</button><small data-mobile-omit>点击别的物品切换目标 · / 拔刀后左键攻击</small>';t.document.body.append(p);let count=0;p.querySelector('[data-action]').onclick=()=>count++;t.render();let box=t.ui.layout.panel;assert.ok(box.w<=360);assert.ok(box.w*box.h/(w*h)<.2);assert.ok([14,16].includes(box.fontSize));assert.ok(!t.calls.some(c=>c[0]==='fillText'&&String(c[1]).includes('左键')));const action=t.ui.zones.find(z=>z.element?.dataset.action);assert.ok(action.h>=44);action.action();assert.equal(count,1);

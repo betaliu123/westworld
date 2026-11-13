@@ -132,7 +132,8 @@ export function mountActorModel(actor, look) {
   const u = actor.userData, kind = KINDS[look.kind], handle = {ready: false, height:kind?.height||2, sync() {}};
   if (!kind || !globalThis.document?.createElement) return handle;
   u.rig.visible = false;
-  handle.loaded = Promise.all([load(kind.file), loadMotion(kind.motion === false ? '' : (kind.motion || look.kind))]).then(([src, clips]) => {
+  handle.loaded = Promise.all([load(kind.file), loadMotion(kind.motion === false ? '' : (kind.motion || look.kind))]).then(async ([src, clips]) => {
+    if(globalThis.__jianghuLoading?.active)await globalThis.__jianghuLoading.turn();
     const model = cloneSkinned(src), wrapper = new T.Group(), materials = [];
     model.traverse(o => {
       if (!o.isMesh) return;
@@ -210,7 +211,9 @@ export function mountActorModel(actor, look) {
       const changing = !!motion.actions.get(npcMotionName(state)) !== clipActive;
       const before = changing ? capture() : null;
       const active = motion.update(dt, state);
-      if (active !== clipActive) { blendFrom = before; blendAge = 0; }
+      // A new skin must start in its real pose, not blend from an uninitialised
+      // bind pose. Later motion changes keep their normal transitions.
+      if (active !== clipActive) { blendFrom = before; blendAge = handle.posed ? 0 : 1; }
       clipActive = active;
       if (active) {
         u.rig.position.set(0, 0, 0); u.rig.rotation.set(0, 0, 0);
@@ -242,6 +245,7 @@ export function mountActorModel(actor, look) {
       if(state.bedPose)bedBones(u.rig,bone,state.bedPose);else gesture.update(dt, state.upperBody, active);
       closeEyes(state.bedPose?.weight||0);if(headwear)headwear.visible=!(state.bedPose?.weight>.4);
       handle.activeClip = active ? motion.current + (state.upperBody ? '+'+state.upperBody.kind : '') : 'choreography';
+      handle.posed = true;
     };
     return handle;
   }).catch(error => {handle.error=error;console.error('npc model failed to load',look.kind,error);return handle;});
