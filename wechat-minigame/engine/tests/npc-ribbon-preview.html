@@ -1,0 +1,30 @@
+<!doctype html><meta charset="utf-8"><title>绣球现场动作验证</title>
+<style>body{margin:0;overflow:hidden}canvas{display:block}nav{position:fixed;top:12px;left:12px;display:flex;gap:8px;flex-wrap:wrap}button,output{padding:9px;background:#30343be6;color:#fff;border:1px solid #b6ab98}#street-status,#street-panel{display:none}</style>
+<canvas></canvas><nav><button id="hold">候场持球</button><button id="throw">抛球</button><button id="walk">走向绣楼</button><button id="crouch">切换潜行 Z</button><button id="sneak">向前蹲行</button><button id="step">推进半秒</button><output></output></nav>
+<script type="module">
+import {Simulation,newGame} from '../src/simulation.js';
+import {World} from '../src/world.js';
+import {streetView} from '../src/street-view.js';
+import {StreetStories,STREET_TEMPLATES} from '../src/street-stories.js';
+import {dramaTarget} from '../src/street-dramas.js';
+const sim=new Simulation(newGame());sim.save=()=>{};sim.s.event=null;sim.s.time=65;
+const world=new World(document.querySelector('canvas'),sim);world.playing=true;
+const stories=streetView(world,()=>sim,()=>{},s=>s,null),director=new StreetStories(sim);
+director.start('ribbon');const e=director.active,point=director.point();
+world.ecology={steer:(id,dt)=>e.cast.includes(id)?stories.steer(id,dt):true,pose:stories.pose,upperBody:stories.upperBody,afterPose:stories.afterPose};
+const positions=()=>Object.fromEntries([...world.npcs].map(([id,n])=>[id,n.actor.position]));
+for(const id of e.cast){const p=dramaTarget(e,STREET_TEMPLATES.ribbon,id,positions()).point;world.npcs.get(id).actor.position.set(p[0],0,p[1]);}
+world.hero.position.set(point[0]+.8,0,point[1]+4.2);sim.s.player.x=world.hero.position.x;sim.s.player.z=world.hero.position.z;world.yaw=0;world.distance=5.6;world.pitch=.15;
+let throwing=false;
+document.querySelector('#hold').onclick=()=>{e.stage='候场';e.elapsed=0;e.stageAt=0;throwing=false;};
+document.querySelector('#throw').onclick=()=>{e.stage='争球';e.stageAt=e.elapsed;throwing=true;};
+document.querySelector('#walk').onclick=()=>{const n=world.npcs.get('mei');n.actor.position.z+=4;n.actor.rotation.y=Math.PI;e.stage='候场';throwing=false;};
+function crouch(){sim.s.player.crouched=!sim.s.player.crouched;sim.s.player.stealing=sim.s.player.crouched;}
+document.querySelector('#crouch').onclick=crouch;
+document.querySelector('#sneak').onclick=()=>{sim.s.player.crouched=true;sim.s.player.stealing=true;world.auto=[[world.hero.position.x,world.hero.position.z+2.4]];};
+addEventListener('keydown',e=>{if(e.code==='KeyZ'&&!e.repeat)crouch();});
+function step(dt){if(throwing)e.elapsed+=dt;stories.update(0,positions(),true);world.update(dt);
+ document.querySelector('output').textContent=e.cast.map(id=>id+': '+world.npcs.get(id).model.activeClip).join(' / ')+' / 主角 '+(world.heroModel.motion?.base||'加载中')+' / 地面 '+world.hero.position.y.toFixed(2);}
+document.querySelector('#step').onclick=()=>{for(let i=0;i<30;i++)step(1/60);};
+let last=performance.now();function frame(now){step(Math.min(.04,(now-last)/1000));last=now;requestAnimationFrame(frame);}requestAnimationFrame(frame);
+</script>

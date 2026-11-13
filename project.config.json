@@ -1,0 +1,87 @@
+{
+  "setting": {
+    "es6": true,
+    "postcss": true,
+    "minified": true,
+    "uglifyFileName": false,
+    "enhance": true,
+    "packNpmRelationList": [],
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
+    "useCompilerPlugins": false
+  },
+  "compileType": "game",
+  "miniprogramRoot": "wechat-minigame/",
+  "simulatorPluginLibVersion": {},
+  "packOptions": {
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "node_modules"
+      },
+      {
+        "type": "folder",
+        "value": "engine"
+      },
+      {
+        "type": "folder",
+        "value": "resources"
+      },
+      {
+        "type": "folder",
+        "value": "runtime"
+      },
+      {
+        "type": "folder",
+        "value": "tools"
+      },
+      {
+        "type": "folder",
+        "value": "tests"
+      },
+      {
+        "type": "folder",
+        "value": "work"
+      },
+      {
+        "type": "folder",
+        "value": "docs"
+      },
+      {
+        "type": "folder",
+        "value": "js"
+      },
+      {
+        "type": "folder",
+        "value": "images"
+      },
+      {
+        "type": "folder",
+        "value": "audio"
+      },
+      {
+        "type": "file",
+        "value": "package.json"
+      },
+      {
+        "type": "file",
+        "value": "package-lock.json"
+      },
+      {
+        "type": "file",
+        "value": "README.md"
+      },
+      {
+        "type": "file",
+        "value": "dist/build-report.json"
+      }
+    ],
+    "include": []
+  },
+  "isGameTourist": false,
+  "appid": "wx4b3bfb5eb33df75b",
+  "editorSetting": {}
+}

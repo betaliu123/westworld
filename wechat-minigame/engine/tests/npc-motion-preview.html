@@ -1,0 +1,34 @@
+<!doctype html><meta charset="utf-8"><title>NPC 骨骼动作对照</title>
+<style>body{margin:0;background:#333;color:#fff;font:14px sans-serif}nav{position:fixed;top:12px;left:16px;display:flex;gap:8px;flex-wrap:wrap}button{padding:9px 14px;background:#30343bd9;color:white;border:1px solid #b6ab98;cursor:pointer}output{position:fixed;bottom:12px;left:16px;white-space:pre}</style>
+<nav></nav><output>加载四类 NPC…</output>
+<script type="module">
+import * as T from '../vendor/three.module.js';
+import {character} from '../src/world.js';
+import {mountActorModel} from '../src/actor-model.js';
+const scene=new T.Scene();scene.background=new T.Color('#797970');
+const camera=new T.PerspectiveCamera(35,innerWidth/innerHeight,.1,100);camera.position.set(0,2.6,Math.max(9,12/camera.aspect));camera.lookAt(0,1,0);
+const renderer=new T.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.toneMapping=T.ACESFilmicToneMapping;document.body.append(renderer.domElement);
+scene.add(new T.HemisphereLight(0xffefd4,0x39414b,2));const light=new T.DirectionalLight(0xffe7c9,3);light.position.set(-3,6,4);scene.add(light);
+const ground=new T.Mesh(new T.PlaneGeometry(100,100),new T.MeshStandardMaterial({color:0x686b66}));ground.rotation.x=-Math.PI/2;ground.position.y=-.02;scene.add(ground);
+const kinds=['prince','guard','commoner','woman'],profiles=['reserved','reserved','elder','lively'],models=kinds.map((kind,i)=>{const actor=character(0x657f89);actor.position.x=(i-1.5)*1.8;actor.userData.phase=i*2.1;scene.add(actor);return {actor,handle:mountActorModel(actor,{kind,motionProfile:profiles[i]})};});
+let state={hp:100,speed:0},pause=false,angle=0,report='',focus=false;
+const balls=models.map(()=>{const b=new T.Mesh(new T.SphereGeometry(.26,20,12),new T.MeshStandardMaterial({color:0xc73956}));scene.add(b);return b;});
+const cups=models.map(()=>{const cup=new T.Mesh(new T.CylinderGeometry(.1,.08,.2,12),new T.MeshStandardMaterial({color:0xd8d1b3}));scene.add(cup);return cup;});
+for(const [label,extra]of Object.entries({'待机':{},'交谈':{talking:true},'问责':{talking:true,angry:true},'行走':{speed:1.35},'坐着交谈':{talking:true,seated:true},'坐着倾听':{seated:true},'捧绣球':{upperBody:{kind:'ribbon'}},'抛绣球':{upperBody:{kind:'ribbon',throwTime:.5}},'端茶行走':{speed:1.35,upperBody:{kind:'pour'}},'喝茶':{upperBody:{kind:'drink'}},'鼓掌':{upperBody:{kind:'clap'}},'受伤旧动作':{fallback:true}})){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{state={hp:100,speed:0,...extra};};document.querySelector('nav').append(b);}
+for(const [label,action]of [['暂停/播放',()=>pause=!pause],['侧面/正面',()=>{angle=angle?0:Math.PI/2;for(const {actor}of models)actor.rotation.y=angle;}],['近看梅知意',()=>{focus=!focus;camera.position.set(focus?2.7:0,focus?1.8:2.6,focus?4:Math.max(9,12/camera.aspect));camera.lookAt(focus?2.7:0,1.1,0);}],['下一帧',()=>step(.1)]]){const b=document.createElement('button');b.textContent=label;b.onclick=action;document.querySelector('nav').append(b);}
+const verify=document.createElement('button');verify.textContent='切换自检';verify.onclick=()=>{
+ if(models.some(m=>!m.handle.ready))return;
+ const settle=s=>{state={hp:100,speed:0,...s};for(let i=0;i<12;i++)step(.05);};
+ const snapshot=()=>models.map(({actor})=>{const bones=[];actor.traverse(o=>{if(o.isBone)bones.push({q:o.quaternion.clone(),p:o.position.clone()});});return bones;});
+ settle({fallback:true});const base=snapshot();let worst=0;
+ for(const pose of [{speed:1.35},{seated:true,talking:true},{talking:true,angry:true}]){
+  settle(pose);settle({fallback:true});
+  snapshot().forEach((bones,m)=>bones.forEach((b,i)=>{worst=Math.max(worst,b.q.normalize().angleTo(base[m][i].q.clone().normalize()),b.p.distanceTo(base[m][i].p));}));
+ }
+ report=worst<.0001?'切换自检通过：走路 / 坐姿 / 问责 → 特殊动作无残留':'切换自检失败：残留 '+worst;
+ settle({talking:true});
+};document.querySelector('nav').append(verify);
+function step(dt){for(const {actor,handle}of models){actor.userData.arms.forEach(a=>a.rotation.set(state.fallback?-1:0,0,0));handle.sync(0x657f89,{...state,dt});}models.forEach((m,i)=>{balls[i].visible=state.upperBody?.kind==='ribbon';const p=m.handle.betweenHands?.();if(p)balls[i].position.copy(p).y+=.05;cups[i].visible=state.upperBody?.kind==='drink';const hand=m.handle.handPoint?.(1);if(hand)cups[i].position.copy(hand);});renderer.render(scene,camera);document.querySelector('output').textContent=models.map((m,i)=>kinds[i]+': '+(m.handle.activeClip||'loading')).join('  ')+'\n'+report+'\n'+models.map(m=>{const p=m.handle.handPoint?.(1);return p?m.actor.worldToLocal(p).toArray().map(v=>v.toFixed(2)).join(','):'';}).join(' | ');}
+let last=performance.now();function frame(now){if(!pause)step(Math.min(.05,(now-last)/1000));last=now;requestAnimationFrame(frame);}requestAnimationFrame(frame);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>

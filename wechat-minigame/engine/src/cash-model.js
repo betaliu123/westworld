@@ -1,0 +1,2 @@
+import * as T from '../vendor/three.module.js';
+export function paymentMesh(amount){const geometry=new T.TorusGeometry(.1,.07,8,16);geometry.rotateX(-Math.PI/2);geometry.scale(1,.35,1);const count=Math.min(8,Math.max(1,amount));const mesh=new T.InstancedMesh(geometry,new T.MeshStandardMaterial({color:0xc5a35b,metalness:.65,roughness:.5}),count),m=new T.Matrix4();for(let i=0;i<count;i++){m.makeTranslation((i%3-1)*.2,Math.floor(i/3)*.06,(i%2)*.12);mesh.setMatrixAt(i,m);}mesh.castShadow=true;return mesh;}

@@ -1,0 +1,8 @@
+<!doctype html><html><meta charset="utf-8"><style>body{margin:0;background:#263c39}canvas{width:100vw;height:100vh}nav{position:fixed;top:14px;left:14px;display:flex;gap:12px}button{padding:12px;background:#17362f;color:#efd99c;border:1px solid #c6b57e;border-radius:6px}</style><canvas id="world"></canvas><nav><button id="hall">官府大堂</button><button id="jail">赤砂帮巢穴</button></nav><script type="module">
+import {routinePath} from '../src/npc-navigation.js';import {Simulation,newGame} from '../src/simulation.js';import {World} from '../src/world.js';import {DRAMAS,dramaTarget} from '../src/street-dramas.js';
+const sim=new Simulation(newGame()),world=new World(document.querySelector('canvas'),sim);world.hero.visible=false;for(const h of world.factionRoofs)h.roof.visible=false;
+const report=document.createElement('output');report.style.cssText='position:fixed;bottom:12px;left:12px;background:#17332f;color:white;padding:8px';document.body.append(report);const routes=[[{x:0,z:0},{x:10,z:-23}],[{x:18,z:0},{x:23,z:-5}]].map(([a,b])=>routinePath(a,b,(x,z)=>world.collides(x,z,0,false),.5));report.textContent='官府 / 巢穴路径节点：'+routes.map(r=>r.length).join(' / ');
+function hall(){world.camera.position.set(18,8,-10);world.camera.lookAt(10,1,-23);}
+function jail(){world.camera.position.set(30,7,7);world.camera.lookAt(23,1,-5);}
+document.querySelector('#hall').onclick=()=>{world.hero.visible=false;hall();};document.querySelector('#jail').onclick=jail;hall();function frame(){requestAnimationFrame(frame);world.renderer.render(world.scene,world.camera);}frame();
+</script></html>

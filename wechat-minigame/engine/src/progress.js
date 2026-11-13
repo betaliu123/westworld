@@ -1,0 +1,44 @@
+import {ATTR,PEOPLE} from './data.js';
+import {knownFaces} from './appearance.js';
+import {CITIES,HEADQUARTERS,reputation,factionRep,knownHQ} from './reputation.js';
+export function entryObjective(s){
+ if(s.event?.type!=='gate'||s.facts.enteredCity)return '';
+ const phase=s.event.gate?.phase,bag=s.player.inventory;
+ if(['prison','testimony'].includes(phase))return '在牢中等候释放，或听听同牢人的来历。';
+ if(['exposed','fight'].includes(phase))return '先应付眼前的盘问。';
+ if(s.chapterVersion===2){if(s.player.disguise==='runner')return s.facts.runnerNameKnown?'衣服与姓名已对上，到当值守卫处应答。':'差役服已穿上，领口的姓名还需问清。';if(bag.includes('他人的路引'))return s.facts.knownNames?.gate_merchant?'已知原主姓名；熟识原主的守卫仍会识破。':'拿到了路引，还不知道原主姓名。';return s.facts.entryRulesKnown?'凭据对姓名；也可请人担保、随役夫过关，或另寻水路。':'黄旗封关，先问问当值守卫。';}
+ if(s.player.disguise==='runner')return '已换差役服，可去关口应答。';
+ if(bag.includes('改名路引'))return '路引已改名，原官印仍在。去关口应答。';
+ if(bag.includes('他人的路引'))return '路引有官印，但名字不是你的。';
+ return '正门查验：路引须有官印，姓名须对得上。';
+}
+export function syncQuests(s){
+ s.quests??={};
+ if(s.chapterVersion===2&&s.facts.taxLedgerLead&&!s.quests.ledger)s.quests.ledger={id:'ledger',title:'花石纲副账',status:'active',source:'旧账房',objective:'取回副账，交给锦衣客或顾钦差核验',note:'只听证言还不够，须带去实物。'};
+ const has=s.facts.taxLedgerLead||s.intelligence?.clues?.ledger||s.player.inventory.includes('狱友口供：东街副账');
+ if(has&&!s.quests.ledger){s.quests.ledger={id:'ledger',title:'东街副账',status:'active',source:'旧账房证言',day:s.day,objective:'调查东街税课司，寻找未上报的副账',note:'已知去向，尚未取得账本。证言不能代替实证。'};s.trackedQuest??='ledger';}
+ return Object.values(s.quests);
+}
+export function mainPlayer(s){return s.party?.members?.main||s.player;}
+export function progressSnapshot(s){const p=mainPlayer(s),v={...p.stats,hp:Math.round(p.hp),energy:Math.round(p.energy),money:p.money,xp:p.xp,reputation:s.reputation,wanted:s.wanted};
+ v.faces=knownFaces(s).length;
+ if(s.chapterVersion===2){const r=reputation(s);delete v.reputation;for(const id of Object.keys(CITIES))v['city:'+id]=r.cities[id]||0;for(const h of HEADQUARTERS)v['faction:'+h.id]=factionRep(s,h.id);}
+ for(const [id,n]of Object.entries(s.people))v['relation:'+id]=n.relation;
+ for(const id of ['social','theft','combat'])v['growth:'+id]=p.growth?.[id]?.xp||0;
+ for(const item of p.inventory)v['item:'+item]=(v['item:'+item]||0)+1;
+ for(const item of s.ecosystem?.items||[])if(item.location==='player'&&!item.storyId&&item.type!=='ring')v['item:'+item.name]=(v['item:'+item.name]||0)+1;
+ return v;
+}
+const LABELS={...ATTR,hp:'气血',energy:'体力',money:'盘缠',xp:'阅历',reputation:'声望',wanted:'嫌疑',faces:'可易容面貌'};
+function progressLabel(s,key){return LABELS[key]||(key.startsWith('city:')?(CITIES[key.slice(5)]||'地方')+'声望':key.startsWith('faction:')?(knownHQ(s).find(h=>h.id===key.slice(8))?.name||'势力')+'声望':key.startsWith('item:')?key.slice(5):key.startsWith('relation:')?(PEOPLE.find(n=>n.id===key.slice(9))?.name||'人物')+'好感':({social:'交涉历练',theft:'偷窃历练',combat:'战斗历练'}[key.slice(7)]||'历练'));}
+export function actorDeltas(changes){return changes.flatMap(({key,delta,label})=>(['reputation','faces'].includes(key)||key.startsWith('city:')||key.startsWith('faction:')||Object.hasOwn(ATTR,key))?[{id:'player',label:label||LABELS[key],delta}]:key.startsWith('relation:')?[{id:key.slice(9),label:'好感',delta}]:[]);}
+export function observeProgress(sim,reason){
+ const s=sim.s,next=progressSnapshot(s),prev=sim.progressBaseline||next;sim.progressBaseline=next;
+ const changes=[...new Set([...Object.keys(prev),...Object.keys(next)])].map(k=>[k,next[k]??0]).filter(([k,v])=>Number.isFinite(v)&&v!==(prev[k]??0)).map(([key,value])=>({key,value,delta:value-(prev[key]??0),label:progressLabel(s,key)}));
+ if(changes.length){s.consequences??=[];s.consequences.push({id:(s.consequenceSeq=(s.consequenceSeq||0)+1),day:s.day,reason,changes});s.consequences=s.consequences.slice(-60);const deltas=actorDeltas(changes);if(deltas.length)sim.emit?.('actorDeltas',deltas);}
+ syncQuests(s);return changes;
+}
+export function imprisonmentCost(sim){const q=sim.event.gate??={};if(q.imprisonmentCost)return; q.imprisonmentCost=true;
+ const p=mainPlayer(sim.s);p.stats.charm=Math.max(0,p.stats.charm-3);observeProgress(sim,'被捕入狱：囚徒身份损及风仪');
+}
+export function questsHTML(s,esc){const quests=syncQuests(s);return `${entryObjective(s)?'<article class="quest-card"><small>主线</small><h3>入城</h3><p>'+esc(entryObjective(s))+'</p><small>也可另寻入城的门路。</small></article>':''}<p>线索、下一步与来源会随经历保存。</p>${quests.map(q=>`<article class="quest-card"><small>调查 · ${esc(q.source)}</small><h3>${esc(q.title)}</h3><p>${esc(q.objective)}</p><small>${esc(q.note)}</small><p><button data-track="${esc(q.id)}">${s.trackedQuest===q.id?'取消追踪':'追踪任务'}</button></p></article>`).join('')||'<p>尚未掌握可追查的线索。</p>'}`;}

@@ -1,0 +1,2 @@
+# Preserve source, font and packaged-resource bytes on every checkout.
+* -text

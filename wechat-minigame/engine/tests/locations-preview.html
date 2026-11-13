@@ -1,0 +1,7 @@
+<!doctype html><html><meta charset="utf-8"><style>body{margin:0;background:#263c39}canvas{width:100vw;height:100vh}nav{position:fixed;top:14px;left:14px;display:flex;gap:12px}button{padding:12px;background:#17362f;color:#efd99c;border:1px solid #c6b57e;border-radius:6px}</style><canvas id="world"></canvas><nav><button id="hall">绛云楼</button><button id="jail">县狱内景</button></nav><script type="module">
+import {Simulation,newGame} from '../src/simulation.js';import {World} from '../src/world.js';import {DRAMAS,dramaTarget} from '../src/street-dramas.js';
+const sim=new Simulation(newGame()),world=new World(document.querySelector('canvas'),sim);world.hero.visible=false;
+function hall(){world.jailRoof.visible=true;world.camera.position.set(31,11,23);world.camera.lookAt(22,2,6);const e={type:'ribbon',stage:'候场',cast:DRAMAS.ribbon.cast};for(const id of e.cast){const p=dramaTarget(e,DRAMAS.ribbon,id,{}).point;world.npcs.get(id).actor.position.set(p[0],0,p[1]);}}
+function jail(){world.jailRoof.visible=false;world.camera.position.set(28,10,-13);world.camera.lookAt(22,0,-22);world.hero.visible=true;world.hero.position.set(22,0,-22);}
+document.querySelector('#hall').onclick=()=>{world.hero.visible=false;hall();};document.querySelector('#jail').onclick=jail;hall();function frame(){requestAnimationFrame(frame);world.renderer.render(world.scene,world.camera);}frame();
+</script></html>

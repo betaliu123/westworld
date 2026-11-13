@@ -1,0 +1,6 @@
+node_modules/
+work/
+project.private.config.json
+.npm-cache/
+.qa-python/
+*.log

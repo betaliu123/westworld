@@ -1,0 +1,125 @@
+import {runnerClothesTaken} from './runner-clothes.js';
+import {mountStealthAttention} from './stealth-attention.js';
+import {beginTheftAttempt} from './theft-attempt.js';
+import {routinePath} from './npc-navigation.js';
+import {visibleBetween} from './npc-awareness.js';
+import {icon} from './ui-icons.js';
+import {itemIcon} from './inventory-view.js';
+import {clothesActions,takeClothes} from './clothes-interaction.js';
+import {visitGate,gateState} from './gate-scene.js';
+import {PEOPLE} from './data.js';
+import * as T from '../vendor/three.module.js';
+import {OBJECTS,OBJECT_ACTIONS} from './object-contracts.js';
+import {choiceCheckText,chanceText} from './dialogue.js';
+import {fitProp} from './prop-model.js';
+export function mountObjectInteractions(world,getSim,environment,notify,closePanel){
+ const entries=new Map(),dots=document.createElement('div'),panel=document.createElement('aside');dots.id='object-dots';panel.id='object-actions';panel.hidden=true;document.body.append(dots,panel);
+ let merchantSeen=0,playedGate=0;let thoughtAt=-20;let approachTarget=null;let coverWait=0;let active=null,selected=null,last='',dismissed=null,pinned=null,heldUntil=0,highlight=false,theftTarget=null,theftSignature='',theftSelection=null;
+ const attention=mountStealthAttention(world,()=>environment.eco);
+ const updateAttention=world.updateStealth;world.updateStealth=dt=>{updateAttention(dt);updateTheft();};
+ function cancelTheft(){const task=world.theftAttempt;if(!task)return;task.attempt.cancel();world.theftAttempt=null;if(world.performance===task.beat)world.performance=null;world.checkReveal?.cancel();}
+ function reachForItem(id,itemId){
+  attention.sync();const attempt=beginTheftAttempt(environment.eco,id,itemId);if(attempt.error)return attempt.error;
+  world.perform({id:'steal',kind:'steal',motion:'reach'},id);const beat=world.performance;beat.duration=1.8;beat.camera=false;
+  world.theftAttempt={attempt,beat,start:world.t};world.keys.clear();attempt.sample();
+  if(!attempt.preview.certain)world.checkReveal?.start({stat:'agility',label:'偷取随身物品'},attempt.preview,{live:true});
+ }
+ function updateTheft(){const task=world.theftAttempt;if(!task)return;attention.sync();
+  if(world.performance!==task.beat||world.locked||world.dialogue.active||document.hidden||task.attempt.interrupted()){cancelTheft();return;}
+  const age=world.t-task.start;if(age>=.2)task.attempt.sample();
+  if(age>=.95){world.theftAttempt=null;const result=task.attempt.finish();if(result?.error){world.checkReveal?.cancel();notify(result.error);}else if(result?.check.certain)world.checkReveal?.cancel();}
+ }
+ document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelTheft();});
+ const material=c=>new T.MeshStandardMaterial({color:c,roughness:.9});
+ function box(group,w,h,d,c,x=0,y=0,z=0){const m=new T.Mesh(new T.BoxGeometry(w,h,d),material(c));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;group.add(m);return m;}
+ function prop(x,z){const g=new T.Group();g.position.set(x,0,z);world.scene.add(g);return g;}
+ function desk(x,z){const g=prop(x,z);box(g,2.1,.13,1.05,0x896349,0,.92,0);for(const a of [-.85,.85])for(const b of [-.35,.35])box(g,.1,.9,.1,0x5d4938,a,.45,b);return g;}
+ const stall=desk(6,22.95);for(const x of [-1.05,1.05])box(stall,.1,2.65,.1,0x65513d,x,1.3,0);box(stall,2.6,.13,1.7,0xa26a48,0,2.7,0);const pan=new T.Mesh(new T.CylinderGeometry(.48,.48,.06,18),material(0x393933));pan.position.set(0,1.03,0);stall.add(pan);for(const x of [-.27,0,.27]){const bread=new T.Mesh(new T.CylinderGeometry(.12,.12,.06,12),material(0xd9ac64));bread.position.set(x,1.09,.1);stall.add(bread);}box(stall,.35,.4,.35,0x846b4c,.72,1.2,0);fitProp(stall,'stall.glb',{height:2.2,keep:o=>o.geometry?.type!=='BoxGeometry'});
+ world.obstacles.push({id:'bread-stall',x:6,z:22.95,w:2.3,d:1.1});
+ const cover=prop(4.4,25.5);for(const x of [-.55,.55]){box(cover,.85,1.8,.7,0x9e7c4a,x,.9,0);for(let y=.15;y<1.8;y+=.2)box(cover,.89,.035,.74,0x624c30,x,y,0);}world.obstacles.push({id:'cargo-cover',x:4.4,z:25.5,w:1.95,d:.75});
+ const rack=prop(-11,24.5);for(const x of [-.9,.9])box(rack,.08,2.25,.08,0x6b513c,x,1.12,0);box(rack,2,.08,.08,0x6b513c,0,2.25,0);const coat=new T.Group();rack.add(coat);box(coat,.62,.85,.12,0x344764,0,1.55,0);box(coat,1.12,.25,.12,0x344764,0,1.9,0);box(coat,.08,.7,.14,0xcbbd91,0,1.6,.02);
+ const table=desk(11,24.5);const sheet=new T.Group();sheet.position.set(0,1.02,0);table.add(sheet);box(sheet,.55,.015,.35,0xe6d4a5);fitProp(sheet,'pass.glb',{height:.42,lay:true});box(table,.18,.1,.18,0x333c37,.65,1.05,0);const pen=box(table,.025,.025,.37,0x544431,.3,1.06,.04);world.obstacles.push({id:'scribe-table',sightHeight:1.1,x:11,z:24.5,w:2.1,d:1.05});
+ const prince=world.npcs.get('traveler').actor;const {fan,jade}=prince.userData.princeGear;
+ const pass=new T.Group();pass.position.set(.3,1.15,.2);world.npcs.get('gate_merchant').actor.add(pass);box(pass,.18,.3,.045,0xe8d2a1);const seal=box(pass,.07,.07,.01,0xa14b3e,0,-.06,.027);seal.position.z=.03;fitProp(pass,'pass.glb',{height:.28});const held=new T.Group();world.hero.userData.arms[1].add(held);held.position.set(0,-.55,.1);held.visible=false;fitProp(held,'pass.glb',{height:.22});
+ function register(id,entry){if(entries.has(id))return;const dot=document.createElement('button');dot.className='object-dot';dot.dataset.object=id;dot.setAttribute('aria-label',entry.name);dot.title=entry.name;dot.dataset.label=entry.name;dot.onclick=()=>{const o=entries.get(id),p=o.position();if(Math.hypot(world.hero.position.x-p.x,world.hero.position.z-p.z)>2.8){if(o.stand&&world.routeTo(o.stand,.2)){approachTarget=id;notify('正在靠近；到达后选择动作。');}else notify('靠近物品后再交互。');return;}visitGate(getSim(),id);if(!o.actions().length){notify('当前还不能操作这件物品，先推进眼前的事情。');return;}selected=id;pinned=id;dismissed=null;if(o.actions().every(a=>a.external)){panel.hidden=true;environment.openObject(id);}else render(o);};dots.append(dot);entries.set(id,{...entry,id,dot});}
+ for(const [id,o]of Object.entries(OBJECTS).filter(([id])=>!['cargo-cover','merchant-pass'].includes(id)))register(id,{...o,discoverable:()=>id==='merchant-pass'?!getSim().s.facts.gatePassTaken:id==='runner-clothes'?!runnerClothesTaken(getSim().s):id==='scribe-table'?getSim().event?.gate?.phase==='scribe':true,position:()=>id==='merchant-pass'?pass.getWorldPosition(new T.Vector3()):new T.Vector3(o.point[0],o.height,o.point[1]),actions:()=>id==='runner-clothes'?clothesActions(getSim()):getSim().event?.type==='gate'?getSim().actions().filter(a=>o.actions.includes(a.id)):[]});
+ function cancel(){if(!active)return;world.checkReveal?.cancel();active=null;world.objectMoving=false;world.auto=null;world.keys.clear();panel.hidden=true;notify('动作已中止，没有结算。');}
+ function begin(o,a){if(active||world.performance||world.dialogue.active)return;if(a.id==='g_pocket'&&!getSim().s.player.crouched){world.onThought?.('站得太直，他一回头就会看见我。');return;}const sim=getSim(),p=sim.s.player;if(sim.preview(a).blocked)return notify('盘缠不足。');const point=o.position();if(Math.hypot(p.x-point.x,p.z-point.z)>2.8)return notify('靠近物品后再交互。');closePanel();world.clearReady();world.keys.clear();world.auto=null;const stand={x:o.stand[0],z:o.stand[1]},ready=Math.hypot(p.x-stand.x,p.z-stand.z)<.85;const path=ready?[]:routinePath(world.hero.position,stand,(x,z)=>world.collides(x,z),.55).map(q=>[q.x,q.z]);if(!ready&&!path.length)return notify('这个位置被挡住了，绕到物品身侧再试。');active={o,a,event:sim.event?.id,phase:sim.event?.gate?.phase,standaloneClothes:o.id==='runner-clothes',owner:sim.s.party.active,path,age:0,total:0,performing:false};world.checkReveal?.start(a,sim.preview(a));panel.hidden=true;}
+ function render(o){panel.classList.remove('theft-pack');const actions=o.actions();if(actions.length&&actions.every(a=>a.external)){panel.hidden=true;return;}if(!actions.length){panel.hidden=true;return;}const sim=getSim(),signature=o.id+JSON.stringify(actions.map(a=>[a.id,sim.preview(a).chance,sim.preview(a).blocked]));panel.hidden=false;if(signature===last)return;last=signature;panel.replaceChildren();const title=document.createElement('b');title.textContent=o.name;panel.append(title);const close=document.createElement('button');close.textContent='× 关闭';close.dataset.objectClose='';close.onclick=()=>{dismissed=o.id;panel.hidden=true;};panel.append(close);for(const a of actions){const b=document.createElement('button');b.dataset.objectAction=a.id;b.textContent=a.label;const small=document.createElement('small');small.textContent=a.external?'靠近后查看可用操作':choiceCheckText(a,sim.preview(a))+(a.cost?' · '+a.cost+' 文':'');b.append(small);b.disabled=!a.external&&sim.preview(a).blocked;b.onclick=()=>{if(a.external){dismissed=o.id;panel.hidden=true;environment.openObject(o.id);}else begin(o,a);};panel.append(b);}const alternatives=sim.event?.gate?.phase==='scribe'?sim.actions().filter(a=>a.id==='g_memory'):[];for(const leave of alternatives){const b=document.createElement('button');b.textContent=leave.label;const detail=document.createElement('small');detail.textContent=choiceCheckText(leave,sim.preview(leave));b.append(detail);b.onclick=()=>{const r=sim.resolve(sim.event.id,leave.id);if(r.error)notify(r.error);panel.hidden=true;};panel.append(b);}
+ const hint=document.createElement('small');hint.textContent='WASD 自由走动 · Esc 收起 / 中止动作';panel.append(hint);}
+ function pose(){const sim=getSim(),q=sim.event?.gate;const merchant=world.npcs.get('gate_merchant').actor;
+ if(sim.event?.type==='gate'&&Math.hypot(merchant.position.x-6,merchant.position.z-24)<2.5&&['merchant','cover'].includes(q?.phase)){const hidden=q.phase==='cover'||active?.a.id==='g_crouch';const target=hidden?Math.atan2(6-merchant.position.x,22.95-merchant.position.z):Math.PI/2;merchant.rotation.y=T.MathUtils.lerp(merchant.rotation.y,target,.12);if(hidden){merchant.userData.arms[1].rotation.x=-1.4;}}
+ const u=world.hero.userData;if(sim.s.player.crouched||active?.a.id==='g_crouch'||active?.a.id==='g_pocket'){u.rig.position.y=-.55;u.rig.rotation.x=.2;for(const leg of u.legs)leg.rotation.x=-.8;}
+ if(active?.performing){const t=active.age;world.hero.rotation.y=active.a.id==='g_rewrite'||['g_buy','g_lift'].includes(active.a.id)?Math.PI:Math.atan2(merchant.position.x-world.hero.position.x,merchant.position.z-world.hero.position.z);u.arms[1].rotation.x=-1.35+Math.sin(t*5)*.15;if(active.a.id==='g_rewrite'){u.arms[0].rotation.x=-.35;world.npcs.get('scribe').actor.userData.arms[1].rotation.x=-1.3+Math.sin(t*9)*.12;pen.position.x=.22+Math.sin(t*9)*.1;pen.rotation.y=t*.5;}}
+ }
+ function renderTheft(){
+ const sim=getSim(),id=theftTarget,n=world.npcs.get(id),state=sim.s.people[id];
+ if(!n||!sim.s.player.stealing||world.dialogue.active){theftTarget=null;panel.hidden=true;return;}
+ const eco=environment.eco;attention.sync();
+ const down=state.hp<=0||state.stunnedUntil>(sim.s.npcClock||0)||state.restraint?.mode==='fixed';
+ const block=eco.theftBlock(id);const wantsPass=sim.event?.type==='gate'&&!sim.s.facts.enteredCity&&!sim.s.facts.gatePassTaken;
+ const ring=id==='shen'&&sim.event?.type==='proposal'&&sim.actions().find(a=>a.id==='p_watch');
+ const loot=[...(ring?[{id:'silver-ring',name:'银戒',icon:'Circle',action:ring}]:[]),...(state.purse>0?[{id:'purse',name:'钱袋',icon:'Coins',count:state.purse+' 文'}]:[]),...eco.items('npc:'+id).filter(i=>i.hp>0&&i.id!==state.restraint?.ropeId).map(i=>({...i,icon:itemIcon(i)}))];
+ if(!loot.some(i=>i.id===theftSelection))theftSelection=null;
+ const chosen=loot.find(i=>i.id===theftSelection),check=chosen?(chosen.action?{...sim.preview(chosen.action),...(block?{blocked:true,reason:block}:{})}:eco.theftPreview(id,chosen.id)):null;
+ const signature=JSON.stringify([id,block,wantsPass,down,loot.map(i=>[i.id,i.name,i.count]),theftSelection,check]);
+ if(!panel.hidden&&signature===theftSignature)return;theftSignature=signature;panel.hidden=false;panel.classList.add('theft-pack');last='';panel.replaceChildren();
+ const header=document.createElement('header'),title=document.createElement('b');title.textContent=(PEOPLE.find(p=>p.id===id)?.name||id)+' · 随身行囊';header.append(title);
+ const close=document.createElement('button');close.innerHTML=icon('X');close.setAttribute('aria-label','关闭偷窃背包');close.onclick=()=>{theftTarget=null;dismissed=selected;panel.hidden=true;};header.append(close);panel.append(header);
+ const grid=document.createElement('div');grid.className='pack-grid';
+ for(const item of loot){const tile=document.createElement('button');tile.className='pack-tile'+(wantsPass&&item.documentId==='merchant-pass'?' quest-needed':'')+(item.id===theftSelection?' selected':'');tile.setAttribute('aria-pressed',String(item.id===theftSelection));tile.setAttribute('aria-label',item.name);tile.innerHTML=icon(item.icon);const label=document.createElement('span');label.textContent=item.name;tile.append(label);if(item.count){const count=document.createElement('small');count.textContent=item.count;tile.append(count);}tile.onclick=()=>{theftSelection=item.id;renderTheft();};grid.append(tile);}
+ panel.append(grid);
+ const detail=document.createElement('p');detail.id='theft-detail';detail.className='theft-detail';detail.textContent=chosen?chosen.name+' · '+(check.blocked?check.reason||'眼下无法取走。':chosen.action?choiceCheckText(chosen.action,check):check.sight?.intercepted?'伸手必被拦住':check.certain?'可直接搜取':'身法 '+check.score+' · '+chanceText(check.chance)):block||(loot.length?'选一件物品，查看下手的把握。':'身上已无可偷取的东西。');panel.append(detail);
+ if(check?.sight&&!check.blocked&&!check.sight.intercepted){const risk=document.createElement('p');risk.className='theft-sight';risk.textContent=check.sight.label;panel.append(risk);}
+ const confirm=document.createElement('button');confirm.className='theft-confirm';confirm.textContent=chosen?(down?'搜取 · ':'偷取 · ')+chosen.name:'选择物品';confirm.disabled=!chosen||check.blocked;confirm.setAttribute('aria-describedby',detail.id);if(check?.blocked)confirm.title=check.reason||'眼下无法取走。';
+ confirm.onclick=()=>{if(!chosen)return;if(chosen.action){theftTarget=null;panel.hidden=true;const result=sim.resolve(sim.event.id,chosen.action.id);if(result?.error)notify(result.error);return;}
+ const error=reachForItem(id,chosen.id);if(error){notify(error);theftSignature='';renderTheft();}else{theftTarget=null;panel.hidden=true;}};panel.append(confirm);
+ }
+ function openTheft(id,preferPass=false){const sim=getSim();if(!world.playing||world.locked||world.performance||sim.s.player.hp<=0||!sim.s.player.stealing||!world.npcs.has(id))return false;world.clearReady();world.auto=null;world.onNpcSelected?.(id);environment.close();closePanel();selected=null;pinned=null;theftTarget=id;theftSelection=preferPass?environment.eco.items('npc:'+id).find(i=>i.documentId==='merchant-pass')?.id:null;theftSignature='';last='';renderTheft();return true;}
+ const selectObject=world.onSelectObject,ray=new T.Raycaster();
+ world.onSelectObject=e=>{
+
+ const rect=world.renderer.domElement.getBoundingClientRect();ray.setFromCamera(new T.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),world.camera);
+ const hit=ray.intersectObjects(world.scene.children,true).find(h=>{if(!h.object.isMesh)return false;for(let n=h.object;n;n=n.parent)if(!n.visible||n.userData.environmentEffect)return false;return true;});
+ const contains=root=>{for(let n=hit?.object;n;n=n.parent)if(n===root)return true;return false;};
+ if(hit){for(const [id,n]of world.npcs)if(contains(n.actor)){world.onNpcSelected?.(id);environment.close();closePanel();visitGate(getSim(),id);if(!getSim().s.player.stealing){world.onGateTalk?.(id);return;}openTheft(id,id==='gate_merchant'&&contains(pass));return;}
+ for(const [id,root]of [['runner-clothes',rack],['scribe-table',table]])if(contains(root)){environment.close();visitGate(getSim(),id);theftTarget=null;selected=id;pinned=id;dismissed=null;render(entries.get(id));return;}}
+ theftTarget=null;dismissed=selected;panel.hidden=true;selectObject?.(e);
+ };
+ const mode=document.createElement('div');mode.id='stealth-mode';mode.hidden=true;mode.textContent='蹲行';document.body.append(mode);
+ window.addEventListener('keydown',e=>{if(e.code!=='KeyZ'||e.repeat||e.isComposing||e.target.closest?.('input,textarea,select,[contenteditable=true]')||!world.playing||world.locked)return;e.preventDefault();const p=getSim().s.player;if(p.bedRest)return;p.stealing=!p.stealing;p.crouched=p.stealing;world.clearReady();world.auto=null;environment.close();closePanel();theftTarget=null;panel.hidden=true;dismissed=selected;mode.hidden=!p.stealing;getSim().save();},true);
+ world.objectPose=()=>{pose();world.objectFocus=active?world.hero.position.clone().lerp(active.o.position(),.45).setY(1):null;};
+ const api={openTheft,get canInteract(){return !!selected&&!!entries.get(selected)?.actions().length;},get busy(){return !!active;},register,navigate(){const phase=getSim().event?.gate?.phase,id={merchant:'cargo-cover',cover:'merchant-pass',clothes:'runner-clothes',scribe:'scribe-table'}[phase];return id?world.routeTo(OBJECTS[id].stand,.2):false;},handlesStage(){return getSim().event?.type==='gate'&&['merchant','cover','clothes','scribe'].includes(getSim().event.gate?.phase);},interact(){const o=entries.get(selected);if(!o)return false;if(o.actions().length&&o.actions().every(a=>a.external)){environment.openObject(o.id);return true;}if(panel.hidden)return false;render(o);return true;},update(dt,started){const sim=getSim(),p=sim.s.player;mode.hidden=!started||!p.stealing||world.dialogue.active;
+  if(started&&!world.locked&&!world.dialogue.active&&sim.event?.type==='gate')playedGate+=dt;
+  if(started&&!world.locked&&!active&&sim.event?.type==='gate'&&p.hp>0&&world.t-thoughtAt>8){
+   const q=gateState(sim.event),merchant=world.npcs.get('gate_merchant').actor.position,hasPass=environment.eco.items('npc:gate_merchant').some(i=>i.documentId==='merchant-pass'&&i.hp>0),spotsPass=hasPass&&sim.s.people.gate_merchant.hp>0&&Math.hypot(p.x-merchant.x,p.z-merchant.z)<8&&visibleBetween(p,merchant,world.obstacles,environment.eco.s.objects);
+   q.asides??={};let key=null,line='';
+   merchantSeen=spotsPass?merchantSeen+dt:0;if(playedGate>=15&&merchantSeen>=3&&spotsPass&&['gate','refusal','merchant','cover'].includes(q.phase)){key='saw-pass';line='那商人腰间露出半截盖着印的纸……好像是张路引。';}
+   else if(q.phase==='scribe'){key='wrong-name';line='赵成，东溪人……这可不是我的名字。那边刻字的，也许有办法。';}
+   else if(q.phase==='uniform'){key='uniform';line='衣服有了。校尉要的是接文书的差役，回去得像个办差的。';}
+   else if(q.phase==='papers'){key='papers';line=sim.s.facts.knownNames?.gate_merchant?'赵成，东溪人。还得看守卫认不认得他。':'纸上有名字，守卫认不认得本人，却是另一回事。';}
+   if(key&&!q.asides[key]&&world.onThought?.(line)){q.asides[key]=true;thoughtAt=world.t;sim.save();}
+  }
+  if(approachTarget){const o=entries.get(approachTarget),point=o.position();if(Math.hypot(p.x-point.x,p.z-point.z)<2.8){visitGate(sim,o.id);pinned=o.id;dismissed=null;approachTarget=null;}else if(!world.auto)approachTarget=null;}if(p.stealing)p.crouched=true;const merchantPos=world.npcs.get('gate_merchant').actor.position;const behind=sim.s.chapterVersion!==2&&Math.hypot(merchantPos.x-6,merchantPos.z-24)<2.5&&p.stealing&&Math.hypot(p.x-4.4,p.z-26.8)<.8&&!active&&!world.dialogue.active&&sim.event?.type==='gate'&&['gate','refusal','merchant'].includes(sim.event.gate?.phase);coverWait=behind?coverWait+dt:0;if(coverWait>=3){visitGate(sim,'cargo-cover');const result=sim.resolve(sim.event.id,'g_crouch');if(result.error)notify(result.error);coverWait=0;}fan.visible=environment.eco.items('npc:traveler').some(i=>i.name==='素面折扇');jade.visible=environment.eco.items('npc:traveler').some(i=>i.name==='白玉佩');held.visible=world.t<heldUntil;coat.visible=!runnerClothesTaken(sim.s);pass.visible=environment.eco.items('npc:gate_merchant').some(i=>i.documentId==='merchant-pass'&&i.hp>0);sheet.visible=sim.event?.gate?.phase==='scribe';
+  if(!active)p.crouched=!!p.stealing;
+  if(active){const task=active;if(task.settled){task.hold-=dt;if(task.hold<=0){active=null;world.objectMoving=false;world.checkReveal?.stop();}return;}task.total+=dt;if(!started||sim.event?.id!==task.event||sim.event?.gate?.phase!==task.phase||sim.s.party.active!==task.owner||p.hp<=0||task.total>18){cancel();return;}
+   world.objectMoving=task.path.length>0;
+   if(task.path.length){const [x,z]=task.path[0],dx=x-p.x,dz=z-p.z,d=Math.hypot(dx,dz);if(d<.12)task.path.shift();else{const old=world.hero.position.clone();world.move(world.hero,dx/d*Math.min(d,dt*2),dz/d*Math.min(d,dt*2));p.x=world.hero.position.x;p.z=world.hero.position.z;world.hero.rotation.y=Math.atan2(dx,dz);world.animateActor(world.hero,1,dt);if(old.distanceTo(world.hero.position)<.001&&task.total>2){cancel();return;}}}
+   else{task.performing=true;task.age+=dt;if(task.a.id==='g_crouch'||task.a.id==='g_pocket')p.crouched=true;if(task.age>(task.a.id==='g_crouch'?3.2:2.5)){task.settled=true;task.hold=.85;world.objectMoving=false;const r=task.standaloneClothes?takeClothes(sim,task.a.id):sim.resolve(task.event,task.a.id);if(r.error){world.checkReveal?.cancel();notify(r.error);}else if(r.success&&['g_steal','g_pocket'].includes(task.a.id))heldUntil=world.t+2.5;last='';pinned=null;}}
+  }
+  // Existing environment objects use the same dots and retain their original action contracts.
+  for(const asset of world.environmentAssets)register(asset.id,{name:asset.name,discoverable:()=>environment.hasObjectInteraction(asset.id)&&(asset.y??1)<2.9,position:()=>new T.Vector3(asset.x,asset.y??1.6,asset.z),actions:()=>environment.hasObjectInteraction(asset.id)&&(asset.y??1)<2.9?[{id:'open:'+asset.id,label:'查看物品交互',external:true}]:[]});
+  for(const item of environment.eco.s.items.filter(i=>i.type==='coins'||i.sku))register(item.id,{name:item.name,discoverable:()=>item.location==='ground'&&item.hp>0,position:()=>new T.Vector3(item.x,(item.y??.15)+.3,item.z),actions:()=>item.location==='ground'&&item.hp>0?[{id:'open:'+item.id,label:item.sku?'查看'+item.name:'取钱',external:true}]:[]});
+  const visible=started&&!world.dialogue.active&&!active&&!world.locked;dots.classList.toggle('highlight',highlight&&visible);let nearest=null,distance=2.8,nearestDot=null,dotDistance=Infinity;const markerSlots=[];
+  for(const o of entries.values()){const point=o.position(),d=Math.hypot(p.x-point.x,p.z-point.z),screen=world.screenPoint(point),enabled=o.actions().length>0;const ready=enabled||visitGate(sim,o.id,true),discoverable=o.discoverable?.()??enabled;o.dot.classList.toggle('unavailable',!ready);o.dot.hidden=!visible||!(ready||(highlight&&discoverable))||(!highlight&&d>10)||!screen.visible||screen.x<12||screen.x>innerWidth-12||screen.y<12||screen.y>innerHeight-12;if(!o.dot.hidden){let markerY=screen.y;for(let attempt=0;attempt<8&&markerSlots.some(v=>Math.hypot(v.x-screen.x,v.y-markerY)<25);attempt++)markerY=Math.max(14,markerY-27);markerSlots.push({x:screen.x,y:markerY});o.dot.style.left=screen.x+'px';o.dot.style.top=markerY+'px';o.dot.classList.toggle('near',d<2.8);if(ready&&d<dotDistance){dotDistance=d;nearestDot=o;}const priority=d;if(ready&&d<2.8&&priority<distance){distance=priority;nearest=o;}}}
+  if(!highlight)for(const o of entries.values())if(o!==nearestDot)o.dot.hidden=true;
+  const pin=entries.get(pinned);if(pin&&visible&&pin.actions().length&&Math.hypot(p.x-pin.position().x,p.z-pin.position().z)<2.8)nearest=pin;else pinned=null;
+  if(environment.isOpen){dismissed=selected||dismissed;selected=null;panel.hidden=true;return;}if(theftTarget){renderTheft();return;}if(nearest&&nearest.id!==dismissed){visitGate(sim,nearest.id);selected=nearest.id;render(nearest);}else{selected=null;panel.hidden=true;if(!nearest)dismissed=null;}
+ },cancel};
+ const resetHighlight=()=>{highlight=false;dots.classList.remove('highlight');};
+ window.addEventListener('keydown',e=>{if(['AltLeft','AltRight'].includes(e.code)&&!e.target.closest?.('input,textarea,select,[contenteditable=true]')){e.preventDefault();highlight=true;}},true);
+ window.addEventListener('keyup',e=>{if(['AltLeft','AltRight'].includes(e.code)){e.preventDefault();resetHighlight();}},true);
+ window.addEventListener('blur',resetHighlight);document.addEventListener('visibilitychange',()=>{if(document.hidden)resetHighlight();});
+ window.addEventListener('keydown',e=>{if(e.code==='Escape'){theftTarget=null;environment.close();if(active){e.preventDefault();e.stopImmediatePropagation();cancel();}else if(!panel.hidden){dismissed=selected;panel.hidden=true;}}},true);
+ return api;
+}

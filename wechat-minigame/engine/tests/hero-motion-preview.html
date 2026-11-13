@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><title>主角动作适配预览</title>
+<style>body{margin:0;background:#25262b;color:#eadbc0;font:14px sans-serif}nav{position:fixed;top:16px;left:16px;display:flex;gap:8px;flex-wrap:wrap;max-width:80vw}button{padding:9px;background:#292b31;color:inherit;border:1px solid #827b6e;border-radius:4px}output{position:fixed;bottom:20px;left:20px}</style>
+<nav></nav><output>载入骨骼动作…</output>
+<script>addEventListener('error',e=>document.querySelector('output').textContent='预览错误：'+e.message);addEventListener('unhandledrejection',e=>document.querySelector('output').textContent='资源错误：'+e.reason);</script>
+<script type="module">
+import * as T from '../vendor/three.module.js';
+import {character} from '../src/world.js';
+import {mountHeroModel} from '../src/hero-model.js';
+const scene=new T.Scene();scene.background=new T.Color('#696b64');
+const camera=new T.PerspectiveCamera(38,innerWidth/innerHeight,.1,100);camera.position.set(3.8,2.7,5.5);camera.lookAt(0,1,0);
+const renderer=new T.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.toneMapping=T.ACESFilmicToneMapping;document.body.append(renderer.domElement);
+scene.add(new T.HemisphereLight(0xffefd4,0x39414b,2));const light=new T.DirectionalLight(0xffe7c9,3);light.position.set(-3,6,4);light.castShadow=true;scene.add(light);
+const ground=new T.Mesh(new T.PlaneGeometry(100,100),new T.MeshStandardMaterial({color:0x77796f}));ground.rotation.x=-Math.PI/2;ground.position.y=-.025;ground.receiveShadow=true;scene.add(ground);
+const actor=character(0x385953,true);scene.add(actor);const handle=mountHeroModel(actor,new URL('../src/models/hero.glb',import.meta.url).href);
+let state={hp:100,speed:0,armed:false,hatOn:true},paused=false;
+function pose(name){state={hp:100,speed:0,armed:false,hatOn:true};if(name==='death')state.hp=0;else if(name.startsWith('crouch')){state.crouched=true;state.speed=name==='crouch_walk'?1.6:0;}else if(['walk','jog','sprint'].includes(name))state.speed={walk:1.3,jog:3.3,sprint:6.2}[name];else if(name==='idle_sword')state.armed=true;else if(name!=='stand_idle'){handle.motion?.cue(name,undefined,true);state.armed=name.startsWith('attack')||name==='draw';}actor.userData.sword.visible=state.armed;}
+for(const name of ['stand_idle','walk','jog','sprint','crouch_idle','crouch_walk','draw','idle_sword','attack_1','attack_2','attack_3','jump_fwd','fall','land','hit','death']){const b=document.createElement('button');b.textContent=name;b.onclick=()=>pose(name);document.querySelector('nav').append(b);}
+for(const [label,fn]of [['暂停/播放',()=>paused=!paused],['侧面',()=>{camera.position.set(5,1.7,.3);camera.lookAt(0,.9,0);}],['正面',()=>{camera.position.set(0,1.9,5.5);camera.lookAt(0,.9,0);}],['下一帧',()=>step(.1)]]){const b=document.createElement('button');b.textContent=label;b.onclick=fn;document.querySelector('nav').append(b);}
+function step(dt){handle.sync({...state,dt});renderer.render(scene,camera);document.querySelector('output').textContent=(handle.motion?.base||'loading')+' · '+(state.crouched?'蹲伏 / Z 起身':'站立 / Z 蹲伏')+' · 模型偏移 '+(handle.wrapper?.position.y??0).toFixed(3);}
+addEventListener('keydown',e=>{if(e.code==='KeyZ')state.crouched=!state.crouched;});
+window.preview={handle,actor,scene,camera,renderer,pose,step,pause(){paused=true;}};
+let then=performance.now();function frame(now){if(!paused)step(Math.min(.04,(now-then)/1000));then=now;requestAnimationFrame(frame);}requestAnimationFrame(frame);
+</script>

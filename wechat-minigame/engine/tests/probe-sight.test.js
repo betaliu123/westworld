@@ -1,0 +1,2 @@
+﻿import test from 'node:test';import assert from 'node:assert/strict';import {probeSight} from '../src/npc-discovery.js';
+test('scribe can be examined across the counter but not through a wall',()=>{const a={x:11,z:25.6},b={x:11,z:24},desk={x:11,z:24.5,w:2.1,d:1.05,sightHeight:1.1};assert.equal(probeSight(a,b,[desk],{}),true);assert.equal(probeSight(a,b,[desk,{...desk,sightHeight:3}],{}),false);});

@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8"><title>人物外形验收</title>
+<link rel="stylesheet" href="../vendor/fonts/fonts.css">
+<style>body{margin:0;background:#ece3cf;color:#2c2a24;font:16px 'Jianghu Body',KaiTi,serif}nav{position:fixed;top:16px;left:16px;right:16px;display:flex;gap:8px;flex-wrap:wrap}button{font:inherit;padding:6px;background:#ece3cf;color:inherit;border:1px solid #7b766a;border-radius:2px}output{position:fixed;left:16px;bottom:16px;white-space:pre-wrap;max-width:90vw;background:#ece3cf}canvas{display:block}</style>
+<nav></nav><output>载入人物…</output>
+<script type="module">
+import * as T from '../vendor/three.module.js';
+import {character} from '../src/world.js';
+import {mountHeroModel} from '../src/hero-model.js';
+import {mountAppearanceModel} from '../src/appearance-model.js';
+import {mountActorModel} from '../src/actor-model.js';
+const errors=[];addEventListener('error',e=>errors.push(e.message));addEventListener('unhandledrejection',e=>errors.push(String(e.reason)));
+const scene=new T.Scene();scene.background=new T.Color(0xece3cf);
+const camera=new T.PerspectiveCamera(38,innerWidth/innerHeight,.1,100);camera.position.set(2.5,2.2,-4.5);camera.lookAt(0,1,0);
+const renderer=new T.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.shadowMap.enabled=true;renderer.toneMapping=T.ACESFilmicToneMapping;document.body.append(renderer.domElement);
+scene.add(new T.HemisphereLight(0xece3cf,0x7b766a,2));const light=new T.DirectionalLight(0xece3cf,3);light.position.set(-3,6,-4);light.castShadow=true;scene.add(light);
+const ground=new T.Mesh(new T.PlaneGeometry(100,100),new T.MeshStandardMaterial({color:0xd8cbaf,roughness:1}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+const actor=character(0x385953,true);scene.add(actor);const handle=mountHeroModel(actor,new URL('../src/models/hero.glb',import.meta.url).href),appearance=mountAppearanceModel(handle,actor);
+const kinds=['prince','guard','commoner','woman','constable','envoy','sandgang','maskopera'];
+const npcs=kinds.map((kind,i)=>{const actor=character(0x657f89);actor.position.set((i-3.5)*1.5,0,5);scene.add(actor);return {actor,handle:mountActorModel(actor,{kind})};});
+let state={hp:100,speed:0,hatOn:true},paused=false,showNpcs=false,frameCount=0,prematureMeshes=0,report='';
+const s={player:{hp:100,hat:true,wornOutfit:'shirt'},people:{},ecosystem:{items:[{id:'shirt',type:'clothing',appearanceModel:'hero',location:'player',hp:100}]}};
+const actions=[['站立',()=>state={hp:100,speed:0,hatOn:true}],['蹲行',()=>state={hp:100,speed:1.6,crouched:true,hatOn:true}],['行走',()=>state={hp:100,speed:3.3,hatOn:true}],['拔剑',()=>state={hp:100,speed:0,armed:true,hatOn:true}],['倒地',()=>state={hp:0,speed:0,hatOn:true}],['正面',()=>{camera.position.set(2.5,2.2,4.5);camera.lookAt(0,.9,0);}],['背面',()=>{camera.position.set(2.5,2.2,-4.5);camera.lookAt(0,.9,0);}],['侧面',()=>{camera.position.set(4.5,1.8,0);camera.lookAt(0,.9,0);}],['全体人物',()=>{showNpcs=true;camera.position.set(0,4,-12);camera.lookAt(0,1,3);}],['主角近看',()=>{showNpcs=false;camera.position.set(2.5,2.2,-4.5);camera.lookAt(0,.9,0);}],['暂停/播放',()=>paused=!paused],['检查首帧',()=>{report='首帧检查：'+frameCount+' 帧；载入前可见网格 '+prematureMeshes+'；错误 '+errors.length;}]];
+for(const [label,fn]of actions){const b=document.createElement('button');b.textContent=label;b.onclick=fn;document.querySelector('nav').append(b);}
+addEventListener('keydown',e=>{if(e.code==='KeyZ'){state.crouched=!state.crouched;state.speed=0;}if(e.code==='Slash'){state.armed=!state.armed;}});
+function step(dt){
+  frameCount++;s.player.hp=state.hp;actor.userData.sword.visible=!!state.armed;
+  handle.sync({...state,dt});appearance.update(s,dt);
+  for(const n of npcs){n.actor.visible=showNpcs;n.handle.sync(0x657f89,{hp:100,speed:0,dt});}
+  for(const n of [{actor,handle},...npcs])if(!n.handle.ready)n.actor.traverseVisible(o=>{if(o.isMesh)prematureMeshes++;});
+  renderer.render(scene,camera);
+  document.querySelector('output').textContent=(handle.ready?'主角已就绪':'主角载入中')+'；NPC '+npcs.filter(n=>n.handle.ready).length+'/'+kinds.length+'；'+(state.crouched?'蹲行':'站姿')+'\n'+report+(errors.length?'\n'+errors.join('\n'):'');
+}
+let then=performance.now();function frame(now){if(!paused)step(Math.min(.04,(now-then)/1000));then=now;requestAnimationFrame(frame);}requestAnimationFrame(frame);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>

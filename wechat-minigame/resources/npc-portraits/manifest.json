@@ -1,0 +1,216 @@
+{
+  "generatedAt": "2026-11-11",
+  "generator": "image_gen",
+  "style": "宋代武侠纸本淡彩人物半身像",
+  "runtime": {
+    "format": "WebP",
+    "width": 512,
+    "height": 512,
+    "quality": 85
+  },
+  "portraits": [
+    {
+      "id": "qinghe",
+      "name": "宋青禾",
+      "file": "qinghe.webp",
+      "original": "exec-dc4be96f-16c3-4761-8265-cb313892636c.png",
+      "prompt": "Use case: stylized-concept. Asset type: single 2D game character portrait for a Northern Song Chinese wuxia RPG, square bust icon. Subject: Song Qinghe / 宋青禾, a Chinese young adult woman age 22, a tea seller's daughter now working at an inn, ambitious, alert and quietly self-possessed rather than shy. Distinct oval face, natural dark eyes, slightly raised brow, black hair pinned into a practical Song-era bun, small plain wooden hairpin, modest dusty mauve crossed-collar linen blouse with cream inner collar, no jewels, no cleavage. Style: refined hand-painted Chinese historical character illustration, realistic anatomical facial proportions, delicate ink linework, muted mineral-color washes, lightly textured warm ivory rice paper. Not cartoon, not chibi, not 3D render, not anime, not photoreal photograph. Composition: exactly ONE character, head and shoulders centered, near frontal gentle three-quarter angle facing slightly left, face unobscured, whole hair/bun inside frame, head occupies 55 percent image height, crop below upper chest. Flat warm paper background, soft understated light, attractive but distinctive human face. No text, lettering, labels, signatures, border, UI, collage or multiple panels. Output square 1024x1024."
+    },
+    {
+      "id": "tea_host",
+      "name": "宋茶娘",
+      "file": "tea_host.webp",
+      "original": "exec-57ad8db8-1aa5-4bd1-96bc-28dcffa255ba.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese woman 48, protective tea-stall proprietor, sun-touched square face, smile lines and tired perceptive eyes, composed firm mouth, black-and-grey low bun, ochre linen blouse and indigo apron, resilient dignity."
+    },
+    {
+      "id": "traveler",
+      "name": "锦衣客",
+      "file": "traveler.webp",
+      "original": "exec-f0e5a25b-7eb6-4076-88de-36201bb23a11.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 34, refined mysterious traveler, handsome long face, calm knowing eyes, small plain white jade hair clasp in neat topknot, clean shaven, slate-blue silk robe and ivory collar, restrained half-smile, understated wealth and serenity, absolutely no crown, royal insignia or dragons."
+    },
+    {
+      "id": "gate_guard",
+      "name": "韩校尉",
+      "file": "gate_guard.webp",
+      "original": "exec-5b59cff2-f087-4d5a-96dd-ff76671bbbcb.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 42, disciplined guard captain, broad angular square face, straight heavy brows, old subtle brow scar, short moustache and stubble, watchful tired eyes, black military cloth cap, slate-blue uniform with small practical lamellar shoulder pieces."
+    },
+    {
+      "id": "gate_relief",
+      "name": "周伍长",
+      "file": "gate_relief.webp",
+      "original": "exec-8d554001-97ab-41e6-b9b1-e48a4dfe61ba.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 30, sturdy ordinary guard sergeant, wide round face, strong neck, clean shaven, thick brows, navy headwrap, slate-blue guard tunic with plain leather shoulder, straightforward approachable good humour."
+    },
+    {
+      "id": "old_constable",
+      "name": "杜老捕",
+      "file": "old_constable.webp",
+      "original": "exec-9e3d3df5-1cd6-4c25-88f0-2465168777b9.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 64, retired constable and mentor, lean weathered high cheekbones, grey brows, salt-and-pepper moustache and narrow beard, kind searching eyes, grey hair in cloth-bound knot, faded blue-grey robe, quiet experience."
+    },
+    {
+      "id": "gate_merchant",
+      "name": "赵行商",
+      "file": "gate_merchant.webp",
+      "original": "exec-b5bdc40f-8845-44a2-8799-9472de06e8ac.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 39, traveling merchant, round full face, carefully trimmed small moustache, lively calculating eyes, friendly business smile, soft brown merchant cap, teal robe with buff collar and brown cloth strap."
+    },
+    {
+      "id": "scribe",
+      "name": "刻字人",
+      "file": "scribe.webp",
+      "original": "exec-18ec06c1-3405-4f0f-9868-d125810e7b1b.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 46, reserved engraver with a hidden past, gaunt narrow face, hooded keen eyes, uneven short stubble, tiny old cheek scar, simple grey cloth cap and ash-grey work robe, alert elusive expression, no obvious criminal props or symbols."
+    },
+    {
+      "id": "fu",
+      "name": "符祥",
+      "file": "fu.webp",
+      "original": "exec-a97f2180-bc1b-45ee-a1bc-005692c76a6f.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 50, smoothly coercive minor official, round smooth face, narrow eyes, thin moustache and pointed chin beard, indulgent polite smile, dark Song official cap, ochre-brown silk robe, measured respectable exterior, no caricature."
+    },
+    {
+      "id": "inspector",
+      "name": "顾钦差",
+      "file": "inspector.webp",
+      "original": "exec-9807eba3-615d-4d75-8787-dad85ffcfaed.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 54, imperial inspector, rectangular face, focused steady eyes, neatly trimmed greying beard, black modest short-wing official cap, deep burgundy robe, controlled authority and judgement."
+    },
+    {
+      "id": "gang_boss",
+      "name": "梅掌舵",
+      "file": "gang_boss.webp",
+      "original": "exec-1b1f4e5d-c717-43d4-b106-e0e176fabc26.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 52, charismatic river-gang leader, rugged broad face, short full salt-and-pepper beard, deep-set eyes, faint temple scar, slightly receding topknot, heavy rust-brown robe with plain bronze fastener, confident formidable presence."
+    },
+    {
+      "id": "relay",
+      "name": "驿舍补衣人",
+      "file": "relay.webp",
+      "original": "exec-387d88e9-37e2-4956-b758-cf05f1b0af81.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 57, humble relay-station mender, slender face, gentle crow's feet, wispy moustache, tan headwrap, ochre patched linen robe, small spool of thread at chest, patient careful expression."
+    },
+    {
+      "id": "prisoner",
+      "name": "旧账房",
+      "file": "prisoner.webp",
+      "original": "exec-86b790a1-c10d-4e28-81b0-10fd6593e514.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 59, weary accountant, thin drawn face, sunken anxious eyes, sparse grey beard, untidy hair knot, rumpled grey-brown robe, intelligent and troubled, no chains, blood or bruises."
+    },
+    {
+      "id": "mei",
+      "name": "梅知意",
+      "file": "mei.webp",
+      "original": "exec-7ffdeef9-b8a1-4462-bef7-ffe6ff60a3f1.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese woman 24, decisive daughter of a river-gang leader, heart-shaped face, sharp confident eyes, slightly lifted chin, black half-up hair with small cinnabar floral pin, muted rose-red robe and burgundy collar, self-possessed not coy, elegant historical portrait."
+    },
+    {
+      "id": "matchmaker",
+      "name": "花婶",
+      "file": "matchmaker.webp",
+      "original": "exec-6fd27d6a-0d8c-4596-a3a1-5c881e817962.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese woman 55, experienced matchmaker, broad friendly face with laugh lines, expressive shrewd eyes, grey-templed bun with simple purple ornament, plum blouse, dignified lively aunt, no caricature."
+    },
+    {
+      "id": "merchant",
+      "name": "许行商",
+      "file": "merchant.webp",
+      "original": "exec-f919ac26-2dd2-43ab-9b43-0cdc933d4f6b.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 45, cautious seasoned merchant, lean long face, prominent straight nose, thin moustache, narrow smiling eyes, indigo soft cap, turquoise robe, brown shoulder strap, astute restrained expression."
+    },
+    {
+      "id": "thief",
+      "name": "燕七",
+      "file": "thief.webp",
+      "original": "exec-915dc480-ae03-44b7-875f-10cd5b9c9802.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 25, elusive petty outlaw, lean triangular face, restless sideways glance, sly fragile half-smile, clean shaven, small brow notch, messy hair restrained with dark cloth band, charcoal-violet tunic, wary opportunist, no face mask."
+    },
+    {
+      "id": "qing",
+      "name": "林青舟",
+      "file": "qing.webp",
+      "original": "exec-8e62a3b8-0fbd-4612-aabc-c3a744b03251.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 27, principled restrained swordsman, lean angular handsome face, long brows, cool clear eyes, clean shaven, neat topknot with plain dark tie, bamboo-green robe, quiet resolution."
+    },
+    {
+      "id": "chi",
+      "name": "段赤川",
+      "file": "chi.webp",
+      "original": "exec-656d8bbe-f069-4ab1-9945-27b9a24df3b9.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 33, loyal river escort, stocky powerful neck, sun-browned broad face, thick brows, slightly crooked nose, short beard, confident friendly grin, russet hair tie, brick-red robe and leather strap."
+    },
+    {
+      "id": "shen",
+      "name": "沈砚",
+      "file": "shen.webp",
+      "original": "exec-5af13137-88a0-4cef-85e0-976ef9db9b99.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 26, earnest young scholar, youthful long face, soft sincere dark eyes, slightly worried brows, clean shaven, tidy black knot with teal ribbon, jade-green robe and cream collar, sensitive and somewhat insecure."
+    },
+    {
+      "id": "su",
+      "name": "苏晚",
+      "file": "su.webp",
+      "original": "exec-dfd844a9-71e5-443c-a030-192ba1519a6a.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese woman 26, independent thoughtful musician, graceful oval face, quiet intelligent eyes, softly closed lips, black half-up hair and simple wooden pin, muted vermilion robe with cream collar, narrow instrument strap, serene but self-directed."
+    },
+    {
+      "id": "gao",
+      "name": "高小楼",
+      "file": "gao.webp",
+      "original": "exec-739ebb14-0ca5-40d9-95d9-f17b4a16971c.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 29, affable wine-loving friend, youthful round face, smiling crescent eyes, tousled loose topknot, faint stubble, warm ochre robe, relaxed humorous open expression, no drunken caricature."
+    },
+    {
+      "id": "guard",
+      "name": "陆捕头",
+      "file": "guard.webp",
+      "original": "exec-01f1c167-e4d2-4059-9267-34ee682ec3a2.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 38, stern professional constable, strong narrow rectangular face, sharp jaw, close moustache, controlled severe eyes, black patrol cap, dark navy uniform and leather collar, guarded and formal."
+    },
+    {
+      "id": "bookseller",
+      "name": "温素笺",
+      "file": "bookseller.webp",
+      "original": "exec-d62d1e3b-6bfb-43ad-b513-7ef5ed4591c4.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese woman 31, beautiful educated bookseller, refined oval face, gentle observant eyes, thoughtful small smile, understated coiled bun with pale jade pin, celadon robe with ivory collar, literary grace and autonomy, modest clothing."
+    },
+    {
+      "id": "inn",
+      "name": "柳掌柜",
+      "file": "inn.webp",
+      "original": "exec-2c27f07c-bfcc-49d6-8a95-37843f22d1ad.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese woman 41, sophisticated innkeeper, mature oval face, assured intelligent eyes, subtle warm smile, tidy coiled bun and small silver pin, violet-grey robe with cream collar, composed capable hospitality."
+    },
+    {
+      "id": "tea",
+      "name": "阿青",
+      "file": "tea.webp",
+      "original": "exec-0312459f-3c4a-4c5c-b7c4-ede61eb750de.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese woman 23, caring practical herbalist, round soft face, attentive clear eyes, faint freckles, gentle focused expression, braided low bun with green cloth tie, sage linen robe and cream collar, small herb pouch strap, plainly an adult."
+    },
+    {
+      "id": "porter",
+      "name": "周大石",
+      "file": "porter.webp",
+      "original": "exec-51bab37e-8310-42f0-a075-272a1163119e.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 36, hardworking porter, broad sun-browned face, square jaw, honest tired eyes, thick stubble, powerful shoulders, ochre headwrap, coarse brown work tunic and hauling strap, sturdy grounded dignity."
+    },
+    {
+      "id": "elder",
+      "name": "陈先生",
+      "file": "elder.webp",
+      "original": "exec-c57736a8-ac22-41a5-84d4-d764a9d32adf.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 66, storyteller and flutist, long expressive wrinkled face, kind amused eyes, grey moustache and goatee, old soft scholar cap, grey-beige robe, lively cultured warmth."
+    },
+    {
+      "id": "beggar",
+      "name": "瘸张",
+      "file": "beggar.webp",
+      "original": "exec-5632e2fe-6e80-4984-96ad-ffb285f03698.png",
+      "prompt": "Use case: stylized-concept. Asset type: ONE square 2D bust portrait for a Northern Song Chinese wuxia RPG. Refined hand-painted historical character illustration, realistic anatomy and facial proportions, delicate ink linework, muted mineral pigment washes on warm ivory rice paper, believable adult face, individually distinctive. NOT cartoon, chibi, anime, 3D, photograph or vector icon. Exactly one head-and-shoulders character near frontal gentle three-quarter angle, face unobscured, entire hair/hat inside frame, head occupies about 55 percent of image height, crop below upper chest. Blank lightly textured warm paper background. Restrained soft light. Period Chinese clothing and grooming, no modern elements or fantasy armor. No text, labels, lettering, signatures, watermarks, frames, UI, panels or collage. Square output. Character: Chinese man 58, shrewd beggar with quiet dignity, asymmetrical weathered lean face, deep laugh lines, penetrating eyes, uneven short beard, messy hair in worn brown cloth, patched earth-coloured robe, wry knowing expression, no grotesque caricature."
+    }
+  ]
+}

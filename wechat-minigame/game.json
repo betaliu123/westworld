@@ -1,0 +1,10 @@
+{
+  "deviceOrientation": "landscape",
+  "showStatusBar": false,
+  "subpackages": [
+    {
+      "name": "resources",
+      "root": "packages/resources/"
+    }
+  ]
+}
